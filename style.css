@@ -262,8 +262,13 @@ textarea{line-height:1.5}
 .loading-spinner{width:32px;height:32px;border-radius:50%;border:3px solid rgba(0,0,0,.1);border-top-color:var(--blue);animation:spin 1s linear infinite;margin-top:8px}
 
 .main-app{position:relative;min-height:100dvh;padding-bottom:calc(var(--nav-height) + env(safe-area-inset-bottom,0));background:#fff;overflow-x:hidden}
-.app-screen{display:none;padding:68px 16px 24px}
+.app-screen{
+    display:none;
+    padding:68px 16px 24px;
+    transition:padding-top .3s cubic-bezier(.4,0,.2,1);
+}
 .app-screen.active{display:block}
+.app-screen.tb-hidden{padding-top:0}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 0 12px;position:sticky;top:0;z-index:10;background:rgba(255,255,255,.88);backdrop-filter:saturate(180%) blur(20px);margin:0 -16px;padding-left:16px;padding-right:16px}
 .topbar-btn{width:40px;height:40px;border-radius:50%;background:transparent;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text);flex-shrink:0}
 .topbar-btn:hover{background:var(--surface-2)}
@@ -990,29 +995,56 @@ textarea{line-height:1.5}
 .full-close:hover,.full-more:hover{background:rgba(255,255,255,.2)}
 .full-now{font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:rgba(255,255,255,.6)}
 .full-body{
-    position:relative;z-index:2;flex:1;display:flex;flex-direction:column;align-items:center;
+    position:relative;
+    z-index:2;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
     padding:8px 24px calc(env(safe-area-inset-bottom,0) + 24px);
     padding-top:calc(env(safe-area-inset-top,0) + 8px);
     overflow-y:auto;
+    gap:0;
 }
 .full-progress-wrap{width:100%;max-width:340px;margin-top:auto;padding-top:28px}
-.full-controls{
+
+.full-controls-main{
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:16px;
+    gap:14px;
     margin-top:22px;
+    margin-bottom:6px;
+    width:100%;
+    max-width:340px;
 }
-.full-progress-wrap{width:100%;max-width:340px;margin-top:28px}
-.full-controls{display:flex;align-items:center;gap:16px;margin-top:26px}
+
+.full-progress-wrap{
+    width:100%;
+    max-width:340px;
+    margin-top:auto;
+    padding-top:32px;
+}
+
 .full-cover{
-    width:260px;height:260px;max-width:70vw;max-height:70vw;border-radius:26px;
+    width:260px;
+    height:260px;
+    max-width:70vw;
+    max-height:70vw;
+    border-radius:26px;
     background:linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2);
-    display:flex;align-items:center;justify-content:center;
-    font-size:90px;font-weight:900;color:#fff;overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:90px;
+    font-weight:900;
+    color:#fff;
+    overflow:hidden;
     box-shadow:0 24px 60px rgba(255,55,95,.35);
+    flex-shrink:0;
+    margin-top:8px;
 }
-.full-cover img{width:100%;height:100%;object-fit:cover}
+.full-cover img{width:100%;height:100%;object-fit:cover;display:block}
 .full-channel-row{display:flex;align-items:center;gap:10px;margin-top:22px;max-width:260px}
 .full-channel-ava{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#ff9f0a,#ff375f);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;overflow:hidden;flex-shrink:0}
 .full-channel-ava img{width:100%;height:100%;object-fit:cover}
@@ -1028,8 +1060,20 @@ textarea{line-height:1.5}
 .full-user-ava{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#ffd60a,#ff375f);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;overflow:hidden;flex-shrink:0}
 .full-user-ava img{width:100%;height:100%;object-fit:cover}
 .full-user-name{font-size:13px;color:rgba(255,255,255,.7)}
-.full-progress{height:6px;background:rgba(255,255,255,.14);border-radius:100px;overflow:hidden;cursor:pointer}
-.full-progress-fill{height:100%;width:0;background:linear-gradient(90deg,#ffd60a,#ff9f0a,#ff375f);border-radius:100px;transition:width .15s linear}
+.full-progress{
+    height:6px;
+    background:rgba(255,255,255,.16);
+    border-radius:100px;
+    overflow:hidden;
+    cursor:pointer;
+}
+.full-progress-fill{
+    height:100%;
+    width:0;
+    background:#ffffff;                /* ← белый вместо градиента */
+    border-radius:100px;
+    transition:width .15s linear;
+}
 .full-times{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.55);margin-top:6px;font-family:ui-monospace,monospace}
 .full-play{
     width:68px;height:68px;border-radius:50%;border:none;
@@ -1047,15 +1091,7 @@ textarea{line-height:1.5}
 .prioriti-sheet{z-index:801}
 .actionsheet-backdrop{z-index:820}
 .actionsheet{z-index:821}
-.full-extras{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:14px;
-    margin-top:18px;
-    margin-bottom:4px;
-    flex-wrap:wrap;
-}
+
 .full-ctrl{
     width:44px;height:44px;border-radius:50%;border:none;
     background:rgba(255,255,255,.1);color:#fff;
@@ -1075,7 +1111,42 @@ textarea{line-height:1.5}
     margin-left:2px;
     white-space:nowrap;
 }
-
+.full-play{
+    width:68px;
+    height:68px;
+    border-radius:50%;
+    border:none;
+    background:#fff;
+    color:#1c1c1e;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    box-shadow:0 12px 32px rgba(255,255,255,.15);
+    transition:transform .15s;
+    flex-shrink:0;
+}
+.full-play:active{transform:scale(.94)}
+.full-ctrl{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    border:none;
+    background:rgba(255,255,255,.1);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:background .15s,transform .15s;
+    flex-shrink:0;
+}
+.full-ctrl:hover{background:rgba(255,255,255,.2)}
+.full-ctrl:active{transform:scale(.94)}
+.full-ctrl.liked{background:linear-gradient(135deg,#ff375f,#ff3b30)}
+#full-queue.active{background:linear-gradient(135deg,#30d158,#28a948)}
+#full-repeat.active{background:linear-gradient(135deg,#ff9f0a,#ff375f)}
+#full-save.active{background:linear-gradient(135deg,#0a84ff,#0066cc)}
 
 /* Бегущая строка (marquee) */
 .mini-title,
@@ -1956,6 +2027,371 @@ textarea{line-height:1.5}
     overflow:hidden;
     text-overflow:ellipsis;
 }
+/* ============================================================
+   ТЕМА: СВЕТЛАЯ / ТЁМНАЯ
+============================================================ */
+html[data-theme="dark"]{
+    --bg:#000;
+    --text:#fff;
+    --text-secondary:rgba(255,255,255,.6);
+    --text-tertiary:rgba(255,255,255,.35);
+    --surface-2:rgba(120,120,128,.24);
+    --surface-3:rgba(120,120,128,.36);
+    --border:rgba(255,255,255,.1);
+    --border-strong:rgba(255,255,255,.18);
+    color-scheme:dark;
+}
+html[data-theme="dark"],
+html[data-theme="dark"] body{background:#000;color:#fff}
+html[data-theme="dark"] .app,
+html[data-theme="dark"] .main-app,
+html[data-theme="dark"] .screen,
+html[data-theme="dark"] .boot-screen{background:#000;color:#fff}
+html[data-theme="dark"] .topbar{background:rgba(0,0,0,.72);color:#fff}
+html[data-theme="dark"] .bottom-nav{background:rgba(0,0,0,.9);border-top-color:var(--border)}
+html[data-theme="dark"] .feed-post,
+html[data-theme="dark"] .composer,
+html[data-theme="dark"] .livechat-card,
+html[data-theme="dark"] .ch-post,
+html[data-theme="dark"] .notification-item,
+html[data-theme="dark"] .inbox-item{background:#1c1c1e;border-color:var(--border);color:#fff}
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea{color:#fff}
+html[data-theme="dark"] input:focus,
+html[data-theme="dark"] textarea:focus{background:#1c1c1e;color:#fff}
+html[data-theme="dark"] .input-prefix,
+html[data-theme="dark"] .social-input{background:var(--surface-2)}
+html[data-theme="dark"] .input-prefix:focus-within,
+html[data-theme="dark"] .social-input:focus-within{background:#1c1c1e}
+html[data-theme="dark"] .feed-tab.active,
+html[data-theme="dark"] .inbox-tab.active{background:#fff;color:#000}
+html[data-theme="dark"] .settings-tab.active{background:#2c2c2e;color:#fff}
+html[data-theme="dark"] .method-btn.active{background:#2c2c2e;color:#fff}
+html[data-theme="dark"] .story-ring-inner{background:#1c1c1e;color:#fff}
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .actionsheet,
+html[data-theme="dark"] .prioriti-sheet,
+html[data-theme="dark"] .lang-sheet,
+html[data-theme="dark"] .code-modal-sheet,
+html[data-theme="dark"] .qr-sheet{background:#1c1c1e;color:#fff}
+html[data-theme="dark"] .lang-sheet-title{color:#fff;border-color:var(--border)}
+html[data-theme="dark"] .actionsheet-cancel{background:var(--surface-2);color:#fff}
+html[data-theme="dark"] .profile-edit-btn{background:var(--surface-2);color:#fff}
+html[data-theme="dark"] .chan-item{background:var(--surface-2);color:#fff}
+html[data-theme="dark"] .settings-row{background:var(--surface-2);color:#fff}
+html[data-theme="dark"] .info-row{border-color:var(--border)}
+html[data-theme="dark"] .code-modal-input{background:#1c1c1e;color:#fff}
+html[data-theme="dark"] #auth-screen{
+    background:linear-gradient(135deg,#0a0a0a,#1a1020,#0f1620,#1a0f14,#0a0a0a);
+}
+html[data-theme="dark"] #auth-screen .auth-wrap::before{
+    background:radial-gradient(ellipse at center,rgba(0,0,0,.75) 0%,rgba(0,0,0,.45) 55%,rgba(0,0,0,0) 100%);
+}
+html[data-theme="dark"] #register-screen,
+html[data-theme="dark"] #register-landing-screen,
+html[data-theme="dark"] #karsq-screen,
+html[data-theme="dark"] #reset-screen,
+html[data-theme="dark"] #loading-screen{background:#000;color:#fff}
+html[data-theme="dark"] .topbar-logo-static,
+html[data-theme="dark"] .brand-name,
+html[data-theme="dark"] .boot-brand,
+html[data-theme="dark"] .loading-brand,
+html[data-theme="dark"] .reg-topbar-title,
+html[data-theme="dark"] .reg-back-btn{color:#fff}
+html[data-theme="dark"] .steps-progress{background:#1c1c1e;border-color:var(--border)}
+html[data-theme="dark"] .search-overlay{background:#000;color:#fff}
+html[data-theme="dark"] .search-top{background:rgba(0,0,0,.95);border-color:var(--border)}
+html[data-theme="dark"] .search-suggestions,
+html[data-theme="dark"] .search-title-bar{background:#000;border-color:var(--border);color:#fff}
+
+/* --- Кнопка-переключатель темы в настройках --- */
+.theme-toggle{
+    display:flex;align-items:center;gap:12px;
+    padding:14px 16px;background:var(--surface-2);border:none;
+    border-radius:var(--radius-sm);font-family:inherit;font-size:15px;
+    font-weight:600;color:var(--text);cursor:pointer;width:100%;margin-top:6px;
+}
+.theme-toggle:hover{background:var(--surface-3)}
+.theme-toggle-icon{font-size:20px;width:22px;text-align:center;line-height:1}
+.theme-toggle-text{flex:1;text-align:left}
+.theme-toggle-switch{
+    position:relative;width:46px;height:28px;
+    background:rgba(120,120,128,.32);border-radius:100px;
+    transition:background .25s var(--ease);flex-shrink:0;
+}
+.theme-toggle-switch::after{
+    content:'';position:absolute;top:2px;left:2px;width:24px;height:24px;
+    background:#fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.2);
+    transition:transform .25s var(--ease);
+}
+html[data-theme="dark"] .theme-toggle-switch{background:var(--blue)}
+html[data-theme="dark"] .theme-toggle-switch::after{transform:translateX(18px)}
+
+/* --- Выбор темы на шаге 6 регистрации --- */
+.theme-picker{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:8px 16px 14px}
+.theme-choice{
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    padding:12px;background:var(--surface-2);border:2px solid transparent;
+    border-radius:14px;cursor:pointer;font-family:inherit;font-size:13px;
+    font-weight:600;color:var(--text);transition:all .2s var(--ease);
+}
+.theme-choice.active{border-color:var(--blue);background:rgba(10,132,255,.08)}
+.theme-choice-preview{
+    width:100%;height:56px;border-radius:10px;display:block;
+    border:1px solid var(--border);
+}
+.theme-light{background:linear-gradient(135deg,#fff,#f0f0f5)}
+.theme-dark{background:linear-gradient(135deg,#1c1c1e,#000);border-color:rgba(255,255,255,.15)}
+.coming-soon-badge{
+    display:inline-block;margin:4px 16px 12px;
+    padding:8px 14px;border-radius:100px;
+    background:var(--surface-3);color:var(--text-secondary);
+    font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+}
+
+/* ============================================================
+   ПОЗИЦИЯ МИНИ-ПЛЕЕРА — МЕНЯЙ ЭТУ ПЕРЕМЕННУЮ
+   Больше значение → выше. Меньше (или минус) → ниже.
+============================================================ */
+:root{ --mini-player-offset: -8px; }
+.mini-player{
+    bottom:calc(var(--nav-height) + var(--mini-player-offset) + env(safe-area-inset-bottom,0)) !important;
+    z-index:45 !important;
+}
+
+/* ============================================================
+   СПИННЕР ЗАГРУЗКИ (переиспользуемый)
+============================================================ */
+.loading-spinner-inline{
+    display:inline-block;width:16px;height:16px;vertical-align:middle;
+    border-radius:50%;border:2px solid rgba(120,120,128,.35);
+    border-top-color:var(--blue);animation:mqSpin .8s linear infinite;
+    margin-right:8px;
+}
+.loading-block{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    padding:40px 20px;color:var(--text-secondary);font-size:14px;
+}
+
+/* ============================================================
+   ФИЛЬТРЫ В ПОИСКЕ
+============================================================ */
+.search-filters{
+    display:flex;gap:6px;padding:10px 16px 10px;
+    overflow-x:auto;scrollbar-width:none;
+    border-bottom:1px solid var(--border);
+}
+.search-filters::-webkit-scrollbar{display:none}
+.search-filter-chip{
+    padding:8px 14px;background:var(--surface-2);border:none;border-radius:100px;
+    font-family:inherit;font-size:12px;font-weight:600;
+    color:var(--text-secondary);cursor:pointer;white-space:nowrap;flex-shrink:0;
+}
+.search-filter-chip.active{background:var(--text);color:#fff}
+
+/* Микс результатов: люди/каналы/посты */
+.search-section-title{
+    font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.05em;color:var(--text-tertiary);
+    padding:12px 4px 6px;
+}
+.search-channel-row{
+    display:flex;align-items:center;gap:12px;padding:12px;
+    border-radius:var(--radius-md);background:var(--surface-2);cursor:pointer;
+}
+.search-channel-icon{
+    width:52px;height:52px;border-radius:14px;overflow:hidden;
+    background:linear-gradient(135deg,#ff9f0a,#ff375f);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:20px;font-weight:800;flex-shrink:0;
+}
+.search-channel-icon img{width:100%;height:100%;object-fit:cover}
+.search-channel-info{flex:1;min-width:0}
+.search-channel-name{font-size:15px;font-weight:700}
+.search-channel-sub{font-size:13px;color:var(--text-secondary);margin-top:2px}
+
+/* ============================================================
+   FULL PLAYER — очередь / повтор / сон / текст
+============================================================ */
+.full-ctrl.active{
+    background:linear-gradient(135deg,#0a84ff,#0066cc);color:#fff;
+}
+#full-queue.active{background:linear-gradient(135deg,#30d158,#28a948)}
+#full-repeat.active{background:linear-gradient(135deg,#ff9f0a,#ff375f)}
+
+
+/* ============================================================
+   ТЁМНАЯ ТЕМА: КАНАЛЫ, СОЗДАНИЕ, НАСТРОЙКИ
+============================================================ */
+html[data-theme="dark"] #channel-screen,
+html[data-theme="dark"] #create-channel-screen,
+html[data-theme="dark"] #channel-settings-screen,
+html[data-theme="dark"] #create-live-screen{
+    background:#000;
+    color:#fff;
+}
+
+/* Шапка канала */
+html[data-theme="dark"] .ch-page-header{
+    background:rgba(0,0,0,.85);
+    color:#fff;
+}
+html[data-theme="dark"] .ch-page-header .topbar-logo-static,
+html[data-theme="dark"] .ch-page-header .topbar-btn{
+    color:#fff;
+}
+
+/* Имя/описание канала */
+html[data-theme="dark"] .ch-ig-name{color:#fff}
+html[data-theme="dark"] .ch-ig-desc{color:var(--text-secondary)}
+
+/* Табы канала */
+html[data-theme="dark"] .ch-page-tabs{border-color:var(--border)}
+html[data-theme="dark"] .ch-page-tab{color:var(--text-secondary)}
+html[data-theme="dark"] .ch-page-tab.active{color:#fff;border-color:#fff}
+
+/* Пост канала */
+html[data-theme="dark"] .ch-post{
+    background:#1c1c1e;
+    border-color:var(--border);
+    color:#fff;
+}
+html[data-theme="dark"] .ch-post-content{color:#fff}
+html[data-theme="dark"] .ch-post-actions{border-color:var(--border)}
+html[data-theme="dark"] .ch-post-action{color:var(--text-secondary)}
+
+/* Композер поста */
+html[data-theme="dark"] .ch-new-post{background:var(--surface-2)}
+html[data-theme="dark"] .ch-new-post-text{
+    background:#1c1c1e;
+    color:#fff;
+}
+html[data-theme="dark"] .ch-new-post-media-box #ch-new-track-title{
+    background:#1c1c1e !important;
+    color:#fff !important;
+    border-color:var(--border) !important;
+}
+
+/* Комментарии под постом канала */
+html[data-theme="dark"] .ch-comments{
+    background:#141416;
+    border-color:var(--border);
+}
+html[data-theme="dark"] .ch-comment-row input{
+    background:#1c1c1e;
+    color:#fff;
+}
+
+/* Кнопка «+» (добавить людей) */
+html[data-theme="dark"] .btn-add-people{
+    background:#2c2c2e;
+    color:#fff;
+}
+
+/* Фильтр-плашка в канале */
+html[data-theme="dark"] .ch-filter-note{
+    background:rgba(10,132,255,.14);
+    color:var(--blue);
+}
+
+/* Создание канала — карточки типов */
+html[data-theme="dark"] .cc-type-card{
+    background:var(--surface-2);
+    color:#fff;
+}
+html[data-theme="dark"] .cc-type-card.selected{
+    background:rgba(10,132,255,.14);
+}
+html[data-theme="dark"] .cc-type-desc{color:var(--text-secondary)}
+
+/* Поле с кодом приглашения */
+html[data-theme="dark"] .cc-code-box,
+html[data-theme="dark"] .cl-code-box,
+html[data-theme="dark"] .chs-code-display{
+    background:var(--surface-2);
+    color:#fff;
+}
+html[data-theme="dark"] .chs-code-note{color:var(--text-tertiary)}
+
+/* Список друзей (шаг «пригласить») */
+html[data-theme="dark"] .cc-invite-block{background:var(--surface-2)}
+html[data-theme="dark"] .subs-item{background:#1c1c1e}
+html[data-theme="dark"] .subs-item:hover{background:#2c2c2e}
+html[data-theme="dark"] .subs-item-name{color:#fff}
+html[data-theme="dark"] .subs-item-role{color:var(--text-secondary)}
+html[data-theme="dark"] .subs-item input[type="checkbox"]{
+    background:#2c2c2e !important;
+    border-color:var(--border-strong) !important;
+}
+
+/* Тип трансляции (Live chat / Rave) */
+html[data-theme="dark"] .cl-type{
+    background:var(--surface-2);
+    color:#fff;
+}
+html[data-theme="dark"] .cl-type.active{
+    background:rgba(10,132,255,.14);
+}
+html[data-theme="dark"] .cl-type-desc{color:var(--text-secondary)}
+
+/* Форма редактирования в настройках канала */
+html[data-theme="dark"] .ch-edit-avatar-hint{color:var(--text-secondary)}
+html[data-theme="dark"] .ch-edit-form .settings-label{color:var(--text-secondary)}
+html[data-theme="dark"] .ch-edit-form input[type="text"],
+html[data-theme="dark"] .ch-edit-form textarea{
+    background:#1c1c1e;
+    color:#fff;
+    border-color:var(--border);
+}
+
+/* Участники канала */
+html[data-theme="dark"] .ch-member-row{background:var(--surface-2)}
+html[data-theme="dark"] .ch-member-name{color:#fff}
+html[data-theme="dark"] .ch-member-role.member{color:var(--text-secondary)}
+html[data-theme="dark"] .ch-member-btn.promote{background:#2c2c2e;color:#fff}
+html[data-theme="dark"] .ch-member-btn.promote:hover{background:#3a3a3c}
+html[data-theme="dark"] .ch-member-btn.demote,
+html[data-theme="dark"] .ch-member-btn.kick{
+    background:rgba(255,59,48,.18);
+    color:#ff6961;
+}
+
+/* Настройки канала — табы и панели */
+html[data-theme="dark"] #channel-settings-screen .settings-tabs{background:var(--surface-2)}
+html[data-theme="dark"] #channel-settings-screen .settings-tab{color:var(--text-secondary)}
+html[data-theme="dark"] #channel-settings-screen .settings-tab.active{
+    background:#2c2c2e;
+    color:#fff;
+}
+html[data-theme="dark"] #channel-settings-screen .settings-group{
+    background:var(--surface-2);
+}
+html[data-theme="dark"] #channel-settings-screen .info-row{
+    border-color:var(--border);
+}
+html[data-theme="dark"] #channel-settings-screen .info-row strong{color:#fff}
+
+/* Скрытие старого btn-gift/btn-repost/btn-star-round на всякий случай */
+html[data-theme="dark"] .btn-star-round{
+    /* оставляем градиент, ничего не меняем */
+}
+
+/* Плашка "Активен live" в канале — градиентная, оставляем как есть */
+/* ============================================================
+   СВАЙП ВНИЗ ДЛЯ МОДАЛОК/ШИТОВ (визуальная подсказка)
+============================================================ */
+.actionsheet-handle,
+.prioriti-handle,
+.lang-sheet-handle,
+.code-modal-handle{
+    cursor:grab;touch-action:none;
+}
+.actionsheet.dragging,
+.prioriti-sheet.dragging,
+.lang-sheet.dragging,
+.code-modal-sheet.dragging{
+    transition:none !important;
+}
 /* Плашка канала в профиле (в списке постов) */
 .profile-post-source-line.channel-source { color: var(--blue); }
 .profile-post-source-line.channel-source .dot-sep { background: var(--blue); }
@@ -2033,6 +2469,157 @@ textarea{line-height:1.5}
     padding-left:0 !important;
     margin-top:20px;
 }
+/* ============================================================
+   ТЁМНАЯ ТЕМА: КНОПКА «ПО КОДУ» И «ПОКА НЕТ LIVE»
+============================================================ */
+
+/* --- Кнопка «По коду» (чёрная в светлой) --- */
+html[data-theme="dark"] .live-code-btn{
+    background:var(--surface-2);
+    color:#fff;
+    border:1px solid var(--border);
+}
+html[data-theme="dark"] .live-code-btn:hover{
+    background:var(--surface-3);
+}
+html[data-theme="dark"] .live-code-btn svg{
+    stroke:currentColor;
+}
+
+/* --- Плашка «Пока нет live» (чёрно-градиентная) --- */
+html[data-theme="dark"] .live-now-card.empty{
+    background:linear-gradient(135deg,#2c2c2e,#1c1c1e);
+    border:1px solid var(--border);
+    color:#fff;
+}
+html[data-theme="dark"] .live-now-card.empty .live-now-title,
+html[data-theme="dark"] .live-now-card.empty .live-now-sub{
+    color:#fff;
+}
+
+/* --- Плавающая кнопка создания канала --- */
+html[data-theme="dark"] .chan-add-btn{
+    box-shadow:0 8px 24px rgba(255,55,95,.55);
+}
+
+/* --- Сторис-«плюс» тоже подстроим --- */
+html[data-theme="dark"] .story-add .story-ring{
+    background:var(--surface-3);
+}
+html[data-theme="dark"] .story-add .story-ring-inner{
+    background:#1c1c1e;
+    color:#fff;
+}
+/* ============================================================
+   ПОИСК — ЧИПЫ ФИЛЬТРОВ И ИНПУТ ПОД ТЕМУ
+============================================================ */
+
+/* В тёмной теме активный чип — БЕЛЫЙ фон + ЧЁРНЫЙ текст */
+html[data-theme="dark"] .search-filter-chip.active{
+    background:#fff;
+    color:#000;
+}
+
+/* Неактивные чипы — тёмно-серые с белым текстом */
+html[data-theme="dark"] .search-filter-chip{
+    background:var(--surface-2);
+    color:var(--text-secondary);
+}
+html[data-theme="dark"] .search-filter-chip:hover{
+    background:var(--surface-3);
+    color:#fff;
+}
+
+/* Такая же логика для вкладок ленты, инбокса, фидов и т.д. */
+html[data-theme="dark"] .feed-tab.active,
+html[data-theme="dark"] .inbox-tab.active,
+html[data-theme="dark"] .ch-filter-chip.active{
+    background:#fff;
+    color:#000;
+}
+html[data-theme="dark"] .feed-tab,
+html[data-theme="dark"] .inbox-tab,
+html[data-theme="dark"] .ch-filter-chip{
+    background:var(--surface-2);
+    color:var(--text-secondary);
+}
+
+/* Поиск — общий контейнер, чтобы ничего не сливалось */
+html[data-theme="dark"] .search-overlay{
+    background:#000;
+    color:#fff;
+}
+html[data-theme="dark"] .search-top{
+    background:rgba(0,0,0,.92);
+    border-bottom-color:var(--border);
+}
+html[data-theme="dark"] .search-top .topbar-btn{
+    color:#fff;
+}
+html[data-theme="dark"] .search-input-wrap input{
+    background:var(--surface-2);
+    color:#fff;
+    border-color:transparent;
+}
+html[data-theme="dark"] .search-input-wrap input::placeholder{
+    color:var(--text-tertiary);
+}
+html[data-theme="dark"] .search-input-wrap input:focus{
+    background:#1c1c1e;
+    border-color:var(--blue);
+    box-shadow:0 0 0 4px rgba(10,132,255,.18);
+}
+html[data-theme="dark"] .search-clear-btn{
+    background:rgba(120,120,128,.28);
+    color:#fff;
+}
+
+/* Секции/подсказки/заголовки */
+html[data-theme="dark"] .search-suggestions,
+html[data-theme="dark"] .search-title-bar{
+    background:#000;
+    border-bottom-color:var(--border);
+    color:#fff;
+}
+html[data-theme="dark"] .search-sug-item{
+    color:#fff;
+}
+html[data-theme="dark"] .search-sug-item:hover{
+    background:var(--surface-2);
+}
+html[data-theme="dark"] .search-sug-icon{
+    color:var(--text-tertiary);
+}
+html[data-theme="dark"] .search-history-title{
+    color:var(--text-tertiary);
+}
+html[data-theme="dark"] .search-section-title{
+    color:var(--text-tertiary);
+}
+html[data-theme="dark"] .search-results{
+    background:#000;
+}
+html[data-theme="dark"] .search-empty{
+    color:var(--text-secondary);
+}
+html[data-theme="dark"] .search-person,
+html[data-theme="dark"] .search-channel-row{
+    background:var(--surface-2);
+    color:#fff;
+}
+html[data-theme="dark"] .search-person:hover,
+html[data-theme="dark"] .search-channel-row:hover{
+    background:var(--surface-3);
+}
+html[data-theme="dark"] .search-person-name,
+html[data-theme="dark"] .search-channel-name{
+    color:#fff;
+}
+html[data-theme="dark"] .search-person-sub,
+html[data-theme="dark"] .search-channel-sub,
+html[data-theme="dark"] .search-person-bio{
+    color:var(--text-secondary);
+}
 .empty{text-align:center;color:var(--text-secondary);padding:40px 20px;font-size:15px}
 .empty.small{padding:20px;font-size:13px}
 ::-webkit-scrollbar{width:6px;height:6px}
@@ -2040,5 +2627,247 @@ textarea{line-height:1.5}
 ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px}
 ::selection{background:rgba(10,132,255,.25)}
 
+/* ============================================================
+   BOOT SCREEN — ВСЕГДА ТЁМНЫЙ (независимо от темы)
+============================================================ */
+.boot-screen{
+    background:#000 !important;
+}
+.boot-screen .boot-brand{
+    color:#fff !important;
+}
+.boot-screen .loading-circles .lc{
+    opacity:.4;
+}
+
+
+#register-landing-screen .brand-name,
+#register-landing-screen .reg-landing-title,
+#register-landing-screen .reg-landing-text,
+#register-landing-screen .reg-landing-small,
+#karsq-screen .karsq-title,
+#reset-screen .reset-title{
+    color:#000 !important;
+}
+#register-landing-screen .reg-landing-text,
+#register-landing-screen .reg-landing-small,
+#karsq-screen .karsq-methods-label{
+    color:rgba(0,0,0,.55) !important;
+}
+#register-landing-screen .reg-topbar-title,
+#karsq-screen .reg-topbar-title,
+#reset-screen .reg-topbar-title{
+    color:#000 !important;
+}
+#register-landing-screen .reg-back-btn,
+#karsq-screen .reg-back-btn,
+#reset-screen .reg-back-btn{
+    color:#000 !important;
+}
+#karsq-screen input,
+#reset-screen input{
+    background:rgba(120,120,128,.08) !important;
+    color:#000 !important;
+}
+/* ============================================================
+   AUTH SCREEN (экран «Вход») — ВСЕГДА ТЁМНЫЙ
+============================================================ */
+#auth-screen{
+    background:linear-gradient(135deg,#0a0a0a,#1a1020,#0f1620,#1a0f14,#0a0a0a) !important;
+    background-size:400% 400% !important;
+    animation:authBgShift 18s ease-in-out infinite !important;
+}
+#auth-screen .auth-wrap::before{
+    background:radial-gradient(ellipse at center,rgba(0,0,0,.7) 0%,rgba(0,0,0,.35) 55%,rgba(0,0,0,0) 100%) !important;
+}
+
+/* Заголовок и тексты */
+#auth-screen .brand-name{
+    color:#fff !important;
+}
+#auth-screen .terms{
+    color:rgba(255,255,255,.6) !important;
+}
+#auth-screen .terms a{
+    color:#fff !important;
+}
+#auth-screen .lang-selector{
+    color:rgba(255,255,255,.6) !important;
+}
+#auth-screen .divider{
+    color:rgba(255,255,255,.5) !important;
+}
+#auth-screen .divider::before,
+#auth-screen .divider::after{
+    background:rgba(255,255,255,.18) !important;
+}
+#auth-screen .forgot-password{
+    color:var(--blue) !important;
+}
+#auth-screen .login-error{
+    color:var(--red-pink) !important;
+}
+
+/* Инпуты */
+#auth-screen input{
+    background:rgba(255,255,255,.08) !important;
+    color:#fff !important;
+    border:1px solid rgba(255,255,255,.1) !important;
+}
+#auth-screen input::placeholder{
+    color:rgba(255,255,255,.4) !important;
+}
+#auth-screen input:focus{
+    background:rgba(255,255,255,.12) !important;
+    border-color:var(--blue) !important;
+    box-shadow:0 0 0 4px rgba(10,132,255,.25) !important;
+}
+#auth-screen .pwd-toggle{
+    color:#fff;
+}
+
+/* Кнопки */
+#auth-screen .btn-primary-outline{
+    background:transparent !important;
+    color:var(--blue) !important;
+    border:1.5px solid var(--blue) !important;
+}
+
+/* Плавающие круги — приглушить, чтобы не было слишком ярко */
+#auth-screen .auth-bg .ab{
+    opacity:.35;
+    filter:blur(80px);
+}
+/* Фон всей страницы (за чёлкой) — управляется классом на <html> */
+html.bg-dark,
+html.bg-dark body{
+    background:#000 !important;
+}
+html.bg-light,
+html.bg-light body{
+    background:#fff !important;
+}
+/* ============================================================
+   РЕГИСТРАЦИЯ — ПОДСТРАИВАЕТСЯ ПОД ТЕМУ
+============================================================ */
+html[data-theme="dark"] #register-screen{
+    background:#000;
+    color:#fff;
+}
+
+html[data-theme="dark"] #register-screen .reg-topbar-title,
+html[data-theme="dark"] #register-screen .reg-back-btn,
+html[data-theme="dark"] #register-screen .reg-step h2{
+    color:#fff;
+}
+html[data-theme="dark"] #register-screen .step-hint,
+html[data-theme="dark"] #register-screen .step-label{
+    color:var(--text-secondary);
+}
+html[data-theme="dark"] #register-screen .steps-progress{
+    background:#1c1c1e;
+    border:1px solid var(--border);
+}
+html[data-theme="dark"] #register-screen input,
+html[data-theme="dark"] #register-screen textarea{
+    background:var(--surface-2);
+    color:#fff;
+}
+html[data-theme="dark"] #register-screen input::placeholder,
+html[data-theme="dark"] #register-screen textarea::placeholder{
+    color:var(--text-tertiary);
+}
+html[data-theme="dark"] #register-screen input:focus,
+html[data-theme="dark"] #register-screen textarea:focus{
+    background:#1c1c1e;
+}
+html[data-theme="dark"] #register-screen .gender-btn,
+html[data-theme="dark"] #register-screen .picker-btn,
+html[data-theme="dark"] #register-screen .method-info,
+html[data-theme="dark"] #register-screen .method-slider,
+html[data-theme="dark"] #register-screen .method-btn{
+    background:var(--surface-2);
+    color:#fff;
+}
+html[data-theme="dark"] #register-screen .gender-btn.active{
+    background:rgba(10,132,255,.18);
+    color:var(--blue);
+}
+html[data-theme="dark"] #register-screen .method-btn.active{
+    background:#2c2c2e;
+    color:#fff;
+}
+html[data-theme="dark"] #register-screen .pwd-check{
+    color:var(--text-secondary);
+}
+html[data-theme="dark"] #register-screen .pwd-dot{
+    background:var(--surface-3);
+}
+html[data-theme="dark"] #register-screen .settings-group{
+    background:var(--surface-2);
+}
+html[data-theme="dark"] #register-screen .settings-group-title{
+    color:var(--text-tertiary);
+}
+html[data-theme="dark"] #register-screen .toggle-row span{
+    color:#fff;
+}
+html[data-theme="dark"] #register-screen .theme-choice{
+    background:var(--surface-2);
+    color:#fff;
+}
+html[data-theme="dark"] #register-screen .theme-choice.active{
+    background:rgba(10,132,255,.14);
+    color:#fff;
+}
+html[data-theme="dark"] #register-screen .theme-choice-label{
+    color:#fff;
+}
+html[data-theme="dark"] #register-screen .coming-soon-badge{
+    background:var(--surface-3);
+    color:var(--text-secondary);
+}
+html[data-theme="dark"] #register-screen #avatar-placeholder{
+    color:#fff;
+}
+html[data-theme="dark"] #register-screen .social-input,
+html[data-theme="dark"] #register-screen .input-prefix{
+    background:var(--surface-2);
+}
+html[data-theme="dark"] #register-screen .input-prefix span{
+    color:var(--text-secondary);
+}
+html[data-theme="dark"] #register-screen .social-input input{
+    color:#fff;
+}
+html[data-theme="dark"] #register-screen #reg-code{
+    background:var(--surface-2);
+    color:#fff;
+}
 .sidebar,.actionsheet,.prioriti-sheet,.lang-sheet{touch-action:pan-y}
 .reg-step,.steps-viewport,.app-screen,.main-app,.screen{overflow-x:hidden}
+/* ============================================================
+   REGISTER-LANDING — ВСЕГДА СВЕТЛЫЙ
+============================================================ */
+#register-landing-screen{
+    background:#fff !important;
+    color:#000 !important;
+}
+
+/* Topbar/back-btn/заголовок — чёрные */
+#register-landing-screen .reg-topbar-title,
+#register-landing-screen .reg-back-btn,
+#register-landing-screen .brand-name,
+#register-landing-screen .reg-landing-title,
+#register-landing-screen .karsq-word{
+    color:#000 !important;
+}
+#register-landing-screen .karsq-word{
+    color:var(--karsq-red) !important;
+}
+#register-landing-screen .reg-landing-text{
+    color:rgba(0,0,0,.55) !important;
+}
+#register-landing-screen .reg-landing-small{
+    color:rgba(0,0,0,.4) !important;
+}

@@ -38,10 +38,7 @@ const SOCIALS = [
     { key:'instagram', svg:SVG.instagram, bg:'#E4405F', domain:'instagram.com', placeholder:'instagram.com/username' },
     { key:'telegram',  svg:SVG.telegram,  bg:'#26A5E4', domain:'t.me',         placeholder:'t.me/username' },
     { key:'spotify',   svg:SVG.spotify,   bg:'#191414', domain:'spotify.com',  placeholder:'open.spotify.com/user/...' },
-    { key:'roblox',    svg:SVG.roblox,    bg:'#E2231A', domain:'roblox.com',   placeholder:'roblox.com/users/...' },
     { key:'youtube',   svg:SVG.youtube,   bg:'#FF0000', domain:'youtube.com',  placeholder:'youtube.com/@channel' },
-    { key:'vk',        svg:SVG.vk,        bg:'#0077FF', domain:'vk.com',       placeholder:'vk.com/username' },
-    { key:'tiktok',    svg:SVG.tiktok,    bg:'#000000', domain:'tiktok.com',   placeholder:'tiktok.com/@username' },
     { key:'facebook',  svg:SVG.facebook,  bg:'#0866FF', domain:'facebook.com', placeholder:'facebook.com/username' },
     { key:'github',    svg:SVG.github,    bg:'#181717', domain:'github.com',   placeholder:'github.com/username' },
     { key:'discord',   svg:SVG.discord,   bg:'#5865F2', domain:'discord.gg',   placeholder:'discord.gg/invite' },
@@ -127,19 +124,17 @@ const EMOJI_LIST = ['😀','😃','😄','😁','😆','😅','🤣','😂','�
 ============================================================ */
 const state = {
     step:1, totalSteps:6,
-    data:{ email:'', password:'', fullName:'', username:'', avatarFile:null, bio:'', socials:{}, gender:null, region:null, birthday:null, method:'skip', codeVerified:false, settings:{}, status:'default' },
+    data:{ email:'', password:'', fullName:'', username:'', avatarFile:null, bio:'', socials:{}, gender:null, region:null, birthday:null, method:'skip', codeVerified:false, settings:{}, status:'default', theme:'light' },
     screen:'home', feedTab:'recommended', profileTab:'reposts',
     replyTo:null, currentUser:null, currentProfile:null, attachedPhoto:null, attachedVideo:false,
     attachedKind:null,
     chatContext:'global', chatTitle:'Global', lastPostAt:0,
     currentProfileViewId:null, inboxTab:'followers', viewingOwnProfile:true,
     hasMainChannelSub:false,
-    myFollows: new Set(),      // список user_id на кого я подписан
-    myChannelSubs: new Set(),  // список channel_id на которые подписан
-    channelFilters: { type:'all', author:null }, // фильтр постов в канале
-    channelPosts: [] ,          // кэш загруженных постов канала для фильтрации
-    // бесконечная лента рекомендаций
-    // бесконечная лента рекомендаций
+    myFollows: new Set(),
+    myChannelSubs: new Set(),
+    channelFilters: { type:'all', author:null },
+    channelPosts: [],
     recBuffer: [],
     recCursor: 0,
     recShownIds: new Set(),
@@ -152,6 +147,54 @@ const state = {
 }
 
 /* ============================================================
+   ТЕМА
+============================================================ */
+const THEME_KEY = 'lt_theme'
+function setPageBg(forceDark){
+    const theme = document.documentElement.getAttribute('data-theme') || 'light'
+    const dark = forceDark === true || (forceDark !== false && theme === 'dark')
+    document.documentElement.classList.toggle('bg-dark', dark)
+    document.documentElement.classList.toggle('bg-light', !dark)
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if(meta) meta.setAttribute('content', dark ? '#000000' : '#ffffff')
+}
+function applyTheme(theme){
+    const t = theme === 'dark' ? 'dark' : 'light'
+    document.documentElement.setAttribute('data-theme', t)
+    try { localStorage.setItem(THEME_KEY, t) } catch {}
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if(meta) meta.setAttribute('content', t === 'dark' ? '#000000' : '#ffffff')
+
+    const icon = document.getElementById('theme-toggle-icon')
+    const text = document.getElementById('theme-toggle-text')
+    if(icon) icon.textContent = t === 'dark' ? '🌙' : '☀️'
+    if(text) text.textContent = t === 'dark' ? 'Тёмная' : 'Светлая'
+
+    const picker = document.getElementById('reg-theme-picker')
+    if(picker){
+        picker.querySelectorAll('.theme-choice').forEach(b => {
+            b.classList.toggle('active', b.dataset.theme === t)
+        })
+    }
+    state.data.theme = t
+}
+function getTheme(){
+    try { return localStorage.getItem(THEME_KEY) || 'light' } catch { return 'light' }
+}
+function initTheme(){ applyTheme(getTheme()) }
+
+document.addEventListener('click', e => {
+    if(e.target.closest('#theme-toggle')){
+        const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
+        applyTheme(cur === 'dark' ? 'light' : 'dark')
+    }
+    const choice = e.target.closest('#reg-theme-picker .theme-choice')
+    if(choice){ applyTheme(choice.dataset.theme) }
+})
+
+initTheme()
+
+/* ============================================================
    УТИЛИТЫ
 ============================================================ */
 const $ = id => document.getElementById(id)
@@ -162,7 +205,10 @@ function isVideoUrl(u){ return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u||'') }
 function isAudioUrl(u){ return /\.(mp3|wav|ogg|m4a|aac|flac|opus)(\?|$)/i.test(u||'') }
 function isImageUrl(u){ return u && !isVideoUrl(u) && !isAudioUrl(u) }
 
-/* Перезагрузка списка подписок */
+function loadingBlock(text = ''){
+    return `<div class="loading-block"><span class="loading-spinner-inline"></span>${text ? escapeHtml(text) : ''}</div>`
+}
+
 async function refreshFollowCache(){
     try {
         const { data:{ user } } = await supabase.auth.getUser()
@@ -319,8 +365,27 @@ const mainApp = $('main-app')
 function showScreen(name){
     Object.values(screens).forEach(s => s?.classList.add('hidden'))
     mainApp.classList.add('hidden')
-    if(name === 'main'){ mainApp.classList.remove('hidden'); return }
+
+    // ---- фон страницы (за чёлкой) ----
+    if(name === 'main'){
+        mainApp.classList.remove('hidden')
+        setPageBg()
+        return
+    }
     if(screens[name]) screens[name].classList.remove('hidden')
+
+    if(name === 'register-landing'){
+        // экран «Создайте karsq» — всегда белый
+        setPageBg(false)
+    } else if(name === 'auth' || name === 'karsq' || name === 'reset'){
+        // экран входа и родственные — всегда тёмные
+        setPageBg(true)
+    } else if(name === 'register'){
+        // шаги регистрации — по выбранной теме (внутри шага 6 можно переключить)
+        setPageBg()
+    } else {
+        setPageBg()
+    }
 }
 
 let livechatRefreshTimer = null
@@ -339,10 +404,8 @@ function switchScreen(name){
     if(name === 'home'){ renderLiveNow(); renderStories(); renderHomeFeed() }
     if(name === 'channels') renderChannels()
     if(name !== 'livechat' && livechatRefreshTimer){ clearInterval(livechatRefreshTimer); livechatRefreshTimer = null }
-    // обновляем иконку play/pause и синхронизируем список подписок
     setTimeout(() => { updatePlayIcons(); syncFullPlayer(); }, 50)
     refreshFollowCache().then(() => {
-        // Перерисовываем подписки на уже отрисованных постах
         document.querySelectorAll('.feed-sub-btn').forEach(btn => {
             const isSub = state.myChannelSubs.has(btn.dataset.chid)
             btn.classList.toggle('subscribed', isSub)
@@ -519,7 +582,7 @@ $('email-btn').addEventListener('click', () => alert('Используйте ф�
 ============================================================ */
 function startRegistration(){
     state.step = 1
-    state.data = { email:'', password:'', fullName:'', username:'', avatarFile:null, bio:'', socials:{}, gender:null, region:null, birthday:null, method:'skip', codeVerified:false, settings:{}, status:'default' }
+    state.data = { email:'', password:'', fullName:'', username:'', avatarFile:null, bio:'', socials:{}, gender:null, region:null, birthday:null, method:'skip', codeVerified:false, settings:{}, status:'default', theme:'light' }
     clearRegForm(); updateStep(); showScreen('register')
 }
 function clearRegForm(){
@@ -535,6 +598,8 @@ function clearRegForm(){
     document.querySelectorAll('.pwd-check').forEach(el => el.classList.remove('pass'))
     $('region-flag').textContent = '◯'; $('region-name').textContent = 'Выберите регион'
     updateMethodInfo('skip')
+    // Сброс темы на светлую
+    applyTheme('light')
 }
 function updateStep(){
     document.querySelectorAll('.reg-step').forEach(step => {
@@ -557,7 +622,11 @@ function validateStep(){
     const s = state.step
     if(s === 1){
         const email = $('reg-email').value.trim()
-        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEl.textContent = 'Введите корректный email'; return false }
+        // до @ минимум 2 символа, домен — именно gmail.com
+        if(!/^[^\s@]{2,}@gmail\.com$/i.test(email)){
+            errEl.textContent = 'Почта должна быть вида name@gmail.com (минимум 2 символа до @)'
+            return false
+        }
         state.data.email = email
     }
     if(s === 2){
@@ -570,7 +639,18 @@ function validateStep(){
     }
     if(s === 3){
         const pwd = $('reg-password').value
-        if(!isPasswordStrong(pwd)){ errEl.textContent = 'Пароль не соответствует требованиям'; return false }
+        if(!isPasswordStrong(pwd)){
+            errEl.textContent = 'Пароль не соответствует требованиям'
+            return false
+        }
+        if(/[А-Яа-яЁё]/.test(pwd)){
+            errEl.textContent = 'Пароль должен содержать только латинские буквы'
+            return false
+        }
+        if(pwd.length > 30){
+            errEl.textContent = 'Пароль не должен превышать 30 символов'
+            return false
+        }
         state.data.password = pwd
         state.data.method = document.querySelector('.method-btn.active')?.dataset.method || 'skip'
     }
@@ -614,7 +694,12 @@ $('gender-row').addEventListener('click', e => {
     btn.classList.add('active'); state.data.gender = btn.dataset.gender
 })
 
-const METHOD_INFO = { skip:{ icon:'⏭', text:'Пропустить' }, faceid:{ icon:'◉', text:'FaceID позже' }, qr:{ icon:'▢', text:'QR позже' }, gid:{ icon:'⬡', text:'GID позже' } }
+const METHOD_INFO = {
+    skip:   { icon:'⏭', text:'Пропустить' },
+    faceid: { icon:'◉', text:'FaceID — временно недоступно' },
+    qr:     { icon:'▢', text:'QR — временно недоступно' },
+    gid:    { icon:'⬡', text:'GID — временно недоступно' }
+}
 function updateMethodInfo(m){ const i = METHOD_INFO[m] || METHOD_INFO.skip; $('method-info').innerHTML = `<div class="method-info-icon">${i.icon}</div><div class="method-info-text">${i.text}</div>` }
 $('method-slider').addEventListener('click', e => {
     const btn = e.target.closest('.method-btn'); if(!btn) return
@@ -622,7 +707,17 @@ $('method-slider').addEventListener('click', e => {
     btn.classList.add('active'); state.data.method = btn.dataset.method; updateMethodInfo(btn.dataset.method)
 })
 
-function checkPasswordRules(p){ return { length:p.length >= 8, upper:/[A-Z]/.test(p), lower:/[a-z]/.test(p), digit:/[0-9]/.test(p), special:/[^A-Za-z0-9]/.test(p) } }
+function checkPasswordRules(p){
+    return {
+        length:  p.length >= 8,
+        maxLen:  p.length <= 30,
+        upper:   /[A-Z]/.test(p),
+        lower:   /[a-z]/.test(p),
+        digit:   /[0-9]/.test(p),
+        special: /[^A-Za-z0-9]/.test(p),
+        latin:   !/[А-Яа-яЁё]/.test(p)   // нет кириллицы
+    }
+}
 function isPasswordStrong(p){ return Object.values(checkPasswordRules(p)).every(v => v) }
 $('reg-password').addEventListener('input', () => {
     const r = checkPasswordRules($('reg-password').value)
@@ -678,9 +773,12 @@ async function uploadAvatar(userId, file){
 async function completeRegistration(){
     const btn = $('reg-next'); btn.disabled = true; btn.textContent = 'Создаём...'
     try {
+        const regTheme = document.querySelector('#reg-theme-picker .theme-choice.active')?.dataset.theme || 'light'
+        applyTheme(regTheme)
+
         const { data, error } = await withTimeout(supabase.auth.signUp({
             email: state.data.email, password: state.data.password,
-            options: { data: { full_name:state.data.fullName, username:state.data.username, bio:state.data.bio, socials:state.data.socials, gender:state.data.gender, region:state.data.region, birthday:state.data.birthday } }
+            options: { data: { full_name:state.data.fullName, username:state.data.username, bio:state.data.bio, socials:state.data.socials, gender:state.data.gender, region:state.data.region, birthday:state.data.birthday, theme:regTheme } }
         }), 20000, 'signUp')
         if(error) throw error
         if(!data.session){ try { await withTimeout(supabase.auth.signInWithPassword({ email:state.data.email, password:state.data.password }), 15000, 'signIn') } catch {} }
@@ -779,7 +877,7 @@ document.querySelectorAll('#status-current').forEach(btn => {
 ============================================================ */
 async function renderStories(){
     const row = $('stories-row'); if(!row) return
-    row.innerHTML = '<p class="empty small" style="padding:0 8px">Загрузка...</p>'
+    row.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
         const { data:follows } = await supabase.from('follows').select('following_id, profiles:following_id ( id, username, full_name, avatar_url, status )').eq('follower_id', user.id)
@@ -802,7 +900,7 @@ async function renderStories(){
 ============================================================ */
 async function renderLiveNow(){
     const row = $('live-now-row'); if(!row) return
-    row.innerHTML = '<p class="empty small" style="padding:0 8px">Загрузка...</p>'
+    row.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         const { data:mySubs } = await supabase.from('subscriptions').select('channel_id').eq('follower_id', user.id)
@@ -836,14 +934,13 @@ async function renderLiveNow(){
 async function renderHomeFeed(){
     const list = $('feed-list'); if(!list) return
     teardownInfinite()
-    list.innerHTML = '<p class="empty">Загрузка...</p>'
+    list.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         await refreshFollowCache()
         const tab = state.feedTab
 
         if(tab === 'recommended'){
-            // полный сброс при каждом входе
             state.recBuffer = []
             state.recCursor = 0
             state.recShownIds = new Set()
@@ -861,7 +958,6 @@ async function renderHomeFeed(){
             return
         }
 
-        // ============ ОСТАЛЬНЫЕ ВКЛАДКИ ============
         let query = supabase.from('posts')
             .select('id, content, created_at, author_id, channel_id, media_url, media_title, profiles ( username, full_name, avatar_url, status ), channels:channel_id ( id, name, avatar_url )')
             .not('channel_id', 'is', null)
@@ -896,12 +992,7 @@ async function renderHomeFeed(){
         ])
         const likedIds = new Set((likes || []).map(l => l.post_id))
         const repostedIds = new Set((reps || []).map(r => r.post_id))
-        const contextMap = {
-            recommended: 'ваши рекомендации',
-            video:       'видео для вас',
-            subs:        'от подписок',
-            my:          'мои каналы'
-        }
+        const contextMap = { recommended:'ваши рекомендации', video:'видео для вас', subs:'от подписок', my:'мои каналы' }
         const ctx = contextMap[tab] || 'ваши рекомендации'
         list.innerHTML = filtered.map(p => renderChannelPost(p, user?.id, likedIds, repostedIds, counts, ctx)).join('')
         likedIds.forEach(pid => syncPostLike(pid, true, 0))
@@ -913,11 +1004,9 @@ async function renderHomeFeed(){
         list.innerHTML = '<p class="empty">Пока нет публикаций</p>'
     }
 }
+
 /* ============================================================
    БЕСКОНЕЧНАЯ ЛЕНТА РЕКОМЕНДАЦИЙ
-   - чанк = 5 постов
-   - триггер: sentinel с rootMargin 700px (≈ «прокрутил 4 из 5»)
-   - за сессию id не повторяются; когда всё показано — сброс
 ============================================================ */
 function teardownInfinite(){
     if(state.recObserver){ state.recObserver.disconnect(); state.recObserver = null }
@@ -944,7 +1033,6 @@ async function appendRecommendedChunk(list, userId, size = 5){
     try {
         let next = []
 
-        // 1) из буфера — не показывая уже показанные
         while(next.length < size && state.recCursor < state.recBuffer.length){
             const p = state.recBuffer[state.recCursor++]
             if(!state.recShownIds.has(p.id)){
@@ -953,12 +1041,10 @@ async function appendRecommendedChunk(list, userId, size = 5){
             }
         }
 
-        // 2) буфер исчерпан — новый fetch
         if(next.length < size){
             const fresh = await loadPosts(userId)
             let freshFiltered = fresh.filter(p => !state.recShownIds.has(p.id))
             if(freshFiltered.length === 0){
-                // всё, что даёт RPC, уже видели → начинаем заново
                 state.recShownIds = new Set()
                 freshFiltered = fresh
             }
@@ -975,7 +1061,6 @@ async function appendRecommendedChunk(list, userId, size = 5){
 
         if(!next.length) return
 
-        // 3) обогащение профилями и каналами
         const authorIds  = [...new Set(next.map(p => p.author_id).filter(Boolean))]
         const channelIds = [...new Set(next.map(p => p.channel_id).filter(Boolean))]
         const [{ data:profs }, { data:chs }] = await Promise.all([
@@ -990,7 +1075,6 @@ async function appendRecommendedChunk(list, userId, size = 5){
             channels: p.channel_id ? (chMap[p.channel_id] || null) : null
         }))
 
-        // 4) лайки/репосты текущего юзера
         const ids = enriched.map(p => p.id)
         const [{ data:likes }, { data:reps }, counts] = await Promise.all([
             supabase.from('likes').select('post_id').eq('user_id', userId).in('post_id', ids),
@@ -1000,12 +1084,10 @@ async function appendRecommendedChunk(list, userId, size = 5){
         const likedIds = new Set((likes || []).map(l => l.post_id))
         const repostedIds = new Set((reps || []).map(r => r.post_id))
 
-        // 5) рендер
         list.insertAdjacentHTML('beforeend', enriched.map(p => renderChannelPost(p, userId, likedIds, repostedIds, counts, 'ваши рекомендации')).join(''))
         likedIds.forEach(pid => syncPostLike(pid, true, 0))
         repostedIds.forEach(pid => syncPostRepost(pid, true, 0))
 
-        // 6) обработчики только на новые карточки
         const allCards = [...list.querySelectorAll('.feed-post')]
         const newCards = allCards.slice(allCards.length - enriched.length)
         newCards.forEach(card => attachHandlersToCard(card, userId))
@@ -1018,7 +1100,6 @@ async function appendRecommendedChunk(list, userId, size = 5){
     }
 }
 
-/* Обработчики на одну карточку (без дублей) */
 function attachHandlersToCard(card, userId){
     if(card.dataset.handlersBound === '1') return
     card.dataset.handlersBound = '1'
@@ -1062,7 +1143,7 @@ document.querySelectorAll('.feed-tab').forEach(tab => {
     })
 })
 
-/* --- Проверка play/paused у видео-постов (общая для всех мест) --- */
+/* --- Проверка play/paused у видео-постов --- */
 function checkVideoState(card){
     const vid = card.querySelector('.post-bg-video')
     if(!vid) return
@@ -1073,7 +1154,6 @@ function checkVideoState(card){
     }
 }
 
-/* --- Клик по видео: рестарт со звуком / пауза --- */
 function attachVideoCardClick(card){
     if(card.dataset.videoClickBound === '1') return
     card.dataset.videoClickBound = '1'
@@ -1124,7 +1204,6 @@ function hideVideoPauseIcon(card){
     if(icon) icon.style.display = 'none'
 }
 
-/* --- Прогрессбар видео + перемотка --- */
 function attachVideoProgress(card){
     const vid = card.querySelector('.post-bg-video')
     if(!vid) return
@@ -1141,7 +1220,6 @@ function attachVideoProgress(card){
             fill.style.width = (vid.currentTime / vid.duration * 100) + '%'
         }
     })
-    // Клик/драг для перемотки
     let dragging = false
     const setFromEvent = (clientX) => {
         const rect = bar.getBoundingClientRect()
@@ -1155,21 +1233,18 @@ function attachVideoProgress(card){
     bar.addEventListener('pointerup', e => { e.stopPropagation(); dragging = false })
 }
 
-/* --- Спиннер загрузки --- */
 function attachVideoLoading(card){
     const vid = card.querySelector('.post-bg-video')
     if(!vid) return
 
-    const MIN_BUFFER = 0.3   // 30% — порог, после которого можно запускать
+    const MIN_BUFFER = 0.3
 
     const update = () => {
         if(!vid.duration || !isFinite(vid.duration)) {
-            // длительность ещё неизвестна — считаем что грузится
             card.classList.add('loading')
             card.dataset.videoReady = '0'
             return
         }
-        // берём последний буферизованный диапазон
         let ratio = 0
         if(vid.buffered.length){
             ratio = vid.buffered.end(vid.buffered.length - 1) / vid.duration
@@ -1187,7 +1262,6 @@ function attachVideoLoading(card){
         }
     }
 
-    // Слушаем все события, которые могут изменить буфер
     vid.addEventListener('loadstart',        update)
     vid.addEventListener('loadedmetadata',   update)
     vid.addEventListener('loadeddata',       update)
@@ -1198,11 +1272,9 @@ function attachVideoLoading(card){
     vid.addEventListener('playing',          update)
     vid.addEventListener('timeupdate',       update)
 
-    // Пересчёт при первом рендере
     update()
 }
 
-/* --- Рендер поста для главной/ленты --- */
 function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new Set(), counts = {}, contextLabel = 'ваши рекомендации'){
     const p = post.profiles || {}, ch = post.channels || {}
     const name = p.full_name || p.username || 'Канал'
@@ -1223,7 +1295,6 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
         channelBadge = `<button class="feed-channel-badge" data-chbadge="${ch.id}"><span class="feed-channel-logo">${chLogo}</span><span class="feed-channel-name">${escapeHtml(chName)}</span></button>`
     }
 
-    // кнопка подписки на канал (если не мой пост и есть канал)
     let subBtn = ''
     if(!isMine && ch.id){
         const isSub = state.myChannelSubs.has(ch.id)
@@ -1280,9 +1351,7 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     </div>
   </article>`
 }
-/* ============================================================
-   МЕТА-СТРОКА: дата + бегущая строка с контекстом/звуком/автором
-============================================================ */
+
 function mediaLabel(post){
     if(isVideoUrl(post.media_url)) return 'оригинальный звук -'
     if(isAudioUrl(post.media_url)) return  'может быть защищено авторским правом пользователя -'
@@ -1294,9 +1363,7 @@ function buildMetaRow(time, contextLabel, post){
     const p = post.profiles || {}
     const username = (p.username || 'user').replace(/^@/, '')
     const initial = (p.full_name || p.username || 'U').charAt(0).toUpperCase()
-    const avaHtml = p.avatar_url
-        ? `<img src="${p.avatar_url}" alt="">`
-        : initial
+    const avaHtml = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : initial
     const soundLabel = mediaLabel(post)
     const content = `
         <span class="mq-label">${escapeHtml(contextLabel)}</span>
@@ -1322,7 +1389,6 @@ function buildMetaRow(time, contextLabel, post){
     `
 }
 
-/* Инициализация бегущих строк: если контент шире обёртки — включаем анимацию */
 function initPostMarquees(root = document){
     root.querySelectorAll('.post-marquee-wrap').forEach(wrap => {
         if(wrap.dataset.mqInit === '1') return
@@ -1335,7 +1401,7 @@ function initPostMarquees(root = document){
             const wrapW  = wrap.clientWidth
             const trackW = tracks[0].scrollWidth
             if(trackW > wrapW + 2){
-                const dur = Math.max(12, Math.round(trackW / 30)) // ~30px/sec
+                const dur = Math.max(12, Math.round(trackW / 30))
                 inner.style.animationDuration = dur + 's'
                 inner.classList.add('scrolling')
             } else {
@@ -1344,7 +1410,7 @@ function initPostMarquees(root = document){
         })
     })
 }
-/* --- Кнопка подписки в посте --- */
+
 async function handleFeedSubBtn(btn, myId){
     const chId = btn.dataset.chid
     if(!chId) return
@@ -1352,7 +1418,6 @@ async function handleFeedSubBtn(btn, myId){
     const wasSub = btn.classList.contains('subscribed')
     const nowSub = !wasSub
 
-    // ✅ оптимистично
     applySubState(chId, nowSub)
     if(nowSub) state.myChannelSubs.add(chId)
     else state.myChannelSubs.delete(chId)
@@ -1365,7 +1430,6 @@ async function handleFeedSubBtn(btn, myId){
         }
         showToast('success', nowSub ? 'Вы подписаны' : 'Отписка', { icon: nowSub ? '✓' : '👋' })
     } catch(e){
-        // ❌ откат
         applySubState(chId, wasSub)
         if(wasSub) state.myChannelSubs.add(chId)
         else state.myChannelSubs.delete(chId)
@@ -1375,19 +1439,13 @@ async function handleFeedSubBtn(btn, myId){
 
 function applySubState(chId, sub){
     if(!chId) return
-
-    // 1) Кнопки подписки внутри постов
     document.querySelectorAll(`.feed-sub-btn[data-chid="${chId}"]`).forEach(b => {
         b.classList.toggle('subscribed', sub)
         b.innerHTML = sub ? ICONS.checkSmall : ICONS.plus
     })
-
-    // 2) Кружки с плюсом/галочкой в списке каналов
     document.querySelectorAll(`.chan-item[data-ch="${chId}"] .chan-sub-icon`).forEach(el => {
         el.innerHTML = sub ? ICONS.checkSmall : ICONS.plus
     })
-
-    // 3) Кнопка подписки в full-player (только если играет трек этого канала)
     if(music.channel?.id === chId){
         const fp = document.getElementById('full-channel-follow')
         if(fp){
@@ -1398,6 +1456,7 @@ function applySubState(chId, sub){
         }
     }
 }
+
 async function attachFeedActions(list, myId){
     list.querySelectorAll('.feed-sub-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); handleFeedSubBtn(btn, myId) }))
     list.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
@@ -1406,7 +1465,6 @@ async function attachFeedActions(list, myId){
     list.querySelectorAll('.feed-post.feed-post-video').forEach(card => {
         attachVideoCardClick(card)
         attachVideoProgress(card)
-
         checkVideoState(card)
     })
 
@@ -1474,7 +1532,7 @@ async function renderEventsScreen(){
 
     const livesBox = $('channel-chats')
     if(livesBox){
-        livesBox.innerHTML = '<p class="empty small">Загрузка...</p>'
+        livesBox.innerHTML = loadingBlock()
         const { data:lives } = await supabase.from('lives')
             .select('id, title, type, host_id, channel_id, channels:channel_id ( id, name, avatar_url ), profiles:host_id ( username, full_name, avatar_url )')
             .eq('is_active', true).order('created_at', { ascending:false }).limit(10)
@@ -1509,7 +1567,7 @@ async function renderEventsScreen(){
 
 async function renderInboxPanel(){
     const box = $('inbox-list'); if(!box) return
-    box.innerHTML = '<p class="empty small">Загрузка...</p>'
+    box.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         const { data:myPosts } = await supabase.from('posts').select('id').eq('author_id', user.id)
@@ -1740,7 +1798,7 @@ $('reply-cancel')?.addEventListener('click', cancelReply)
 ============================================================ */
 async function renderLiveFeed(silent = false){
     const list = $('live-feed'); if(!list) return
-    if(!silent) list.innerHTML = '<p class="empty">Загрузка...</p>'
+    if(!silent) list.innerHTML = loadingBlock()
     try {
         const { data, error } = await withTimeout(supabase.from('posts')
             .select('id, content, created_at, author_id, reply_to, media_url, media_title, show_in_profile, channel_id, profiles ( username, full_name, avatar_url, status, region )')
@@ -2002,7 +2060,6 @@ async function renderProfileTab(){
     box.innerHTML = '<p class="empty">Пока пусто</p>'
 }
 
-/* ---- Отрисовка видео-поста в профиле как в рекомендациях ---- */
 function renderProfilePost(p, myId, likedSet = new Set(), repostedSet = new Set(), counts = {}){
     const prof = p.profiles || {}
     const ch = p.channels || {}
@@ -2078,7 +2135,7 @@ function renderProfilePost(p, myId, likedSet = new Set(), repostedSet = new Set(
 }
 
 async function renderMyLiked(userId){
-    const box = $('profile-content'); box.innerHTML = '<p class="empty">Загрузка...</p>'
+    const box = $('profile-content'); box.innerHTML = loadingBlock()
     const { data:{ user } } = await supabase.auth.getUser()
     const { data } = await supabase.from('likes').select(`post_id, posts:post_id ( id, content, media_url, media_title, created_at, author_id, channel_id, show_in_profile, profiles:author_id ( username, full_name, avatar_url, status ), channels:channel_id ( id, name, avatar_url ) )`).eq('user_id', userId).order('created_at', { ascending:false }).limit(50)
     if(!data || !data.length){ box.innerHTML = '<p class="empty">Ничего не понравилось</p>'; return }
@@ -2096,7 +2153,7 @@ async function renderMyLiked(userId){
 }
 
 async function renderMyReposts(userId){
-    const box = $('profile-content'); box.innerHTML = '<p class="empty">Загрузка...</p>'
+    const box = $('profile-content'); box.innerHTML = loadingBlock()
     const { data:{ user } } = await supabase.auth.getUser()
     const { data } = await supabase.from('reposts').select(`id, posts:post_id ( id, content, media_url, media_title, created_at, author_id, channel_id, show_in_profile, profiles:author_id ( username, full_name, avatar_url, status ), channels:channel_id ( id, name, avatar_url ) )`).eq('user_id', userId).order('created_at', { ascending:false }).limit(50)
     if(!data || !data.length){ box.innerHTML = '<p class="empty">Репостов пока нет</p>'; return }
@@ -2114,7 +2171,7 @@ async function renderMyReposts(userId){
 }
 
 async function renderProfileChannels(userId){
-    const box = $('profile-content'); box.innerHTML = '<p class="empty small">Загрузка...</p>'
+    const box = $('profile-content'); box.innerHTML = loadingBlock()
     const { data:subs } = await supabase.from('subscriptions').select('channel_id, channels ( id, name, description, avatar_url, owner_id )').eq('follower_id', userId)
     const channels = (subs || []).map(s => s.channels).filter(Boolean)
     const { data:own } = await supabase.from('channels').select('id, name, description, avatar_url, owner_id').eq('owner_id', userId)
@@ -2130,7 +2187,7 @@ async function renderProfileChannels(userId){
 }
 
 async function renderMyPosts(userId = null){
-    const box = $('profile-content'); box.innerHTML = '<p class="empty">Загрузка...</p>'
+    const box = $('profile-content'); box.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         const targetId = userId || user.id
@@ -2154,7 +2211,7 @@ async function renderMyPosts(userId = null){
 
 async function renderProfileTracks(userId){
     const box = $('profile-content')
-    box.innerHTML = '<p class="empty">Загрузка...</p>'
+    box.innerHTML = loadingBlock()
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user) return
     const { data:profile } = await supabase.from('profiles').select('full_name, username').eq('id', userId).maybeSingle()
@@ -2188,7 +2245,7 @@ async function renderProfileTracks(userId){
                 <div class="feed-post-avatar avatar-with-status" data-uid="${p.author_id}">${avContent}</div>
                 <div class="feed-post-info">
     <div class="feed-post-name">${escapeHtml(name)}</div>
-    ${buildMetaRow(time, 'live chat', post)}
+    ${buildMetaRow(time, 'live chat', p)}
 </div>
             </div>
             <div class="feed-post-content">${escapeHtml(p.content || '')}</div>
@@ -2225,14 +2282,8 @@ async function showNewPostPicker(){
    QR
 ============================================================ */
 const GRADIENTS = [
-    ['#ff9f0a','#ff375f','#bf5af2'],
-    ['#30d158','#ffd60a','#ff9f0a'],
-    ['#0a84ff','#bf5af2','#ff375f'],
-    ['#ff375f','#ffd60a','#30d158'],
-    ['#5e5ce6','#0a84ff','#30d158'],
-    ['#ff453a','#ff9f0a','#ffd60a'],
-    ['#26a5e4','#5e5ce6','#bf5af2'],
-    ['#a56a3a','#ff9f0a','#ffd60a']
+    ['#ff9f0a','#ff375f','#bf5af2'],['#30d158','#ffd60a','#ff9f0a'],['#0a84ff','#bf5af2','#ff375f'],['#ff375f','#ffd60a','#30d158'],
+    ['#5e5ce6','#0a84ff','#30d158'],['#ff453a','#ff9f0a','#ffd60a'],['#26a5e4','#5e5ce6','#bf5af2'],['#a56a3a','#ff9f0a','#ffd60a']
 ]
 function applyRandomQrGradient(){
     const g = GRADIENTS[Math.floor(Math.random() * GRADIENTS.length)]
@@ -2384,6 +2435,8 @@ async function loadSettings(){
             infoEl('info-verified', user.email_confirmed_at ? 'Нет методов входа' : 'Нет методов входа')
         }
         renderSettingsStatusGrid()
+        // синхронизируем UI темы с реальным состоянием
+        applyTheme(getTheme())
     } catch(e){ console.warn(e.message) }
 }
 $('save-general')?.addEventListener('click', async () => {
@@ -2441,8 +2494,8 @@ async function renderChannels(){
     if(stage){ stage.classList.remove('animate'); void stage.offsetWidth; requestAnimationFrame(() => stage.classList.add('animate')) }
     const mineBox = $('chan-mine-list'), recBox = $('chan-recommend-list')
     if(!mineBox || !recBox) return
-    mineBox.innerHTML = '<p class="empty small">Загрузка...</p>'
-    recBox.innerHTML = '<p class="empty small">Загрузка...</p>'
+    mineBox.innerHTML = loadingBlock()
+    recBox.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         await refreshFollowCache()
@@ -2493,7 +2546,6 @@ async function handleChannelRecSub(chId, el){
     const isSub = state.myChannelSubs.has(chId)
     const nowSub = !isSub
 
-    // ✅ оптимистично
     applySubState(chId, nowSub)
     if(nowSub) state.myChannelSubs.add(chId)
     else state.myChannelSubs.delete(chId)
@@ -2506,7 +2558,6 @@ async function handleChannelRecSub(chId, el){
         }
         showToast('success', nowSub ? 'Подписка оформлена' : 'Отписка', { icon: nowSub ? '✓' : '👋' })
     } catch(e){
-        // ❌ откат
         applySubState(chId, isSub)
         if(isSub) state.myChannelSubs.add(chId)
         else state.myChannelSubs.delete(chId)
@@ -2519,38 +2570,16 @@ async function handleChannelRecSub(chId, el){
 ============================================================ */
 const ccState = {
     step: 1,
-    mode: 'create',              // 'create' | 'edit'
+    mode: 'create',
     channelId: null,
-    data: {
-        name: '',
-        description: '',
-        avatarFile: null,
-        avatarUrl: null,
-        channelType: 'public',   // 'public' | 'private' | 'community'
-        joinCode: ''
-    },
-    subsList: [],
-    followersList: [],
-    showAllSubs: false,
-    showAllFollowers: false
+    data: { name:'', description:'', avatarFile:null, avatarUrl:null, channelType:'public', joinCode:'' },
+    subsList: [], followersList: [], showAllSubs: false, showAllFollowers: false
 }
 
 const CC_TYPES = {
-    public: {
-        label:'Публичный канал',
-        icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>',
-        desc:'Канал виден всем и может появляться в рекомендациях, listatread awards и публикациях пользователей.'
-    },
-    private: {
-        label:'Частный канал',
-        icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
-        desc:'В канал можно вступить только по коду. Частные каналы не появляются в рекомендациях, профилях и listatread awards.'
-    },
-    community: {
-        label:'Общественный канал',
-        icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><circle cx="17" cy="9" r="2.5"/><path d="M14.5 14.5c2.5 0 4.5 2 4.5 4.5"/></svg>',
-        desc:'В вашем канале все участники могут создавать посты. Вы также можете удалять, редактировать посты и настраивать группу лично.'
-    }
+    public: { label:'Публичный канал', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>', desc:'Канал виден всем и может появляться в рекомендациях, listatread awards и публикациях пользователей.' },
+    private: { label:'Частный канал', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>', desc:'В канал можно вступить только по коду. Частные каналы не появляются в рекомендациях, профилях и listatread awards.' },
+    community: { label:'Общественный канал', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><circle cx="17" cy="9" r="2.5"/><path d="M14.5 14.5c2.5 0 4.5 2 4.5 4.5"/></svg>', desc:'В вашем канале все участники могут создавать посты. Вы также можете удалять, редактировать посты и настраивать группу лично.' }
 }
 
 async function getChannelLimitFor(userId){
@@ -2579,14 +2608,7 @@ async function openEditChannel(channelId){
     ccState.step = 1
     ccState.mode = 'edit'
     ccState.channelId = channelId
-    ccState.data = {
-        name: ch.name || '',
-        description: ch.description || '',
-        avatarFile: null,
-        avatarUrl: ch.avatar_url || null,
-        channelType: ch.channel_type === 'bycode' ? 'private' : (ch.channel_type || 'public'),
-        joinCode: ch.join_code || generateJoinCode()
-    }
+    ccState.data = { name: ch.name || '', description: ch.description || '', avatarFile: null, avatarUrl: ch.avatar_url || null, channelType: ch.channel_type === 'bycode' ? 'private' : (ch.channel_type || 'public'), joinCode: ch.join_code || generateJoinCode() }
     ccState.subsList = []
     ccState.followersList = []
     renderCreateChannelScreen()
@@ -2618,12 +2640,10 @@ function renderCreateChannelScreen(){
             if(e.target.closest('#cc-friends-more-subs')){ ccState.showAllSubs = true; renderCcFriends(); return }
             if(e.target.closest('#cc-friends-more-follows')){ ccState.showAllFollowers = true; renderCcFriends(); return }
         })
-
     }
 
     const isEdit = ccState.mode === 'edit'
     const title = isEdit ? 'Изменить канал' : 'Создание канала'
-    const step1Ready = true
 
     screen.innerHTML = `
         <div class="reg-topbar">
@@ -2639,11 +2659,7 @@ function renderCreateChannelScreen(){
 
             <label class="cc-avatar-upload" id="cc-avatar-pick">
                 <div class="cc-avatar-preview" id="cc-avatar-preview">
-                    ${ccState.data.avatarUrl
-        ? `<img src="${ccState.data.avatarUrl}" alt="">`
-        : (ccState.data.avatarFile
-            ? `<img src="${URL.createObjectURL(ccState.data.avatarFile)}" alt="">`
-            : 'K')}
+                    ${ccState.data.avatarUrl ? `<img src="${ccState.data.avatarUrl}" alt="">` : (ccState.data.avatarFile ? `<img src="${URL.createObjectURL(ccState.data.avatarFile)}" alt="">` : 'K')}
                 </div>
                 <input type="file" id="cc-avatar" accept="image/*" hidden>
                 <span style="font-size:13px;color:var(--text-secondary)">Нажмите чтобы выбрать аватарку <b style="color:var(--red)">*</b></span>
@@ -2689,13 +2705,10 @@ function renderCreateChannelScreen(){
         <p id="cc-error" class="error"></p>
     `
 
-    // Восстанавливаем значения, если пользователь переключал шаги
-    // Восстанавливаем значения, если пользователь переключал шаги
     if(ccState.step === 1){
         $('cc-name').addEventListener('input', e => { ccState.data.name = e.target.value })
         $('cc-desc').addEventListener('input', e => { ccState.data.description = e.target.value })
 
-        // Свежая привязка change к новому инпуту аватарки
         const avatarInput = $('cc-avatar')
         if(avatarInput){
             avatarInput.addEventListener('change', e => {
@@ -2728,7 +2741,7 @@ function generateJoinCode(){
 
 async function loadCcFriends(){
     const box = $('cc-friends'); if(!box) return
-    box.innerHTML = '<p class="empty small">Загрузка...</p>'
+    box.innerHTML = loadingBlock()
     const { data:{ user } } = await supabase.auth.getUser()
     const [{ data:subs }, { data:follows }] = await Promise.all([
         supabase.from('follows').select('profiles:following_id ( id, username, full_name, avatar_url )').eq('follower_id', user.id).limit(100),
@@ -2774,7 +2787,6 @@ async function ccNext(){
     const err = $('cc-error'); err.textContent = ''
     const isEdit = ccState.mode === 'edit'
 
-    // Шаг 1 → 2
     if(ccState.step === 1){
         const name = ($('cc-name').value || '').trim()
         const desc = ($('cc-desc').value || '').trim()
@@ -2787,25 +2799,20 @@ async function ccNext(){
         return
     }
 
-    // Шаг 2 → 3
     if(ccState.step === 2){
         ccState.step = 3
         renderCreateChannelScreen()
         return
     }
 
-    // Финальный шаг
     const btn = $('cc-next')
     btn.disabled = true
     btn.textContent = isEdit ? 'Сохраняем...' : 'Создаём...'
     try {
         const { data:{ user } } = await supabase.auth.getUser()
 
-        // Проверка лимита (только для создания)
         if(!isEdit){
-            const { count } = await supabase.from('channels')
-                .select('*', { count:'exact', head:true })
-                .eq('owner_id', user.id)
+            const { count } = await supabase.from('channels').select('*', { count:'exact', head:true }).eq('owner_id', user.id)
             const limit = await getChannelLimitFor(user.id)
             if((count || 0) >= limit){
                 err.textContent = `Лимит каналов: ${limit}. Оформите listatread chvad, чтобы создать до 5.`
@@ -2815,7 +2822,6 @@ async function ccNext(){
             }
         }
 
-        // Загрузка аватарки
         let avatarUrl = ccState.data.avatarUrl
         if(ccState.data.avatarFile){
             const f = ccState.data.avatarFile
@@ -2835,38 +2841,22 @@ async function ccNext(){
         let channelId = ccState.channelId
         if(isEdit){
             const { error } = await supabase.from('channels').update({
-                name: ccState.data.name,
-                description: ccState.data.description,
-                avatar_url: avatarUrl,
-                join_code: ccState.data.joinCode,
-                channel_type: channelType,
-                is_public: isPublic,
-                can_members_post: canMembersPost
+                name: ccState.data.name, description: ccState.data.description, avatar_url: avatarUrl,
+                join_code: ccState.data.joinCode, channel_type: channelType, is_public: isPublic, can_members_post: canMembersPost
             }).eq('id', ccState.channelId)
             if(error) throw error
         } else {
             const { data:ch, error } = await supabase.from('channels').insert({
-                owner_id: user.id,
-                name: ccState.data.name,
-                description: ccState.data.description,
-                avatar_url: avatarUrl,
-                join_code: ccState.data.joinCode,
-                channel_type: channelType,
-                is_public: isPublic,
-                can_members_post: canMembersPost
+                owner_id: user.id, name: ccState.data.name, description: ccState.data.description, avatar_url: avatarUrl,
+                join_code: ccState.data.joinCode, channel_type: channelType, is_public: isPublic, can_members_post: canMembersPost
             }).select().single()
             if(error) throw error
             channelId = ch.id
         }
 
-        // Приглашения
         const checked = Array.from(document.querySelectorAll('.cc-friend-checkbox:checked')).map(c => c.value)
         if(checked.length && channelId){
-            await supabase.from('channel_invites').insert(checked.map(uid => ({
-                channel_id: channelId,
-                from_user_id: user.id,
-                to_user_id: uid
-            })))
+            await supabase.from('channel_invites').insert(checked.map(uid => ({ channel_id: channelId, from_user_id: user.id, to_user_id: uid })))
         }
 
         closeCreateChannel()
@@ -2884,10 +2874,14 @@ async function ccNext(){
 ============================================================ */
 async function openChannel(channelId){
     document.querySelectorAll('.post-bg-video').forEach(v => { try { v.pause() } catch {} })
+    // Мини-плеер оставляем видимым
+    const _mp = document.getElementById('mini-player')
+    if(_mp && music.src){ _mp.classList.remove('hidden'); _mp.classList.add('show') }
+
     let screen = $('channel-screen')
     if(!screen){ screen = document.createElement('div'); screen.id = 'channel-screen'; screen.className = 'hidden'; document.body.appendChild(screen) }
     screen.classList.remove('hidden')
-    screen.innerHTML = '<p class="empty" style="padding:60px 20px;text-align:center">Загрузка...</p>'
+    screen.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         await refreshFollowCache()
@@ -2902,7 +2896,6 @@ async function openChannel(channelId){
             supabase.from('subscriptions').select('*', { count:'exact', head:true }).eq('channel_id', channelId),
             supabase.from('posts').select('*', { count:'exact', head:true }).eq('channel_id', channelId)
         ])
-        // Счётчик отметки (лайки + комменты + репосты + подарки + лайки на лайве)
         let marksCount = 0
         try {
             const { data:postsIds } = await supabase.from('posts').select('id').eq('channel_id', channelId)
@@ -3016,7 +3009,6 @@ function openChannelFilterMenu(){
     ])
 }
 async function openChannelAuthorFilter(){
-    // Собираем уникальных авторов из загруженных постов
     const posts = state.channelPosts || []
     const authors = new Map()
     posts.forEach(p => {
@@ -3031,7 +3023,6 @@ async function openChannelAuthorFilter(){
 function applyChannelFilter(){
     const box = $('ch-content'); if(!box) return
 
-    // Гарантируем наличие #ch-posts-list — иначе создадим его
     let contentRoot = box.querySelector('#ch-posts-list')
     if(!contentRoot){
         contentRoot = document.createElement('div')
@@ -3042,14 +3033,11 @@ function applyChannelFilter(){
     const f = state.channelFilters
     const isFiltering = f.type !== 'all' || f.author
 
-    // ── Инфо-плашка о фильтрах ────────────────────────────────
     let note = document.getElementById('ch-filter-note')
     if(!note){
         note = document.createElement('div')
         note.id = 'ch-filter-note'
         note.className = 'ch-filter-note'
-        // Вставляем ЗАМЕТКУ именно в #ch-content, а не в родитель —
-        // так табы и остальная разметка канала не перезаписываются.
         box.insertBefore(note, contentRoot)
     }
     if(isFiltering){
@@ -3067,7 +3055,6 @@ function applyChannelFilter(){
         note.style.display = 'none'
     }
 
-    // ── Фильтрация ────────────────────────────────────────────
     const posts = state.channelPosts.filter(p => {
         if(f.author && p.profiles?.id !== f.author) return false
         if(f.type === 'video') return isVideoUrl(p.media_url)
@@ -3079,13 +3066,7 @@ function applyChannelFilter(){
 
     const userId = state.currentUser?.id
     contentRoot.innerHTML = posts.length
-        ? posts.map(p => renderProfilePost(
-            p,
-            userId,
-            state.channelLikedSet,    // ← реальные лайки, не пустой Set
-            state.channelRepostedSet, // ← реальные репосты
-            state.channelCounts       // ← реальные счётчики
-        )).join('')
+        ? posts.map(p => renderProfilePost(p, userId, state.channelLikedSet, state.channelRepostedSet, state.channelCounts)).join('')
         : '<p class="empty small">Нет постов по фильтру</p>'
 
     attachFeedActions(contentRoot, userId)
@@ -3104,7 +3085,7 @@ async function openInviteMenu(ch, myId){
 }
 
 async function loadChContent(channelId, tab, canPost = false){
-    const box = $('ch-content'); box.innerHTML = '<p class="empty small">Загрузка...</p>'
+    const box = $('ch-content'); box.innerHTML = loadingBlock()
     if(tab === 'live'){
         const { data:lives } = await supabase.from('lives').select('id, title, type, is_active, created_at').eq('channel_id', channelId).order('created_at', { ascending:false }).limit(20)
         if(!lives || !lives.length){ box.innerHTML = '<p class="empty small">Пока нет live</p>'; return }
@@ -3116,7 +3097,6 @@ async function loadChContent(channelId, tab, canPost = false){
         box.innerHTML = `<div class="prioriti-empty" style="margin-top:20px"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg><p>Подарков пока нет</p></div>`
         return
     }
-    // posts
     if(canPost){
         box.innerHTML = `
       <div class="ch-new-post">
@@ -3184,7 +3164,7 @@ function setupChannelComposer(channelId, canPost){
 
 async function loadChannelPosts(channelId, canPost){
     const list = $('ch-posts-list'); if(!list) return
-    list.innerHTML = '<p class="empty small">Загрузка...</p>'
+    list.innerHTML = loadingBlock()
     const { data } = await supabase.from('posts').select(`id, content, media_url, media_title, created_at, author_id, channel_id, show_in_profile, profiles:author_id ( id, username, full_name, avatar_url, status ), channels:channel_id ( id, name, avatar_url )`).eq('channel_id', channelId).order('created_at', { ascending:false }).limit(30)
     if(!data || !data.length){ list.innerHTML = '<p class="empty small">Пока нет постов</p>'; return }
     const { data:{ user } } = await supabase.auth.getUser()
@@ -3209,7 +3189,7 @@ async function loadChannelPosts(channelId, canPost){
 
 async function loadComments(postId, myId){
     const list = document.querySelector(`.ch-comments-list[data-list="${postId}"]`); if(!list) return
-    list.innerHTML = '<p class="empty small" style="padding:6px 0">Загрузка...</p>'
+    list.innerHTML = loadingBlock()
     const { data } = await supabase.from('comments').select(`id, text, profiles:user_id ( username, full_name, avatar_url )`).eq('post_id', postId).order('created_at', { ascending:true }).limit(50)
     if(!data || !data.length){ list.innerHTML = '<p class="empty small" style="padding:6px 0">Нет комментариев</p>'; return }
     list.innerHTML = data.map(c => { const p = c.profiles || {}; const name = p.full_name || p.username || 'user'; const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase(); return `<div class="ch-comment"><div class="ch-comment-avatar">${av}</div><div class="ch-comment-text"><strong>${escapeHtml(name)}</strong> ${escapeHtml(c.text)}</div></div>` }).join('')
@@ -3275,7 +3255,7 @@ async function openLiveRoom(liveId){
     if(liveRoomCleanup){ try { liveRoomCleanup() } catch(e){} liveRoomCleanup = null }
     document.querySelectorAll('.post-bg-video').forEach(v => { try { v.pause() } catch {} })
     screen.classList.remove('hidden')
-    screen.innerHTML = '<p class="empty" style="padding:60px 20px;text-align:center;color:#fff">Загрузка...</p>'
+    screen.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         if(!user) throw new Error('Не авторизован')
@@ -3313,7 +3293,6 @@ async function openLiveRoom(liveId){
             const wasSub = btn.classList.contains('following')
             const nowSub = !wasSub
 
-            // ✅ оптимистично
             btn.classList.toggle('following', nowSub)
             btn.textContent = nowSub ? 'Отписаться' : 'Подписаться'
             isSub = nowSub
@@ -3328,7 +3307,6 @@ async function openLiveRoom(liveId){
                     await supabase.from('subscriptions').delete().eq('follower_id', user.id).eq('channel_id', ch.id)
                 }
             } catch(e){
-                // ❌ откат
                 btn.classList.toggle('following', wasSub)
                 btn.textContent = wasSub ? 'Отписаться' : 'Подписаться'
                 isSub = wasSub
@@ -3383,7 +3361,7 @@ async function loadLiveMessages(liveId){
 }
 
 /* ============================================================
-   СИНХРОНИЗАЦИЯ ЛАЙКОВ / РЕПОСТОВ
+   СИНХРОНИЗАЦИЯ ЛАЙКОВ / РЕПОСТОВ (мгновенная, оптимистичная)
 ============================================================ */
 function syncPostLike(postId, liked, delta){
     document.querySelectorAll(`.feed-action[data-like="${postId}"]`).forEach(btn => {
@@ -3420,57 +3398,66 @@ function syncPostRepost(postId, reposted, delta){
     const fullRep = document.getElementById('full-repost')
     if(fullRep && music.postId === postId){ fullRep.classList.toggle('reposted', reposted); fullRep.style.background = reposted ? 'var(--green)' : '' }
 }
-async function toggleLikeGlobal(postId){
-    const { data:{ user } } = await supabase.auth.getUser()
-    if(!user) return
 
-    // состояние читаем из DOM — у нас уже есть отрисованная кнопка
-    const anyBtn = document.querySelector(
-        `.feed-action[data-like="${postId}"], .ch-post-action[data-like="${postId}"]`
-    )
+async function toggleLikeGlobal(postId){
+    const anyBtn = document.querySelector(`.feed-action[data-like="${postId}"], .ch-post-action[data-like="${postId}"]`)
     const wasLiked = anyBtn ? anyBtn.classList.contains('liked') : false
     const nowLiked = !wasLiked
 
-    // ✅ оптимистично: сразу обновляем все кнопки этого поста
+    // ✅ мгновенная визуализация — до всяких await
     syncPostLike(postId, nowLiked, nowLiked ? +1 : -1)
 
+    // pop-анимация
+    const btnEl = document.querySelector(`.feed-action[data-like="${postId}"] svg, .ch-post-action[data-like="${postId}"] svg`)
+    if(btnEl){
+        btnEl.style.transition = 'transform .18s cubic-bezier(.34,1.56,.64,1)'
+        btnEl.style.transform = 'scale(1.25)'
+        setTimeout(() => { btnEl.style.transform = '' }, 180)
+    }
+
+    // сетевой запрос — уже после анимации
     try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user){ syncPostLike(postId, wasLiked, wasLiked ? +1 : -1); return }
         if(nowLiked){
-            await supabase.from('likes').insert({ user_id: user.id, post_id: postId })
+            const { error } = await supabase.from('likes').insert({ user_id: user.id, post_id: postId })
+            if(error) throw error
         } else {
-            await supabase.from('likes').delete().eq('user_id', user.id).eq('post_id', postId)
+            const { error } = await supabase.from('likes').delete().eq('user_id', user.id).eq('post_id', postId)
+            if(error) throw error
         }
     } catch(e){
-        // ❌ откат
         syncPostLike(postId, wasLiked, wasLiked ? +1 : -1)
         showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' })
-        console.warn('[like]', e.message)
     }
 }
-async function toggleRepostGlobal(postId){
-    const { data:{ user } } = await supabase.auth.getUser()
-    if(!user) return
 
-    const anyBtn = document.querySelector(
-        `.feed-action[data-repost="${postId}"], .ch-post-action[data-repost="${postId}"]`
-    )
+async function toggleRepostGlobal(postId){
+    const anyBtn = document.querySelector(`.feed-action[data-repost="${postId}"], .ch-post-action[data-repost="${postId}"]`)
     const wasReposted = anyBtn ? anyBtn.classList.contains('reposted') : false
     const nowReposted = !wasReposted
 
-    // ✅ оптимистично
     syncPostRepost(postId, nowReposted, nowReposted ? +1 : -1)
+    const btnEl = document.querySelector(`.feed-action[data-repost="${postId}"] svg`)
+    if(btnEl){
+        btnEl.style.transition = 'transform .18s cubic-bezier(.34,1.56,.64,1)'
+        btnEl.style.transform = 'scale(1.25)'
+        setTimeout(() => { btnEl.style.transform = '' }, 180)
+    }
 
     try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user){ syncPostRepost(postId, wasReposted, wasReposted ? +1 : -1); return }
         if(nowReposted){
-            await supabase.from('reposts').insert({ user_id: user.id, post_id: postId })
+            const { error } = await supabase.from('reposts').insert({ user_id: user.id, post_id: postId })
+            if(error) throw error
         } else {
-            await supabase.from('reposts').delete().eq('user_id', user.id).eq('post_id', postId)
+            const { error } = await supabase.from('reposts').delete().eq('user_id', user.id).eq('post_id', postId)
+            if(error) throw error
         }
     } catch(e){
-        // ❌ откат
         syncPostRepost(postId, wasReposted, wasReposted ? +1 : -1)
         showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' })
-        console.warn('[repost]', e.message)
     }
 }
 
@@ -3552,7 +3539,6 @@ async function playTrack(){ try { await globalAudio.play(); music.isPlaying = tr
 function pauseTrack(){ globalAudio.pause(); music.isPlaying = false; updatePlayIcons(); refreshMiniPlayerVisibility() }
 function togglePlayTrack(){ if(music.isPlaying) pauseTrack(); else playTrack() }
 function updatePlayIcons(){
-    // Синхронизируем состояние с реальным состоянием аудио
     const realPlaying = !globalAudio.paused && globalAudio.currentTime > 0 && globalAudio.readyState > 2
     if(!globalAudio.src) music.isPlaying = false
     else music.isPlaying = realPlaying
@@ -3571,6 +3557,10 @@ function updatePlayIcons(){
     const fp = document.getElementById('full-player')
     if(mp) mp.classList.toggle('paused', !music.isPlaying)
     if(fp) fp.classList.toggle('paused', !music.isPlaying)
+
+    // подпись «Сейчас играет» / «Приостановлено»
+    const nowEl = document.querySelector('.mini-now')
+    if(nowEl) nowEl.textContent = music.isPlaying ? 'Сейчас играет' : 'Приостановлено'
 }
 function updateMiniPlayer(){
     const box = document.getElementById('mini-player'); if(!box) return
@@ -3594,7 +3584,6 @@ function updateFullPlayer(){
     setMarqueeText(document.getElementById('full-user-name'), '@' + (music.user.name||'').replace(/^@/,''))
 }
 
-/* Подписка в full-player */
 function syncFullPlayer(){
     const btn = document.getElementById('full-channel-follow')
     if(!btn) return
@@ -3616,7 +3605,6 @@ document.getElementById('full-channel-follow')?.addEventListener('click', async 
     const wasSub = btn.classList.contains('subscribed')
     const nowSub = !wasSub
 
-    // ✅ оптимистично
     applySubState(chId, nowSub)
     if(nowSub) state.myChannelSubs.add(chId)
     else state.myChannelSubs.delete(chId)
@@ -3629,7 +3617,6 @@ document.getElementById('full-channel-follow')?.addEventListener('click', async 
         }
         showToast('success', nowSub ? 'Подписка оформлена' : 'Отписка', { icon:'✓' })
     } catch(e){
-        // ❌ откат
         applySubState(chId, wasSub)
         if(wasSub) state.myChannelSubs.add(chId)
         else state.myChannelSubs.delete(chId)
@@ -3682,10 +3669,9 @@ globalAudio?.addEventListener('timeupdate', () => {
     if(ftc) ftc.textContent = fmtTime(cur)
     if(ftt) ftt.textContent = fmtTime(dur)
     updateAllTrackCards()
-    updatePlayIcons() // синхронизируем иконку play/pause
+    updatePlayIcons()
 })
 globalAudio?.addEventListener('loadedmetadata', () => { const ftt = document.getElementById('full-time-total'); if(ftt) ftt.textContent = fmtTime(globalAudio.duration); updateAllTrackCards(); updatePlayIcons() })
-globalAudio?.addEventListener('ended', () => { music.isPlaying = false; updatePlayIcons(); refreshMiniPlayerVisibility() })
 globalAudio?.addEventListener('pause', () => { updatePlayIcons() })
 globalAudio?.addEventListener('play', () => { updatePlayIcons() })
 
@@ -3733,10 +3719,6 @@ function openFullPlayer(){
     refreshFollowCache().then(syncFullPlayer)
     syncFullPlayer()
     updateFullPlayer()
-    const likeBtn = document.getElementById('full-like')
-    if(likeBtn && music.postId){ supabase.auth.getUser().then(({ data:{ user } }) => { if(!user) return; supabase.from('likes').select('id').eq('user_id', user.id).eq('post_id', music.postId).maybeSingle().then(({ data }) => likeBtn.classList.toggle('liked', !!data)) }) }
-    const repBtn = document.getElementById('full-repost')
-    if(repBtn && music.postId){ supabase.auth.getUser().then(({ data:{ user } }) => { if(!user) return; supabase.from('reposts').select('id').eq('user_id', user.id).eq('post_id', music.postId).maybeSingle().then(({ data }) => { repBtn.classList.toggle('reposted', !!data); repBtn.style.background = data ? 'var(--green)' : '' }) }) }
     fp.classList.remove('hidden'); void fp.offsetWidth
     requestAnimationFrame(() => fp.classList.add('show'))
     updatePlayIcons()
@@ -3753,10 +3735,44 @@ document.getElementById('full-progress')?.addEventListener('click', e => {
     const bar = e.currentTarget; const rect = bar.getBoundingClientRect(); const pct = (e.clientX - rect.left) / rect.width
     if(globalAudio.duration) globalAudio.currentTime = pct * globalAudio.duration
 })
-document.getElementById('full-like')?.addEventListener('click', () => { if(music.postId) toggleLikeGlobal(music.postId) })
+
+/* --- Очередь / повтор / таймер сна --- */
+let musicRepeat = false
+let musicQueueOn = false
+let sleepTimerId = null
+let sleepUntilTs = null
+
+document.getElementById('full-queue')?.addEventListener('click', e => {
+    const btn = e.currentTarget
+    musicQueueOn = !musicQueueOn
+    btn.classList.toggle('active', musicQueueOn)
+    showToast('info', musicQueueOn ? 'Очередь из ленты включена' : 'Очередь выключена', { icon:'🎵' })
+})
+document.getElementById('full-repeat')?.addEventListener('click', e => {
+    const btn = e.currentTarget
+    musicRepeat = !musicRepeat
+    btn.classList.toggle('active', musicRepeat)
+    showToast('info', musicRepeat ? 'Повтор включён' : 'Повтор выключен', { icon:'🔁' })
+})
+
+function startSleepTimer(ms){
+    clearSleepTimer()
+    sleepUntilTs = Date.now() + ms
+    sleepTimerId = setTimeout(() => {
+        pauseTrack()
+        showToast('info', 'Таймер сна: музыка остановлена', { icon:'🌙' })
+        sleepTimerId = null; sleepUntilTs = null
+    }, ms)
+    const m = Math.round(ms / 60000)
+    const label = m < 60 ? m + ' мин' : Math.round(m / 60) + ' ч'
+    showToast('info', 'Таймер сна установлен', { icon:'🌙', time: label })
+}
+function clearSleepTimer(){
+    if(sleepTimerId){ clearTimeout(sleepTimerId); sleepTimerId = null }
+    sleepUntilTs = null
+}
+
 document.getElementById('full-save')?.addEventListener('click', () => { if(music.postId) toggleSaveTrack(music.postId) })
-document.getElementById('full-gift')?.addEventListener('click', () => openPrioriti())
-document.getElementById('full-repost')?.addEventListener('click', () => { if(music.postId) toggleRepostGlobal(music.postId) })
 document.getElementById('full-share')?.addEventListener('click', () => {
     const url = `${location.origin}${location.pathname}?post=${music.postId}`
     showActionSheet('Поделиться', [
@@ -3768,20 +3784,49 @@ document.getElementById('full-share')?.addEventListener('click', () => {
         { label:'Facebook', icon:SVG.facebook, onClick: () => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,'_blank') }
     ])
 })
+
+/* Продолжение трека по окончании — очередь/повтор */
+globalAudio?.addEventListener('ended', () => {
+    if(musicRepeat){ try { globalAudio.currentTime = 0; playTrack() } catch {} return }
+    if(musicQueueOn){ playNextFromFeed(); return }
+    music.isPlaying = false
+    updatePlayIcons(); refreshMiniPlayerVisibility()
+})
+
+async function playNextFromFeed(){
+    try {
+        const cards = [...document.querySelectorAll('.track-card')]
+        const idx = cards.findIndex(c => c.dataset.trackSrc === music.src)
+        const next = cards[idx + 1]
+        if(!next){ music.isPlaying = false; updatePlayIcons(); return }
+        const src = next.dataset.trackSrc
+        const postId = next.dataset.trackPost
+        const title = next.dataset.trackTitle || 'Аудио'
+        await loadTrack(postId, src, title, true)
+    } catch(e){ console.warn('[queue]', e.message) }
+}
+
 document.getElementById('full-more')?.addEventListener('click', async () => {
     const items = [
         { label:'Скорость 0.5x', onClick: () => { globalAudio.playbackRate = 0.5; music.speed = 0.5 } },
         { label:'Скорость 1x',   onClick: () => { globalAudio.playbackRate = 1;   music.speed = 1 } },
         { label:'Скорость 1.5x', onClick: () => { globalAudio.playbackRate = 1.5; music.speed = 1.5 } },
-        { label:'Скорость 2x',   onClick: () => { globalAudio.playbackRate = 2;   music.speed = 2 } }
+        { label:'Скорость 2x',   onClick: () => { globalAudio.playbackRate = 2;   music.speed = 2 } },
+        { label:'Таймер сна: 10 минут', onClick: () => startSleepTimer(10*60*1000) },
+        { label:'Таймер сна: 20 минут', onClick: () => startSleepTimer(20*60*1000) },
+        { label:'Таймер сна: 30 минут', onClick: () => startSleepTimer(30*60*1000) },
+        { label:'Таймер сна: 1 час',    onClick: () => startSleepTimer(60*60*1000) },
+        { label:'Таймер сна: 3 часа',   onClick: () => startSleepTimer(3*60*60*1000) },
     ]
-    if(music.src){ if(music.hasChvad) items.push({ label:'Скачать трек', onClick: () => { const a = document.createElement('a'); a.href = music.src; a.download = (music.title || 'track') + '.mp3'; document.body.appendChild(a); a.click(); a.remove() } }) }
+    if(sleepUntilTs) items.push({ label:'Отменить таймер сна', onClick: () => { clearSleepTimer(); showToast('info','Таймер сна отменён',{icon:'🌙'}) } })
+    if(music.src && music.hasChvad){
+        items.push({ label:'Скачать трек', onClick: () => { const a = document.createElement('a'); a.href = music.src; a.download = (music.title || 'track') + '.mp3'; document.body.appendChild(a); a.click(); a.remove() } })
+    }
     if(music.postId){
         const { data:{ user } } = await supabase.auth.getUser()
-        const { data:post } = await supabase.from('posts').select('author_id, channel_id').eq('id', music.postId).maybeSingle()
+        const { data:post } = await supabase.from('posts').select('author_id').eq('id', music.postId).maybeSingle()
         const isMine = post?.author_id === user.id
         if(isMine) items.push({ label:'Удалить', icon:ICONS.trash, danger:true, onClick: async () => { if(!confirm('Удалить пост?')) return; await supabase.from('posts').delete().eq('id', music.postId); pauseTrack(); closeFullPlayer(); if(state.screen === 'home') renderHomeFeed() } })
-        if(!isMine) items.push({ label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => showToast('success','Жалоба отправлена', { icon:'✓' }) })
     }
     showActionSheet('Действия', items)
 })
@@ -3791,33 +3836,25 @@ document.getElementById('full-user-ava')?.addEventListener('click', () => { if(m
 async function toggleSaveTrack(postId){
     const btn = document.getElementById('full-save')
     if(!btn) return
-
     const wasSaved = btn.classList.contains('active')
     const nowSaved = !wasSaved
 
-    // ✅ оптимистично
+    // Мгновенно
     btn.classList.toggle('active', nowSaved)
-    showToast(
-        nowSaved ? 'success' : 'info',
+    btn.style.transition = 'transform .18s cubic-bezier(.34,1.56,.64,1)'
+    btn.style.transform = 'scale(1.18)'
+    setTimeout(() => { btn.style.transform = '' }, 180)
+    showToast(nowSaved ? 'success' : 'info',
         nowSaved ? 'Сохранено в профиль' : 'Убрано из треков',
-        { icon:'🔖' }
-    )
+        { icon:'🔖' })
 
     const { data:{ user } } = await supabase.auth.getUser()
-    if(!user){
-        btn.classList.toggle('active', wasSaved)
-        showToast('error', 'Войдите в аккаунт', { icon:'🔒' })
-        return
-    }
+    if(!user){ btn.classList.toggle('active', wasSaved); return }
 
     try {
-        if(nowSaved){
-            await supabase.from('saved_tracks').insert({ user_id: user.id, post_id: postId })
-        } else {
-            await supabase.from('saved_tracks').delete().eq('user_id', user.id).eq('post_id', postId)
-        }
+        if(nowSaved) await supabase.from('saved_tracks').insert({ user_id: user.id, post_id: postId })
+        else await supabase.from('saved_tracks').delete().eq('user_id', user.id).eq('post_id', postId)
     } catch(e){
-        // ❌ откат
         btn.classList.toggle('active', wasSaved)
         showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' })
     }
@@ -3830,8 +3867,7 @@ async function loadSaveTrackState(postId){
 }
 
 /* ============================================================
-   OBSERVER: автоплей видео (muted) в зоне видимости
-   При выходе за 50% — сбрасываем активацию и возвращаем подсказку
+   OBSERVER: автоплей видео
 ============================================================ */
 let feedVideoObserver = null
 function initFeedVideoObserver(){
@@ -3850,7 +3886,6 @@ function initFeedVideoObserver(){
             } else {
                 vid.pause()
                 card.classList.remove('is-playing-auto')
-                // Сброс активации и показ подсказки "нажмите чтобы посмотреть"
                 card.dataset.videoActivated = '0'
                 card.classList.remove('is-playing')
                 hideVideoPauseIcon(card)
@@ -3872,7 +3907,7 @@ function initTrackObserver(){
 }
 
 /* ============================================================
-   FULLSCREEN VIDEO MODE (через ⋯)
+   FULLSCREEN VIDEO MODE
 ============================================================ */
 let videoFsPrevMusic = false
 function enterVideoFS(src, postId){
@@ -3932,20 +3967,107 @@ document.getElementById('video-fs-more')?.addEventListener('click', async () => 
 })()
 
 /* ============================================================
-   SWIPE
+   СВАЙП ВНИЗ ДЛЯ МОДАЛОК / ШИТОВ
 ============================================================ */
 ;(function initSwipe(){
     function attach(el, closeFn, baseX){
         if(!el) return
-        const handle = el.querySelector('.actionsheet-handle, .prioriti-handle, .lang-sheet-handle') || el
+        const handle = el.querySelector('.actionsheet-handle, .prioriti-handle, .lang-sheet-handle, .code-modal-handle') || el
         let startY = 0, currentY = 0, dragging = false
         const base = baseX ? `translateX(${baseX})` : ''
-        handle.addEventListener('touchstart', e => { startY = e.touches[0].clientY; currentY = startY; dragging = true; el.classList.add('dragging') }, { passive:true })
-        handle.addEventListener('touchmove', e => { if(!dragging) return; currentY = e.touches[0].clientY; const dy = Math.max(0, currentY - startY); el.style.transition = 'none'; el.style.transform = `${base} translateY(${dy}px)` }, { passive:true })
-        handle.addEventListener('touchend', () => { if(!dragging) return; dragging = false; el.classList.remove('dragging'); el.style.transition = ''; el.style.transform = ''; if((currentY - startY) > 80) closeFn() })
+
+        const onStart = e => {
+            startY = e.touches[0].clientY; currentY = startY; dragging = true
+            el.classList.add('dragging'); el.style.transition = 'none'
+        }
+        const onMove = e => {
+            if(!dragging) return
+            e.preventDefault()
+            currentY = e.touches[0].clientY
+            const dy = Math.max(0, currentY - startY)
+            el.style.transform = `${base} translateY(${dy}px)`
+            el.style.opacity = String(Math.max(0.3, 1 - dy / 400))
+        }
+        const onEnd = () => {
+            if(!dragging) return
+            dragging = false
+            el.classList.remove('dragging')
+            const dy = currentY - startY
+            el.style.transition = ''; el.style.transform = ''; el.style.opacity = ''
+            if(dy > 80) closeFn()
+        }
+        handle.addEventListener('touchstart', onStart, { passive: true })
+        handle.addEventListener('touchmove', onMove, { passive: false })
+        handle.addEventListener('touchend', onEnd)
+        handle.addEventListener('touchcancel', onEnd)
     }
     attach($('actionsheet'), closeActionSheet, '')
     attach($('prioriti-sheet'), closePrioriti, '-50%')
+    attach($('lang-modal')?.querySelector('.lang-sheet'), closeLangModal, '')
+    attach($('code-modal')?.querySelector('.code-modal-sheet'), () => $('code-modal')?.classList.add('hidden'), '')
+})()
+
+/* ============================================================
+   СВАЙП-TO-DISMISS MINI-PLAYER
+============================================================ */
+;(function initMiniPlayerSwipe(){
+    const mp = document.getElementById('mini-player')
+    if(!mp) return
+    let startY = 0, currentY = 0, dragging = false
+
+    mp.addEventListener('touchstart', e => {
+        startY = e.touches[0].clientY
+        currentY = startY
+        dragging = true
+        mp.style.transition = 'none'
+    }, { passive: true })
+
+    mp.addEventListener('touchmove', e => {
+        if(!dragging) return
+        e.preventDefault()
+        e.stopPropagation()
+        currentY = e.touches[0].clientY
+        const dy = Math.max(0, currentY - startY)
+        mp.style.transform = `translateX(-50%) translateY(${dy}px)`
+    }, { passive: false })
+
+    function finish(close){
+        dragging = false
+        if(close){
+            try { globalAudio.pause(); globalAudio.src = '' } catch {}
+            music.src = null
+            music.postId = null
+            music.isPlaying = false
+
+            mp.style.transition = 'opacity .25s ease, transform .25s ease'
+            mp.style.transform = 'translateX(-50%) translateY(160%)'
+            mp.classList.remove('show')
+
+            setTimeout(() => {
+                mp.classList.add('hidden')
+                mp.style.transform = ''
+                mp.style.transition = ''
+                updatePlayIcons()
+            }, 300)
+        } else {
+            mp.style.transition = 'transform .22s cubic-bezier(.4,0,.2,1)'
+            mp.style.transform = 'translateX(-50%) translateY(0)'
+            setTimeout(() => {
+                mp.style.transition = ''
+                mp.style.transform = ''
+            }, 240)
+        }
+    }
+
+    mp.addEventListener('touchend', () => {
+        if(!dragging) return
+        finish((currentY - startY) > 80)
+    })
+
+    mp.addEventListener('touchcancel', () => {
+        if(!dragging) return
+        finish(false)
+    })
 })()
 
 /* ============================================================
@@ -3991,19 +4113,24 @@ async function checkMainChannelSubscription(){
 async function enterApp(){
     showScreen('main')
     try { const { data:{ user } } = await supabase.auth.getUser()
-        if(user){ const { data:prof } = await supabase.from('profiles').select('region, status, status_emoji').eq('id', user.id).maybeSingle()
+        if(user){
+            const { data:prof } = await supabase.from('profiles').select('region, status, status_emoji, theme').eq('id', user.id).maybeSingle()
             if(prof?.region) state.data.region = prof.region
             if(prof?.status_emoji || prof?.status) state.data.status = prof.status_emoji || prof.status
+            if(prof?.theme) applyTheme(prof.theme)
+            else applyTheme(getTheme())
         }
     } catch {}
     await checkMainChannelSubscription()
     await refreshFollowCache()
-    switchScreen('home')          // сам вызовет renderHomeFeed
+    switchScreen('home')
     renderLiveNow(); renderStories(); loadProfile(); loadStatus(); renderEventsScreen(); renderLiveFeed()
     maybeSendDailyNotification()
     heartbeat()
 }
 async function boot(){
+    initTheme()
+    setPageBg(true)
     const start = Date.now()
     try {
         const { data:{ session } } = await withTimeout(supabase.auth.getSession(), 6000, 'boot')
@@ -4027,41 +4154,13 @@ document.getElementById('home-search-btn')?.addEventListener('click', openSearch
 
 function openSearchMenu(){
     showActionSheet('Поиск', [
-        {
-            label: 'Поиск в listatread',
-            icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
-            onClick: () => openPostSearch()
-        },
-        {
-            label: 'Найти людей',
-            icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><circle cx="17" cy="9" r="2.5"/><path d="M14.5 14.5c2.5 0 4.5 2 4.5 4.5"/></svg>',
-            onClick: () => openFindPeople()
-        },
-        {
-            label: 'Найти трек listatread',
-            icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
-            onClick: () => openFindTrack()
-        },
-        {
-            label: 'Найти канал по коду',
-            icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg>',
-            onClick: () => openCodeModalFor('channel')
-        },
-        {
-            label: 'Найти профиль по ID или @',
-            icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>',
-            onClick: () => openCodeModalFor('profile')
-        },
-        {
-            label: 'Найти LIVE по коду',
-            icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 2s4 3 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s-3 2-3 6a6 6 0 0 0 12 0c0-5-6-11-6-11z"/></svg>',
-            onClick: () => openCodeModalFor('live')
-        },
-        {
-            label: 'Сканировать QR',
-            icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>',
-            onClick: () => openQrScanModal()
-        }
+        { label: 'Поиск в listatread', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>', onClick: () => openPostSearch() },
+        { label: 'Найти людей', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><circle cx="17" cy="9" r="2.5"/><path d="M14.5 14.5c2.5 0 4.5 2 4.5 4.5"/></svg>', onClick: () => openFindPeople() },
+        { label: 'Найти трек listatread', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>', onClick: () => openFindTrack() },
+        { label: 'Найти канал по коду', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg>', onClick: () => openCodeModalFor('channel') },
+        { label: 'Найти профиль по ID или @', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>', onClick: () => openCodeModalFor('profile') },
+        { label: 'Найти LIVE по коду', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 2s4 3 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s-3 2-3 6a6 6 0 0 0 12 0c0-5-6-11-6-11z"/></svg>', onClick: () => openCodeModalFor('live') },
+        { label: 'Сканировать QR', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>', onClick: () => openQrScanModal() }
     ])
 }
 document.getElementById('home-chats-btn')?.addEventListener('click', () => { switchScreen('inbox') })
@@ -4083,22 +4182,18 @@ document.getElementById('home-chats-btn')?.addEventListener('click', () => { swi
     }
     window.addEventListener('scroll', () => { if(!ticking){ requestAnimationFrame(update); ticking = true } }, { passive:true })
 })()
+
 /* ============================================================
    СИСТЕМА ПОИСКА
-   - Единый overlay в 3 режимах: posts | people | tracks
-   - Автодополнение из кэшированного пула (5 подсказок)
-   - История последних запросов в localStorage
-   - Enter / кнопка лупы = поиск, показать результаты
 ============================================================ */
-
 let _searchPool = null
 let _searchScreenEl = null
 let _searchMode = 'posts'
+let _searchFilter = 'all'
 let _searchDebounce = null
 const SEARCH_HISTORY_KEY = 'lt_search_history'
 const SEARCH_HISTORY_MAX = 10
 
-/* ---------- История ---------- */
 function getSearchHistory(){
     try { return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]') } catch { return [] }
 }
@@ -4109,7 +4204,6 @@ function pushSearchHistory(q){
     try { localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(arr.slice(0, SEARCH_HISTORY_MAX))) } catch {}
 }
 
-/* ---------- Пул подсказок ---------- */
 async function loadSearchPool(){
     if(_searchPool) return _searchPool
     const [profs, chans, posts] = await Promise.all([
@@ -4124,14 +4218,11 @@ async function loadSearchPool(){
     })
     ;(chans.data || []).forEach(c => { if(c.name) set.add(c.name) })
     ;(posts.data || []).forEach(p => { if(p.media_title) set.add(p.media_title) })
-        // базовые темы для затравки
-        ['автомобиль','аэропорт','музыка','видео','спорт','игры','еда','путешествия','кино','животные','природа','фото']
-        .forEach(w => set.add(w))
+        ['автомобиль','аэропорт','музыка','видео','спорт','игры','еда','путешествия','кино','животные','природа','фото'].forEach(w => set.add(w))
     _searchPool = [...set].filter(Boolean)
     return _searchPool
 }
 
-/* ---------- Overlay ---------- */
 function getSearchOverlay(){
     if(_searchScreenEl) return _searchScreenEl
     const el = document.createElement('div')
@@ -4191,7 +4282,6 @@ function getSearchOverlay(){
         }
     })
 
-    // Клик вне — закрыть подсказки
     el.addEventListener('click', e => {
         if(!e.target.closest('.search-input-wrap') && !e.target.closest('#search-suggestions')){
             el.querySelector('#search-suggestions').classList.add('hidden')
@@ -4211,9 +4301,10 @@ function closeSearchOverlay(){
 
 function openSearchOverlay(mode){
     _searchMode = mode
+    _searchFilter = 'all'
     const el = getSearchOverlay()
     const placeholders = {
-        posts:  'Поиск постов, авторов, хэштегов',
+        posts:  'Поиск постов, людей, каналов',
         people: 'Найти людей по имени или @',
         tracks: 'Поиск треков и музыки'
     }
@@ -4223,17 +4314,44 @@ function openSearchOverlay(mode){
     el.querySelector('#search-title-bar').classList.add('hidden')
     el.querySelector('#search-results').innerHTML = ''
     el.querySelector('#search-suggestions').classList.remove('hidden')
+    renderSearchFilters(mode)
     el.classList.remove('hidden')
     void el.offsetWidth
     requestAnimationFrame(() => el.classList.add('open'))
     document.body.style.overflow = 'hidden'
-
-    // подгружаем пул и показываем историю
     loadSearchPool().then(() => showHistorySuggestions())
     setTimeout(() => el.querySelector('#search-input').focus(), 120)
 }
 
-/* ---------- Подсказки ---------- */
+function renderSearchFilters(mode){
+    const el = _searchScreenEl; if(!el) return
+    let bar = el.querySelector('#search-filters')
+    if(!bar){
+        bar = document.createElement('div')
+        bar.id = 'search-filters'
+        bar.className = 'search-filters'
+        const top = el.querySelector('.search-top')
+        top.parentNode.insertBefore(bar, top.nextSibling)
+    }
+    const sets = {
+        posts:  [['all','Все'],['posts','Посты'],['channels','Каналы'],['video','Видео'],['photo','Фото'],['tracks','Треки'],['people','Люди']],
+        people: [['all','Все'],['name','По имени'],['bio','По описанию']],
+        tracks: [['all','Все треки']]
+    }
+    const list = sets[mode] || sets.posts
+    bar.innerHTML = list.map(([k,label]) =>
+        `<button class="search-filter-chip ${_searchFilter===k?'active':''}" data-filter="${k}">${label}</button>`
+    ).join('')
+    bar.querySelectorAll('.search-filter-chip').forEach(b => {
+        b.addEventListener('click', () => {
+            _searchFilter = b.dataset.filter
+            bar.querySelectorAll('.search-filter-chip').forEach(x => x.classList.toggle('active', x === b))
+            const q = el.querySelector('#search-input').value.trim()
+            if(q) performSearch(q, _searchMode)
+        })
+    })
+}
+
 function renderSuggestions(items){
     const box = _searchScreenEl.querySelector('#search-suggestions')
     if(!items.length){ box.classList.add('hidden'); return }
@@ -4256,12 +4374,10 @@ function renderSuggestions(items){
 function updateSuggestions(q){
     if(!_searchPool){ showHistorySuggestions(); return }
     const low = q.toLowerCase()
-    // сначала «начинается с», потом «содержит»
     const starts = _searchPool.filter(s => s.toLowerCase().startsWith(low))
     const contains = _searchPool.filter(s => !s.toLowerCase().startsWith(low) && s.toLowerCase().includes(low))
     const top = [...starts, ...contains].slice(0, 5)
     if(!top.length){ renderSuggestions([]); return }
-    // подсветка совпадения
     const box = _searchScreenEl.querySelector('#search-suggestions')
     box.innerHTML = top.map(s => {
         const idx = s.toLowerCase().indexOf(low)
@@ -4305,12 +4421,10 @@ function showHistorySuggestions(){
     }))
 }
 
-/* ---------- Публичные точки входа ---------- */
 function openPostSearch(){ openSearchOverlay('posts') }
 function openFindPeople(){ openSearchOverlay('people') }
 function openFindTrack(){ openSearchOverlay('tracks') }
 
-/* ---------- Поиск ---------- */
 async function performSearch(query, mode){
     query = query.trim()
     if(!query) return
@@ -4321,54 +4435,44 @@ async function performSearch(query, mode){
     el.querySelector('#search-title-bar').classList.remove('hidden')
     el.querySelector('#search-title-bar').textContent = 'Поиск: «' + query + '»'
     const results = el.querySelector('#search-results')
-    results.innerHTML = '<p class="search-empty">Поиск...</p>'
+    results.innerHTML = `<div class="loading-block"><span class="loading-spinner-inline"></span>Поиск…</div>`
 
     try {
-        let data = []
-        if(mode === 'people') data = await searchPeopleByTerm(query)
-        else if(mode === 'tracks') data = await searchTracksByTerm(query)
-        else data = await searchPostsByTerm(query)
-
-        if(!data.length){
-            results.innerHTML = `
-                <div class="search-empty">
-                    <div class="search-empty-icon">🔎</div>
-                    Нет результатов по запросу «${escapeHtml(query)}»
-                </div>`
-            return
+        if(mode === 'people'){
+            const people = await searchPeopleByTerm(query, _searchFilter)
+            if(!people.length){ renderEmpty(results, query); return }
+            renderPeopleResults(results, people); return
         }
-        renderSearchResults(data, mode, query)
+        if(mode === 'tracks'){
+            const tracks = await searchTracksByTerm(query)
+            if(!tracks.length){ renderEmpty(results, query); return }
+            await renderPostsResults(results, tracks, 'трек'); return
+        }
+        const bundle = await searchAllByTerm(query, _searchFilter)
+        const empty = !bundle.people.length && !bundle.channels.length && !bundle.posts.length
+        if(empty){ renderEmpty(results, query); return }
+        await renderAllResults(results, bundle, query)
     } catch(e){
         console.warn('[search]', e.message)
         results.innerHTML = `<p class="search-empty">Ошибка поиска</p>`
     }
 }
 
+function renderEmpty(box, q){
+    box.innerHTML = `<div class="search-empty"><div class="search-empty-icon">🔎</div>Нет результатов по запросу «${escapeHtml(q)}»</div>`
+}
+
 const POST_SELECT = 'id, content, media_url, media_title, created_at, author_id, channel_id, profiles:author_id ( username, full_name, avatar_url, status ), channels:channel_id ( id, name, avatar_url )'
 
-async function searchPostsByTerm(query){
+async function searchPeopleByTerm(query, filter = 'all'){
     const term = `%${query.replace(/[%_]/g, '')}%`
-    const [byText, byTitle, profs, chans] = await Promise.all([
-        supabase.from('posts').select(POST_SELECT).ilike('content', term).order('created_at', { ascending:false }).limit(30),
-        supabase.from('posts').select(POST_SELECT).ilike('media_title', term).order('created_at', { ascending:false }).limit(30),
-        supabase.from('profiles').select('id').or(`username.ilike.${term},full_name.ilike.${term}`).limit(30),
-        supabase.from('channels').select('id').ilike('name', term).limit(30)
-    ])
-    const map = new Map()
-    ;(byText.data  || []).forEach(p => map.set(p.id, p))
-    ;(byTitle.data || []).forEach(p => map.set(p.id, p))
-
-    const authorIds  = (profs.data  || []).map(x => x.id)
-    const channelIds = (chans.data  || []).map(x => x.id)
-    if(authorIds.length){
-        const { data } = await supabase.from('posts').select(POST_SELECT).in('author_id', authorIds).order('created_at', { ascending:false }).limit(30)
-        ;(data || []).forEach(p => map.set(p.id, p))
-    }
-    if(channelIds.length){
-        const { data } = await supabase.from('posts').select(POST_SELECT).in('channel_id', channelIds).order('created_at', { ascending:false }).limit(30)
-        ;(data || []).forEach(p => map.set(p.id, p))
-    }
-    return [...map.values()].sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 60)
+    let q = supabase.from('profiles').select('id, username, full_name, avatar_url, bio, status')
+    if(filter === 'name') q = q.or(`username.ilike.${term},full_name.ilike.${term}`)
+    else if(filter === 'bio') q = q.ilike('bio', term)
+    else q = q.or(`username.ilike.${term},full_name.ilike.${term},bio.ilike.${term}`)
+    const { data, error } = await q.limit(60)
+    if(error){ console.warn('[searchPeople]', error.message); return [] }
+    return data || []
 }
 
 async function searchTracksByTerm(query){
@@ -4380,48 +4484,122 @@ async function searchTracksByTerm(query){
     const map = new Map()
     ;(byTitle.data   || []).forEach(p => map.set(p.id, p))
     ;(byContent.data || []).forEach(p => map.set(p.id, p))
-    // только аудио
     return [...map.values()].filter(p => isAudioUrl(p.media_url)).slice(0, 60)
 }
 
-async function searchPeopleByTerm(query){
+async function searchAllByTerm(query, filter = 'all'){
     const term = `%${query.replace(/[%_]/g, '')}%`
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url, bio, status')
-        .or(`username.ilike.${term},full_name.ilike.${term},bio.ilike.${term}`)
-        .limit(60)
-    if(error){ console.warn('[searchPeople]', error.message); return [] }
-    return data || []
+    const out = { people: [], channels: [], posts: [] }
+
+    const wantPeople   = filter === 'all' || filter === 'people'
+    const wantChannels = filter === 'all' || filter === 'channels'
+    const wantPosts    = filter === 'all' || filter === 'posts' || filter === 'video' || filter === 'photo' || filter === 'tracks'
+
+    const jobs = []
+    if(wantPeople) jobs.push(
+        supabase.from('profiles').select('id, username, full_name, avatar_url, bio, status')
+            .or(`username.ilike.${term},full_name.ilike.${term},bio.ilike.${term}`).limit(20)
+            .then(r => out.people = r.data || [])
+    )
+    if(wantChannels) jobs.push(
+        supabase.from('channels').select('id, name, description, avatar_url')
+            .or(`name.ilike.${term},description.ilike.${term}`).limit(20)
+            .then(r => out.channels = r.data || [])
+    )
+    if(wantPosts){
+        jobs.push(
+            supabase.from('posts').select(POST_SELECT)
+                .or(`content.ilike.${term},media_title.ilike.${term}`)
+                .order('created_at', { ascending:false }).limit(40)
+                .then(r => out.posts = r.data || [])
+        )
+    }
+    await Promise.all(jobs)
+
+    if(filter === 'video') out.posts = out.posts.filter(p => isVideoUrl(p.media_url))
+    if(filter === 'photo') out.posts = out.posts.filter(p => p.media_url && isImageUrl(p.media_url))
+    if(filter === 'tracks') out.posts = out.posts.filter(p => isAudioUrl(p.media_url))
+    if(filter === 'channels') out.posts = []
+
+    return out
 }
 
-/* ---------- Рендер результатов ---------- */
-async function renderSearchResults(data, mode, query){
-    const box = _searchScreenEl.querySelector('#search-results')
-    box.innerHTML = ''
+function renderPeopleResults(box, people){
+    box.innerHTML = people.map(p => {
+        const name = p.full_name || p.username || 'user'
+        const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
+        const emoji = statusEmoji(computeDisplayStatus(p))
+        return `<div class="search-person" data-uid="${p.id}">
+            <div class="search-person-avatar">${av}</div>
+            <div class="search-person-info">
+                <div class="search-person-name">${escapeHtml(name)} ${emoji}</div>
+                <div class="search-person-sub">@${escapeHtml(p.username || 'user')}</div>
+                ${p.bio ? `<div class="search-person-bio">${escapeHtml(p.bio)}</div>` : ''}
+            </div>
+        </div>`
+    }).join('')
+    box.querySelectorAll('.search-person[data-uid]').forEach(el => el.addEventListener('click', () => {
+        closeSearchOverlay(); setTimeout(() => openUserProfile(el.dataset.uid), 250)
+    }))
+}
 
-    if(mode === 'people'){
-        box.innerHTML = data.map(p => {
+function renderChannelsResults(box, channels){
+    return channels.map(c => {
+        const name = c.name || 'Канал'
+        const ic = c.avatar_url ? `<img src="${c.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
+        return `<div class="search-channel-row" data-ch="${c.id}">
+            <div class="search-channel-icon">${ic}</div>
+            <div class="search-channel-info">
+                <div class="search-channel-name">${escapeHtml(name)}</div>
+                ${c.description ? `<div class="search-channel-sub">${escapeHtml(c.description)}</div>` : ''}
+            </div>
+        </div>`
+    }).join('')
+}
+
+async function renderAllResults(box, bundle, query){
+    box.innerHTML = ''
+    let html = ''
+
+    if(bundle.people.length){
+        html += `<div class="search-section-title">Люди</div>`
+        html += bundle.people.slice(0, 5).map(p => {
             const name = p.full_name || p.username || 'user'
             const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
-            const emoji = statusEmoji(computeDisplayStatus(p))
             return `<div class="search-person" data-uid="${p.id}">
                 <div class="search-person-avatar">${av}</div>
                 <div class="search-person-info">
-                    <div class="search-person-name">${escapeHtml(name)} ${emoji}</div>
+                    <div class="search-person-name">${escapeHtml(name)}</div>
                     <div class="search-person-sub">@${escapeHtml(p.username || 'user')}</div>
-                    ${p.bio ? `<div class="search-person-bio">${escapeHtml(p.bio)}</div>` : ''}
                 </div>
             </div>`
         }).join('')
-        box.querySelectorAll('.search-person[data-uid]').forEach(el => el.addEventListener('click', () => {
-            closeSearchOverlay()
-            setTimeout(() => openUserProfile(el.dataset.uid), 250)
-        }))
-        return
+    }
+    if(bundle.channels.length){
+        html += `<div class="search-section-title">Каналы</div>`
+        html += renderChannelsResults(box, bundle.channels.slice(0, 5))
+    }
+    if(bundle.posts.length){
+        html += `<div class="search-section-title">Посты</div>`
+        html += `<div id="search-posts-container"></div>`
     }
 
-    // posts / tracks — используем тот же рендер что и в ленте
+    box.innerHTML = html
+
+    box.querySelectorAll('.search-person[data-uid]').forEach(el => el.addEventListener('click', () => {
+        closeSearchOverlay(); setTimeout(() => openUserProfile(el.dataset.uid), 250)
+    }))
+    box.querySelectorAll('.search-channel-row[data-ch]').forEach(el => el.addEventListener('click', () => {
+        closeSearchOverlay(); setTimeout(() => openChannel(el.dataset.ch), 250)
+    }))
+
+    if(bundle.posts.length){
+        const container = box.querySelector('#search-posts-container')
+        await renderPostsResults(container, bundle.posts, 'результат поиска')
+    }
+}
+
+async function renderPostsResults(box, data, ctx){
     const ids = data.map(p => p.id)
     const { data:{ user } } = await supabase.auth.getUser()
     const [{ data:likes }, { data:reps }, counts] = await Promise.all([
@@ -4431,74 +4609,51 @@ async function renderSearchResults(data, mode, query){
     ])
     const likedIds    = new Set((likes || []).map(l => l.post_id))
     const repostedIds = new Set((reps  || []).map(r => r.post_id))
-    const ctx = mode === 'tracks' ? 'трек' : 'результат поиска'
-
     box.innerHTML = data.map(p => renderChannelPost(p, user?.id, likedIds, repostedIds, counts, ctx)).join('')
     likedIds.forEach(pid => syncPostLike(pid, true, 0))
     repostedIds.forEach(pid => syncPostRepost(pid, true, 0))
     attachFeedActions(box, user?.id)
     setTimeout(initTrackObserver, 100)
 }
+
 /* ============================================================
-   ОБРАБОТЧИКИ ЭКРАНА КАНАЛОВ (делегированные)
-   Работают независимо от того, когда отрисовался экран
+   ОБРАБОТЧИКИ ЭКРАНА КАНАЛОВ
 ============================================================ */
 document.addEventListener('click', e => {
-    // Плавающая красная кнопка "создать канал"
-    if(e.target.closest('#chan-add-btn')){
-        e.preventDefault()
-        e.stopPropagation()
-        openCreateChannel()
-        return
-    }
-    // "Подробнее" под рекламой listatread chvad
+    if(e.target.closest('#chan-add-btn')){ e.preventDefault(); e.stopPropagation(); openCreateChannel(); return }
     if(e.target.closest('#chvad-more')){
-        e.preventDefault()
-        e.stopPropagation()
+        e.preventDefault(); e.stopPropagation()
         showActionSheet('listatread chvad', [
-            { label:'Без рекламы',           icon:ICONS.check,    onClick: () => {} },
-            { label:'Музыка без ограничений', icon:ICONS.music,    onClick: () => {} },
-            { label:'Оформление профиля',    icon:ICONS.person,   onClick: () => {} },
-            { label:'Больше статусов',       icon:ICONS.star,     onClick: () => {} },
-            { label:'Публикация видео',      icon:ICONS.send,     onClick: () => {} },
-            { label:'Live без ограничений',  icon:ICONS.live,     onClick: () => {} },
-            { label:'Оформить подписку',     icon:ICONS.gift,     onClick: () => openPrioriti() }
+            { label:'Без рекламы', icon:ICONS.check, onClick: () => {} },
+            { label:'Музыка без ограничений', icon:ICONS.music, onClick: () => {} },
+            { label:'Оформление профиля', icon:ICONS.person, onClick: () => {} },
+            { label:'Больше статусов', icon:ICONS.star, onClick: () => {} },
+            { label:'Публикация видео', icon:ICONS.send, onClick: () => {} },
+            { label:'Live без ограничений', icon:ICONS.live, onClick: () => {} },
+            { label:'Оформить подписку', icon:ICONS.gift, onClick: () => openPrioriti() }
         ])
         return
     }
-    // Запасная кнопка "Создать" внутри пустого блока списка
-    if(e.target.closest('#chan-create-empty')){
-        e.preventDefault()
-        e.stopPropagation()
-        openCreateChannel()
-        return
-    }
+    if(e.target.closest('#chan-create-empty')){ e.preventDefault(); e.stopPropagation(); openCreateChannel(); return }
 })
+
 /* ============================================================
    НАСТРОЙКИ КАНАЛА
 ============================================================ */
 const chSetState = {
-    channelId: null,
-    tab: 'general',
-    channel: null,
-    members: [],
-    canModerate: false,
-    isOwner: false,
-    newAvatarFile: null,   // ← выбрали новую аву, но ещё не сохранили
-    newType: null          // ← выбрали новый тип канала
+    channelId: null, tab: 'general', channel: null, members: [], canModerate: false, isOwner: false,
+    newAvatarFile: null, newType: null
 }
 
 async function openChannelSettings(channelId, initialTab = 'general'){
     const { data:{ user } } = await supabase.auth.getUser()
     const { data:ch } = await supabase.from('channels').select('*').eq('id', channelId).maybeSingle()
     if(!ch || ch.owner_id !== user.id) return
-
     chSetState.channelId = channelId
     chSetState.tab = initialTab
     chSetState.channel = ch
     chSetState.isOwner = true
     chSetState.canModerate = true
-
     renderChannelSettings()
 }
 
@@ -4532,41 +4687,30 @@ function renderChannelSettings(){
             <button class="settings-tab ${tab==='additional'?'active':''}" data-stab="additional">Дополнительно</button>
         </div>
 
-        <!-- ========== ОБЩИЕ ========== -->
         <div class="settings-panel ${tab==='general'?'active':''}" data-panel="general">
             <div class="ch-edit-form">
                 <label class="ch-edit-avatar" for="chs-avatar">
                     <div class="ch-edit-avatar-img" id="chs-avatar-preview">
-                        ${ch.avatar_url
-        ? `<img src="${ch.avatar_url}" alt="">`
-        : (ch.name || 'K').charAt(0).toUpperCase()}
+                        ${ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : (ch.name || 'K').charAt(0).toUpperCase()}
                     </div>
                     <input type="file" id="chs-avatar" accept="image/*" hidden>
                     <span class="ch-edit-avatar-hint">Нажмите чтобы изменить аватарку</span>
                 </label>
-
                 <label class="settings-label">Название</label>
                 <input type="text" id="chs-name" maxlength="30" value="${escapeHtml(ch.name || '')}">
-
                 <label class="settings-label">Описание</label>
                 <textarea id="chs-desc" maxlength="200" rows="3" placeholder="О чём канал?">${escapeHtml(ch.description || '')}</textarea>
-
-                
-
                 <label class="settings-label">Код приглашения</label>
                 <div class="chs-code-display">
                     <span>${escapeHtml(ch.join_code || '—')}</span>
                     <span class="chs-code-note">нельзя изменить</span>
                 </div>
-
                 <button class="btn-primary settings-save" id="chs-save-general">Сохранить изменения</button>
             </div>
-
             <h3 class="settings-group-title ch-members-title">Участники</h3>
-            <div id="chs-members-list"><p class="empty small">Загрузка...</p></div>
+            <div id="chs-members-list">${loadingBlock()}</div>
         </div>
 
-        <!-- ========== ПРИВАТНОСТЬ (без блока «Участники») ========== -->
         <div class="settings-panel ${tab==='privacy'?'active':''}" data-panel="privacy">
             <div class="settings-group">
                 <h3 class="settings-group-title">Видимость канала</h3>
@@ -4577,7 +4721,6 @@ function renderChannelSettings(){
             <button class="btn-primary settings-save" id="chs-save-privacy">Сохранить</button>
         </div>
 
-        <!-- ========== ДОПОЛНИТЕЛЬНО (без блока «Участники») ========== -->
         <div class="settings-panel ${tab==='additional'?'active':''}" data-panel="additional">
             <div class="settings-section">
                 <div class="settings-section-header">Информация</div>
@@ -4596,31 +4739,21 @@ function renderChannelSettings(){
 
     if(tab === 'general'){
         loadChannelMembers()
-
-        // выбор аватарки
         $('chs-avatar')?.addEventListener('change', e => {
             const f = e.target.files?.[0]
             if(!f) return
             chSetState.newAvatarFile = f
             $('chs-avatar-preview').innerHTML = `<img src="${URL.createObjectURL(f)}" alt="">`
         })
-
-        // выбор типа
         screen.querySelectorAll('[data-chstype]').forEach(btn => {
             btn.addEventListener('click', () => {
                 chSetState.newType = btn.dataset.chstype
                 screen.querySelectorAll('[data-chstype]').forEach(b => b.classList.toggle('selected', b === btn))
             })
         })
-
-        // сохранение общих
         $('chs-save-general')?.addEventListener('click', saveChannelGeneral)
     }
-
-    if(tab === 'privacy'){
-        $('chs-save-privacy')?.addEventListener('click', saveChannelPrivacy)
-    }
-
+    if(tab === 'privacy') $('chs-save-privacy')?.addEventListener('click', saveChannelPrivacy)
     if(tab === 'additional'){
         $('chs-delete-channel')?.addEventListener('click', async () => {
             if(!confirm('Удалить канал навсегда?')) return
@@ -4655,6 +4788,7 @@ async function saveChannelPrivacy(){
         showToast('success', 'Настройки сохранены', { icon:'✓' })
     } catch(e){ showToast('error', 'Ошибка: ' + e.message) }
 }
+
 async function saveChannelGeneral(){
     const btn = $('chs-save-general')
     btn.disabled = true; btn.textContent = 'Сохранение...'
@@ -4669,7 +4803,6 @@ async function saveChannelGeneral(){
             return
         }
 
-        // аватарка
         let avatarUrl = chSetState.channel.avatar_url
         if(chSetState.newAvatarFile){
             const f = chSetState.newAvatarFile
@@ -4682,29 +4815,14 @@ async function saveChannelGeneral(){
             }
         }
 
-        // тип
-
-
-        // Код не меняем — он остаётся прежним
         const { error } = await supabase.from('channels').update({
-            name,
-            description: desc,
-            avatar_url: avatarUrl,
-            channel_type: type,
-            is_public: isPublic,
-            can_members_post: canMembersPost
+            name, description: desc, avatar_url: avatarUrl
         }).eq('id', chSetState.channelId)
         if(error) throw error
 
-        // локально обновим стейт — без перерисовки
-        chSetState.channel = {
-            ...chSetState.channel,
-            name, description: desc, avatar_url: avatarUrl,
-            channel_type: type, is_public: isPublic, can_members_post: canMembersPost
-        }
+        chSetState.channel = { ...chSetState.channel, name, description: desc, avatar_url: avatarUrl }
         chSetState.newAvatarFile = null
         chSetState.newType = null
-
         showToast('success', 'Канал обновлён', { icon:'✓' })
     } catch(e){
         showToast('error', 'Ошибка: ' + e.message)
@@ -4712,16 +4830,16 @@ async function saveChannelGeneral(){
         btn.disabled = false; btn.textContent = 'Сохранить изменения'
     }
 }
+
 /* ============================================================
    УЧАСТНИКИ КАНАЛА
 ============================================================ */
 async function loadChannelMembers(){
     const box = $('chs-members-list'); if(!box) return
-    box.innerHTML = '<p class="empty small">Загрузка...</p>'
+    box.innerHTML = loadingBlock()
 
     const chId = chSetState.channelId
 
-    // Владелец
     const { data:ch, error:chErr } = await supabase
         .from('channels')
         .select('owner_id, profiles:owner_id ( id, username, full_name, avatar_url )')
@@ -4729,7 +4847,6 @@ async function loadChannelMembers(){
         .maybeSingle()
     if(chErr) console.warn('[members] channel:', chErr.message)
 
-    // Участники — с fallback, если колонки role нет
     let members = []
     {
         const { data, error } = await supabase
@@ -4739,7 +4856,6 @@ async function loadChannelMembers(){
         if(!error && data){
             members = data.map(s => ({ ...(s.profiles || {}), _role: s.role || 'member' })).filter(m => m.id)
         } else {
-            // fallback — читаем без role
             const { data:data2 } = await supabase
                 .from('subscriptions')
                 .select('follower_id, profiles:follower_id ( id, username, full_name, avatar_url )')
@@ -4785,23 +4901,11 @@ async function loadChannelMembers(){
     box.innerHTML = html
 }
 
-/* ============================================================
-   МОДЕРАЦИЯ — удаление / повышение / снятие
-============================================================ */
 async function handlePromoteMember(userId){
     const chId = chSetState.channelId
     if(!chId || !userId) return
-
-    const { error } = await supabase
-        .from('subscriptions')
-        .update({ role: 'admin' })
-        .eq('channel_id', chId)
-        .eq('follower_id', userId)
-
-    if(error){
-        showToast('error', 'Ошибка: ' + error.message, { icon:'⚠️' })
-        return
-    }
+    const { error } = await supabase.from('subscriptions').update({ role: 'admin' }).eq('channel_id', chId).eq('follower_id', userId)
+    if(error){ showToast('error', 'Ошибка: ' + error.message, { icon:'⚠️' }); return }
     showToast('success', 'Назначен админом', { icon:'⭐' })
     loadChannelMembers()
 }
@@ -4809,17 +4913,8 @@ async function handlePromoteMember(userId){
 async function handleDemoteMember(userId){
     const chId = chSetState.channelId
     if(!chId || !userId) return
-
-    const { error } = await supabase
-        .from('subscriptions')
-        .update({ role: 'member' })
-        .eq('channel_id', chId)
-        .eq('follower_id', userId)
-
-    if(error){
-        showToast('error', 'Ошибка: ' + error.message, { icon:'⚠️' })
-        return
-    }
+    const { error } = await supabase.from('subscriptions').update({ role: 'member' }).eq('channel_id', chId).eq('follower_id', userId)
+    if(error){ showToast('error', 'Ошибка: ' + error.message, { icon:'⚠️' }); return }
     showToast('success', 'Снят с админов', { icon:'✓' })
     loadChannelMembers()
 }
@@ -4828,45 +4923,22 @@ async function handleKickMember(userId){
     const chId = chSetState.channelId
     if(!chId || !userId) return
     if(!confirm('Удалить участника из канала?')) return
-
-    const { error } = await supabase
-        .from('subscriptions')
-        .delete()
-        .eq('channel_id', chId)
-        .eq('follower_id', userId)
-
-    if(error){
-        showToast('error', 'Ошибка: ' + error.message, { icon:'⚠️' })
-        return
-    }
+    const { error } = await supabase.from('subscriptions').delete().eq('channel_id', chId).eq('follower_id', userId)
+    if(error){ showToast('error', 'Ошибка: ' + error.message, { icon:'⚠️' }); return }
     showToast('success', 'Участник удалён', { icon:'✓' })
     loadChannelMembers()
 }
-/* ============================================================
-   ДЕЛЕГИРОВАННЫЕ ОБРАБОТЧИКИ МОДЕРАЦИИ КАНАЛА
-   Работают всегда, независимо от того, когда отрисовался экран
-============================================================ */
+
 document.addEventListener('click', e => {
     const kickBtn    = e.target.closest('[data-kick]')
     const promoteBtn = e.target.closest('[data-promote]')
     const demoteBtn  = e.target.closest('[data-demote]')
 
-    if(kickBtn){
-        e.preventDefault(); e.stopPropagation()
-        handleKickMember(kickBtn.dataset.kick)
-        return
-    }
-    if(promoteBtn){
-        e.preventDefault(); e.stopPropagation()
-        handlePromoteMember(promoteBtn.dataset.promote)
-        return
-    }
-    if(demoteBtn){
-        e.preventDefault(); e.stopPropagation()
-        handleDemoteMember(demoteBtn.dataset.demote)
-        return
-    }
+    if(kickBtn){ e.preventDefault(); e.stopPropagation(); handleKickMember(kickBtn.dataset.kick); return }
+    if(promoteBtn){ e.preventDefault(); e.stopPropagation(); handlePromoteMember(promoteBtn.dataset.promote); return }
+    if(demoteBtn){ e.preventDefault(); e.stopPropagation(); handleDemoteMember(demoteBtn.dataset.demote); return }
 })
+
 /* ============================================================
    СТАРТ
 ============================================================ */
@@ -4876,7 +4948,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden){ hear
 window.addEventListener('focus', () => { heartbeat(); updatePlayIcons() })
 
 try {
-    const ch = supabase.channel('public:realtime_v13')
+    const ch = supabase.channel('public:realtime_v14')
         .on('postgres_changes', { event:'*', schema:'public', table:'posts' }, () => {
             if(state.screen === 'livechat') renderLiveFeed(true)
             if(state.screen === 'profile' && state.profileTab === 'posts') renderMyPosts(state.currentProfileViewId)
