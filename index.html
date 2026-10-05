@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+    <meta name="theme-color" content="#ffffff">
+    <title>listatread</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22black%22/><text x=%2250%22 y=%2272%22 font-size=%2272%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22serif%22>ℓ</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="toast-container" class="toast-container"></div>
+
+<div id="code-modal" class="code-modal hidden">
+    <div class="code-modal-backdrop" id="code-modal-backdrop"></div>
+    <div class="code-modal-sheet">
+        <div class="code-modal-handle"></div>
+        <h3 class="code-modal-title">Вступить по коду</h3>
+        <p class="code-modal-sub">Введите пригласительный код - 5 символов</p>
+        <input type="text" id="code-modal-input" class="code-modal-input" maxlength="5" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <div class="code-modal-actions">
+            <button class="btn-gray" id="code-modal-cancel">Отмена</button>
+            <button class="btn-primary" id="code-modal-submit">Вступить</button>
+        </div>
+    </div>
+</div>
+
+<div id="boot-screen" class="boot-screen">
+    <div class="loading-circles">
+        <span class="lc lc-brown"></span>
+        <span class="lc lc-yellow"></span>
+        <span class="lc lc-red"></span>
+        <span class="lc lc-green"></span>
+        <span class="lc lc-pink"></span>
+    </div>
+    <div class="boot-content">
+        <div class="brand-circle brand-circle-lg"><span class="brand-letter brand-letter-lg">ℓ</span></div>
+        <h1 class="boot-brand">listatread</h1>
+        <div class="boot-loader"><span></span><span></span><span></span></div>
+    </div>
+</div>
+
+<div class="app" id="app">
+
+    <!-- AUTH -->
+    <section id="auth-screen" class="screen hidden">
+        <div class="auth-bg">
+            <span class="ab ab-1"></span>
+            <span class="ab ab-2"></span>
+            <span class="ab ab-3"></span>
+            <span class="ab ab-4"></span>
+            <span class="ab ab-5"></span>
+        </div>
+        <div class="auth-wrap">
+            <div class="brand-circle"><span class="brand-letter">ℓ</span></div>
+            <h1 class="brand-name">listatread</h1>
+            <form id="login-form" class="auth-form" novalidate>
+                <input type="text" id="login-email" placeholder="Телефон, email или логин" required>
+                <div class="pwd-wrap"><input type="password" id="login-password" placeholder="Пароль" required><button type="button" class="pwd-toggle" data-target="login-password">👁</button></div>
+                <div class="auth-form-footer"><span class="login-error" id="login-error"></span><button type="button" class="forgot-password" id="forgot-password">Забыли пароль?</button></div>
+                <div class="auth-buttons-row"><button type="submit" class="btn-primary" id="login-btn">Вход</button><button type="button" class="btn-primary btn-primary-outline" id="go-register-btn">Регистрация</button></div>
+            </form>
+            <button class="btn-karsq" id="karsq-btn"><span class="karsq-dot"></span> Войти через karsq</button>
+            <div class="divider"><span>или</span></div>
+            <div class="social-row-4">
+                <button class="social-icon-btn social-github" id="github-btn"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></button>
+                <button class="social-icon-btn social-email" id="email-btn"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg></button>
+                <button class="social-icon-btn social-apple" id="apple-btn"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg></button>
+                <button class="social-icon-btn social-telegram" id="telegram-btn"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg></button>
+            </div>
+            <p class="terms">Продолжая, вы принимаете <a href="#">условия пользования</a></p>
+            <button class="lang-selector" id="lang-selector"><span id="current-lang-flag">🇬🇧</span><span id="current-lang-name">English</span><span class="chevron">▾</span></button>
+        </div>
+    </section>
+
+    <!-- KARSQ -->
+    <section id="karsq-screen" class="screen hidden">
+        <div class="reg-topbar"><button class="reg-back-btn" id="karsq-back">‹</button><span class="reg-topbar-title">Вход через karsq</span><span class="reg-topbar-spacer"></span></div>
+        <div class="karsq-wrap">
+            <div class="karsq-blink"><span class="karsq-blink-dot"></span></div>
+            <h2 class="karsq-title">Войдите в аккаунт karsq любым подтвержденным методом</h2>
+            <input type="email" id="karsq-email" placeholder="Введите почту">
+            <div class="pwd-wrap"><input type="password" id="karsq-password" placeholder="Пароль"><button type="button" class="pwd-toggle" data-target="karsq-password">👁</button></div>
+            <div class="karsq-methods-label">Или выберите метод</div>
+            <div class="karsq-methods"><button class="karsq-method"><span class="karsq-method-icon">◉</span><span>FaceID</span></button><button class="karsq-method"><span class="karsq-method-icon">▢</span><span>QR</span></button><button class="karsq-method"><span class="karsq-method-icon">⬡</span><span>GID</span></button></div>
+            <button class="btn-karsq-red" id="karsq-continue">Продолжить</button>
+            <p class="karsq-error" id="karsq-error"></p>
+        </div>
+    </section>
+
+    <!-- RESET -->
+    <section id="reset-screen" class="screen hidden">
+        <div class="reg-topbar"><button class="reg-back-btn" id="reset-back">‹</button><span class="reg-topbar-title">Сброс пароля</span><span class="reg-topbar-spacer"></span></div>
+        <div class="reset-step" id="reset-step-1"><button class="reset-btn reset-karsq" id="reset-karsq-btn">Сбросить аккаунт karsq</button><button class="reset-btn reset-lt" id="reset-lt-btn">Сбросить аккаунт listatread</button></div>
+        <div class="reset-step hidden" id="reset-step-2"><h2 class="reset-title">Сбросьте пароль</h2><p class="reset-hint" id="reset-hint"></p><input type="email" id="reset-email" placeholder="Введите почту"><p class="reset-error" id="reset-error"></p></div>
+    </section>
+
+    <!-- REG LANDING -->
+    <section id="register-landing-screen" class="screen hidden">
+        <div class="reg-topbar"><button class="reg-back-btn" id="reg-landing-back">‹</button><span class="reg-topbar-title">Регистрация</span><span class="reg-topbar-spacer"></span></div>
+        <div class="reg-landing-wrap">
+            <div class="logo-stage" id="logo-stage"><div class="flying-icons"><span class="fly-icon fly-1">⭐</span><span class="fly-icon fly-2">🦝</span><span class="fly-icon fly-3">👍</span><span class="fly-icon fly-4">❤️</span><span class="fly-icon fly-5">👤</span></div><div class="brand-circle brand-circle-lg"><span class="brand-letter brand-letter-lg">ℓ</span></div></div>
+            <h1 class="brand-name brand-name-lg">listatread</h1>
+            <div class="reg-landing-copy"><p class="reg-landing-title">Зарегистрируйте аккаунт <span class="karsq-word">karsq</span> сейчас</p><p class="reg-landing-text">Входите в любое время по удобному методу входа</p><p class="reg-landing-small">Используйте FaceID, QR, GID для входа</p></div>
+            <div class="reg-landing-actions"><button class="btn-primary" id="create-account-btn">Создать аккаунт</button><button class="btn-gray" id="find-account-btn" disabled>Найти аккаунт</button></div>
+        </div>
+    </section>
+
+    <!-- REGISTER -->
+    <section id="register-screen" class="screen hidden">
+        <div class="reg-topbar"><button class="reg-back-btn" id="reg-back-arrow">‹</button><span class="reg-topbar-title">Регистрация</span><span class="reg-topbar-spacer"></span></div>
+        <div class="steps-progress"><div class="steps-progress-bar" id="steps-bar"></div></div>
+        <div class="steps-viewport">
+            <div class="reg-step active" data-step="1"><h2>Ваш email</h2><p class="step-hint">Отправим код подтверждения</p><div class="step-emoji">📧</div><input type="email" id="reg-email" placeholder="name@example.com"></div>
+            <div class="reg-step" data-step="2"><h2>Немного о вас</h2><div class="step-emoji">👤</div>
+                <label class="step-label">Имя</label><input type="text" id="reg-name" placeholder="Имя или псевдоним">
+                <label class="step-label">Пол</label><div class="gender-row" id="gender-row"><button class="gender-btn" data-gender="male">Мужской</button><button class="gender-btn" data-gender="female">Женский</button><button class="gender-btn" data-gender="none">Не говорить</button></div>
+                <label class="step-label">Регион</label><button class="picker-btn" id="region-btn"><span class="picker-flag" id="region-flag">◯</span><span class="picker-name" id="region-name">Выберите</span><span class="chevron">▾</span></button>
+                <label class="step-label">Дата рождения</label><input type="date" id="reg-birthday" max="2012-12-31">
+            </div>
+            <div class="reg-step" data-step="3"><h2>Методы входа</h2><div class="step-emoji">🔑</div>
+                <label class="step-label">Пароль</label><div class="pwd-wrap"><input type="password" id="reg-password" placeholder="Пароль"><button type="button" class="pwd-toggle" data-target="reg-password">👁</button></div>
+                <div class="password-checks"><div class="pwd-check" data-rule="length"><span class="pwd-dot"></span>8+ символов</div><div class="pwd-check" data-rule="upper"><span class="pwd-dot"></span>Заглавная</div><div class="pwd-check" data-rule="lower"><span class="pwd-dot"></span>Строчная</div><div class="pwd-check" data-rule="digit"><span class="pwd-dot"></span>Цифра</div><div class="pwd-check" data-rule="special"><span class="pwd-dot"></span>Спецсимвол</div></div>
+                <label class="step-label">Дополнительный метод</label><div class="method-slider" id="method-slider"><button class="method-btn active" data-method="skip">Пропустить</button><button class="method-btn" data-method="faceid">FaceID</button><button class="method-btn" data-method="qr">QR</button><button class="method-btn" data-method="gid">GID</button></div>
+                <div class="method-info" id="method-info"></div>
+            </div>
+            <div class="reg-step" data-step="4"><h2>Оформите профиль</h2><div class="step-emoji">🎨</div>
+                <label class="avatar-upload" for="reg-avatar"><div class="avatar-preview"><img id="avatar-img" hidden alt=""><span id="avatar-placeholder">+</span></div><input type="file" id="reg-avatar" accept="image/*" hidden><span class="avatar-hint">Выберите аватарку</span></label>
+                <label class="step-label">Никнейм</label><div class="input-prefix"><span>@</span><input type="text" id="reg-username" placeholder="username" maxlength="20"></div>
+                <label class="step-label">Описание</label><textarea id="reg-bio" placeholder="Добавьте описание" maxlength="150" rows="3"></textarea>
+                <label class="step-label">Ссылки на соцсети</label><div class="social-inputs" id="social-inputs"></div>
+            </div>
+            <div class="reg-step" data-step="5"><h2>Подтвердите email</h2><p class="step-hint">Код отправлен на <strong id="verify-email-display"></strong></p><div class="step-emoji">✉️</div><input type="text" id="reg-code" maxlength="6" inputmode="numeric"><div class="code-checkmark" id="code-checkmark"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" class="code-circle-path"/><path d="M30 52 L45 67 L72 38" class="code-check-path"/></svg></div><button class="btn-primary" id="verify-code-btn">Проверить</button></div>
+            <div class="reg-step" data-step="6"><h2>Почти готово</h2><div class="step-emoji">⭐</div>
+                <div class="settings-group"><h3 class="settings-group-title">Приватность</h3><label class="toggle-row"><span>Приватный</span><input type="checkbox" class="toggle" id="set-private"></label><label class="toggle-row"><span>Скрывать подписки</span><input type="checkbox" class="toggle" id="set-hide-subs"></label></div>
+                <div class="settings-group"><h3 class="settings-group-title">Рекомендации</h3><label class="toggle-row"><span>Показывать в рекомендациях</span><input type="checkbox" class="toggle" id="set-recommend" checked></label></div>
+            </div>
+        </div>
+        <div class="reg-nav"><button id="reg-next" class="btn-primary">Продолжить</button></div>
+        <p id="reg-error" class="error"></p>
+    </section>
+
+    <!-- LOADING -->
+    <section id="loading-screen" class="screen hidden">
+        <div class="loading-circles"><span class="lc lc-brown"></span><span class="lc lc-yellow"></span><span class="lc lc-red"></span><span class="lc lc-green"></span><span class="lc lc-pink"></span></div>
+        <div class="loading-wrap">
+            <div class="brand-circle brand-circle-lg"><span class="brand-letter brand-letter-lg">ℓ</span></div>
+            <h1 class="loading-brand">listatread</h1>
+            <p class="loading-text" id="loading-text">Загрузка…</p>
+            <div class="loading-spinner"></div>
+        </div>
+    </section>
+
+    <!-- MAIN -->
+    <div id="main-app" class="main-app hidden">
+
+        <section id="screen-home" class="app-screen active">
+            <header class="topbar">
+                <button class="topbar-btn" data-menu="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+                <div class="topbar-logo">listatread</div>
+                <div style="display:flex;gap:4px;align-items:center">
+                    <button class="topbar-btn" id="home-search-btn" aria-label="Поиск"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+                    <button class="topbar-btn" id="home-chats-btn" aria-label="Чаты"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+                    <button class="topbar-btn topbar-star" data-prioriti="open" aria-label="Prioriti"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></button>
+                </div>
+            </header>
+            <div class="stories-row" id="stories-row"></div>
+            <div class="live-now-wrap">
+                <button class="live-code-btn" id="live-code-btn"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h.01"/></svg><span>По коду</span></button>
+                <div class="live-now-row" id="live-now-row"></div>
+            </div>
+            <div class="feed-tabs">
+                <button class="feed-tab active" data-tab="recommended">Рекомендации</button>
+                <button class="feed-tab" data-tab="lista">lista</button>
+                <button class="feed-tab" data-tab="subs">Подписки</button>
+                <button class="feed-tab" data-tab="my">Мои каналы</button>
+            </div>
+            <div class="feed-list" id="feed-list"><p class="empty">Загрузка</p></div>
+        </section>
+
+        <section id="screen-music" class="app-screen">
+            <header class="topbar"><button class="topbar-btn" data-menu="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><div class="topbar-logo-static">music</div><button class="topbar-btn topbar-star" data-prioriti="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></button></header>
+            <div class="placeholder-screen"><div class="placeholder-symbol"><svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><h2 class="placeholder-title">listatread music</h2><p class="placeholder-text">Скоро</p><div class="placeholder-badge">Скоро</div></div>
+        </section>
+
+        <section id="screen-channels" class="app-screen">
+            <header class="topbar"><button class="topbar-btn" data-menu="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><div class="topbar-logo-static">каналы</div><button class="topbar-btn topbar-star" data-prioriti="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></button></header>
+            <div class="chan-hero">
+                <div class="chan-hero-stage" id="chan-hero-stage"><span class="chan-fly chan-fly-star">★</span><span class="chan-fly chan-fly-live">LIVE</span><span class="chan-fly chan-fly-chat">💬</span><span class="chan-fly chan-fly-people">👥</span><span class="chan-fly chan-fly-stat">📊</span>
+                    <div class="chan-icon"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg></div>
+                </div>
+                <h1 class="chan-title">listatread channel</h1><p class="chan-desc">Раскажите о себе на большую аудиторию, создайте личные, частные, командные или общественные каналы! Создавайте посты и делитесь с подписчиками новым, собирайте аудиторию, лайки, коллекционируйте подарки или выходите в эфир.</p>
+            </div>
+            <div class="chan-chvad">
+                <div class="chan-chvad-ad-badge">Реклама · Системная</div>
+                <div class="chan-chvad-head"><span class="chan-chvad-star">★</span><div><div class="chan-chvad-title">Больше возможностей с подпиской</div><div class="chan-chvad-name">listatread chvad</div></div></div>
+                <ul class="chan-chvad-list"><li>Никакой рекламы</li><li>Музыка без ограничений и рекламы</li><li>Премиальное оформление профиля</li><li>Больше статусов</li><li>Создавайте до 5 каналов</li><li>Live без ограничений</li></ul>
+                <button class="btn-primary" id="chvad-more">Подробнее</button>
+            </div>
+            <h3 class="section-title">Вы состоите</h3><div id="chan-mine-list" class="chan-list"><p class="empty small">Загрузка...</p></div>
+            <h3 class="section-title">Вам может понравиться</h3><div id="chan-recommend-list" class="chan-list"><p class="empty small">Загрузка...</p></div>
+            <button class="chan-add-btn" id="chan-add-btn"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+        </section>
+
+        <section id="screen-inbox" class="app-screen">
+            <header class="topbar"><button class="topbar-btn" data-menu="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><div class="topbar-logo-static">события</div><button class="topbar-btn topbar-star" data-prioriti="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></button></header>
+            <div class="livechat-hero" id="hero-global"><div class="livechat-hero-bg"></div><div class="livechat-hero-content"><div class="livechat-live-pill">LIVE</div><h3 class="livechat-hero-title">Глобальный live chat</h3><p class="livechat-hero-sub">Общайтесь со всем миром</p><button class="livechat-hero-btn" id="enter-global">Войти в live chat</button></div></div>
+            <div class="livechat-card" id="hero-region"><div class="livechat-live-pill small">LIVE</div><div class="livechat-info"><div class="livechat-title">Live чат региона</div><div class="livechat-sub" id="region-chat-name">Ваш регион</div></div><div class="livechat-bars"><span></span><span></span><span></span></div></div>
+            <h3 class="section-title">Рекомендуем · Live чаты каналов</h3><div id="channel-chats"><p class="empty small">Пока нет live чатов</p></div>
+            <h3 class="section-title">Входящие</h3>
+            <div class="inbox-panel">
+                <button class="inbox-tab active" data-itab="followers">Подписчики</button>
+                <button class="inbox-tab" data-itab="replies">Ответы</button>
+                <button class="inbox-tab" data-itab="comments">Комментарии</button>
+                <button class="inbox-tab" data-itab="likes">Лайки</button>
+                <button class="inbox-tab" data-itab="reposts">Репосты</button>
+                <button class="inbox-tab" data-itab="invites">Приглашения</button>
+            </div>
+            <div class="inbox-list" id="inbox-list"></div>
+            <h3 class="section-title">Уведомления системы</h3><div class="notifications-list" id="notifications-list"></div>
+        </section>
+
+        <section id="screen-livechat" class="app-screen">
+            <header class="topbar"><button class="topbar-btn" id="livechat-back"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button><div class="topbar-logo-static" id="livechat-title">Live chat</div><button class="topbar-btn topbar-star" data-prioriti="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></button></header>
+            <div class="livechat-header-line"><div class="livechat-live-pill small">LIVE</div><span class="livechat-header-text" id="livechat-header-text">Global</span></div>
+            <div class="composer">
+                <div class="reply-banner hidden" id="reply-banner"><span class="reply-banner-text">Ответить <strong id="reply-to-name">@user</strong></span><button class="reply-banner-cancel" id="reply-cancel">✕</button></div>
+                <div class="photo-preview hidden" id="photo-preview"><img id="photo-preview-img" alt=""><button class="photo-preview-remove" id="photo-preview-remove">✕</button></div>
+                <textarea id="post-content" placeholder="Что нового?" rows="3"></textarea>
+                <div class="composer-footer">
+                    <div class="composer-tools">
+                        <button class="tool-btn" id="attach-photo" title="Фото"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg></button>
+                        <button class="tool-btn" id="attach-audio" title="Музыка"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></button>
+                        <button class="tool-btn" id="attach-video" title="Видео"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M22 8l-6 4 6 4z"/></svg></button>
+                        <button class="tool-btn" id="add-emoji" title="Смайл"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="0.8" fill="currentColor"/><circle cx="15" cy="10" r="0.8" fill="currentColor"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg></button>
+                        <button class="tool-btn" id="add-mention" title="Отметить"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg></button>
+                        <input type="file" id="photo-input" accept="image/*" hidden>
+                        <input type="file" id="audio-input" accept="audio/*" hidden>
+                        <input type="file" id="video-input" accept="video/*" hidden>
+                    </div>
+                    <button class="btn-primary btn-send-icon" id="post-btn" aria-label="Опубликовать">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="emoji-picker hidden" id="emoji-picker"></div>
+            </div>
+            <div class="feed-list" id="live-feed"></div>
+        </section>
+
+        <section id="screen-profile" class="app-screen">
+            <header class="topbar"><button class="topbar-btn" data-menu="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><div class="topbar-logo-static">профиль</div><button class="topbar-btn topbar-star" data-prioriti="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></button></header>
+            <div class="profile-loader hidden" id="profile-loader"><div class="profile-loader-spinner"></div><p class="profile-loader-text">Загрузка профиля…</p></div>
+            <div id="profile-body">
+                <div class="profile-hero"><div class="profile-avatar-lg" id="profile-avatar">ℓ</div><h2 class="profile-name" id="profile-name">Пользователь</h2><p class="profile-username" id="profile-username">@username</p><p class="profile-bio" id="profile-bio"></p></div>
+                <div class="profile-stats"><div class="stat"><strong id="stat-followers">0</strong><span>подписчики</span></div><div class="stat"><strong id="stat-posts">0</strong><span>посты</span></div><div class="stat"><strong id="stat-subs">0</strong><span>подписки</span></div></div>
+                <div id="profile-actions"></div>
+                <div class="profile-tabs" id="profile-tabs"><button class="profile-tab active" data-ptab="reposts">Репосты</button><button class="profile-tab" data-ptab="posts">Посты</button><button class="profile-tab" data-ptab="gifts">Подарки</button><button class="profile-tab" data-ptab="tracks">Треки</button><button class="profile-tab" data-ptab="channels">Каналы</button><button class="profile-tab" data-ptab="liked">Понравилось</button></div>
+                <div class="profile-content" id="profile-content"></div>
+                <div class="new-post-btn-wrap hidden" id="new-post-wrap"><button class="new-post-btn" id="new-post-btn"><span class="new-post-btn-bg"></span><span class="new-post-btn-content"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Новый пост</span></button></div>
+            </div>
+        </section>
+
+        <section id="screen-settings" class="app-screen">
+            <header class="topbar"><button class="topbar-btn" id="settings-back"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button><div class="topbar-logo-static">настройки</div><span class="topbar-spacer-btn"></span></header>
+            <div class="settings-tabs"><button class="settings-tab active" data-stab="general">Общие</button><button class="settings-tab" data-stab="privacy">Приватность</button><button class="settings-tab" data-stab="additional">Дополнительно</button></div>
+            <div class="settings-body">
+                <div class="settings-panel active" data-panel="general">
+                    <div class="settings-avatar-block"><label class="settings-avatar-label" for="set-avatar"><div class="profile-avatar-lg" id="set-avatar-preview">ℓ</div><input type="file" id="set-avatar" accept="image/*" hidden><div class="settings-avatar-hint">Нажмите чтобы изменить</div></label></div>
+                    <label class="settings-label">Имя</label><input type="text" id="set-name" placeholder="Ваше имя">
+                    <label class="settings-label">Никнейм</label><div class="input-prefix"><span>@</span><input type="text" id="set-username" placeholder="username" maxlength="20"></div>
+                    <label class="settings-label">Описание</label><textarea id="set-bio" placeholder="О себе" maxlength="150" rows="3"></textarea>
+                    <label class="settings-label">Email</label><input type="email" id="set-email" disabled>
+
+                    <h3 class="settings-group-title" style="margin-top:22px">Статус</h3>
+                    <div class="settings-status-grid" id="settings-status-grid"></div>
+
+                    <button class="btn-primary settings-save" id="save-general">Сохранить изменения</button>
+                </div>
+                <div class="settings-panel" data-panel="privacy">
+                    <div class="settings-group"><h3 class="settings-group-title">Аккаунт</h3><label class="toggle-row"><span>Приватный аккаунт</span><input type="checkbox" class="toggle" data-set="private"></label><label class="toggle-row"><span>Разрешить подписываться</span><input type="checkbox" class="toggle" data-set="allow_follow" checked></label><label class="toggle-row"><span>Показывать подписки</span><input type="checkbox" class="toggle" data-set="show_following" checked></label><label class="toggle-row"><span>Показывать подписчиков</span><input type="checkbox" class="toggle" data-set="show_followers" checked></label></div>
+                    <div class="settings-group"><h3 class="settings-group-title">Присутствие</h3><label class="toggle-row"><span>Показывать статус онлайн</span><input type="checkbox" class="toggle" data-set="show_online" checked></label><label class="toggle-row"><span>Показывать последний вход</span><input type="checkbox" class="toggle" data-set="show_last_seen"></label></div>
+                    <button class="btn-primary settings-save" id="save-privacy">Сохранить настройки</button>
+                </div>
+                <div class="settings-panel" data-panel="additional">
+
+                    <div class="settings-section">
+                        <div class="settings-section-header">
+                            <div class="settings-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l3-8 4 16 3-8h5"/></svg></div>
+                            Активность
+                        </div>
+                        <button class="settings-row" data-saction="screen-time"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="settings-row-text">Экранное время<div class="settings-row-sub">Статистика и ограничения</div></div><span class="settings-row-chevron">›</span></button>
+                        <button class="settings-row" data-saction="feed-settings"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div><div class="settings-row-text">Настройки ленты<div class="settings-row-sub">Настройте ленту под себя</div></div><span class="settings-row-chevron">›</span></button>
+                        <button class="settings-row" data-saction="manage-posts"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg></div><div class="settings-row-text">Управлять публикациями</div><span class="settings-row-chevron">›</span></button>
+                        <button class="settings-row" data-saction="boosts"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg></div><div class="settings-row-text">Вовлеченность</div><span class="settings-row-chevron">›</span></button>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-header">
+                            <div class="settings-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></div>
+                            Аккаунт и вход
+                        </div>
+                        <button class="settings-row" data-saction="share-account"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></div><div class="settings-row-text">Поделиться профилем<div class="settings-row-sub">QR-код и ссылки в соцсети</div></div><span class="settings-row-chevron">›</span></button>
+                        <button class="settings-row" data-saction="scan-qr"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg></div><div class="settings-row-text">Сканировать QR</div><span class="settings-row-chevron">›</span></button>
+                        <button class="settings-row" data-saction="blacklist"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M5.5 5.5l13 13" stroke-linecap="round"/></svg></div><div class="settings-row-text">Чёрный список</div><span class="settings-row-chevron">›</span></button>
+                        <button class="settings-row" data-saction="login-other"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg></div><div class="settings-row-text">Войти через Karsq</div><span class="settings-row-chevron">›</span></button>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-header">
+                            <div class="settings-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg></div>
+                            Кэш и трафик
+                        </div>
+                        <button class="settings-row" data-saction="clear-cache"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg></div><div class="settings-row-text">Очистить кэш приложения</div><span class="settings-row-chevron">›</span></button>
+                        <button class="settings-row" data-saction="force-reload"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg></div><div class="settings-row-text">Принудительный перезапуск</div><span class="settings-row-chevron">›</span></button>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-header">
+                            <div class="settings-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3c-1 .5-1 1-1 2M12 17h.01"/></svg></div>
+                            Помощь
+                        </div>
+                        <button class="settings-row" data-saction="support"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 1-1 1.7M12 17h.01"/></svg></div><div class="settings-row-text">Служба поддержки</div><span class="settings-row-chevron">›</span></button>
+                        <button class="settings-row" data-saction="terms"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M15 3v5h5M8 13h8M8 17h5"/></svg></div><div class="settings-row-text">Условия пользования, политика и конфиденциальность</div><span class="settings-row-chevron">›</span></button>
+                        <button class="settings-row" data-saction="about"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg></div><div class="settings-row-text">О listatread</div><span class="settings-row-chevron">›</span></button>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-header">
+                            <div class="settings-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></div>
+                            Дополнительно
+                        </div>
+                        <button class="settings-row danger" data-saction="delete-request"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg></div><div class="settings-row-text">Запрос на удаление</div><span class="settings-row-chevron">›</span></button>
+                        <button class="settings-row danger" id="logout-from-settings-v2"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l-5-5 5-5M5 12h12"/></svg></div><div class="settings-row-text">Выйти из аккаунта</div><span class="settings-row-chevron">›</span></button>
+                        <button class="settings-row" data-saction="stats"><div class="settings-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg></div><div class="settings-row-text">Ваша статистика</div><span class="settings-row-chevron">›</span></button>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">Информация</h3>
+                        <div class="info-row"><span>ID</span><strong id="info-id">—</strong></div>
+                        <div class="info-row"><span>Email</span><strong id="info-email">—</strong></div>
+                        <div class="info-row"><span>Создан</span><strong id="info-created">—</strong></div>
+                        <div class="info-row"><span>Последний вход</span><strong id="info-last-login">—</strong></div>
+                        <div class="info-row"><span>Провайдер</span><strong id="info-provider">—</strong></div>
+                        <div class="info-row"><span>Регион</span><strong id="info-region">—</strong></div>
+                        <div class="info-row"><span>2FA</span><strong id="info-2fa">—</strong></div>
+                        <div class="info-row"><span>Верификация</span><strong id="info-verified">—</strong></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-screen="home"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Главная</span></button>
+            <button class="nav-btn" data-screen="music"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>Музыка</span></button>
+            <button class="nav-btn" data-screen="channels"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg><span>Каналы</span></button>
+            <button class="nav-btn" data-screen="inbox"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>События</span></button>
+            <button class="nav-btn" data-screen="profile"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span>Профиль</span></button>
+        </nav>
+    </div>
+
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar-backdrop hidden" id="sidebar-backdrop"></div>
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header"><div class="brand-circle brand-circle-sm"><span class="brand-letter brand-letter-sm">ℓ</span></div><div class="sidebar-brand">listatread</div><button class="sidebar-close" id="sidebar-close">✕</button></div>
+    <div class="sidebar-status-row"><button class="status-current" id="status-current"><span class="status-dot" id="status-dot">👋</span><span class="status-label" id="status-label">Статус: По умолчанию</span><span class="chevron">▾</span></button></div>
+    <div class="sidebar-scroll">
+        <div class="sidebar-group"><div class="sidebar-group-title">Разделы</div>
+            <button class="sidebar-item" data-action="profile"><svg class="sidebar-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>Мой профиль</button>
+            <button class="sidebar-item" data-action="inbox"><svg class="sidebar-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Входящее</button>
+            <button class="sidebar-item" data-action="channels"><svg class="sidebar-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg>Каналы</button>
+            <button class="sidebar-item" data-action="music"><svg class="sidebar-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Музыка</button>
+        </div>
+        <div class="sidebar-group"><div class="sidebar-group-title">Сообщества</div>
+            <button class="sidebar-item" data-action="storr"><svg class="sidebar-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg>storr</button>
+        </div>
+        <div class="sidebar-group"><div class="sidebar-group-title">Настройки</div>
+            <button class="sidebar-item" data-action="settings"><svg class="sidebar-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Общие</button>
+            <button class="sidebar-item" data-action="privacy"><svg class="sidebar-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Приватность</button>
+            <button class="sidebar-item" data-action="lang"><svg class="sidebar-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>Язык</button>
+        </div>
+    </div>
+
+</aside>
+
+<!-- STORR (бывший prioriti) -->
+<div class="prioriti-backdrop hidden" id="prioriti-backdrop"></div>
+<aside class="prioriti-sheet" id="prioriti-sheet">
+    <div class="prioriti-handle"></div>
+    <div class="prioriti-header"><div class="prioriti-star"><svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></div><h2 class="prioriti-title">storr</h2><p class="prioriti-sub">Управление подарками и подписками</p></div>
+    <div class="prioriti-block"><h3 class="prioriti-block-title">Ваши подарки</h3><div class="prioriti-empty"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg><p>Вам еще не дарили подарки</p></div></div>
+    <div class="prioriti-block">
+        <button class="prioriti-card-row" id="storr-gifts-btn"><div class="prioriti-card-row-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg></div><div class="prioriti-card-row-text"><div class="prioriti-card-row-title">Магазин подарков и клигов</div><div class="prioriti-card-row-sub">Выберите подарок для друзей</div></div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button class="prioriti-card-row prioriti-chvad" id="storr-chvad-btn"><div class="prioriti-card-row-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></div><div class="prioriti-card-row-text"><div class="prioriti-card-row-title">listatread chvad</div><div class="prioriti-card-row-sub">Премиум-подписка</div></div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+    <p class="prioriti-terms">Покупая, вы соглашаетесь с <a href="#">условиями пользования</a></p>
+</aside>
+
+<!-- ACTIONSHEET -->
+<div class="actionsheet-backdrop hidden" id="actionsheet-backdrop"></div>
+<div class="actionsheet" id="actionsheet"><div class="actionsheet-handle"></div><h3 class="actionsheet-title" id="actionsheet-title">Действия</h3><div class="actionsheet-list" id="actionsheet-list"></div><button class="actionsheet-cancel" id="actionsheet-cancel">Отмена</button></div>
+
+<!-- LANG -->
+<div class="lang-modal hidden" id="lang-modal"><div class="lang-backdrop" id="lang-backdrop"></div><div class="lang-sheet"><div class="lang-sheet-header"><div class="lang-sheet-handle"></div><h3 class="lang-sheet-title">Выберите язык</h3></div><div class="lang-list" id="lang-list"></div></div></div>
+<div class="lang-modal hidden" id="region-modal"><div class="lang-backdrop" id="region-backdrop"></div><div class="lang-sheet"><div class="lang-sheet-header"><div class="lang-sheet-handle"></div><h3 class="lang-sheet-title">Выберите регион</h3></div><div class="lang-list" id="region-list"></div></div></div>
+<div class="qr-modal hidden" id="qr-modal">
+    <div class="qr-backdrop" id="qr-backdrop"></div>
+    <div class="qr-sheet">
+        <div class="lang-sheet-handle"></div>
+        <div class="qr-head">
+            <div class="qr-avatar" id="qr-avatar">ℓ</div>
+            <div class="qr-name" id="qr-name">Пользователь</div>
+            <div class="qr-username" id="qr-username">@user</div>
+            <div class="qr-pid-row">
+                <span class="qr-pid-label">ID профиля</span>
+                <span class="qr-pid" id="qr-pid">—</span>
+                <button class="qr-copy-btn" id="qr-copy-id" title="Скопировать">📋</button>
+            </div>
+        </div>
+        <div class="qr-frame" id="qr-frame">
+            <img id="qr-image" alt="QR" class="qr-image">
+            <div class="qr-fallback hidden" id="qr-fallback">QR недоступен</div>
+        </div>
+        <div class="qr-section-title">Поделитесь профилем</div>
+        <div class="qr-socials" id="qr-socials"></div>
+        <button class="qr-scan-btn" id="qr-scan-btn">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
+            Сканировать QR друга
+        </button>
+        <button class="btn-gray qr-cancel" id="qr-cancel">Отмена</button>
+    </div>
+</div>
+
+<!-- Сканер -->
+<div class="qr-modal hidden" id="qr-scan-modal">
+    <div class="qr-backdrop" id="qr-scan-backdrop"></div>
+    <div class="qr-sheet">
+        <div class="lang-sheet-handle"></div>
+        <h3 class="qr-scan-title">Наведите камеру на QR</h3>
+        <video id="qr-video" class="qr-video" playsinline muted></video>
+        <p class="qr-scan-hint" id="qr-scan-hint">Введите ID/ник вручную</p>
+        <input type="text" id="qr-scan-input" placeholder="ID профиля или @ник">
+        <div class="qr-scan-actions">
+            <button class="btn-gray" id="qr-scan-cancel">Отмена</button>
+            <button class="btn-primary" id="qr-scan-open">Открыть профиль</button>
+        </div>
+    </div>
+</div>
+
+<!-- ГЛОБАЛЬНЫЙ AUDIO -->
+<audio id="global-audio" preload="metadata" style="display:none"></audio>
+
+<!-- MINI PLAYER (над нижним меню) -->
+<div id="mini-player" class="mini-player">
+    <div class="mini-inner" id="mini-open">
+        <div class="mini-bars"><span></span><span></span><span></span></div>
+        <div class="mini-info">
+            <div class="mini-now">Сейчас играет</div>
+            <div class="mini-title" id="mini-title">—</div>
+            <div class="mini-meta">
+                <div class="mini-user-ava" id="mini-user-ava">?</div>
+                <span class="mini-user-name" id="mini-user-name">@user</span>
+                <span class="mini-from">from</span>
+                <div class="mini-channel-ava" id="mini-channel-ava">K</div>
+                <span class="mini-channel-name" id="mini-channel-name">—</span>
+                <span class="mini-open-hint">· на весь экран</span>
+            </div>
+        </div>
+        <button class="mini-play-btn" id="mini-play-btn" aria-label="Пауза"></button>
+    </div>
+    <div class="mini-progress"><div class="mini-progress-fill" id="mini-progress-fill"></div></div>
+</div>
+
+<!-- FULL PLAYER -->
+<div id="full-player" class="full-player hidden">
+    <div class="full-bg" id="full-bg"></div>
+    <div class="full-top">
+        <button class="full-close" id="full-close" aria-label="Свернуть">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="full-now">Сейчас играет</div>
+        <button class="full-more" id="full-more" aria-label="Действия">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+        </button>
+    </div>
+    <div class="full-body">
+        <div class="full-cover" id="full-cover">K</div>
+        <div class="full-channel-row">
+            <button class="full-channel-ava" id="full-channel-ava" type="button">K</button>
+            <div class="full-channel-name" id="full-channel-name">—</div>
+            <button class="full-channel-follow" id="full-channel-follow" aria-label="Подписаться"></button>
+        </div>
+
+        <div class="full-song-row">
+            <div class="full-bars"><span></span><span></span><span></span></div>
+            <div class="full-song-title" id="full-song-title">—</div>
+        </div>
+        <div class="full-user-row">
+            <button class="full-user-ava" id="full-user-ava" type="button">?</button>
+            <span class="full-user-name" id="full-user-name">@user</span>
+        </div>
+        <div class="full-progress-wrap">
+            <div class="full-progress" id="full-progress">
+                <div class="full-progress-fill" id="full-progress-fill"></div>
+            </div>
+            <div class="full-times"><span id="full-time-current">0:00</span><span id="full-time-total">0:00</span></div>
+        </div>
+        <div class="full-controls">
+            <button class="full-play" id="full-play" aria-label="Пауза"></button>
+        </div>
+        <div class="full-extras">
+            <button class="full-ctrl" id="full-like" aria-label="Лайк">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </button>
+            <button class="full-ctrl" id="full-save" aria-label="Сохранить">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
+            </button>
+            <button class="full-ctrl" id="full-gift" aria-label="Подарок">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg>
+            </button>
+            <button class="full-ctrl" id="full-repost" aria-label="Репост">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            </button>
+            <button class="full-ctrl" id="full-share" aria-label="Поделиться">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- FULLSCREEN VIDEO MODE -->
+<div id="video-fs" class="video-fs hidden">
+    <video id="video-fs-el" playsinline preload="auto"></video>
+    <div class="video-fs-top">
+        <button class="video-fs-back" id="video-fs-back" aria-label="Назад">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <button class="video-fs-more" id="video-fs-more" aria-label="Действия">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+        </button>
+    </div>
+</div>
+
+<script type="module" src="js/main.js?v=11"></script>
+<script>
+    (function() {
+        var redirectPath = sessionStorage.getItem('redirectPath');
+        if (redirectPath) {
+            sessionStorage.removeItem('redirectPath');
+            // Даем приложению время инициализироваться, затем восстанавливаем путь
+            setTimeout(function() {
+                window.history.replaceState(null, '', redirectPath);
+                // Если у тебя есть функция для обработки роутинга, вызови ее здесь
+                // Например: handleRoute(redirectPath);
+            }, 100);
+        }
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Redirecting...</title>
+    <script>
+        // Сохраняем запрошенный путь и перенаправляем на главную
+        sessionStorage.setItem('redirectPath', location.pathname + location.search + location.hash);
+        location.replace('/');
+    </script>
+</head>
+<body></body>
+</html>
