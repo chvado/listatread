@@ -4128,6 +4128,7 @@ async function enterApp(){
     maybeSendDailyNotification()
     heartbeat()
 }
+
 async function boot(){
     initTheme()
     setPageBg(true)
