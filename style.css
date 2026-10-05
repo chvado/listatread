@@ -1194,6 +1194,7 @@ textarea{line-height:1.5}
     transform:translateX(-50%);
     width:100%;
     max-width:420px;
+    margin:0;                    /* ← ДОБАВЛЕНО: сбрасываем -16px */
     z-index:100;
     display:flex;
     align-items:center;
