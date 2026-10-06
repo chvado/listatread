@@ -493,7 +493,56 @@ textarea{line-height:1.5}
 .actionsheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);z-index:400}
 .actionsheet{position:fixed;bottom:0;left:0;right:0;max-width:420px;margin:0 auto;background:#fff;border-radius:20px 20px 0 0;z-index:401;padding:12px 16px 24px;transform:translateY(100%);transition:transform .3s;box-shadow:0 -8px 32px rgba(0,0,0,.15)}
 .actionsheet.open{transform:translateY(0)}
-.actionsheet-handle{width:40px;height:4px;background:rgba(0,0,0,.15);border-radius:4px;margin:0 auto 12px}
+.actionsheet-handle,
+.prioriti-handle,
+.lang-sheet-handle,
+.code-modal-handle,
+.share-handle{
+    position:sticky;        /* ← остаётся наверху, не скроллится с контентом */
+    top:0;
+    z-index:5;
+    width:52px;
+    height:6px;
+    border-radius:100px;
+    background:rgba(120,120,128,.42);
+    margin:10px auto 16px;
+    cursor:grab;
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+    flex-shrink:0;
+    transition:transform .18s var(--ease), background .18s;
+}
+.actionsheet-handle:active,
+.prioriti-handle:active,
+.lang-sheet-handle:active,
+.code-modal-handle:active,
+.share-handle:active{
+    transform:scaleY(1.35);
+    background:rgba(120,120,128,.65);
+}
+/* Плавный возврат на место */
+.actionsheet,
+.prioriti-sheet,
+.lang-sheet,
+.code-modal-sheet{
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+}
+
+/* Для lang/region — только список скроллится, хендл зафиксирован */
+.lang-sheet{
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+}
+.lang-sheet-header{
+    flex-shrink:0;
+}
+.lang-list{
+    overflow-y:auto;
+    flex:1;
+    min-height:0;
+}
 .actionsheet-title{font-size:15px;font-weight:700;text-align:center;padding:6px 0 12px}
 .actionsheet-list{display:flex;flex-direction:column;gap:4px}
 .actionsheet-item{display:flex;align-items:center;gap:14px;padding:14px 12px;background:transparent;border:none;border-radius:12px;font-family:inherit;font-size:15px;font-weight:500;color:var(--text);cursor:pointer;text-align:left;width:100%}
@@ -2390,6 +2439,12 @@ html[data-theme="dark"] .btn-star-round{
 .actionsheet.dragging,
 .prioriti-sheet.dragging,
 .lang-sheet.dragging,
+.code-modal-sheet.dragging,
+.share-sheet.dragging{
+    transition:none !important;
+}
+.prioriti-sheet.dragging,
+.lang-sheet.dragging,
 .code-modal-sheet.dragging{
     transition:none !important;
 }
@@ -2628,6 +2683,7 @@ html[data-theme="dark"] .search-person-bio{
 ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px}
 ::selection{background:rgba(10,132,255,.25)}
 
+
 /* ============================================================
    BOOT SCREEN — ВСЕГДА ТЁМНЫЙ (независимо от темы)
 ============================================================ */
@@ -2845,7 +2901,7 @@ html[data-theme="dark"] #register-screen #reg-code{
     background:var(--surface-2);
     color:#fff;
 }
-.sidebar,.actionsheet,.prioriti-sheet,.lang-sheet{touch-action:pan-y}
+.sidebar{touch-action:pan-y}
 .reg-step,.steps-viewport,.app-screen,.main-app,.screen{overflow-x:hidden}
 /* ============================================================
    REGISTER-LANDING — ВСЕГДА СВЕТЛЫЙ
@@ -2872,3 +2928,418 @@ html[data-theme="dark"] #register-screen #reg-code{
 #register-landing-screen .reg-landing-small{
     color:rgba(0,0,0,.4) !important;
 }
+/* ============================================================
+   SHARE SHEET — единый компонент «Поделиться»
+============================================================ */
+.share-modal{position:fixed;inset:0;z-index:900;display:flex;align-items:flex-end;justify-content:center}
+.share-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(10px);animation:fadeIn .25s var(--ease)}
+.share-sheet{
+    position:relative;width:100%;max-width:480px;background:var(--bg);
+    border-radius:26px 26px 0 0;padding:0 20px 22px;
+    max-height:92dvh;overflow-y:auto;
+    animation:slideUp .34s var(--ease);
+    transition:transform .28s var(--ease);
+}
+.share-sheet.dragging{transition:none}
+
+
+/* --- Видео-баннер --- */
+.share-video-banner{
+    display:flex;gap:12px;align-items:flex-start;
+    margin-bottom:16px;
+}
+.share-video-el{
+    width:96px;height:170px;border-radius:14px;
+    object-fit:cover;background:#000;flex-shrink:0;
+    box-shadow:0 8px 24px rgba(0,0,0,.25);
+}
+.share-video-meta{flex:1;min-width:0;padding-top:4px}
+.share-video-title{
+    font-size:16px;font-weight:800;line-height:1.25;
+    overflow:hidden;text-overflow:ellipsis;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+    margin-bottom:8px;
+}
+.share-video-sub{
+    display:flex;flex-wrap:wrap;align-items:center;gap:5px;
+    font-size:12px;color:var(--text-secondary);line-height:1.5;
+}
+.share-from{opacity:.6}
+.share-mini-ava,.share-mini-ch{
+    width:18px;height:18px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:9px;font-weight:800;color:#fff;overflow:hidden;flex-shrink:0;
+    background:linear-gradient(135deg,#ffd60a,#ff375f);
+}
+.share-mini-ch{border-radius:5px;background:linear-gradient(135deg,#ff9f0a,#ff375f)}
+.share-mini-ava img,.share-mini-ch img{width:100%;height:100%;object-fit:cover}
+
+/* --- Трек-баннер --- */
+.share-track-banner{
+    position:relative;width:100%;aspect-ratio:1/1;
+    border-radius:20px;overflow:hidden;
+    margin-bottom:16px;background:#111;color:#fff;
+    box-shadow:0 12px 32px rgba(0,0,0,.28);
+}
+.share-track-bg{
+    position:absolute;inset:0;
+    background-size:cover;background-position:center;
+    filter:blur(4px) saturate(1.4);
+    transform:scale(1.25);
+}
+/* Логотип listatread в левом верхнем углу баннера трека */
+.share-track-banner::before{
+    content:'ℓ';
+    position:absolute;
+    left:14px;
+    top:14px;
+    z-index:3;
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:#000;
+    color:#fff;
+    font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', serif;
+    font-size:32px;
+    font-weight:400;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding-bottom:6px; /* визуальное центрирование буквы ℓ */
+    box-sizing:border-box;
+    box-shadow:0 4px 14px rgba(0,0,0,.35);
+    pointer-events:none;
+    user-select:none;
+}
+.share-track-content{
+    position:absolute;inset:0;z-index:2;
+    display:flex;flex-direction:column;justify-content:flex-end;
+    padding:20px;gap:6px;
+    background:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.7) 100%);
+}
+.share-track-title{
+    font-size:22px;font-weight:900;line-height:1.2;
+    text-shadow:0 2px 10px rgba(0,0,0,.6);
+    overflow:hidden;text-overflow:ellipsis;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+}
+.share-track-sub{
+    display:flex;flex-wrap:wrap;align-items:center;gap:5px;
+    font-size:12px;opacity:.92;
+}
+.share-track-download{
+    position:absolute;right:14px;top:14px;z-index:3;   /* ← bottom → top */
+    width:44px;height:44px;border-radius:50%;
+    border:none;background:rgba(0,0,0,.45);             /* темнее — видно на светлом фоне аватарки */
+    color:#fff;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    transition:background .2s,transform .15s;
+    box-shadow:0 4px 14px rgba(0,0,0,.3);
+}
+.share-track-download:active{transform:scale(.92);background:rgba(255,255,255,.35)}
+
+/* --- Профиль --- */
+.share-profile-banner{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    padding:14px 0 18px;
+}
+.share-profile-ava{
+    width:88px;height:88px;border-radius:50%;
+    background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+    color:#fff;font-size:34px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;margin-bottom:6px;
+}
+.share-profile-ava img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.share-profile-name{font-size:20px;font-weight:800}
+.share-profile-username{font-size:13px;color:var(--text-secondary)}
+
+/* --- Друзья --- */
+.share-friends-label{
+    font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.06em;color:var(--text-tertiary);
+    padding:6px 4px 10px;
+}
+.share-friends-row{
+    display:flex;gap:14px;overflow-x:auto;
+    padding:4px 2px 12px;
+    scrollbar-width:none;
+}
+.share-friends-row::-webkit-scrollbar{display:none}
+.share-friend{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    width:66px;flex-shrink:0;background:transparent;border:none;
+    font-family:inherit;cursor:pointer;
+}
+.share-friend-ava{
+    width:56px;height:56px;border-radius:50%;
+    background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+    color:#fff;font-size:22px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;position:relative;
+    border:3px solid transparent;
+    transition:border-color .2s,transform .18s;
+}
+.share-friend-ava img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.share-friend.selected .share-friend-ava{
+    border-color:var(--blue);
+    transform:scale(1.04);
+}
+.share-friend.selected .share-friend-ava::after{
+    content:'✓';position:absolute;right:-2px;bottom:-2px;
+    width:20px;height:20px;border-radius:50%;
+    background:var(--blue);color:#fff;font-size:12px;
+    display:flex;align-items:center;justify-content:center;
+    border:2px solid var(--bg);
+}
+.share-friend-name{
+    font-size:11px;font-weight:600;text-align:center;
+    max-width:66px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    color:var(--text-secondary);
+}
+.share-friend.selected .share-friend-name{color:var(--blue)}
+.share-send-direct{
+    width:100%;padding:14px;border:none;border-radius:14px;
+    background:var(--blue);color:#fff;
+    font-family:inherit;font-size:15px;font-weight:700;
+    cursor:pointer;margin-bottom:18px;transition:opacity .2s;
+}
+.share-send-direct:disabled{opacity:.4;cursor:not-allowed}
+
+/* --- QR --- */
+.share-qr-banner{
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    padding:20px;border-radius:20px;
+    margin-bottom:16px;
+    background-size:300% 300%;
+    background-position:0% 50%;
+    animation:qrBgShift 8s ease-in-out infinite;
+    cursor:pointer;
+    transition:transform .2s;
+}
+.share-qr-banner:active{transform:scale(.98)}
+.share-qr-img{
+    width:170px;height:170px;background:#fff;
+    border-radius:14px;padding:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,.2);
+}
+.share-qr-hint{font-size:12px;color:#fff;font-weight:600;opacity:.95}
+
+/* --- Соцсети — полоса кружков --- */
+.share-socials-row{
+    display:flex;gap:14px;overflow-x:auto;
+    padding:6px 2px 10px;
+    scrollbar-width:none;
+}
+.share-socials-row::-webkit-scrollbar{display:none}
+.share-social-circle{
+    width:56px;height:56px;border-radius:50%;
+    border:none;cursor:pointer;color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;position:relative;
+    transition:transform .15s;
+    box-shadow:0 4px 14px rgba(0,0,0,.12);
+}
+.share-social-circle:active{transform:scale(.9)}
+.share-social-circle svg{width:24px;height:24px}
+.share-social-label{
+    position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);
+    font-size:9px;font-weight:600;color:var(--text-secondary);
+    white-space:nowrap;pointer-events:none;
+}
+.share-socials-row{padding-bottom:26px}
+.share-cancel{padding:14px;font-size:15px}
+
+/* ============================================================
+   ПОЛЛ В КАНАЛЕ
+============================================================ */
+.poll-builder{
+    background:var(--surface-2);border-radius:var(--radius-md);
+    padding:12px;margin:10px 0;
+}
+.poll-builder-head{
+    display:flex;align-items:center;gap:8px;
+    margin-bottom:10px;font-size:13px;font-weight:700;
+}
+.poll-mode-btn{
+    padding:5px 12px;border-radius:100px;
+    border:1.5px solid transparent;background:#fff;
+    font-family:inherit;font-size:12px;font-weight:600;
+    color:var(--text-secondary);cursor:pointer;
+}
+.poll-mode-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.poll-options{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.poll-option-row{display:flex;gap:6px;align-items:center}
+.poll-option-row input{
+    flex:1;padding:10px 12px;font-size:13px;
+    background:#fff;border-radius:10px;
+}
+.poll-option-remove{
+    width:30px;height:30px;border-radius:50%;border:none;
+    background:rgba(255,59,48,.12);color:var(--red);cursor:pointer;
+    font-size:14px;flex-shrink:0;
+}
+.poll-add-btn{
+    padding:8px 12px;background:transparent;border:1.5px dashed var(--border-strong);
+    border-radius:10px;font-family:inherit;font-size:12px;font-weight:700;
+    color:var(--blue);cursor:pointer;width:100%;
+}
+.poll-quiz-correct{margin-top:8px;font-size:12px}
+.poll-quiz-correct select{
+    margin-top:4px;width:100%;padding:8px 10px;font-size:13px;
+    border-radius:8px;background:#fff;
+}
+
+/* --- Отрисовка опроса в посте --- */
+/* --- Отрисовка опроса в посте --- */
+.poll-view{
+    background:var(--surface-3);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:12px;
+    margin-top:10px;
+}
+.poll-view-title{
+    font-size:14px;font-weight:700;
+    margin-bottom:10px;color:var(--text);
+}
+.poll-view-options{display:flex;flex-direction:column;gap:6px}
+.poll-view-option{
+    position:relative;
+    padding:11px 12px;
+    border-radius:10px;
+    background:var(--bg);              /* контрастирует с --surface-3 */
+    border:1.5px solid var(--border-strong);
+    cursor:pointer;
+    font-family:inherit;
+    font-size:13px;
+    text-align:left;
+    color:var(--text);
+    overflow:hidden;
+    isolation:isolate;
+    transition:border-color .18s,background .18s;
+}
+.poll-view-option:hover{
+    background:var(--surface-2);
+}
+.poll-view-option.selected{
+    border-color:var(--blue);
+    background:var(--bg);
+}
+.poll-view-option.correct{
+    border-color:var(--green);
+    background:var(--bg);
+}
+.poll-view-option.wrong{
+    border-color:var(--red);
+    background:var(--bg);
+}
+.poll-view-fill{
+    position:absolute;
+    left:0;top:0;bottom:0;
+    background:rgba(10,132,255,.28);   /* заметнее, чем .14 */
+    border-radius:8px 0 0 8px;
+    transition:width .35s;
+    z-index:-1;                        /* под текстом, но над фоном кнопки */
+}
+.poll-view-option.correct .poll-view-fill{ background:rgba(48,209,88,.32) }
+.poll-view-option.wrong   .poll-view-fill{ background:rgba(255,59,48,.32) }
+
+.poll-view-label{
+    position:relative;
+    z-index:1;
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    align-items:center;
+}
+.poll-view-pct{
+    font-weight:800;
+    color:var(--text);
+    font-variant-numeric:tabular-nums;
+    flex-shrink:0;
+}
+.poll-view-meta{
+    margin-top:8px;
+    font-size:11px;
+    color:var(--text-secondary);
+    font-weight:600;
+}
+
+/* Тёмная тема — фикс от «белых кнопок» */
+html[data-theme="dark"] .poll-view-option{
+    background:rgba(255,255,255,.06);
+    border-color:rgba(255,255,255,.16);
+}
+html[data-theme="dark"] .poll-view-option:hover{
+    background:rgba(255,255,255,.12);
+}
+html[data-theme="dark"] .poll-view-option.selected,
+html[data-theme="dark"] .poll-view-option.correct,
+html[data-theme="dark"] .poll-view-option.wrong{
+    background:rgba(255,255,255,.08);
+}
+html[data-theme="dark"] .poll-view-fill{
+    background:rgba(10,132,255,.42);
+}
+html[data-theme="dark"] .poll-view-option.correct .poll-view-fill{ background:rgba(48,209,88,.45) }
+html[data-theme="dark"] .poll-view-option.wrong   .poll-view-fill{ background:rgba(255,59,48,.45) }
+
+/* ============================================================
+   КНОПКА «НЕИНТЕРЕСНО» И ДР. — только в главной
+============================================================ */
+.feed-more-menu-avatar{
+    width:36px;height:36px;border-radius:50%;
+    background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    font-weight:800;overflow:hidden;flex-shrink:0;
+}
+.feed-more-menu-avatar img{width:100%;height:100%;object-fit:cover}
+
+/* ============================================================
+   ФИКС ПЛАШКИ LIVE В КАНАЛЕ
+============================================================ */
+.active-live-card{
+    margin:0 0 16px !important;
+    padding:16px !important;
+}
+.active-live-card .active-live-row{min-height:56px}
+
+/* ============================================================
+   УБИРАЕМ ЛАГИ FULL PLAYER — отключаем тяжёлые анимации
+============================================================ */
+.full-player .full-bg{
+    animation:fullBgMove 14s ease-in-out infinite !important;
+    will-change:auto;
+}
+@media (prefers-reduced-motion: reduce){
+    .full-player .full-bg, .share-qr-banner{animation:none !important}
+}
+
+/* ============================================================
+   СКРЫТИЕ ЛАЙКА В LIVE CHAT
+============================================================ */
+.feed-post[data-live="1"] .feed-action[data-like]{display:none}
+.feed-post[data-live="1"] .feed-action[data-comment]{display:none}
+
+/* Гарантированно возвращаем лайк/коммент в профиле и каналах */
+.profile-content .feed-post:not([data-live="1"]) .feed-action[data-like],
+.profile-content .feed-post:not([data-live="1"]) .feed-action[data-comment],
+#ch-posts-list .feed-post:not([data-live="1"]) .feed-action[data-like],
+#ch-posts-list .feed-post:not([data-live="1"]) .feed-action[data-comment]{
+    display:flex !important;
+}
+
+/* Точное скрытие только у постов live-чата */
+.feed-post[data-live="1"] .feed-action[data-like],
+.feed-post[data-live="1"] .feed-action[data-comment]{
+    display:none !important;
+}
+
+/* ============================================================
+   ТАБЫ ПРОФИЛЯ — всегда видимы
+============================================================ */
+#profile-tabs{display:flex !important}

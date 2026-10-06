@@ -247,13 +247,9 @@
                 <div class="composer-footer">
                     <div class="composer-tools">
                         <button class="tool-btn" id="attach-photo" title="Фото"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg></button>
-                        <button class="tool-btn" id="attach-audio" title="Музыка"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></button>
-                        <button class="tool-btn" id="attach-video" title="Видео"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M22 8l-6 4 6 4z"/></svg></button>
                         <button class="tool-btn" id="add-emoji" title="Смайл"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="0.8" fill="currentColor"/><circle cx="15" cy="10" r="0.8" fill="currentColor"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg></button>
                         <button class="tool-btn" id="add-mention" title="Отметить"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg></button>
                         <input type="file" id="photo-input" accept="image/*" hidden>
-                        <input type="file" id="audio-input" accept="audio/*" hidden>
-                        <input type="file" id="video-input" accept="video/*" hidden>
                     </div>
                     <button class="btn-primary btn-send-icon" id="post-btn" aria-label="Опубликовать">
                         <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
@@ -273,7 +269,7 @@
                 <div class="profile-hero"><div class="profile-avatar-lg" id="profile-avatar">ℓ</div><h2 class="profile-name" id="profile-name">Пользователь</h2><p class="profile-username" id="profile-username">@username</p><p class="profile-bio" id="profile-bio"></p></div>
                 <div class="profile-stats"><div class="stat"><strong id="stat-followers">0</strong><span>подписчики</span></div><div class="stat"><strong id="stat-posts">0</strong><span>посты</span></div><div class="stat"><strong id="stat-subs">0</strong><span>подписки</span></div></div>
                 <div id="profile-actions"></div>
-                <div class="profile-tabs" id="profile-tabs"><button class="profile-tab active" data-ptab="reposts">Репосты</button><button class="profile-tab" data-ptab="posts">Посты</button><button class="profile-tab" data-ptab="gifts">Подарки</button><button class="profile-tab" data-ptab="tracks">Треки</button><button class="profile-tab" data-ptab="channels">Каналы</button><button class="profile-tab" data-ptab="liked">Понравилось</button></div>
+                <div class="profile-tabs" id="profile-tabs"><button class="profile-tab active" data-ptab="reposts">Репосты</button><button class="profile-tab" data-ptab="posts">Посты</button><button class="profile-tab" data-ptab="gifts">Подарки</button><button class="profile-tab" data-ptab="tracks">Треки</button><button class="profile-tab" data-ptab="channels">Каналы</button><button class="profile-tab" data-ptab="shop">Магазин</button><button class="profile-tab" data-ptab="liked">Понравилось</button></div>
                 <div class="profile-content" id="profile-content"></div>
                 <div class="new-post-btn-wrap hidden" id="new-post-wrap"><button class="new-post-btn" id="new-post-btn"><span class="new-post-btn-bg"></span><span class="new-post-btn-content"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Новый пост</span></button></div>
             </div>
@@ -303,8 +299,14 @@
                     <button class="btn-primary settings-save" id="save-general">Сохранить изменения</button>
                 </div>
                 <div class="settings-panel" data-panel="privacy">
-                    <div class="settings-group"><h3 class="settings-group-title">Аккаунт</h3><label class="toggle-row"><span>Приватный аккаунт</span><input type="checkbox" class="toggle" data-set="private"></label><label class="toggle-row"><span>Разрешить подписываться</span><input type="checkbox" class="toggle" data-set="allow_follow" checked></label><label class="toggle-row"><span>Показывать подписки</span><input type="checkbox" class="toggle" data-set="show_following" checked></label><label class="toggle-row"><span>Показывать подписчиков</span><input type="checkbox" class="toggle" data-set="show_followers" checked></label></div>
-                    <div class="settings-group"><h3 class="settings-group-title">Присутствие</h3><label class="toggle-row"><span>Показывать статус онлайн</span><input type="checkbox" class="toggle" data-set="show_online" checked></label><label class="toggle-row"><span>Показывать последний вход</span><input type="checkbox" class="toggle" data-set="show_last_seen"></label></div>
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">Приватность профиля</h3>
+                        <label class="toggle-row"><span>Скрывать посты</span><input type="checkbox" class="toggle" data-priv="hide_posts"></label>
+                        <label class="toggle-row"><span>Скрывать репосты</span><input type="checkbox" class="toggle" data-priv="hide_reposts"></label>
+                        <label class="toggle-row"><span>Скрывать мои лайки</span><input type="checkbox" class="toggle" data-priv="hide_likes"></label>
+                        <label class="toggle-row"><span>Скрывать каналы, в которых я состою</span><input type="checkbox" class="toggle" data-priv="hide_channels"></label>
+                        <label class="toggle-row"><span>Скрывать подарки</span><input type="checkbox" class="toggle" data-priv="hide_gifts"></label>
+                    </div>
                     <button class="btn-primary settings-save" id="save-privacy">Сохранить настройки</button>
                 </div>
                 <div class="settings-panel" data-panel="additional">
@@ -576,7 +578,88 @@
         </button>
     </div>
 </div>
+<!-- SHARE SHEET (посты / треки / профили) -->
+<div class="share-modal hidden" id="share-modal">
+    <div class="share-backdrop" id="share-backdrop"></div>
+    <div class="share-sheet" id="share-sheet">
+        <div class="share-handle" id="share-handle"></div>
 
+        <!-- Баннер видео (вертикальное превью) -->
+        <div class="share-video-banner hidden" id="share-video-banner">
+            <video id="share-video-el" class="share-video-el" playsinline muted loop autoplay></video>
+            <div class="share-video-meta">
+                <div class="share-video-title" id="share-video-title">—</div>
+                <div class="share-video-sub" id="share-video-sub">
+                    <span>пост</span>
+                    <span class="share-mini-ava" id="share-video-user-ava">?</span>
+                    <span id="share-video-user-name">@user</span>
+                    <span class="share-from">from</span>
+                    <span class="share-mini-ch" id="share-video-ch-ava">K</span>
+                    <span id="share-video-ch-name">Канал</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Баннер трека (квадрат, скачать) -->
+        <div class="share-track-banner hidden" id="share-track-banner">
+            <div class="share-track-bg" id="share-track-bg"></div>
+            <div class="share-track-content">
+                <div class="share-track-title" id="share-track-title">—</div>
+                <div class="share-track-sub" id="share-track-sub">
+                    <span>прослушайте трек</span>
+                    <span class="share-mini-ava" id="share-track-user-ava">?</span>
+                    <span id="share-track-user-name">@user</span>
+                    <span class="share-from">from</span>
+                    <span class="share-mini-ch" id="share-track-ch-ava">K</span>
+                    <span id="share-track-ch-name">—</span>
+                </div>
+            </div>
+            <button class="share-track-download" id="share-track-download" title="Скачать в галерею">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M6 11l6 6 6-6M5 21h14"/></svg>
+            </button>
+        </div>
+
+        <!-- Профиль (только имя) -->
+        <div class="share-profile-banner hidden" id="share-profile-banner">
+            <div class="share-profile-ava" id="share-profile-ava">ℓ</div>
+            <div class="share-profile-name" id="share-profile-name">Пользователь</div>
+            <div class="share-profile-username" id="share-profile-username">@user</div>
+        </div>
+
+        <!-- Друзья — только подписки -->
+        <div class="share-friends-label">Отправить подписчикам</div>
+        <div class="share-friends-row" id="share-friends-row"></div>
+        <button class="share-send-direct" id="share-send-direct" disabled>Отправить в директ</button>
+
+        <!-- QR баннер -->
+        <div class="share-qr-banner animated" id="share-qr-banner">
+            <img class="share-qr-img" id="share-qr-img" alt="QR">
+            <div class="share-qr-hint" id="share-qr-hint">Отсканируйте, чтобы открыть</div>
+        </div>
+
+        <!-- Соцсети — полоса кружков с горизонтальным скроллом -->
+        <div class="share-socials-row" id="share-socials-row"></div>
+
+        <button class="btn-gray share-cancel" id="share-cancel">Отмена</button>
+    </div>
+</div>
+
+<!-- ПОЛЛ В КАНАЛЕ -->
+<template id="tpl-poll-builder">
+    <div class="poll-builder">
+        <div class="poll-builder-head">
+            <span>Опрос</span>
+            <button type="button" class="poll-mode-btn" data-poll-mode="vote">Голосование</button>
+            <button type="button" class="poll-mode-btn" data-poll-mode="quiz">Викторина</button>
+        </div>
+        <div class="poll-options" id="poll-options"></div>
+        <button type="button" class="poll-add-btn" id="poll-add-btn">+ Добавить пункт</button>
+        <div class="poll-quiz-correct" id="poll-quiz-correct" style="display:none">
+            <label>Правильный ответ:</label>
+            <select id="poll-correct-select"></select>
+        </div>
+    </div>
+</template>
 <script type="module" src="js/main.js?v=11"></script>
 <script>
     (function() {
