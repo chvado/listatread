@@ -3445,7 +3445,16 @@ html[data-theme="dark"] .poll-view-option.wrong   .poll-view-fill{ background:rg
 .feed-post[data-live="1"] .feed-action[data-comment]{
     display:none !important;
 }
-
+.sys-notif-meta {
+    font-size: 13px;
+    color: rgba(255,255,255,.85);
+    margin-top: 6px;
+    padding: 8px 10px;
+    background: rgba(255,255,255,.06);
+    border-radius: 8px;
+    line-height: 1.5;
+}
+.sys-notif-meta b { color: #fff; font-weight: 700; }
 /* ============================================================
    ТАБЫ ПРОФИЛЯ — всегда видимы
 ============================================================ */

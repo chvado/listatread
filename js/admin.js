@@ -155,28 +155,28 @@ export async function openSystemNotifications(){
         list.innerHTML = notifs.map(n => {
             const meta = n.meta || {}
             const isBan = n.type === 'ban' || n.type === 'warning'
+            const metaDetails = isBan
+                ? `
+            ${meta.reason ? `<div class="sys-notif-meta"><b>Причина:</b> ${escapeHtml(meta.reason)}</div>` : ''}
+            ${meta.comment ? `<div class="sys-notif-meta"><b>Комментарий:</b> ${escapeHtml(meta.comment)}</div>` : ''}
+            ${meta.permanent ? `<div class="sys-notif-meta"><b>Срок:</b> бессрочно</div>` : (meta.until ? `<div class="sys-notif-meta"><b>Разблокировка:</b> ${escapeHtml(formatBanUntil(meta.until))}</div>` : '')}
+        `
+                : ''
             return `
-                <div class="sys-notif-item ${n.is_read ? '' : 'unread'}">
-                    <div class="sys-notif-title">${escapeHtml(n.title)}</div>
-                    <div class="sys-notif-body">${escapeHtml(n.body || '')}</div>
-                    <div class="sys-notif-time">${new Date(n.created_at).toLocaleString('ru-RU')}</div>
-                    ${isBan ? `<button class="sys-notif-more" data-more="${n.id}">Больше</button>` : ''}
-                </div>
-            `
+        <div class="sys-notif-item ${n.is_read ? '' : 'unread'}">
+            <div class="sys-notif-title">${escapeHtml(n.title)}</div>
+            <div class="sys-notif-body">${escapeHtml(n.body || '')}</div>
+            ${metaDetails}
+            <div class="sys-notif-time">${new Date(n.created_at).toLocaleString('ru-RU')}</div>
+        </div>
+    `
         }).join('')
 
         // Отмечаем прочитанными
         const ids = notifs.filter(n => !n.is_read).map(n => n.id)
         if(ids.length) supabase.from('notifications').update({ is_read:true }).in('id', ids).then(()=>{})
 
-        list.querySelectorAll('[data-more]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const n = notifs.find(x => x.id === btn.dataset.more)
-                if(!n) return
-                const meta = n.meta || {}
-                showFullBanNotice(n, meta)
-            })
-        })
+
     } catch(e){ list.innerHTML = `<p class="empty">Ошибка: ${e.message}</p>` }
 
     $('sys-notif-close')?.addEventListener('click', () => {
