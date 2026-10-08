@@ -211,7 +211,7 @@ function computeDisplayStatus(p){ return p?.status || 'default' }
 function isVideoUrl(u){ return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u||'') }
 function isAudioUrl(u){ return /\.(mp3|wav|ogg|m4a|aac|flac|opus)(\?|$)/i.test(u||'') }
 function isImageUrl(u){ return u && !isVideoUrl(u) && !isAudioUrl(u) }
-function adminBadge(isAdmin, size = ''){ return isAdmin ? `<span class="admin-badge ${size}" title="Администратор">🛡</span>` : '' }
+function adminBadge(isAdmin, size = ''){ return isAdmin ? `<span class="admin-badge ${size}" title="Администратор">🦝</span>` : '' }
 
 function loadingBlock(text = ''){
     return `<div class="loading-block"><span class="loading-spinner-inline"></span>${text ? escapeHtml(text) : ''}</div>`
