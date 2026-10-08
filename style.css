@@ -1018,23 +1018,15 @@ textarea{line-height:1.5}
 .full-player.hidden{display:none}
 .full-bg{
     position:absolute;
-    inset:0;                          /* ← было -20% — режем вдвое */
+    inset:0;
     pointer-events:none;
-    /* Никакого blur — градиенты уже размытые, рисуются в 10× быстрее */
-    /* Убираем fullBgMove (transform + rotate = перерастр слоя каждый кадр) */
-    animation:fullBgShift 24s ease-in-out infinite;
-    will-change:background-position;
-    transform: translateZ(0);          /* форсим GPU-слой, но без пересоздания */
-    opacity:1;
-    animation:none !important;
-}
-@keyframes fullBgMove{
-    0%,100%{transform:scale(1) rotate(0)}
-    50%{transform:scale(1.15) rotate(12deg)}
-}
-@keyframes fullBgShift{
-    0%,100%{ background-position:0% 50% }
-    50%    { background-position:100% 50% }
+    /* Градиент уже сам по себе мягкий — blur не нужен */
+    /* Никаких animation / transform / will-change / filter */
+    background:
+            radial-gradient(circle at 20% 20%, #ff9f0a 0%, transparent 45%),
+            radial-gradient(circle at 80% 30%, #ff375f 0%, transparent 45%),
+            radial-gradient(circle at 50% 85%, #bf5af2 0%, transparent 55%);
+    transition: background .45s ease;   /* плавная смена цвета при перезаходе */
 }
 .full-top{
     position:relative;display:flex;align-items:center;justify-content:space-between;
@@ -1233,9 +1225,7 @@ textarea{line-height:1.5}
 .full-player{
     padding-top:0;
 }
-.full-player .full-bg{
-    inset:-25%;
-}
+
 .lang-modal{z-index:850}
 
 /* Верхняя панель — плавное скрытие/появление */
@@ -3418,16 +3408,7 @@ html[data-theme="dark"] .poll-view-option.wrong   .poll-view-fill{ background:rg
 }
 .active-live-card .active-live-row{min-height:56px}
 
-/* ============================================================
-   УБИРАЕМ ЛАГИ FULL PLAYER — отключаем тяжёлые анимации
-============================================================ */
-.full-player .full-bg{
-    animation:fullBgMove 14s ease-in-out infinite !important;
-    will-change:auto;
-}
-@media (prefers-reduced-motion: reduce){
-    .full-player .full-bg, .share-qr-banner{animation:none !important}
-}
+
 
 /* ============================================================
    СКРЫТИЕ ЛАЙКА В LIVE CHAT
@@ -3467,3 +3448,95 @@ body.full-player-open .bottom-nav{
     backdrop-filter:none !important;
     -webkit-backdrop-filter:none !important;
 }
+
+/* ============================================================
+   ЧЕКБОКСЫ СОГЛАСИЙ (шаг 1 регистрации)
+============================================================ */
+.reg-consent-list{display:flex;flex-direction:column;gap:10px;margin:14px 0 8px}
+.reg-consent{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--surface-2);border:2px solid transparent;border-radius:12px;cursor:pointer;font-size:13px;line-height:1.45;color:var(--text);transition:all .18s;font-family:inherit}
+.reg-consent:active{transform:scale(.99)}
+.reg-consent input[type="checkbox"]{appearance:none;-webkit-appearance:none;width:20px !important;height:20px !important;min-width:20px;padding:0 !important;margin:0;flex-shrink:0;background:#fff !important;border:1.5px solid var(--border-strong) !important;border-radius:6px !important;box-shadow:none !important;cursor:pointer;position:relative;transition:all .15s}
+.reg-consent input[type="checkbox"]:checked{background:var(--blue) !important;border-color:var(--blue) !important}
+.reg-consent input[type="checkbox"]:checked::after{content:'';position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.reg-consent.checked{background:rgba(10,132,255,.08)}
+.reg-consent a{color:var(--blue);text-decoration:underline;font-weight:600}
+
+/* ============================================================
+   ПОДСКАЗКИ ПОД ПОЛЯМИ РЕГИСТРАЦИИ
+============================================================ */
+.step-note{font-size:12px;color:var(--text-secondary);line-height:1.5;padding:9px 12px;background:var(--surface-2);border-radius:10px;margin:6px 0 4px}
+.step-note.info{background:rgba(10,132,255,.08);color:var(--blue);font-weight:500}
+.step-note.warn{background:rgba(255,159,10,.1);color:#ff9f0a}
+
+/* ============================================================
+   ВЫРАВНИВАНИЕ input[type="date"]
+============================================================ */
+#reg-birthday{width:100%;padding:16px 18px;font-size:16px;font-family:inherit;background:var(--surface-2);border:1px solid transparent;border-radius:var(--radius-sm);color:var(--text);outline:none;transition:all .2s var(--ease);appearance:none;-webkit-appearance:none;min-height:54px;box-sizing:border-box}
+#reg-birthday:focus{background:#fff;border-color:var(--blue);box-shadow:0 0 0 4px rgba(10,132,255,.15)}
+html[data-theme="dark"] #reg-birthday{background:var(--surface-2);color:#fff}
+html[data-theme="dark"] #reg-birthday:focus{background:#1c1c1e}
+
+/* ============================================================
+   ФИОЛЕТОВАЯ ГАЛОЧКА АДМИНА
+============================================================ */
+.admin-badge{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:linear-gradient(135deg,#bf5af2,#8e44ff);color:#fff;font-size:9px;font-weight:900;line-height:1;margin-left:4px;vertical-align:middle;flex-shrink:0;box-shadow:0 0 8px rgba(191,90,242,.5);user-select:none;pointer-events:none}
+.admin-badge.big{width:17px;height:17px;font-size:11px}
+.admin-badge.small{width:13px;height:13px;font-size:8px}
+.feed-post-name .admin-badge,.lr-msg-text .admin-badge,.profile-name .admin-badge{vertical-align:middle;margin-left:5px}
+html[data-theme="dark"] .admin-badge{box-shadow:0 0 10px rgba(191,90,242,.7)}
+
+/* ============================================================
+   REPORT MODAL — жалоба
+============================================================ */
+.report-modal{position:fixed;inset:0;z-index:1500;display:flex;align-items:flex-end;justify-content:center}
+.report-modal.hidden{display:none}
+.report-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);animation:fadeIn .25s var(--ease)}
+.report-sheet{position:relative;width:100%;max-width:480px;background:var(--bg);border-radius:24px 24px 0 0;padding:0 20px 26px;max-height:92dvh;overflow-y:auto;animation:slideUp .3s var(--ease)}
+.report-title{font-size:20px;font-weight:800;text-align:center;padding:6px 0 4px}
+.report-sub{font-size:13px;color:var(--text-secondary);text-align:center;margin-bottom:14px}
+.report-preview{background:var(--surface-2);border-radius:14px;padding:12px;margin-bottom:14px}
+.report-preview-media{width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block;background:#000}
+.report-preview-text{font-size:13px;color:var(--text-secondary);line-height:1.5;max-height:80px;overflow-y:auto;white-space:pre-wrap;margin-bottom:10px;padding:8px 10px;background:var(--bg);border-radius:8px}
+.report-preview-head{display:flex;align-items:center;gap:10px}
+.report-preview-ava{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--yellow),var(--red-pink));color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px;overflow:hidden;flex-shrink:0}
+.report-preview-ava img{width:100%;height:100%;object-fit:cover}
+.report-preview-name{font-size:14px;font-weight:700}
+.report-preview-sub{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.report-reasons{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;max-height:42vh;overflow-y:auto}
+.report-reason{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface-2);border:1.5px solid transparent;border-radius:12px;cursor:pointer;font-family:inherit;font-size:14px;text-align:left;color:var(--text);transition:all .15s;width:100%}
+.report-reason:active{transform:scale(.99)}
+.report-reason.active{border-color:var(--blue);background:rgba(10,132,255,.08);font-weight:600}
+.report-reason-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+.report-reason-text{flex:1}
+.report-comment{width:100%;min-height:84px;padding:12px;background:var(--surface-2);border:1px solid transparent;border-radius:12px;font-family:inherit;font-size:14px;resize:none;color:var(--text);outline:none;margin-bottom:14px;box-sizing:border-box}
+.report-comment:focus{background:#fff;border-color:var(--blue);box-shadow:0 0 0 4px rgba(10,132,255,.15)}
+.report-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+html[data-theme="dark"] .report-comment:focus{background:#1c1c1e}
+
+/* Уведомления системы о жалобе */
+.sys-notif-item.report-resolved{background:rgba(48,209,88,.14);border:1px solid rgba(48,209,88,.3)}
+.sys-notif-item.report-rejected{background:rgba(255,59,48,.1);border:1px solid rgba(255,59,48,.25)}
+.sys-notif-meta.action-taken{background:rgba(48,209,88,.15);color:#30d158;font-weight:600}
+
+/* Админ-жалобы */
+.admin-report-row{display:flex;flex-direction:column;gap:10px;padding:14px;background:rgba(255,255,255,.06);border-radius:14px;margin-bottom:10px}
+.admin-report-head{display:flex;align-items:center;gap:10px}
+.admin-report-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#ff9f0a,#ff375f);display:flex;align-items:center;justify-content:center;font-size:17px;color:#fff;flex-shrink:0}
+.admin-report-info{flex:1;min-width:0}
+.admin-report-title{font-size:13px;font-weight:700}
+.admin-report-sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:2px}
+.admin-report-preview{background:rgba(0,0,0,.35);padding:10px 12px;border-radius:10px;font-size:12px;color:rgba(255,255,255,.75);line-height:1.5;max-height:200px;overflow-y:auto;white-space:pre-wrap}
+.admin-report-preview img,.admin-report-preview video{max-width:100%;max-height:200px;border-radius:8px;display:block;margin-top:8px}
+.admin-report-media{width:100%;max-height:220px;object-fit:cover;border-radius:8px;margin-top:8px;display:block;background:#000}
+.admin-report-meta{font-size:11px;color:rgba(255,255,255,.55)}
+.admin-report-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.admin-report-btn{padding:10px 12px;border:none;border-radius:10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.admin-report-btn:active{opacity:.8}
+.admin-report-btn.resolve{background:linear-gradient(135deg,#30d158,#28a948);color:#fff}
+.admin-report-btn.reject{background:rgba(255,255,255,.1);color:#fff}
+.admin-report-btn.warn{background:linear-gradient(135deg,#ff9f0a,#ff375f);color:#fff}
+.admin-report-btn.delete{background:linear-gradient(135deg,#ff375f,#ff3b30);color:#fff}
+
+/* Админ-табы — фикс клика */
+.admin-tab{pointer-events:auto !important;cursor:pointer !important}
+.admin-panel .admin-tabs{pointer-events:auto}

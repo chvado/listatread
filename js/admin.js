@@ -1,5 +1,5 @@
 /* ============================================================
-   listatread — admin.js (админ-панель, предупреждения, бан)
+   listatread — admin.js (админ-панель, предупреждения, бан, жалобы)
 ============================================================ */
 import { supabase } from './supabase.js'
 
@@ -155,72 +155,40 @@ export async function openSystemNotifications(){
         list.innerHTML = notifs.map(n => {
             const meta = n.meta || {}
             const isBan = n.type === 'ban' || n.type === 'warning'
-            const metaDetails = isBan
-                ? `
-            ${meta.reason ? `<div class="sys-notif-meta"><b>Причина:</b> ${escapeHtml(meta.reason)}</div>` : ''}
-            ${meta.comment ? `<div class="sys-notif-meta"><b>Комментарий:</b> ${escapeHtml(meta.comment)}</div>` : ''}
-            ${meta.permanent ? `<div class="sys-notif-meta"><b>Срок:</b> бессрочно</div>` : (meta.until ? `<div class="sys-notif-meta"><b>Разблокировка:</b> ${escapeHtml(formatBanUntil(meta.until))}</div>` : '')}
-        `
-                : ''
+            const isResolved = n.type === 'report_resolved'
+            const isRejected = n.type === 'report_rejected'
+            let metaDetails = ''
+            if(isBan){
+                metaDetails = `
+                    ${meta.reason ? `<div class="sys-notif-meta"><b>Причина:</b> ${escapeHtml(meta.reason)}</div>` : ''}
+                    ${meta.comment ? `<div class="sys-notif-meta"><b>Комментарий:</b> ${escapeHtml(meta.comment)}</div>` : ''}
+                    ${meta.permanent ? `<div class="sys-notif-meta"><b>Срок:</b> бессрочно</div>` : (meta.until ? `<div class="sys-notif-meta"><b>Разблокировка:</b> ${escapeHtml(formatBanUntil(meta.until))}</div>` : '')}
+                `
+            } else if(isResolved || isRejected){
+                metaDetails = `
+                    ${meta.target_username ? `<div class="sys-notif-meta"><b>Пользователь:</b> @${escapeHtml(meta.target_username)}</div>` : ''}
+                    ${meta.reason ? `<div class="sys-notif-meta"><b>Причина жалобы:</b> ${escapeHtml(meta.reason)}</div>` : ''}
+                `
+            }
+            const cls = isResolved ? 'report-resolved' : (isRejected ? 'report-rejected' : '')
             return `
-        <div class="sys-notif-item ${n.is_read ? '' : 'unread'}">
-            <div class="sys-notif-title">${escapeHtml(n.title)}</div>
-            <div class="sys-notif-body">${escapeHtml(n.body || '')}</div>
-            ${metaDetails}
-            <div class="sys-notif-time">${new Date(n.created_at).toLocaleString('ru-RU')}</div>
-        </div>
-    `
+                <div class="sys-notif-item ${n.is_read ? '' : 'unread'} ${cls}">
+                    <div class="sys-notif-title">${escapeHtml(n.title)}</div>
+                    <div class="sys-notif-body">${escapeHtml(n.body || '')}</div>
+                    ${metaDetails}
+                    <div class="sys-notif-time">${new Date(n.created_at).toLocaleString('ru-RU')}</div>
+                </div>
+            `
         }).join('')
 
-        // Отмечаем прочитанными
         const ids = notifs.filter(n => !n.is_read).map(n => n.id)
         if(ids.length) supabase.from('notifications').update({ is_read:true }).in('id', ids).then(()=>{})
-
-
     } catch(e){ list.innerHTML = `<p class="empty">Ошибка: ${e.message}</p>` }
 
     $('sys-notif-close')?.addEventListener('click', () => {
         view.classList.remove('show')
         setTimeout(() => view.classList.add('hidden'), 320)
     }, { once:true })
-}
-
-function showFullBanNotice(notif, meta){
-    const box = document.getElementById('full-ban-modal')
-    if(!box){
-        const el = document.createElement('div')
-        el.id = 'full-ban-modal'
-        el.className = 'ban-modal'
-        el.innerHTML = `
-            <div class="ban-backdrop" data-close="1"></div>
-            <div class="ban-sheet">
-                <div class="share-handle"></div>
-                <h3 class="ban-title">${escapeHtml(notif.title)}</h3>
-                <p class="ban-sub">listatread · система</p>
-                <div style="font-size:14px;line-height:1.6;color:rgba(255,255,255,.85);white-space:pre-wrap;padding:14px;background:rgba(255,255,255,.05);border-radius:14px;margin-top:8px">
-${escapeHtml(notif.body || '')}
-${meta.reason ? `\n\nПричина: ${escapeHtml(meta.reason)}` : ''}
-${meta.comment ? `\n\nКомментарий администратора: ${escapeHtml(meta.comment)}` : ''}
-${meta.until ? `\n\nРазблокировка: ${escapeHtml(formatBanUntil(meta.until))}` : ''}
-${meta.permanent ? '\n\nСрок: бессрочно' : ''}
-                </div>
-                <div class="ban-actions" style="grid-template-columns:1fr">
-                    <button class="btn-primary" id="full-ban-close">Понятно</button>
-                </div>
-            </div>
-        `
-        document.body.appendChild(el)
-        el.querySelector('[data-close]').addEventListener('click', () => el.classList.add('hidden'))
-        el.querySelector('#full-ban-close').addEventListener('click', () => el.classList.add('hidden'))
-    }
-    const el = document.getElementById('full-ban-modal')
-    el.querySelector('.ban-title').textContent = notif.title
-    el.querySelector('div[style*="pre-wrap"]').textContent =
-        (notif.body || '') +
-        (meta.reason ? `\n\nПричина: ${meta.reason}` : '') +
-        (meta.comment ? `\n\nКомментарий администратора: ${meta.comment}` : '') +
-        (meta.permanent ? '\n\nСрок: бессрочно' : (meta.until ? `\n\nРазблокировка: ${formatBanUntil(meta.until)}` : ''))
-    el.classList.remove('hidden')
 }
 
 /* ============================================================
@@ -234,6 +202,9 @@ export function openAdminPanel(){
     renderAdminUsers()
 }
 
+/* ============================================================
+   СПИСОК ПОЛЬЗОВАТЕЛЕЙ
+============================================================ */
 async function renderAdminUsers(search = ''){
     const body = $('admin-body')
     if(!body) return
@@ -243,9 +214,7 @@ async function renderAdminUsers(search = ''){
         .select('id, username, full_name, avatar_url, is_admin, warnings, ban_until, ban_permanent')
         .order('created_at', { ascending:false }).limit(100)
 
-    if(search){
-        q = q.ilike('username', `%${search.replace('@','')}%`)
-    }
+    if(search) q = q.ilike('username', `%${search.replace('@','')}%`)
 
     const { data, error } = await q
     if(error){ body.innerHTML = `<p class="empty">Ошибка: ${error.message}</p>`; return }
@@ -259,9 +228,7 @@ async function renderAdminUsers(search = ''){
         const banned = u.ban_permanent || (u.ban_until && new Date(u.ban_until) > new Date())
         return `
                     <div class="admin-user-row">
-                        <div class="admin-user-ava">
-                            ${u.avatar_url ? `<img src="${u.avatar_url}">` : (u.full_name || u.username || 'U').charAt(0).toUpperCase()}
-                        </div>
+                        <div class="admin-user-ava">${u.avatar_url ? `<img src="${u.avatar_url}">` : (u.full_name || u.username || 'U').charAt(0).toUpperCase()}</div>
                         <div class="admin-user-info">
                             <div class="admin-user-name">${escapeHtml(u.full_name || u.username || 'user')} ${u.is_admin ? '🛡' : ''}</div>
                             <div class="admin-user-sub">@${escapeHtml(u.username || '')}</div>
@@ -276,8 +243,7 @@ async function renderAdminUsers(search = ''){
         </div>
     `
 
-    const input = $('admin-user-search')
-    input?.addEventListener('input', e => {
+    $('admin-user-search')?.addEventListener('input', e => {
         clearTimeout(window._adminSearchT)
         window._adminSearchT = setTimeout(() => renderAdminUsers(e.target.value), 320)
     })
@@ -291,8 +257,6 @@ function openUserAdminActions(userId, allUsers){
     const u = allUsers.find(x => x.id === userId)
     if(!u) return
 
-    // Простая встроенная панель действий — используем actionsheet из main.js
-    // если он доступен через window; иначе fallback alert
     const actions = [
         { label: u.is_admin ? 'Снять админа' : 'Назначить админом', fn: async () => {
                 await supabase.from('profiles').update({ is_admin: !u.is_admin }).eq('id', userId)
@@ -320,13 +284,11 @@ function openUserAdminActions(userId, allUsers){
             }}
     ]
 
-    // Если в проекте доступен showActionSheet из main.js через window — используем его
     if(typeof window.showActionSheet === 'function'){
         window.showActionSheet(`@${u.username || 'user'}`, actions.map(a => ({
             label: a.label, danger: a.danger, onClick: a.fn
         })))
     } else {
-        // fallback
         const choice = prompt(
             'Действия для @' + u.username + ':\n' +
             '1 — ' + actions[0].label + '\n' +
@@ -357,7 +319,6 @@ async function sendWarning(userId, u, reason, comment){
 
     await supabase.from('profiles').update({ warnings: newWarn }).eq('id', userId)
 
-    // Уведомление №1 — предупреждение
     await supabase.from('notifications').insert({
         user_id: userId,
         type: 'warning',
@@ -366,7 +327,6 @@ async function sendWarning(userId, u, reason, comment){
         meta: { reason, comment, warnings: newWarn }
     })
 
-    // На 2-е предупреждение — авто-бан на 24ч
     if(newWarn >= 2){
         const until = new Date(Date.now() + 24*60*60*1000).toISOString()
         await supabase.from('profiles').update({
@@ -414,6 +374,302 @@ function openBanModal(userId, u){
     document.querySelectorAll('.ban-dur').forEach(b => b.classList.toggle('active', b.dataset.dur === '24h'))
 }
 
+/* ============================================================
+   ЖАЛОБЫ
+============================================================ */
+export async function renderAdminReports(){
+    const body = $('admin-body')
+    if(!body) return
+    body.innerHTML = '<div class="loading-block"><span class="loading-spinner-inline"></span>Загрузка жалоб…</div>'
+
+    const { data: reports, error } = await supabase
+        .from('reports')
+        .select('*, reporter:reporter_id ( id, username, full_name, avatar_url )')
+        .order('created_at', { ascending:false })
+        .limit(200)
+
+    if(error){
+        body.innerHTML = `<p class="empty">Ошибка: ${escapeHtml(error.message)}<br><br>Убедись что таблица <b>reports</b> создана в Supabase.</p>`
+        return
+    }
+    if(!reports?.length){
+        body.innerHTML = '<p class="empty">Жалоб нет</p>'
+        return
+    }
+
+    const pending = reports.filter(r => r.status === 'pending')
+    const history = reports.filter(r => r.status !== 'pending')
+
+    body.innerHTML = `
+        <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.5);margin-bottom:10px">Активные · ${pending.length}</h3>
+        <div class="admin-report-list" id="admin-reports-pending">
+            ${pending.length ? await renderReportsRows(pending) : '<p class="empty">Жалоб в обработке нет</p>'}
+        </div>
+        <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.5);margin:20px 0 10px">История · ${history.length}</h3>
+        <div class="admin-report-list">
+            ${history.length ? await renderReportsRows(history, true) : '<p class="empty">История пуста</p>'}
+        </div>
+    `
+
+    body.querySelectorAll('[data-report-action]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const reportId = btn.dataset.reportId
+            const action = btn.dataset.reportAction
+            await handleReportAction(reportId, action)
+        })
+    })
+}
+
+async function renderReportsRows(reports, readonly = false){
+    const out = []
+    for(const r of reports){
+        const target = await fetchReportTarget(r)
+        const reporter = r.reporter || {}
+        const reporterName = reporter.full_name || reporter.username || 'user'
+        const targetTypeLabel = { post:'Пост', video:'Видео', music:'Музыка', profile:'Аккаунт', channel:'Канал', live:'Live' }[r.target_type] || r.target_type
+
+        const previewHtml = target ? `
+            ${target.media ? renderTargetMedia(target.media) : ''}
+            ${target.text ? `<div>${escapeHtml(target.text.slice(0, 400))}</div>` : ''}
+            ${target.author ? `<div style="margin-top:8px;font-weight:600;color:#fff">Автор: @${escapeHtml(target.author.username || 'user')}</div>` : ''}
+        ` : '<i>Контент не найден (удалён?)</i>'
+
+        out.push(`
+            <div class="admin-report-row">
+                <div class="admin-report-head">
+                    <div class="admin-report-icon">${r.target_type === 'profile' ? '👤' : r.target_type === 'channel' ? '📺' : r.target_type === 'live' ? '🔴' : r.target_type === 'music' ? '🎵' : '📄'}</div>
+                    <div class="admin-report-info">
+                        <div class="admin-report-title">${targetTypeLabel} · ${escapeHtml(r.reason)}</div>
+                        <div class="admin-report-sub">от @${escapeHtml(reporterName)} · ${new Date(r.created_at).toLocaleString('ru-RU')}${readonly ? ' · <b style="color:#30d158">обработана</b>' : ''}</div>
+                    </div>
+                </div>
+                <div class="admin-report-preview">${previewHtml}</div>
+                ${r.comment ? `<div class="admin-report-meta">Комментарий: ${escapeHtml(r.comment)}</div>` : ''}
+                ${!readonly ? `
+                    <div class="admin-report-actions">
+                        <button class="admin-report-btn warn" data-report-id="${r.id}" data-report-action="warn">Предупредить</button>
+                        <button class="admin-report-btn resolve" data-report-id="${r.id}" data-report-action="resolve">Заблокировать</button>
+                        ${(r.target_type === 'post' || r.target_type === 'video' || r.target_type === 'music') ? `<button class="admin-report-btn delete" data-report-id="${r.id}" data-report-action="delete-post">Удалить пост</button>` : ''}
+                        ${r.target_type === 'channel' ? `<button class="admin-report-btn delete" data-report-id="${r.id}" data-report-action="delete-channel">Удалить канал</button>` : ''}
+                        <button class="admin-report-btn reject" data-report-id="${r.id}" data-report-action="reject">Нет оснований</button>
+                    </div>
+                ` : ''}
+            </div>
+        `)
+    }
+    return out.join('')
+}
+
+function renderTargetMedia(url){
+    if(!url) return ''
+    const clean = url.split('?')[0].toLowerCase()
+    if(/\.(mp4|webm|mov|m4v)$/.test(clean)) return `<video src="${url}" controls playsinline class="admin-report-media"></video>`
+    if(/\.(mp3|wav|ogg|m4a|aac)$/.test(clean)) return `<audio src="${url}" controls style="width:100%;margin-top:8px"></audio>`
+    return `<img src="${url}" alt="" class="admin-report-media">`
+}
+
+async function fetchReportTarget(r){
+    try {
+        if(r.target_type === 'post' || r.target_type === 'video' || r.target_type === 'music'){
+            const { data } = await supabase.from('posts')
+                .select('id, content, media_url, author_id, profiles:author_id ( id, username, full_name, avatar_url )')
+                .eq('id', r.target_id).maybeSingle()
+            if(!data) return null
+            return { media: data.media_url, text: data.content, author: data.profiles, authorId: data.author_id, postId: data.id }
+        }
+        if(r.target_type === 'profile'){
+            const { data } = await supabase.from('profiles')
+                .select('id, username, full_name, avatar_url, bio')
+                .eq('id', r.target_id).maybeSingle()
+            return data ? { media: data.avatar_url, text: data.bio, author: data, authorId: data.id } : null
+        }
+        if(r.target_type === 'channel'){
+            const { data } = await supabase.from('channels')
+                .select('id, name, description, avatar_url, owner_id, profiles:owner_id ( id, username, full_name )')
+                .eq('id', r.target_id).maybeSingle()
+            return data ? { media: data.avatar_url, text: data.description, author: data.profiles, authorId: data.owner_id, channelId: data.id } : null
+        }
+        if(r.target_type === 'live'){
+            const { data } = await supabase.from('lives')
+                .select('id, title, host_id, profiles:host_id ( id, username, full_name, avatar_url )')
+                .eq('id', r.target_id).maybeSingle()
+            return data ? { text: data.title, author: data.profiles, authorId: data.host_id } : null
+        }
+    } catch(e){ console.warn('[fetchReportTarget]', e.message) }
+    return null
+}
+
+async function handleReportAction(reportId, action){
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
+
+    const { data: report } = await supabase.from('reports').select('*').eq('id', reportId).maybeSingle()
+    if(!report) return
+
+    const target = await fetchReportTarget(report)
+    const targetAuthorId = target?.authorId
+
+    if(action === 'reject'){
+        await supabase.from('reports').update({
+            status: 'rejected',
+            resolved_at: new Date().toISOString(),
+            resolved_by: user.id
+        }).eq('id', reportId)
+
+        if(report.reporter_id && target?.author){
+            const author = target.author
+            await supabase.from('notifications').insert({
+                user_id: report.reporter_id,
+                type: 'report_rejected',
+                title: 'Жалоба рассмотрена',
+                body: `Мы не нашли нарушений по вашему запросу проверки аккаунта @${author.username || 'user'}.`,
+                meta: { reason: report.reason, target_username: author.username, status: 'rejected' }
+            })
+        }
+        if(typeof window.showToast === 'function') window.showToast('info', 'Жалоба отклонена', { icon:'✓' })
+        renderAdminReports()
+        return
+    }
+
+    if(action === 'warn' && targetAuthorId){
+        const reason = prompt('Причина предупреждения:', report.reason) || report.reason
+        const comment = prompt('Комментарий:', '') || ''
+        const { data:prof } = await supabase.from('profiles').select('warnings').eq('id', targetAuthorId).maybeSingle()
+        const newWarn = (prof?.warnings || 0) + 1
+        await supabase.from('profiles').update({ warnings: newWarn }).eq('id', targetAuthorId)
+        await supabase.from('notifications').insert({
+            user_id: targetAuthorId,
+            type: 'warning',
+            title: 'Предупреждение от администрации listatread',
+            body: `Причина: ${reason}`,
+            meta: { reason, comment }
+        })
+        await supabase.from('reports').update({
+            status: 'resolved',
+            resolved_at: new Date().toISOString(),
+            resolved_by: user.id
+        }).eq('id', reportId)
+
+        if(report.reporter_id && target?.author){
+            await supabase.from('notifications').insert({
+                user_id: report.reporter_id,
+                type: 'report_resolved',
+                title: 'Мы приняли меры по вашей жалобе',
+                body: `Мы приняли меры по отношению к пользователю @${target.author.username || 'user'} по вашей жалобе.`,
+                meta: { target_username: target.author.username, reason: report.reason, status: 'resolved' }
+            })
+        }
+        if(typeof window.showToast === 'function') window.showToast('success', 'Предупреждение выдано', { icon:'⚠️' })
+        renderAdminReports()
+        return
+    }
+
+    if(action === 'resolve' && targetAuthorId){
+        const reason = prompt('Причина блокировки:', report.reason) || report.reason
+        const comment = prompt('Комментарий для пользователя:', '') || ''
+        const dur = prompt('Длительность (24h, 3d, 7d, forever):', '7d') || '7d'
+        const durMap = { '24h': 24*60*60*1000, '3d': 3*24*60*60*1000, '7d': 7*24*60*60*1000 }
+        const ms = dur === 'forever' ? null : (durMap[dur] || durMap['7d'])
+        const update = { ban_reason: reason, ban_comment: comment, banned_at: new Date().toISOString() }
+        if(ms === null){ update.ban_permanent = true; update.ban_until = null }
+        else { update.ban_permanent = false; update.ban_until = new Date(Date.now() + ms).toISOString() }
+        await supabase.from('profiles').update(update).eq('id', targetAuthorId)
+
+        await supabase.from('notifications').insert({
+            user_id: targetAuthorId,
+            type: 'ban',
+            title: 'Вы были заблокированы в сервисе listatread',
+            body: `Ваш аккаунт заблокирован ${ms === null ? 'бессрочно' : 'до ' + formatBanUntil(update.ban_until)}.`,
+            meta: { reason, comment, until: update.ban_until, permanent: update.ban_permanent }
+        })
+
+        await supabase.from('reports').update({
+            status: 'resolved',
+            resolved_at: new Date().toISOString(),
+            resolved_by: user.id
+        }).eq('id', reportId)
+
+        if(report.reporter_id && target?.author){
+            await supabase.from('notifications').insert({
+                user_id: report.reporter_id,
+                type: 'report_resolved',
+                title: 'Мы приняли меры по вашей жалобе',
+                body: `Мы приняли меры по отношению к пользователю @${target.author.username || 'user'} по вашей жалобе.`,
+                meta: { target_username: target.author.username, reason: report.reason, status: 'resolved' }
+            })
+        }
+
+        if(typeof window.showToast === 'function') window.showToast('success', 'Пользователь заблокирован', { icon:'🚫' })
+        renderAdminReports()
+        return
+    }
+
+    if(action === 'delete-post' && target?.postId){
+        await supabase.from('posts').delete().eq('id', target.postId)
+        await supabase.from('reports').update({ status:'resolved', resolved_at:new Date().toISOString(), resolved_by:user.id }).eq('id', reportId)
+        if(report.reporter_id){
+            await supabase.from('notifications').insert({
+                user_id: report.reporter_id,
+                type: 'report_resolved',
+                title: 'Мы приняли меры по вашей жалобе',
+                body: `Пост, на который вы пожаловались, был удалён.`,
+                meta: { status:'resolved' }
+            })
+        }
+        if(typeof window.showToast === 'function') window.showToast('success', 'Пост удалён', { icon:'✓' })
+        renderAdminReports()
+        return
+    }
+
+    if(action === 'delete-channel' && target?.channelId){
+        await supabase.from('channels').delete().eq('id', target.channelId)
+        await supabase.from('reports').update({ status:'resolved', resolved_at:new Date().toISOString(), resolved_by:user.id }).eq('id', reportId)
+        if(report.reporter_id){
+            await supabase.from('notifications').insert({
+                user_id: report.reporter_id,
+                type: 'report_resolved',
+                title: 'Мы приняли меры по вашей жалобе',
+                body: `Канал, на который вы пожаловались, был удалён.`,
+                meta: { status:'resolved' }
+            })
+        }
+        if(typeof window.showToast === 'function') window.showToast('success', 'Канал удалён', { icon:'✓' })
+        renderAdminReports()
+    }
+}
+
+/* ============================================================
+   АВТО-ЗАКРЫТИЕ СТАРЫХ ЖАЛОБ (3 дня)
+============================================================ */
+export async function autoCloseOldReports(){
+    try {
+        const threeDaysAgo = new Date(Date.now() - 3*24*60*60*1000).toISOString()
+        const { data: old } = await supabase.from('reports')
+            .select('id, reporter_id, reason, target_type, target_id')
+            .eq('status', 'pending')
+            .lt('created_at', threeDaysAgo)
+        if(!old?.length) return
+        for(const r of old){
+            await supabase.from('reports').update({
+                status: 'rejected',
+                resolved_at: new Date().toISOString()
+            }).eq('id', r.id)
+            if(r.reporter_id){
+                await supabase.from('notifications').insert({
+                    user_id: r.reporter_id,
+                    type: 'report_rejected',
+                    title: 'Жалоба рассмотрена',
+                    body: `Мы не нашли нарушений по вашему запросу проверки.`,
+                    meta: { reason: r.reason, status: 'rejected', auto: true }
+                })
+            }
+        }
+    } catch(e){ console.warn('[autoCloseOldReports]', e.message) }
+}
+
+/* ============================================================
+   ОБРАБОТЧИК КЛИКОВ (табы, бан, закрытие)
+============================================================ */
 document.addEventListener('click', e => {
     const dur = e.target.closest('.ban-dur')
     if(dur){
@@ -451,21 +707,14 @@ document.addEventListener('click', async e => {
 
         await supabase.from('profiles').update(update).eq('id', _banTargetId)
 
-        const untilText = ms === null
-            ? 'бессрочно'
-            : `до ${formatBanUntil(update.ban_until)}`
+        const untilText = ms === null ? 'бессрочно' : `до ${formatBanUntil(update.ban_until)}`
 
         await supabase.from('notifications').insert({
             user_id: _banTargetId,
             type: 'ban',
             title: 'Вы были заблокированы в сервисе listatread',
             body: `Вы были заблокированы в сервисе listatread за многочисленные нарушения правил сообщества.\n\nВаш аккаунт заблокирован ${untilText}.`,
-            meta: {
-                reason,
-                comment,
-                until: update.ban_until,
-                permanent: update.ban_permanent
-            }
+            meta: { reason, comment, until: update.ban_until, permanent: update.ban_permanent }
         })
 
         $('ban-modal').classList.add('hidden')
@@ -482,9 +731,14 @@ document.addEventListener('click', async e => {
         setTimeout(() => p.classList.add('hidden'), 300)
     }
     const tab = e.target.closest('.admin-tab')
-    if(tab && tab.dataset.atab === 'users'){
+    if(tab){
         document.querySelectorAll('.admin-tab').forEach(t => t.classList.toggle('active', t === tab))
-        renderAdminUsers()
+        const atab = tab.dataset.atab
+        const body = $('admin-body')
+        if(atab === 'users') renderAdminUsers()
+        else if(atab === 'reports') renderAdminReports()
+        else if(atab === 'posts' && body) body.innerHTML = '<p class="empty">Посты — скоро</p>'
+        else if(atab === 'channels' && body) body.innerHTML = '<p class="empty">Каналы — скоро</p>'
     }
 })
 
