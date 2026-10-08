@@ -3298,7 +3298,114 @@ html[data-theme="dark"] .poll-view-option.wrong   .poll-view-fill{ background:rg
     font-weight:800;overflow:hidden;flex-shrink:0;
 }
 .feed-more-menu-avatar img{width:100%;height:100%;object-fit:cover}
+/* ============================================================
+   ADMIN PANEL
+============================================================ */
+.admin-panel{
+    position:fixed;inset:0;z-index:1200;background:#000;color:#fff;
+    display:flex;flex-direction:column;
+    transform:translateY(100%);transition:transform .3s var(--ease);
+}
+.admin-panel.show{transform:translateY(0)}
+.admin-panel.hidden{display:none!important}
+.admin-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.admin-topbar h2{font-size:17px;font-weight:800}
+.admin-topbar-spacer{width:40px}
+.admin-close-btn{width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:16px;cursor:pointer}
+.admin-tabs{display:flex;gap:6px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.1);overflow-x:auto}
+.admin-tab{padding:8px 16px;border:none;background:rgba(255,255,255,.08);color:#fff;border-radius:100px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.admin-tab.active{background:#fff;color:#000}
+.admin-body{flex:1;overflow-y:auto;padding:16px}
 
+.admin-search{margin-bottom:12px}
+.admin-search input{width:100%;padding:12px 16px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:14px}
+.admin-search input::placeholder{color:rgba(255,255,255,.4)}
+
+.admin-user-list{display:flex;flex-direction:column;gap:8px}
+.admin-user-row{display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,.06);border-radius:14px}
+.admin-user-ava{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#ffd60a,#ff375f);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;overflow:hidden;flex-shrink:0}
+.admin-user-ava img{width:100%;height:100%;object-fit:cover}
+.admin-user-info{flex:1;min-width:0}
+.admin-user-name{font-size:14px;font-weight:700}
+.admin-user-sub{font-size:12px;color:rgba(255,255,255,.55);margin-top:2px}
+.admin-user-badge{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;padding:3px 8px;border-radius:100px;margin-top:4px;margin-right:4px}
+.admin-user-badge.warn{background:rgba(255,214,10,.15);color:#ffd60a}
+.admin-user-badge.banned{background:rgba(255,59,48,.18);color:#ff453a}
+.admin-user-action{width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:16px;flex-shrink:0}
+
+/* ============================================================
+   BAN MODAL
+============================================================ */
+.ban-modal{position:fixed;inset:0;z-index:1300;display:flex;align-items:flex-end;justify-content:center}
+.ban-modal.hidden{display:none}
+.ban-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(10px)}
+.ban-sheet{position:relative;width:100%;max-width:480px;background:#1c1c1e;color:#fff;border-radius:24px 24px 0 0;padding:14px 20px 26px;animation:slideUp .3s var(--ease);max-height:92dvh;overflow-y:auto}
+.ban-title{font-size:20px;font-weight:800;text-align:center}
+.ban-sub{font-size:13px;color:rgba(255,255,255,.55);text-align:center;margin:4px 0 18px}
+.ban-label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.55);margin:14px 0 8px}
+.ban-durations{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.ban-dur{padding:12px;border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;border-radius:12px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.ban-dur.active{border-color:#0a84ff;background:rgba(10,132,255,.18);color:#fff}
+.ban-sheet input,.ban-sheet textarea{width:100%;padding:12px 14px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:14px;font-family:inherit;resize:none}
+.ban-sheet input::placeholder,.ban-sheet textarea::placeholder{color:rgba(255,255,255,.35)}
+.ban-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+.ban-confirm-btn{background:linear-gradient(135deg,#ff375f,#ff3b30)}
+
+/* ============================================================
+   BLOCKED SCREEN
+============================================================ */
+.blocked-screen{position:fixed;inset:0;z-index:1400;background:#0a0a0a;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px}
+.blocked-screen.hidden{display:none!important}
+.blocked-content{max-width:380px;width:100%;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px}
+.blocked-icon{font-size:80px;line-height:1;animation:pulseIcon 2s ease-in-out infinite}
+.blocked-title{font-size:26px;font-weight:900}
+.blocked-text{font-size:15px;line-height:1.55;color:rgba(255,255,255,.75)}
+.blocked-text b{color:#fff}
+.blocked-more-btn{max-width:220px;margin-top:8px}
+.blocked-details{margin-top:18px;padding:18px;background:rgba(255,255,255,.06);border-radius:16px;text-align:left;font-size:14px;line-height:1.6;color:rgba(255,255,255,.85);width:100%}
+.blocked-details p{margin-bottom:10px}
+.blocked-details p:last-child{margin-bottom:0}
+
+/* ============================================================
+   GREY PUSH
+============================================================ */
+.grey-push{
+    position:fixed;top:calc(env(safe-area-inset-top,0) + 12px);
+    left:50%;transform:translateX(-50%) translateY(-120%);
+    width:calc(100% - 24px);max-width:400px;
+    background:rgba(60,60,64,.95);backdrop-filter:blur(20px);
+    color:#fff;border-radius:16px;padding:12px 14px;
+    display:flex;align-items:center;gap:12px;
+    box-shadow:0 12px 36px rgba(0,0,0,.5);
+    z-index:1500;cursor:pointer;
+    transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .25s;
+    opacity:0;
+}
+.grey-push.hidden{display:none!important}
+.grey-push.show{transform:translateX(-50%) translateY(0);opacity:1}
+.grey-push-icon{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.grey-push-body{flex:1;min-width:0}
+.grey-push-title{font-size:14px;font-weight:700}
+.grey-push-sub{font-size:12px;color:rgba(255,255,255,.6);margin-top:2px}
+.grey-push-close{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;color:#fff}
+
+/* ============================================================
+   SYSTEM NOTIFICATIONS VIEW
+============================================================ */
+.sys-notif-view{position:fixed;inset:0;z-index:1450;background:#000;color:#fff;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s var(--ease)}
+.sys-notif-view.show{transform:translateY(0)}
+.sys-notif-view.hidden{display:none!important}
+.sys-notif-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sys-notif-top h2{font-size:17px;font-weight:800}
+.sys-notif-spacer{width:40px}
+.sys-notif-back{width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:20px;cursor:pointer}
+.sys-notif-list{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.sys-notif-item{padding:16px;background:rgba(255,255,255,.06);border-radius:16px}
+.sys-notif-item.unread{background:rgba(10,132,255,.12);border:1px solid rgba(10,132,255,.3)}
+.sys-notif-title{font-size:15px;font-weight:700;margin-bottom:6px}
+.sys-notif-body{font-size:13px;line-height:1.55;color:rgba(255,255,255,.75);white-space:pre-wrap}
+.sys-notif-time{font-size:11px;color:rgba(255,255,255,.4);margin-top:8px}
+.sys-notif-more{margin-top:10px;padding:10px 16px;background:#fff;color:#000;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 /* ============================================================
    ФИКС ПЛАШКИ LIVE В КАНАЛЕ
 ============================================================ */

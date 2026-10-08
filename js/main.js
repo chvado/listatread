@@ -3,7 +3,7 @@
 ============================================================ */
 import { supabase } from './supabase.js'
 import { loadPosts } from './feed.js'
-
+import { checkAdminStatus, ADMIN_STATE, showBlockedScreen } from './admin.js'
 /* ============================================================
    SVG-ИКОНКИ
 ============================================================ */
@@ -525,6 +525,8 @@ function showActionSheet(title, items){
     })
     actionsheet.classList.add('open'); actionsheetBackdrop.classList.remove('hidden')
 }
+window.showActionSheet = showActionSheet
+window.showToast = showToast
 function closeActionSheet(){ actionsheet.classList.remove('open'); actionsheetBackdrop.classList.add('hidden') }
 actionsheetBackdrop.addEventListener('click', closeActionSheet)
 $('actionsheet-cancel').addEventListener('click', closeActionSheet)
@@ -1211,7 +1213,19 @@ async function showPostMoreMenu(btn, card, userId){
             openShareSheet({ type:'post', postId:pid, src:videoSrc, title:content, content })
         } })
 
-    if(isMine || amAdmin) items.push({ label:'Удалить', icon:ICONS.trash, danger:true, onClick: async () => { if(!confirm('Удалить пост?')) return; await supabase.from('posts').delete().eq('id', pid); card.remove() } })
+    const iAmAdmin = ADMIN_STATE.isAdmin
+    if(isMine || amAdmin || iAmAdmin){
+        items.push({
+            label: iAmAdmin && !isMine ? 'Удалить (админ)' : 'Удалить',
+            icon: ICONS.trash,
+            danger: true,
+            onClick: async () => {
+                if(!confirm('Удалить пост?')) return
+                await supabase.from('posts').delete().eq('id', pid)
+                card.remove()
+            }
+        })
+    }
     if(!isMine && !onHome) items.push({ label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => showToast('success','Жалоба отправлена',{icon:'✓'}) })
 
     if(!items.length) items.push({ label:'Нет действий', onClick: () => {} })
@@ -4518,20 +4532,36 @@ async function checkMainChannelSubscription(){
     } catch { state.hasMainChannelSub = false }
 }
 async function enterApp(){
+    // 1. Проверяем бан ДО всего остального
+    await checkAdminStatus()
+
+    if(ADMIN_STATE.isBanned){
+        // Показываем только заблокированный экран
+        showScreen('main')            // скрывает auth-экраны
+        mainApp.classList.add('hidden')
+        showBlockedScreen()
+        return
+    }
+
     showScreen('main')
-    try { const { data:{ user } } = await supabase.auth.getUser()
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
         if(user){
-            const { data:prof } = await supabase.from('profiles').select('region, status, status_emoji, theme').eq('id', user.id).maybeSingle()
+            const { data:prof } = await supabase.from('profiles')
+                .select('region, status, status_emoji, theme')
+                .eq('id', user.id).maybeSingle()
             if(prof?.region) state.data.region = prof.region
             if(prof?.status_emoji || prof?.status) state.data.status = prof.status_emoji || prof.status
             if(prof?.theme) applyTheme(prof.theme)
             else applyTheme(getTheme())
         }
     } catch {}
+
     await checkMainChannelSubscription()
     await refreshFollowCache()
     switchScreen('home')
-    renderLiveNow(); renderStories(); loadProfile(); loadStatus(); renderEventsScreen(); renderLiveFeed()
+    renderLiveNow(); renderStories(); loadProfile(); loadStatus();
+    renderEventsScreen(); renderLiveFeed()
     maybeSendDailyNotification()
     heartbeat()
 }

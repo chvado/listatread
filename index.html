@@ -660,6 +660,86 @@
         </div>
     </div>
 </template>
+<!-- ============ ADMIN PANEL ============ -->
+<div id="admin-panel" class="admin-panel hidden">
+    <div class="admin-topbar">
+        <button class="admin-close-btn" id="admin-close">✕</button>
+        <h2>Админ-панель</h2>
+        <div class="admin-topbar-spacer"></div>
+    </div>
+    <div class="admin-tabs">
+        <button class="admin-tab active" data-atab="users">Пользователи</button>
+        <button class="admin-tab" data-atab="posts">Посты</button>
+        <button class="admin-tab" data-atab="channels">Каналы</button>
+    </div>
+    <div class="admin-body" id="admin-body"></div>
+</div>
+
+<!-- ============ BAN MODAL (для админа) ============ -->
+<div id="ban-modal" class="ban-modal hidden">
+    <div class="ban-backdrop" id="ban-backdrop"></div>
+    <div class="ban-sheet">
+        <div class="share-handle"></div>
+        <h3 class="ban-title">Заблокировать пользователя</h3>
+        <p class="ban-sub" id="ban-username">@user</p>
+
+        <label class="ban-label">Длительность блокировки</label>
+        <div class="ban-durations" id="ban-durations">
+            <button class="ban-dur active" data-dur="24h">24 часа</button>
+            <button class="ban-dur" data-dur="3d">3 дня</button>
+            <button class="ban-dur" data-dur="7d">7 дней</button>
+            <button class="ban-dur" data-dur="forever">Навсегда</button>
+        </div>
+
+        <label class="ban-label">Причина</label>
+        <input type="text" id="ban-reason" placeholder="Например: спам, оскорбления, 18+" maxlength="100">
+
+        <label class="ban-label">Комментарий администратора</label>
+        <textarea id="ban-comment" rows="4" placeholder="Этот текст увидит пользователь в уведомлении" maxlength="500"></textarea>
+
+        <div class="ban-actions">
+            <button class="btn-gray" id="ban-cancel">Отмена</button>
+            <button class="btn-primary ban-confirm-btn" id="ban-confirm">Заблокировать</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ BLOCKED SCREEN ============ -->
+<div id="blocked-screen" class="blocked-screen hidden">
+    <div class="blocked-content">
+        <div class="blocked-icon">🚫</div>
+        <h1 class="blocked-title">Аккаунт заблокирован</h1>
+        <p class="blocked-text">
+            Вы были заблокированы в сервисе <b>listatread</b> за многочисленные нарушения правил сообщества.
+        </p>
+        <button class="btn-primary blocked-more-btn" id="blocked-more">Больше</button>
+        <div class="blocked-details hidden" id="blocked-details">
+            <p id="blocked-until-text"></p>
+            <p id="blocked-reason-text"></p>
+            <p id="blocked-comment-text"></p>
+        </div>
+    </div>
+</div>
+
+<!-- ============ GREY PUSH (всплывашка сверху) ============ -->
+<div id="grey-push" class="grey-push hidden">
+    <div class="grey-push-icon">🔔</div>
+    <div class="grey-push-body">
+        <div class="grey-push-title">Новое уведомление от системы</div>
+        <div class="grey-push-sub">Нажмите, чтобы посмотреть</div>
+    </div>
+    <div class="grey-push-close" id="grey-push-close">✕</div>
+</div>
+
+<!-- ============ SYSTEM NOTIFICATIONS VIEW ============ -->
+<div id="system-notifications-view" class="sys-notif-view hidden">
+    <div class="sys-notif-top">
+        <button class="sys-notif-back" id="sys-notif-close">‹</button>
+        <h2>Уведомления системы</h2>
+        <div class="sys-notif-spacer"></div>
+    </div>
+    <div class="sys-notif-list" id="sys-notif-list"></div>
+</div>
 <script type="module" src="js/main.js?v=15"></script>
 <script>
     (function() {
