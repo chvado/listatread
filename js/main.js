@@ -1,5 +1,5 @@
 /* ============================================================
-   listatread — main.js (v12, полный, со всеми правками)
+   listatread — main.js (v13, полный, с роутером)
 ============================================================ */
 import { supabase } from './supabase.js'
 import { loadPosts } from './feed.js'
@@ -285,6 +285,177 @@ async function fetchCounts(postIds){
         ;(reposts || []).forEach(r => { if(out[r.post_id]) out[r.post_id].reposts++ })
     } catch(e){ console.warn('[counts]', e.message) }
     return out
+}
+
+/* ============================================================
+   =====  ROUTER  =====
+   Красивые URL на GitHub Pages (Spa-трюк через 404.html).
+   Формат ссылок:
+       /@username              → профиль
+       /p/<postId>             → пост (скролл + подсветка)
+       /p/<postId>?track=1     → пост + автозапуск трека
+       /c/<channelId|CODE>     → канал
+       /live/<liveId|CODE>     → трансляция
+       /<CODE5>                → универсальный код (канал или live)
+   Fallback на query-параметры: ?u=, ?profile=, ?post=, ?c=, ?live=
+   ============================================================ */
+const Router = {
+    _pending: null,
+
+    /** Читает sessionStorage (после 404-редиректа) или location, парсит роут. */
+    init(){
+        let raw = null;
+        try {
+            raw = sessionStorage.getItem('__redirect_path__');
+            if (raw) sessionStorage.removeItem('__redirect_path__');
+        } catch {}
+        if (!raw) raw = location.pathname + location.search + location.hash;
+        const parsed = this.parse(raw);
+        if (parsed){ parsed.raw = raw; this._pending = parsed; }
+    },
+
+    parse(raw){
+        if (!raw || raw === '/' || raw.startsWith('/index.html')) return null;
+        let url;
+        try { url = new URL(raw, location.origin); }
+        catch { url = new URL(location.origin + raw); }
+        const path = url.pathname;
+        const qs   = url.searchParams;
+
+        /* --- query-параметры: приоритет (совместимость со старыми ссылками) --- */
+        if (qs.get('u'))       return { type:'profile', id: qs.get('u') };
+        if (qs.get('profile')) return { type:'profile', id: qs.get('profile') };
+        if (qs.get('post'))    return { type:'post',    id: qs.get('post'), track: qs.get('track') === '1' };
+        if (qs.get('c'))       return { type:'channel', id: qs.get('c') };
+        if (qs.get('live'))    return { type:'live',    id: qs.get('live') };
+
+        /* --- pretty-роуты --- */
+        let m;
+        if ((m = path.match(/^\/@([A-Za-z0-9_.]+)$/)))
+            return { type:'profile', username: m[1] };
+        if ((m = path.match(/^\/(?:c|channel)\/([A-Za-z0-9_-]+)$/i)))
+            return { type:'channel', code: m[1] };
+        if ((m = path.match(/^\/(?:live)\/([A-Za-z0-9_-]+)$/i)))
+            return { type:'live', code: m[1] };
+        if ((m = path.match(/^\/(?:p|post)\/([A-Za-z0-9-]+)$/)))
+            return { type:'post', id: m[1] };
+        if ((m = path.match(/^\/([A-Z0-9]{5})$/i)))
+            return { type:'code', code: m[1].toUpperCase() };
+
+        return null;
+    },
+
+    /** Вызывается ПОСЛЕ enterApp() — когда пользователь уже авторизован. */
+    async resolve(){
+        const r = this._pending; this._pending = null;
+        if (!r) return false;
+
+        try {
+            if (r.type === 'profile'){
+                let id = r.id;
+                if (!id && r.username){
+                    const { data } = await supabase.from('profiles')
+                        .select('id').eq('username', r.username.toLowerCase()).maybeSingle();
+                    if (data) id = data.id;
+                }
+                if (id){ openUserProfile(id); this.replace(r.raw || urlFor('profile', r.username || id)); return true; }
+            }
+
+            if (r.type === 'post'){
+                const ok = await openPostByRoute(r.id, { track: r.track });
+                if (ok){ this.replace(r.raw || urlFor('post', r.id)); return true; }
+            }
+
+            if (r.type === 'channel'){
+                let id = r.id;
+                if (!id && r.code){
+                    const { data } = await supabase.from('channels')
+                        .select('id').eq('join_code', r.code.toUpperCase()).maybeSingle();
+                    if (data) id = data.id;
+                }
+                if (id){ openChannel(id); this.replace(r.raw || urlFor('channel', id)); return true; }
+            }
+
+            if (r.type === 'live'){
+                let id = r.id;
+                if (!id && r.code){
+                    const { data } = await supabase.from('lives')
+                        .select('id').eq('join_code', r.code.toUpperCase())
+                        .eq('is_active', true).maybeSingle();
+                    if (data) id = data.id;
+                }
+                if (id){ openLiveRoom(id); this.replace(r.raw || urlFor('live', id)); return true; }
+            }
+
+            if (r.type === 'code'){
+                const { data: ch } = await supabase.from('channels')
+                    .select('id').eq('join_code', r.code).maybeSingle();
+                if (ch){ openChannel(ch.id); this.replace(r.raw); return true; }
+                const { data: live } = await supabase.from('lives')
+                    .select('id').eq('join_code', r.code).eq('is_active', true).maybeSingle();
+                if (live){ openLiveRoom(live.id); this.replace(r.raw); return true; }
+            }
+        } catch(e){ console.warn('[router]', e.message) }
+
+        showToast('error', 'Ссылка не найдена или устарела', { icon:'⚠️' });
+        this.replace('/');
+        return false;
+    },
+
+    push(path)    { try { history.pushState({}, '', path) }    catch {} },
+    replace(path) { try { history.replaceState({}, '', path) } catch {} }
+};
+
+/** Генератор красивых URL для share-меню и QR. */
+function urlFor(type, id){
+    switch(type){
+        case 'profile': return '/@' + id;
+        case 'post':    return '/p/' + id;
+        case 'channel': return '/c/' + id;
+        case 'live':    return '/live/' + id;
+    }
+    return '/';
+}
+
+/**
+ * Открыть пост по id и проскроллить к нему.
+ * Возвращает true если удалось найти/показать.
+ */
+async function openPostByRoute(postId, opts = {}){
+    /* 1. Если карточка уже в DOM — просто скроллим */
+    const scrollToCard = () => {
+        const card = document.querySelector(`.feed-post[data-pid="${postId}"]`);
+        if (!card) return false;
+        card.scrollIntoView({ behavior:'smooth', block:'center' });
+        const prev = card.style.boxShadow;
+        card.style.transition = 'box-shadow .4s';
+        card.style.boxShadow = '0 0 0 3px var(--blue), 0 8px 32px rgba(10,132,255,.35)';
+        setTimeout(() => { card.style.boxShadow = prev }, 2200);
+        if (opts.track){
+            const playBtn = card.querySelector('[data-action="toggle-play"]');
+            playBtn?.click();
+        }
+        return true;
+    };
+
+    if (scrollToCard()) return true;
+
+    /* 2. Иначе — грузим пост, открываем подходящий экран и скроллим */
+    const { data: post } = await supabase.from('posts')
+        .select('id, channel_id, author_id').eq('id', postId).maybeSingle();
+    if (!post){ showToast('error', 'Пост не найден', { icon:'⚠️' }); return false; }
+
+    if (post.channel_id){
+        await openChannel(post.channel_id);
+        await new Promise(r => setTimeout(r, 600));
+        return scrollToCard();
+    } else {
+        state.chatContext = 'global'; state.chatTitle = 'Global';
+        switchScreen('inbox');
+        openLiveChat('global', 'Global');
+        await new Promise(r => setTimeout(r, 800));
+        return scrollToCard();
+    }
 }
 
 /* ============================================================
@@ -2488,7 +2659,23 @@ async function renderProfileTracks(userId){
     setTimeout(initTrackObserver, 100)
 }
 
-function openUserProfile(userId){ state.currentProfileViewId = userId; state.viewingOwnProfile = false; switchScreen('profile') }
+/* === ROUTER-HOOK === пушим красивый URL при открытии чужого профиля */
+function openUserProfile(userId){
+    state.currentProfileViewId = userId
+    state.viewingOwnProfile = false
+
+        /* Обновляем URL красивым путём /@username */
+        (async () => {
+            try {
+                const { data } = await supabase.from('profiles')
+                    .select('username').eq('id', userId).maybeSingle()
+                if (data?.username) Router.push('/@' + data.username)
+                else Router.push('/?u=' + userId)
+            } catch { Router.push('/?u=' + userId) }
+        })()
+
+    switchScreen('profile')
+}
 
 document.addEventListener('click', e => {
     if(e.target.closest('#new-post-btn') && state.viewingOwnProfile) showNewPostPicker()
@@ -2536,7 +2723,8 @@ async function openQrModal(){
     const fname = profile.full_name || 'Пользователь'
     const uname = profile.username || 'user'
     const pid = profile.public_id || user.id.slice(0, 10).toUpperCase()
-    const shareUrl = `${location.origin}${location.pathname}?u=${user.id}`
+    /* === ROUTER === красивая ссылка /@username */
+    const shareUrl = `${location.origin}${urlFor('profile', profile.username || user.id)}`
     const av = $('qr-avatar')
     if(profile.avatar_url) av.innerHTML = `<img src="${profile.avatar_url}" alt="">`
     else av.textContent = fname.charAt(0).toUpperCase()
@@ -2544,7 +2732,7 @@ async function openQrModal(){
     $('qr-username').textContent = '@' + uname
     $('qr-pid').textContent = pid
     const qrImg = $('qr-image'), fb = $('qr-fallback')
-    const qrData = `${location.origin}${location.pathname}?profile=${user.id}`
+    const qrData = shareUrl
     qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=${encodeURIComponent(qrData)}`
     qrImg.onerror = () => { qrImg.classList.add('hidden'); fb?.classList.remove('hidden') }
     qrImg.onload = () => { qrImg.classList.remove('hidden'); fb?.classList.add('hidden') }
@@ -2600,6 +2788,7 @@ async function openQrScanModal(){
             const uid = p.get('profile') || p.get('u')
             if(uid) targetId = uid
             else if(u.pathname.includes('/@')) targetId = u.pathname.split('/@')[1]
+            else if(u.pathname.startsWith('/@')) targetId = u.pathname.slice(2)
         } catch {
             const clean = raw.trim().replace(/^@/, '')
             const { data:p1 } = await supabase.from('profiles').select('id').eq('public_id', clean.toUpperCase()).maybeSingle()
@@ -3114,6 +3303,9 @@ async function ccNext(){
    CHANNEL PAGE
 ============================================================ */
 async function openChannel(channelId){
+    /* === ROUTER === пушим URL /c/<id> */
+    Router.push(urlFor('channel', channelId))
+
     document.querySelectorAll('.post-bg-video').forEach(v => { try { v.pause() } catch {} })
     const _mp = document.getElementById('mini-player')
     if(_mp && music.src){ _mp.classList.remove('hidden'); _mp.classList.add('show') }
@@ -3195,7 +3387,7 @@ async function openChannel(channelId){
         $('ch-filter-btn').addEventListener('click', openChannelFilterMenu)
         $('ch-dots-btn').addEventListener('click', () => {
             const items = []
-            items.push({ label:'Скопировать ссылку', icon:ICONS.link, onClick: () => navigator.clipboard?.writeText(`${location.origin}${location.pathname}?c=${channelId}`) })
+            items.push({ label:'Скопировать ссылку', icon:ICONS.link, onClick: () => navigator.clipboard?.writeText(`${location.origin}${urlFor('channel', ch.join_code || channelId)}`) })
             if(!isOwner) items.push({ label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => {} })
             showActionSheet('Действия', items)
         })
@@ -3558,7 +3750,6 @@ document.addEventListener('click', async e => {
     }
 
     // === МГНОВЕННО обновляем DOM, ещё до сети ===
-    // === МГНОВЕННО обновляем DOM, ещё до сети ===
     updatePollInDom(postId, poll, user.id)
 
     // === Фоном сохраняем в БД через RPC ===
@@ -3568,7 +3759,6 @@ document.addEventListener('click', async e => {
             p_option_index: idx
         })
         if(error){
-            // Покажет точный текст ошибки PostgREST в консоли
             console.error('[vote_poll] ' + JSON.stringify({
                 message: error.message,
                 details: error.details,
@@ -3577,15 +3767,13 @@ document.addEventListener('click', async e => {
             }, null, 2))
             throw error
         }
-        // Синхронизируем с сервером — там может быть точнее (например, если 2 юзера одновременно)
         if(freshPoll) updatePollInDom(postId, freshPoll, user.id)
     } catch(err){
         console.warn('[vote]', err.message)
         showToast('error', 'Не удалось сохранить голос: ' + (err.message || 'ошибка'), { icon:'⚠️' })
-        // Откат
         if(post.poll) updatePollInDom(postId, post.poll, user.id)
     }
-}, { capture: true }) // capture, чтобы обогнать любые другие обработчики
+}, { capture: true })
 
 async function loadComments(postId, myId){
     const list = document.querySelector(`.ch-comments-list[data-list="${postId}"]`); if(!list) return
@@ -3650,6 +3838,9 @@ async function clNext(){
 let liveRoomCleanup = null
 let liveRoomChannelUnique = 0
 async function openLiveRoom(liveId){
+    /* === ROUTER === пушим URL /live/<id> */
+    Router.push(urlFor('live', liveId))
+
     let screen = $('live-room-screen')
     if(!screen){ screen = document.createElement('div'); screen.id = 'live-room-screen'; screen.className = 'hidden'; document.body.appendChild(screen) }
     if(liveRoomCleanup){ try { liveRoomCleanup() } catch(e){} liveRoomCleanup = null }
@@ -4356,9 +4547,6 @@ document.getElementById('video-fs-more')?.addEventListener('click', async () => 
    СВАЙП ВНИЗ ДЛЯ МОДАЛОК / ШИТОВ
 ============================================================ */
 /* ============================================================
-   СВАЙП ВНИЗ ДЛЯ МОДАЛОК / ШИТОВ
-============================================================ */
-/* ============================================================
    СВАЙП ВНИЗ ДЛЯ МОДАЛОК / ШИТОВ (единый с share-sheet)
    — тянем ТОЛЬКО за полоску-handle
    — закрывается при >50% высоты ИЛИ резком свайпе (velocity > 0.8)
@@ -4564,9 +4752,35 @@ async function enterApp(){
     renderEventsScreen(); renderLiveFeed()
     maybeSendDailyNotification()
     heartbeat()
+
+    /* === ROUTER === разрешаем отложенный маршрут (из 404.html или location) */
+    await Router.resolve()
 }
 
+/* === ROUTER === popstate: браузерная кнопка «Назад/Вперёд» */
+window.addEventListener('popstate', async () => {
+    /* Закрываем все открытые оверлеи */
+    document.querySelectorAll('#channel-screen, #live-room-screen')
+        .forEach(el => el.classList.add('hidden'))
+        ['share-modal', 'search-overlay', 'qr-modal', 'qr-scan-modal', 'actionsheet', 'prioriti-sheet', 'code-modal', 'lang-modal', 'region-modal']
+        .forEach(id => document.getElementById(id)?.classList.add('hidden'))
+
+    const target = Router.parse(location.pathname + location.search + location.hash)
+    if (!target){
+        state.currentProfileViewId = null;
+        state.viewingOwnProfile = true;
+        switchScreen('home');
+        return;
+    }
+    Router._pending = target;
+    Router._pending.raw = location.pathname + location.search + location.hash;
+    await Router.resolve();
+});
+
 async function boot(){
+    /* === ROUTER === инициализируем сразу, чтобы поймать путь из sessionStorage */
+    Router.init()
+
     initTheme()
     setPageBg(true)
     const start = Date.now()
@@ -5421,10 +5635,17 @@ async function openShareSheet(ctx){
     document.getElementById('share-track-banner').classList.add('hidden')
     document.getElementById('share-profile-banner').classList.add('hidden')
 
-    const baseUrl = `${location.origin}${location.pathname}`
-    if(ctx.type === 'post')    _shareCtx.url = `${baseUrl}?post=${ctx.postId}`
-    if(ctx.type === 'track')   _shareCtx.url = `${baseUrl}?post=${ctx.postId}&track=1`
-    if(ctx.type === 'profile') _shareCtx.url = `${baseUrl}?u=${ctx.profileId}`
+    /* === ROUTER === строим красивые URL */
+    if(ctx.type === 'post')    _shareCtx.url = `${location.origin}${urlFor('post', ctx.postId)}`
+    if(ctx.type === 'track')   _shareCtx.url = `${location.origin}${urlFor('post', ctx.postId)}?track=1`
+    if(ctx.type === 'profile'){
+        try {
+            const { data:prof } = await supabase.from('profiles').select('username').eq('id', ctx.profileId).maybeSingle()
+            _shareCtx.url = `${location.origin}${urlFor('profile', prof?.username || ctx.profileId)}`
+        } catch {
+            _shareCtx.url = `${location.origin}/?u=${ctx.profileId}`
+        }
+    }
 
     // --- Видео-баннер ---
     if(ctx.type === 'post' && ctx.src && isVideoUrl(ctx.src)){

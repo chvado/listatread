@@ -741,19 +741,6 @@
     <div class="sys-notif-list" id="sys-notif-list"></div>
 </div>
 <script type="module" src="js/main.js?v=15"></script>
-<script>
-    (function() {
-        var redirectPath = sessionStorage.getItem('redirectPath');
-        if (redirectPath) {
-            sessionStorage.removeItem('redirectPath');
-            // Даем приложению время инициализироваться, затем восстанавливаем путь
-            setTimeout(function() {
-                window.history.replaceState(null, '', redirectPath);
-                // Если у тебя есть функция для обработки роутинга, вызови ее здесь
-                // Например: handleRoute(redirectPath);
-            }, 100);
-        }
-    })();
-</script>
+
 </body>
 </html>
