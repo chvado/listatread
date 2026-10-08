@@ -4242,16 +4242,24 @@ function refreshMiniPlayerVisibility(){
     if(music.src){ box.classList.remove('hidden'); box.classList.add('show') }
     else box.classList.remove('show')
 }
+let _lastTimeUpdate = 0
 globalAudio?.addEventListener('timeupdate', () => {
+    const now = performance.now()
+    if (now - _lastTimeUpdate < 200) return   // ← не чаще 5 раз в секунду
+    _lastTimeUpdate = now
+
     const cur = globalAudio.currentTime, dur = globalAudio.duration || 0, pct = dur ? (cur / dur * 100) : 0
-    const mpf = document.getElementById('mini-progress-fill'), fpf = document.getElementById('full-progress-fill')
-    const ftc = document.getElementById('full-time-current'), ftt = document.getElementById('full-time-total')
+    const mpf = document.getElementById('mini-progress-fill')
+    const fpf = document.getElementById('full-progress-fill')
+    const ftc = document.getElementById('full-time-current')
+    const ftt = document.getElementById('full-time-total')
     if(mpf) mpf.style.width = pct + '%'
     if(fpf) fpf.style.width = pct + '%'
     if(ftc) ftc.textContent = fmtTime(cur)
     if(ftt) ftt.textContent = fmtTime(dur)
+
     updateAllTrackCards()
-    updatePlayIcons()
+    // updatePlayIcons() — здесь НЕ нужен, он вызывается на play/pause/ended
 })
 globalAudio?.addEventListener('loadedmetadata', () => { const ftt = document.getElementById('full-time-total'); if(ftt) ftt.textContent = fmtTime(globalAudio.duration); updateAllTrackCards(); updatePlayIcons() })
 globalAudio?.addEventListener('pause', () => { updatePlayIcons() })

@@ -1017,21 +1017,24 @@ textarea{line-height:1.5}
 .full-player.show{transform:translateY(0)}
 .full-player.hidden{display:none}
 .full-bg{
-    position:absolute;inset:-20%;pointer-events:none;
-    background-size:300% 300%;
-    background-position:0% 50%;
-    filter:blur(70px);
-    animation:fullBgMove 10s ease-in-out infinite, fullBgShift 18s ease-in-out infinite;
-    opacity:.85;
-    transition:background .6s ease;
+    position:absolute;
+    inset:0;                          /* ← было -20% — режем вдвое */
+    pointer-events:none;
+    /* Никакого blur — градиенты уже размытые, рисуются в 10× быстрее */
+    /* Убираем fullBgMove (transform + rotate = перерастр слоя каждый кадр) */
+    animation:fullBgShift 24s ease-in-out infinite;
+    will-change:background-position;
+    transform: translateZ(0);          /* форсим GPU-слой, но без пересоздания */
+    opacity:1;
+    animation:none !important;
 }
 @keyframes fullBgMove{
     0%,100%{transform:scale(1) rotate(0)}
     50%{transform:scale(1.15) rotate(12deg)}
 }
 @keyframes fullBgShift{
-    0%,100%{background-position:0% 50%}
-    50%    {background-position:100% 50%}
+    0%,100%{ background-position:0% 50% }
+    50%    { background-position:100% 50% }
 }
 .full-top{
     position:relative;display:flex;align-items:center;justify-content:space-between;
@@ -1089,7 +1092,7 @@ textarea{line-height:1.5}
     font-weight:900;
     color:#fff;
     overflow:hidden;
-    box-shadow:0 24px 60px rgba(255,55,95,.35);
+    box-shadow:0 12px 32px rgba(255,55,95,.28);
     flex-shrink:0;
     margin-top:8px;
 }
@@ -3459,3 +3462,8 @@ html[data-theme="dark"] .poll-view-option.wrong   .poll-view-fill{ background:rg
    ТАБЫ ПРОФИЛЯ — всегда видимы
 ============================================================ */
 #profile-tabs{display:flex !important}
+body.full-player-open .topbar,
+body.full-player-open .bottom-nav{
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+}
