@@ -4196,7 +4196,7 @@ async function playTrack(){ try { await globalAudio.play(); music.isPlaying = tr
 function pauseTrack(){ globalAudio.pause(); music.isPlaying = false; updatePlayIcons(); refreshMiniPlayerVisibility() }
 function togglePlayTrack(){ if(music.isPlaying) pauseTrack(); else playTrack() }
 
-let _lastIconState = null
+
 let _lastIconState = null
 function updatePlayIcons(){
     // Простое надёжное условие: не пауза, есть src, не закончился
