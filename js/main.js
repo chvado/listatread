@@ -10,6 +10,7 @@ function isUuid(s){
 import { loadPosts } from './feed.js'
 import { checkAdminStatus, ADMIN_STATE, showBlockedScreen, renderAdminReports, autoCloseOldReports } from './admin.js'
 import { openDirectTab, buildDirectScreen, openDirectChat } from './direct.js'
+import { initPush } from './push.js'
 /* ============================================================
    SVG-ИКОНКИ
 ============================================================ */
@@ -5145,6 +5146,7 @@ async function enterApp(){
     // Автозакрытие старых жалоб
     try { autoCloseOldReports() } catch {}
 
+    setTimeout(() => { try { initPush() } catch(e){ console.warn('[push]', e.message) } }, 3000)
     await Router.resolve()
 }
 
