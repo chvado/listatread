@@ -2358,38 +2358,73 @@ document.addEventListener('click', e => {
 /* ============================================================
    PROFILE TOPBAR
 ============================================================ */
-$('profile-dots-btn').addEventListener('click', async () => {
-    const targetId = state.currentProfileViewId; if(!targetId) return
-    const { data:{ user } } = await supabase.auth.getUser()
-    const { data:blockRow } = await supabase.from('blocks')
-        .select('id').eq('blocker_id', user.id).eq('blocked_id', targetId).maybeSingle()
-    const isBlocked = !!blockRow
-    const items = [
-        { label:'Поделиться профилем', icon:ICONS.share, onClick: () => openShareSheet({ type:'profile', profileId: targetId }) },
-        { label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => {
-                const p = state.currentProfile
-                if(!p) return
-                openReportModal({
-                    targetType:'profile',
-                    targetId: p.id,
-                    author: { username: p.username, full_name: p.full_name, avatar_url: p.avatar_url },
-                    text: p.bio,
-                    media: p.avatar_url
-                })
-            } },
-        { label:'Скопировать ссылку', icon:ICONS.link, onClick: () => navigator.clipboard?.writeText(`${location.origin}${urlFor('profile', state.currentProfile?.username || targetId)}`) }
-    ]
-    if(isBlocked) items.push({ label:'Разблокировать', icon:ICONS.check, onClick: async () => {
-            await supabase.from('blocks').delete().eq('blocker_id', user.id).eq('blocked_id', targetId)
-            loadProfile(targetId)
-        } })
-    else items.push({ label:'Заблокировать', icon:ICONS.trash, danger:true, onClick: async () => {
-            if(!confirm('Заблокировать?')) return
-            await supabase.from('blocks').insert({ blocker_id:user.id, blocked_id:targetId })
-            loadProfile(targetId)
-        } })
-    showActionSheet('Действия', items)
-})
+function updateProfileTopbar(){
+    const screen = $('screen-profile'); if(!screen) return
+    const topbar = screen.querySelector('.topbar'); if(!topbar) return
+
+    if(state.viewingOwnProfile){
+        topbar.innerHTML = `
+            <button class="topbar-btn" data-menu="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <div class="topbar-logo-static">профиль</div>
+            <div style="display:flex;gap:4px;align-items:center">
+                <button class="topbar-btn" id="profile-share-own" title="Поделиться"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
+                <button class="topbar-btn topbar-star" data-prioriti="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></button>
+            </div>`
+        $('profile-share-own')?.addEventListener('click', async () => {
+            const { data:{ user } } = await supabase.auth.getUser()
+            if(user) openShareSheet({ type:'profile', profileId: user.id })
+        })
+    } else {
+        topbar.innerHTML = `
+            <button class="topbar-btn" id="profile-back-btn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+            <div class="topbar-logo-static" id="profile-topbar-name">@user</div>
+            <div style="display:flex;gap:4px;align-items:center">
+                <button class="topbar-btn" id="profile-share-btn" title="Поделиться"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
+                <button class="topbar-btn" id="profile-dots-btn"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+            </div>`
+
+        $('profile-back-btn')?.addEventListener('click', () => {
+            state.currentProfileViewId = null
+            state.viewingOwnProfile = true
+            switchScreen('home')
+        })
+
+        $('profile-share-btn')?.addEventListener('click', () => {
+            if(state.currentProfileViewId) openShareSheet({ type:'profile', profileId: state.currentProfileViewId })
+        })
+
+        $('profile-dots-btn')?.addEventListener('click', async () => {
+            const targetId = state.currentProfileViewId; if(!targetId) return
+            const { data:{ user } } = await supabase.auth.getUser()
+            const { data:blockRow } = await supabase.from('blocks')
+                .select('id').eq('blocker_id', user.id).eq('blocked_id', targetId).maybeSingle()
+            const isBlocked = !!blockRow
+            const items = [
+                { label:'Поделиться профилем', icon:ICONS.share, onClick: () => openShareSheet({ type:'profile', profileId: targetId }) },
+                { label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => {
+                        const p = state.currentProfile
+                        if(!p) return
+                        openReportModal({
+                            targetType:'profile', targetId: p.id,
+                            author: { username: p.username, full_name: p.full_name, avatar_url: p.avatar_url },
+                            text: p.bio, media: p.avatar_url
+                        })
+                    } },
+                { label:'Скопировать ссылку', icon:ICONS.link, onClick: () => navigator.clipboard?.writeText(`${location.origin}${urlFor('profile', state.currentProfile?.username || targetId)}`) }
+            ]
+            if(isBlocked) items.push({ label:'Разблокировать', icon:ICONS.check, onClick: async () => {
+                    await supabase.from('blocks').delete().eq('blocker_id', user.id).eq('blocked_id', targetId)
+                    loadProfile(targetId)
+                } })
+            else items.push({ label:'Заблокировать', icon:ICONS.trash, danger:true, onClick: async () => {
+                    if(!confirm('Заблокировать?')) return
+                    await supabase.from('blocks').insert({ blocker_id:user.id, blocked_id:targetId })
+                    loadProfile(targetId)
+                } })
+            showActionSheet('Действия', items)
+        })
+    }
+}
 
 /* ============================================================
    PROFILE LOAD
