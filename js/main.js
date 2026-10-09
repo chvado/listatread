@@ -190,6 +190,8 @@ const state = {
     channelRepostedSet: new Set(),
     channelCounts: {},
     currentProfilePrivacy: {}
+    __lastSlideAt: 0,
+    __slideTimer: null
 }
 
 /* ============================================================
@@ -482,7 +484,70 @@ function showToast(type, msg, opts = {}){
     if(opts.duration !== 0) setTimeout(close, opts.duration || (type === 'error' ? 4000 : 3000))
     return { close, el:t }
 }
+/* Слайд-уведомления о новых сообщениях */
+function showSlideNotif({ name, avatar, text, peerId }){
+    const now = Date.now()
+    if(now - state.__lastSlideAt < 800) return
+    state.__lastSlideAt = now
 
+    let el = document.getElementById('slide-notif')
+    if(!el){
+        el = document.createElement('div')
+        el.id = 'slide-notif'
+        el.className = 'slide-notif hidden'
+        document.body.appendChild(el)
+    }
+    el.innerHTML = `
+    <div class="slide-notif-ava">${avatar ? `<img src="${avatar}">` : (name||'?').charAt(0).toUpperCase()}</div>
+    <div class="slide-notif-body">
+      <div class="slide-notif-title">Новое сообщение</div>
+      <div class="slide-notif-name">${escapeHtml(name)}</div>
+      <div class="slide-notif-text">${escapeHtml(text)}</div>
+    </div>
+  `
+    el.classList.remove('hidden')
+    requestAnimationFrame(() => el.classList.add('show'))
+    el.onclick = () => {
+        el.classList.remove('show')
+        setTimeout(() => el.classList.add('hidden'), 300)
+        openDirectChat(peerId)
+    }
+    clearTimeout(state.__slideTimer)
+    state.__slideTimer = setTimeout(() => {
+        el.classList.remove('show')
+        setTimeout(() => el.classList.add('hidden'), 300)
+    }, 5000)
+}
+
+/* Realtime — новые сообщения в direct_messages */
+try {
+    supabase.channel('direct:realtime')
+        .on('postgres_changes', { event:'INSERT', schema:'public', table:'direct_messages' }, async payload => {
+            const m = payload.new
+            const { data:{ user } } = await supabase.auth.getUser()
+            if(!user || m.to_id !== user.id) return
+
+            // Если это текущий открытый чат — просто обновим
+            const room = document.getElementById('direct-room')
+            if(room && !room.classList.contains('hidden')){
+                // Обновит loadMessages сам, но не будем слать уведомление
+            } else {
+                // Слайд
+                const { data:p } = await supabase.from('profiles')
+                    .select('username, full_name, avatar_url').eq('id', m.from_id).maybeSingle()
+                const name = p?.full_name || p?.username || 'user'
+                showSlideNotif({
+                    name, avatar: p?.avatar_url, text: (m.content || '📎 Медиа').slice(0, 80), peerId: m.from_id
+                })
+            }
+            // Обновляем бейджи в директе, если открыт
+            const screen = document.getElementById('screen-direct')
+            if(screen?.classList.contains('active')){
+                // Перерисуем через 300ms
+            }
+        })
+        .subscribe()
+} catch(e){ console.warn('[direct realtime]', e.message) }
 /* ============================================================
    CODE MODAL
 ============================================================ */
@@ -1361,7 +1426,7 @@ function attachHandlersToCard(card, userId){
     }
 
     card.querySelectorAll('.feed-sub-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); handleFeedSubBtn(btn, userId) }))
-    card.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openDirectChat(a.dataset.uid) }))
+    card.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
     card.querySelectorAll('.feed-channel-badge[data-chbadge]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openChannel(b.dataset.chbadge) }))
     card.querySelectorAll('.feed-action[data-like]').forEach(btn => btn.addEventListener('click', async e => { e.stopPropagation(); await toggleLikeGlobal(btn.dataset.like) }))
     card.querySelectorAll('.feed-action[data-comment]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openCommentsSheet(btn.dataset.comment) }))
@@ -1893,7 +1958,7 @@ function applySubState(chId, sub){
 
 async function attachFeedActions(list, myId){
     list.querySelectorAll('.feed-sub-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); handleFeedSubBtn(btn, myId) }))
-    list.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openDirectChat(a.dataset.uid) }))
+    list.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
     list.querySelectorAll('.feed-channel-badge[data-chbadge]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openChannel(b.dataset.chbadge) }))
 
     list.querySelectorAll('.feed-post.feed-post-video').forEach(card => {
@@ -4856,11 +4921,12 @@ document.getElementById('video-fs-more')?.addEventListener('click', async () => 
    ЕЖЕДНЕВНОЕ УВЕДОМЛЕНИЕ
 ============================================================ */
 const DAILY_MESSAGES = [
+    { title:'🔥 LIVE прямо сейчас', body:'Live chat global в самом разгаре! Присоединись и ты к обсуждению.' },
     { title:'🎉 listatread chvad', body:'Подписка chvad открывает больше статусов.' },
-    { title:'🔥 Начни LIVE!', body:'Стань первым — запусти LIVE.' },
     { title:'🎁 Магазин подарков', body:'Загляни в storr.' },
     { title:'✨ Новые статусы', body:'Обнови свой профиль!' },
-    { title:'📣 Live чат региона', body:'Присоединяйся к общению.' }
+    { title:'📣 Live чат региона', body:'Присоединяйся к общению.' },
+    { title:'👥 Найди друзей', body:'Подпишись на интересных людей в рекомендациях.' }
 ]
 async function maybeSendDailyNotification(){
     try {
@@ -5136,7 +5202,9 @@ function openSearchMenu(){
         { label: 'Сканировать QR', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>', onClick: () => openQrScanModal() }
     ])
 }
-document.getElementById('home-chats-btn')?.addEventListener('click', () => { openDirectTab() })
+document.getElementById('home-chats-btn')?.addEventListener('click', () => {
+    openDirectTab()
+})
 
 ;(function initTopbarAutoHide(){
     let lastY = window.scrollY, ticking = false
