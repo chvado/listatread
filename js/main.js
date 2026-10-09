@@ -189,7 +189,7 @@ const state = {
     channelLikedSet: new Set(),
     channelRepostedSet: new Set(),
     channelCounts: {},
-    currentProfilePrivacy: {}
+    currentProfilePrivacy: {},
     __lastSlideAt: 0,
     __slideTimer: null
 }
