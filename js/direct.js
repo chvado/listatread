@@ -106,7 +106,7 @@ function toggleDirectEdit(){
 function openDirectMenu(){
     window.showActionSheet('Меню директа', [
         { label:'Найти пользователя', icon:'🔎', onClick: openNewChatScreen },
-        { label:'Настройки профиля', icon:'👤', onClick: () => window.switchScreen?.('settings') },
+        { label:'Настройки личного профиля', icon:'👤', onClick: () => window.switchScreen?.('settings') },
         { label:'Приватность', icon:'🔒', onClick: () => { window.switchScreen?.('settings'); window.switchSettingsTab?.('privacy') } },
         { label:'Правила сообщества', icon:'📖', onClick: () => window.open('/rules','_blank') }
     ])
@@ -142,15 +142,15 @@ function openNewChatScreen(){
 </header>
 
 <div class="dnc-body">
-  <h2 class="dnc-title">Напишите своим подписчикам</h2>
+  <h2 class="dnc-title">Начните новый чат</h2>
   <div class="dnc-note">
     Вы можете отправить сообщение своим подписчикам в безлимитном количестве, но пользователь не сможет вам ответить пока не подпишется на вас.
-    Или отправьте запрос на переписку, отправив <b>1 сообщение</b> — если вы и пользователь взаимно подпишитесь и пользователь примет ваш запрос, чат автоматически начнётся.
+    Или отправьте запрос на переписку, отправив <b>от 1 сообщения</b> — если вы и пользователь взаимно подпишитесь и пользователь примет ваш запрос на переписку, чат автоматически начнётся и появится в списке чатов
     <br><br>
     Перед отправкой сообщений другим ознакомьтесь с <a href="/rules" target="_blank">правилами сообщества</a>.
-    Если человек странно себя ведёт или нарушает правила — немедленно заблокируйте его и отправьте жалобу.
-    Администрация <b>никогда</b> не попросит вас скинуть пароль, данные для входа или личные данные.
-    <b>НИКОГДА</b> не отправляйте свои личные данные и ссылки на соцсети в чатах, а также не переходите по подозрительным ссылкам от незнакомцев.
+    Если человек странно себя ведёт, нарушает правила, скидывает запрещенный контент или просит перейти по ссылке, отправить свои персональные данные, адресс и другие личные данные, оскорбляет, манипулирует или шантажирует, отправляет ваши личные данные с угрозами, просит о любых услугах, скидывает ссылки на сторонние чаты/приложения/сайты которые вы не знаете — немедленно заблокируйте собеседника и отправьте жалобу!
+    Администрация <b>никогда</b> не попросит вас скинуть пароль, данные для входа или личные данные. Администрация listatread не несет ответственность за ваши переписки.
+    <b>НИКОГДА</b> не отправляйте свои личные данные и ссылки на соцсети в чатах, а также не переходите по подозрительным ссылкам от незнакомцев и не выполняйте их требования даже под предлогом докса, вознаграждения, угроз и другого.
     <br><br>
     Читайте дальше на <a href="/rules" target="_blank">listatread.online/rules</a>.
   </div>
@@ -429,7 +429,7 @@ async function openChatActions(peerId){
     const pref = D.prefs[peerId] || {}
     const items = [
         { label: pref.pinned ? 'Открепить' : 'Закрепить', icon:'📌', onClick: () => togglePin(peerId) },
-        { label:'Очистить чат', icon:'🧹', danger:true, onClick: () => clearChat(peerId) },
+        { label:'Удалить переписку', icon:'🧹', danger:true, onClick: () => clearChat(peerId) },
         { label:'Удалить чат', icon:'🗑', danger:true, onClick: () => deleteChat(peerId) }
     ]
     window.showActionSheet('Чат', items)
@@ -441,7 +441,7 @@ async function togglePin(peerId){
     const pref = D.prefs[peerId] || { pinned:false }
     if(!pref.pinned){
         const pinnedCount = Object.values(D.prefs).filter(p => p.pinned).length
-        if(pinnedCount >= 5){ window.showToast('error','Максимум 5 закреплённых чатов', { icon:'⚠️' }); return }
+        if(pinnedCount >= 3){ window.showToast('error','Максимум 3 закреплённых чата, но с listatread chvad -> 10', { icon:'⚠️' }); return }
     }
     try {
         const { data:existing } = await supabase.from('direct_chat_prefs').select('id').eq('user_id', user.id).eq('peer_id', peerId).maybeSingle()
@@ -456,7 +456,7 @@ async function togglePin(peerId){
 }
 
 async function clearChat(peerId){
-    if(!confirm('Очистить все сообщения?')) return
+    if(!confirm('Очистить все сообщения? Это действие удалит чат у обоих пользователей без сохранения истории. Это действие нельзя будет отменить после вашего подтверждения.')) return
     const { data:{ user } } = await supabase.auth.getUser()
     await supabase.from('direct_messages').delete().or(
         `and(from_id.eq.${user.id},to_id.eq.${peerId}),and(from_id.eq.${peerId},to_id.eq.${user.id})`
@@ -466,7 +466,7 @@ async function clearChat(peerId){
 }
 
 async function deleteChat(peerId){
-    if(!confirm('Удалить чат? Сообщения будут удалены навсегда')) return
+    if(!confirm('Удалить чат? Сообщения в них и таб для чата будут удалены. Это действие нельзя будет отменить после вашего подтверждения.')) return
     const { data:{ user } } = await supabase.auth.getUser()
     await supabase.from('direct_messages').delete().or(
         `and(from_id.eq.${user.id},to_id.eq.${peerId}),and(from_id.eq.${peerId},to_id.eq.${user.id})`
@@ -520,7 +520,7 @@ export async function openDirectChat(peerId, peerProfile = null){
     }
 
     if(!canWrite){
-        window.showToast('error', 'Сначала подпишитесь на пользователя', { icon:'🔒', duration:4000 })
+        window.showToast('error', 'Чтобы начать чат подпишитесь на собеседника', { icon:'🔒', duration:4000 })
         return
     }
 
@@ -542,7 +542,6 @@ function renderChatRoom(){
     const name = p.full_name || p.username || 'Пользователь'
     const pref = D.prefs[peerId] || {}
     const wp = pref.wallpaper || 'default'
-    const muted = !!pref.muted
 
     let room = $('direct-room')
     if(!room){
@@ -569,6 +568,7 @@ function renderChatRoom(){
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
       </button>
     </header>
+    <div class="dr-pinned-bar hidden" id="dr-pinned-bar"></div>
     <div class="direct-messages wp-${wp}" id="direct-messages"></div>
     <div class="direct-composer">
       <input type="text" id="dr-input" placeholder="Введите сообщение" autocomplete="off">
@@ -585,30 +585,23 @@ function renderChatRoom(){
     const send = async () => {
         const text = input.value.trim()
         if(!text) return
-
-        // Проверка: если это первый ответ и не взаимно — создаём запрос
         const { data:{ user } } = await supabase.auth.getUser()
         if(!user) return
         const isMutual = D.currentChat.isMutual
         const myAdmin = D.isAdmin
         const peerAdmin = !!p.is_admin
-
-        // Если я не подписан на пира и он не подписан на меня — но у меня есть право писать (админ). Или ситуация «первое сообщение — запрос»
         try {
             const { error } = await supabase.from('direct_messages').insert({
                 from_id: user.id, to_id: peerId, content: text
             })
             if(error) throw error
             input.value = ''
-
-            // Если чат ещё не "mutual" — создаём запрос
             if(!isMutual && !myAdmin && !peerAdmin){
-                const [{ data:meFollows }, { data:peerFollows }] = await Promise.all([
+                const [{ data:meF }, { data:peerF }] = await Promise.all([
                     supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', peerId).maybeSingle(),
                     supabase.from('follows').select('id').eq('follower_id', peerId).eq('following_id', user.id).maybeSingle()
                 ])
-                if(!peerFollows){
-                    // Пир не подписан на меня — создаём запрос
+                if(!peerF){
                     try {
                         await supabase.from('chat_requests').upsert({
                             from_user: user.id, to_user: peerId,
@@ -617,13 +610,11 @@ function renderChatRoom(){
                     } catch {}
                 }
             }
-
             loadMessages()
-            // Обновим бейдж
             loadDirectChats(true)
         } catch(e){
             console.error('[direct send]', e)
-            window.showToast?.('error', 'Не удалось отправить: ' + (e.message || 'ошибка'), { icon:'⚠️' })
+            window.showToast?.('error', 'Не удалось отправить', { icon:'⚠️' })
         }
     }
     $('dr-send').addEventListener('click', send)
@@ -633,10 +624,9 @@ function renderChatRoom(){
 
     if(D.refreshTimer) clearInterval(D.refreshTimer)
     D.refreshTimer = setInterval(() => {
-        if($('direct-room') && !$('direct-room').classList.contains('hidden')) loadMessages()
+        if($('direct-room') && !$('direct-room').classList.contains('hidden')) loadMessages(true)
     }, 3000)
 
-    // Стартовое скрытие/показ бейджа «назад»
     updateBackBadge()
 }
 
@@ -658,7 +648,8 @@ async function closeChatRoom(){
     loadDirectChats()
 }
 
-async function loadMessages(){
+let _lastMsgSig = ''
+async function loadMessages(silent = false){
     const room = $('direct-room'); if(!room) return
     if(!D.currentChat) return
     const { peerId, peerProfile } = D.currentChat
@@ -666,28 +657,43 @@ async function loadMessages(){
     if(!user) return
 
     const { data:msgs, error } = await supabase.from('direct_messages')
-        .select('*').or(`and(from_id.eq.${user.id},to_id.eq.${peerId}),and(from_id.eq.${peerId},to_id.eq.${user.id})`)
-        .order('created_at', { ascending:true }).limit(200)
+        .select('*')
+        .or(`and(from_id.eq.${user.id},to_id.eq.${peerId}),and(from_id.eq.${peerId},to_id.eq.${user.id})`)
+        .order('created_at', { ascending:true }).limit(300)
 
     if(error) console.warn('[direct loadMessages]', error.message)
 
-    if(msgs?.length){
-        const unread = msgs.filter(m => m.to_id === user.id && !m.is_read).map(m => m.id)
+    // Убираем скрытые для меня
+    const visible = (msgs || []).filter(m => !(m.hidden_for || []).includes(user.id))
+
+    // Помечаем прочитанными
+    if(visible.length){
+        const unread = visible.filter(m => m.to_id === user.id && !m.is_read).map(m => m.id)
         if(unread.length){
             await supabase.from('direct_messages').update({ is_read:true }).in('id', unread)
-            // Обновим бейджи
             loadDirectChats(true)
         }
     }
 
+    // Обновляем плашку закреплённых
+    const pinned = visible.filter(m => m.pinned_at)
+    renderPinnedBar(pinned)
+
     const box = $('direct-messages')
     if(!box) return
+
+    // Не перерисовываем если ничего не изменилось и включён silent
+    const sig = visible.map(m => m.id).join(',')
+    if(silent && sig === _lastMsgSig) return
+    _lastMsgSig = sig
+
     const pname = peerProfile.full_name || peerProfile.username || 'user'
-    const myProfile = await supabase.from('profiles').select('full_name, username, avatar_url').eq('id', user.id).maybeSingle()
+    const myProfile = await supabase.from('profiles')
+        .select('full_name, username, avatar_url').eq('id', user.id).maybeSingle()
     const mp = myProfile?.data || {}
     const myName = mp.full_name || mp.username || 'me'
 
-    if(!msgs?.length){
+    if(!visible.length){
         box.innerHTML = `
       <div class="direct-welcome">
         <div class="direct-welcome-avatar">${av(peerProfile.avatar_url, pname)}</div>
@@ -697,10 +703,9 @@ async function loadMessages(){
         return
     }
 
-    // Группировка по дням
     let html = ''
     let lastDay = ''
-    msgs.forEach((m, i) => {
+    visible.forEach((m, i) => {
         const day = new Date(m.created_at).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' })
         if(day !== lastDay){
             html += `<div class="dr-date-sep">${day}</div>`
@@ -708,7 +713,7 @@ async function loadMessages(){
         }
         const mine = m.from_id === user.id
         const time = new Date(m.created_at).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' })
-        const prev = msgs[i-1]
+        const prev = visible[i-1]
         const showAva = !prev || prev.from_id !== m.from_id || day !== new Date(prev.created_at).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' })
 
         let body = ''
@@ -722,19 +727,231 @@ async function loadMessages(){
 
         const avaSrc = mine ? mp.avatar_url : peerProfile.avatar_url
         const avaName = mine ? myName : pname
+        const pinnedMark = m.pinned_at ? '<span class="dr-msg-pin">📌</span>' : ''
 
-        html += `<div class="dr-row ${mine?'mine':''}">
+        html += `<div class="dr-row ${mine?'mine':''}" data-mid="${m.id}" data-mine="${mine?1:0}">
       <div class="dr-row-ava ${showAva?'':'ghost'}">${av(avaSrc, avaName)}</div>
       <div class="direct-bubble">
-        <div class="direct-bubble-content">${body}</div>
+        <div class="direct-bubble-content">${pinnedMark}${body}</div>
         <div class="direct-bubble-time">${time}${mine && m.is_read ? ' ✓✓' : ''}</div>
       </div>
     </div>`
     })
     box.innerHTML = html
+
+    // Long-press / right-click на сообщениях
+    box.querySelectorAll('.dr-row').forEach(row => attachMsgMenu(row))
+
+    // Плавно вниз
     box.scrollTop = box.scrollHeight
 }
 
+/* ============================================================
+   ЗАКРЕПЛЁННАЯ ПЛАШКА
+============================================================ */
+function renderPinnedBar(pinned){
+    const bar = $('dr-pinned-bar'); if(!bar) return
+    if(!pinned.length){ bar.classList.add('hidden'); bar.innerHTML = ''; return }
+
+    const last = pinned[pinned.length - 1]
+    const text = (last.content || '📎 Медиа').slice(0, 60)
+    const countBadge = pinned.length > 1 ? `<span class="dr-pinned-count">${pinned.length}</span>` : ''
+
+    bar.classList.remove('hidden')
+    bar.innerHTML = `
+    <div class="dr-pinned-icon">📌</div>
+    <div class="dr-pinned-body">
+      <div class="dr-pinned-title">Закреплённое сообщение</div>
+      <div class="dr-pinned-text">${esc(text)}</div>
+    </div>
+    ${countBadge}
+    <button class="dr-pinned-unpin" id="dr-pin-unpin" title="Открепить">✕</button>
+  `
+    bar.onclick = e => {
+        if(e.target.id === 'dr-pin-unpin') return
+        if(pinned.length === 1){
+            scrollToMessage(pinned[0].id)
+        } else {
+            openPinnedList(pinned)
+        }
+    }
+    $('dr-pin-unpin').addEventListener('click', async e => {
+        e.stopPropagation()
+        const latest = pinned[pinned.length - 1]
+        await unpinMessage(latest.id)
+    })
+}
+
+function openPinnedList(pinned){
+    const items = pinned.map((m, i) => ({
+        label: ((m.content || '📎 Медиа').slice(0, 40)),
+        icon: '📌',
+        onClick: () => scrollToMessage(m.id)
+    }))
+    window.showActionSheet(`Закреплённые · ${pinned.length}`, items)
+}
+
+function scrollToMessage(msgId){
+    const box = $('direct-messages'); if(!box) return
+    const row = box.querySelector(`.dr-row[data-mid="${msgId}"]`)
+    if(!row){ window.showToast?.('info', 'Сообщение не загружено', { icon:'ℹ️' }); return }
+    box.scrollTo({ top: row.offsetTop - 80, behavior: 'smooth' })
+    row.classList.add('highlight')
+    setTimeout(() => row.classList.remove('highlight'), 2000)
+}
+
+/* ============================================================
+   КОНТЕКСТ-МЕНЮ СООБЩЕНИЯ (long-press / right-click)
+============================================================ */
+function attachMsgMenu(row){
+    let pressTimer = null
+    let longPressed = false
+
+    const startPress = e => {
+        longPressed = false
+        row.classList.add('pressing')
+        pressTimer = setTimeout(() => {
+            longPressed = true
+            row.classList.remove('pressing')
+            showMsgMenu(row, e)
+        }, 420)
+    }
+    const cancelPress = () => {
+        if(pressTimer){ clearTimeout(pressTimer); pressTimer = null }
+        row.classList.remove('pressing')
+    }
+
+    row.addEventListener('touchstart', startPress, { passive:true })
+    row.addEventListener('touchend', e => {
+        if(longPressed){ e.preventDefault() }
+        cancelPress()
+    })
+    row.addEventListener('touchmove', cancelPress, { passive:true })
+    row.addEventListener('touchcancel', cancelPress)
+
+    row.addEventListener('mousedown', e => {
+        if(e.button !== 0) return
+        startPress(e)
+    })
+    row.addEventListener('mouseup', cancelPress)
+    row.addEventListener('mouseleave', cancelPress)
+
+    row.addEventListener('contextmenu', e => {
+        e.preventDefault()
+        showMsgMenu(row, e)
+    })
+}
+
+function showMsgMenu(row, event){
+    document.querySelectorAll('.dr-msg-menu').forEach(m => m.remove())
+    const msgId = row.dataset.mid
+    const isMine = row.dataset.mine === '1'
+
+    const menu = document.createElement('div')
+    menu.className = 'dr-msg-menu'
+    const items = [
+        { label: 'Скопировать', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>', onClick: () => copyMsg(msgId) },
+        { label: 'Закрепить', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 17v5M9 3h6l-1 8 4 3v2H6v-2l4-3z"/></svg>', onClick: () => togglePinMsg(msgId) },
+        { label: isMine ? 'Удалить' : 'Удалить у себя', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>', danger: true, onClick: () => deleteMsg(msgId, isMine, row) }
+    ]
+
+    menu.innerHTML = items.map((it, i) => `
+    <button class="dr-msg-menu-item ${it.danger ? 'danger' : ''}" data-mi="${i}">
+      ${it.icon}
+      <span>${it.label}</span>
+    </button>
+  `).join('')
+    document.body.appendChild(menu)
+
+    // Позиционирование
+    const rect = row.getBoundingClientRect()
+    const mw = menu.offsetWidth || 180
+    const mh = menu.offsetHeight || 140
+    let left = Math.min(rect.left, window.innerWidth - mw - 10)
+    if(left < 10) left = 10
+    let top = rect.top - mh - 8
+    if(top < 10) top = rect.bottom + 8
+    menu.style.left = left + 'px'
+    menu.style.top = top + 'px'
+
+    menu.querySelectorAll('.dr-msg-menu-item').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation()
+            const it = items[+btn.dataset.mi]
+            menu.remove()
+            if(it.onClick) setTimeout(it.onClick, 50)
+        })
+    })
+
+    // Клик вне — закрыть
+    setTimeout(() => {
+        const close = ev => {
+            if(!menu.contains(ev.target)){ menu.remove(); document.removeEventListener('click', close) }
+        }
+        document.addEventListener('click', close)
+    }, 50)
+
+    // Вибро-отклик если поддерживается
+    try { navigator.vibrate?.(15) } catch {}
+}
+
+async function copyMsg(msgId){
+    const { data:msg } = await supabase.from('direct_messages').select('content').eq('id', msgId).maybeSingle()
+    if(msg?.content){
+        try { await navigator.clipboard.writeText(msg.content) } catch {}
+        window.showToast?.('success', 'Скопировано', { icon:'✓' })
+    } else {
+        window.showToast?.('info', 'Нечего копировать', { icon:'ℹ️' })
+    }
+}
+
+async function togglePinMsg(msgId){
+    const { data:msg } = await supabase.from('direct_messages').select('pinned_at').eq('id', msgId).maybeSingle()
+    if(!msg) return
+    const isPinned = !!msg.pinned_at
+    await supabase.from('direct_messages').update({
+        pinned_at: isPinned ? null : new Date().toISOString()
+    }).eq('id', msgId)
+    window.showToast?.('success', isPinned ? 'Откреплено' : 'Закреплено', { icon:'📌' })
+    loadMessages()
+}
+
+async function unpinMessage(msgId){
+    await supabase.from('direct_messages').update({ pinned_at: null }).eq('id', msgId)
+    window.showToast?.('success', 'Откреплено', { icon:'📌' })
+    loadMessages()
+}
+
+async function deleteMsg(msgId, isMine, row){
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
+
+    // Анимация удаления
+    row.classList.add('removing')
+
+    // Ждём завершения анимации, потом удаляем из БД
+    setTimeout(async () => {
+        try {
+            if(isMine){
+                // Удаляем для всех
+                await supabase.from('direct_messages').delete().eq('id', msgId)
+            } else {
+                // Скрываем только для меня
+                const { data:msg } = await supabase.from('direct_messages').select('hidden_for').eq('id', msgId).maybeSingle()
+                const cur = msg?.hidden_for || []
+                if(!cur.includes(user.id)){
+                    await supabase.from('direct_messages').update({ hidden_for: [...cur, user.id] }).eq('id', msgId)
+                }
+            }
+            row.remove()
+            loadMessages(true)
+        } catch(e){
+            console.warn('[delete msg]', e)
+            row.classList.remove('removing')
+            window.showToast?.('error', 'Не удалось удалить', { icon:'⚠️' })
+        }
+    }, 340)
+}
 /* ============================================================
    ПРОФИЛЬ В ЧАТЕ
 ============================================================ */
@@ -799,7 +1016,7 @@ async function openChatProfile(peerId, peerProfile){
     </div>
 
     <div class="dr-prof-info-block">
-      <div class="dr-prof-info-label">Bio / Описание</div>
+      <div class="dr-prof-info-label">Bio</div>
       <div class="dr-prof-info-value">${esc(p.bio || 'Описание отсутствует')}</div>
     </div>
 
@@ -808,23 +1025,35 @@ async function openChatProfile(peerId, peerProfile){
       <div class="dr-prof-info-value">${bday}</div>
     </div>
 
-    <div class="dr-prof-gifts">🎁 Этому пользователю ещё не дарили подарки</div>
+    <div class="dr-prof-gifts">Этому пользователю ещё не дарили подарки</div>
   `
 
     $('dr-prof-back').addEventListener('click', () => overlay.classList.add('hidden'))
 
     $('dr-prof-dots').addEventListener('click', () => {
+        const { peerId: pid } = D.currentChat
         window.showActionSheet('Действия', [
+            { label:'Пожаловаться', icon:'⚠️', danger:true, onClick: () => {
+                    if(window.openReportModal){
+                        window.openReportModal({
+                            targetType: 'profile',
+                            targetId: pid,
+                            author: p,
+                            text: p.bio || '',
+                            media: p.avatar_url || null
+                        })
+                    }
+                }},
             { label:'Заблокировать', icon:'🚫', danger:true, onClick: async () => {
                     const { data:{ user } } = await supabase.auth.getUser()
-                    await supabase.from('blocks').insert({ blocker_id:user.id, blocked_id:peerId })
+                    await supabase.from('blocks').insert({ blocker_id:user.id, blocked_id:pid })
                     overlay.classList.add('hidden')
                     closeChatRoom()
                     window.showToast('success','Заблокирован',{icon:'✓'})
                 }},
-            { label:'Очистить чат', icon:'🧹', danger:true, onClick: () => clearChat(peerId) },
+            { label:'Очистить чат', icon:'🧹', danger:true, onClick: () => clearChat(pid) },
             { label:'Скопировать ссылку', icon:'🔗', onClick: () => {
-                    navigator.clipboard?.writeText(`${location.origin}/@${p.username||peerId}`)
+                    navigator.clipboard?.writeText(`${location.origin}/@${p.username||pid}`)
                     window.showToast('success','Ссылка скопирована',{icon:'✓'})
                 }}
         ])

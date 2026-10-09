@@ -4054,3 +4054,116 @@ html[data-theme="dark"] .dnc-topbar{
     .dnc-search input{ height:40px; font-size:14px; padding:0 38px 0 14px }
     .dnc-clear{ width:22px; height:22px }
 }
+
+/* ============ Анимация появления сообщения ============ */
+@keyframes msgIn{
+    from { opacity:0; transform:translateY(10px) scale(.94); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes msgInMine{
+    from { opacity:0; transform:translateY(10px) translateX(20px) scale(.94); }
+    to   { opacity:1; transform:translateY(0) translateX(0) scale(1); }
+}
+.dr-row{
+    animation: msgIn .32s cubic-bezier(.34,1.56,.64,1) both;
+}
+.dr-row.mine{
+    animation: msgInMine .32s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+/* Плавное удаление */
+.dr-row.removing{
+    animation: msgRemove .32s cubic-bezier(.4,0,1,1) forwards;
+    pointer-events: none;
+}
+@keyframes msgRemove{
+    0%   { opacity:1; transform:scale(1); max-height:200px; margin-bottom:0; }
+    40%  { opacity:1; transform:scale(.9); }
+    100% { opacity:0; transform:scale(.85); max-height:0; margin-bottom:-6px; }
+}
+
+/* Long-press feedback */
+.dr-row.pressing .direct-bubble{
+    transform:scale(.96);
+    transition:transform .12s var(--ease);
+}
+.direct-bubble{ transition:transform .2s var(--ease); }
+
+/* ============ Закреплённая плашка ============ */
+.dr-pinned-bar{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px;
+    background:var(--surface-2);
+    border-bottom:1px solid var(--border);
+    cursor:pointer; flex-shrink:0;
+    animation:slideDown .3s var(--ease);
+    position:relative;
+}
+@keyframes slideDown{
+    from{ opacity:0; transform:translateY(-10px); }
+    to  { opacity:1; transform:translateY(0); }
+}
+.dr-pinned-bar.hidden{ display:none; }
+.dr-pinned-icon{
+    width:28px;height:28px;border-radius:50%;
+    background:var(--blue); color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0; font-size:14px;
+}
+.dr-pinned-body{ flex:1; min-width:0; }
+.dr-pinned-title{
+    font-size:11px; font-weight:800; color:var(--blue);
+    text-transform:uppercase; letter-spacing:.05em;
+}
+.dr-pinned-text{
+    font-size:13px; color:var(--text-secondary);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    margin-top:2px;
+}
+.dr-pinned-unpin{
+    background:transparent; border:none; color:var(--text-secondary);
+    cursor:pointer; padding:4px 6px; font-size:18px; line-height:1;
+    flex-shrink:0;
+}
+.dr-pinned-count{
+    background:var(--blue); color:#fff; font-size:10px; font-weight:800;
+    padding:2px 7px; border-radius:100px; flex-shrink:0;
+}
+
+/* ============ Контекст-меню сообщения (позиционируется над тапом) ============ */
+.dr-msg-menu{
+    position:fixed; z-index:1500;
+    background:var(--bg);
+    border-radius:14px;
+    box-shadow:0 12px 40px rgba(0,0,0,.35), 0 0 0 1px var(--border);
+    overflow:hidden;
+    min-width:180px;
+    animation:menuIn .18s cubic-bezier(.34,1.56,.64,1);
+    padding:4px 0;
+}
+@keyframes menuIn{
+    from{ opacity:0; transform:scale(.92) translateY(-6px); }
+    to  { opacity:1; transform:scale(1) translateY(0); }
+}
+.dr-msg-menu-item{
+    display:flex; align-items:center; gap:12px;
+    padding:11px 16px;
+    background:transparent; border:none; width:100%;
+    font-family:inherit; font-size:14px; font-weight:500;
+    color:var(--text); cursor:pointer; text-align:left;
+}
+.dr-msg-menu-item:hover{ background:var(--surface-2); }
+.dr-msg-menu-item.danger{ color:var(--red); }
+.dr-msg-menu-item svg{ width:18px; height:18px; flex-shrink:0; }
+
+/* Хайлайт сообщения при скролле к нему */
+.dr-row.highlight .direct-bubble{
+    animation:highlightMsg 1.8s var(--ease);
+}
+@keyframes highlightMsg{
+    0%,100%{ box-shadow:0 1px 2px rgba(0,0,0,.06); }
+    20%,80%{ box-shadow:0 0 0 3px var(--blue), 0 4px 16px rgba(10,132,255,.35); }
+}
+.dr-msg-pin{
+    display:inline-block; margin-right:4px; opacity:.65; font-size:12px;
+}
