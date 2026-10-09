@@ -3947,3 +3947,110 @@ html[data-theme="dark"] .direct-messages.wp-purple { background:linear-gradient(
 /* Админ-табы — фикс клика */
 .admin-tab{pointer-events:auto !important;cursor:pointer !important}
 .admin-panel .admin-tabs{pointer-events:auto}
+/* ============================================================
+   НОВЫЙ ЧАТ — ТОПБАР
+============================================================ */
+.dnc-topbar{
+    position:sticky;
+    top:0;
+    z-index:30;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 10px;
+    background:var(--bg);
+    border-bottom:1px solid var(--border);
+    box-sizing:border-box;
+    min-height:60px;
+    flex-shrink:0;
+}
+html[data-theme="dark"] .dnc-topbar{
+    background:rgba(0,0,0,.92);
+    backdrop-filter:saturate(180%) blur(20px);
+    -webkit-backdrop-filter:saturate(180%) blur(20px);
+}
+
+/* Кнопка «Назад» */
+.dnc-back{
+    width:44px; height:44px; flex:0 0 44px;
+    border-radius:50%;
+    border:none;
+    background:var(--surface-2);
+    color:var(--text);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; padding:0;
+    -webkit-tap-highlight-color:transparent;
+    transition:background .18s;
+}
+.dnc-back:active{ background:var(--surface-3) }
+
+/* Обёртка инпута + clear */
+.dnc-search{
+    position:relative;
+    flex:1 1 auto;
+    min-width:0;                 /* ← критично */
+}
+.dnc-search input{
+    width:100%;
+    height:44px;
+    padding:0 42px 0 16px;       /* справа место под ✕ */
+    font-size:15px;
+    font-family:inherit;
+    color:var(--text);
+    background:var(--surface-2);
+    border:1px solid transparent;
+    border-radius:100px;
+    box-sizing:border-box;
+    outline:none;
+    transition:background .18s, border-color .18s, box-shadow .18s;
+}
+.dnc-search input::placeholder{ color:var(--text-tertiary) }
+.dnc-search input:focus{
+    background:var(--bg);
+    border-color:var(--blue);
+    box-shadow:0 0 0 4px rgba(10,132,255,.15);
+}
+.dnc-clear{
+    position:absolute;
+    right:8px; top:50%;
+    transform:translateY(-50%);
+    width:26px; height:26px;
+    border-radius:50%;
+    border:none;
+    background:rgba(120,120,128,.25);
+    color:var(--text);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; padding:0;
+}
+.dnc-clear.hidden{ display:none }
+
+/* Тело экрана */
+.dnc-body{
+    flex:1;
+    overflow-y:auto;
+    padding:14px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+    -webkit-overflow-scrolling:touch;
+}
+.dnc-title{
+    font-size:20px;
+    font-weight:800;
+    margin:4px 0 12px;
+}
+.dnc-note{
+    font-size:12.5px;
+    line-height:1.55;
+    color:var(--text-secondary);
+    background:var(--surface-2);
+    padding:14px;
+    border-radius:14px;
+    margin-bottom:14px;
+}
+.dnc-note a{ color:var(--blue) }
+
+/* Узкие экраны */
+@media (max-width:360px){
+    .dnc-topbar{ gap:6px; padding-left:8px; padding-right:8px }
+    .dnc-back{ width:40px; height:40px; flex-basis:40px }
+    .dnc-search input{ height:40px; font-size:14px; padding:0 38px 0 14px }
+    .dnc-clear{ width:22px; height:22px }
+}

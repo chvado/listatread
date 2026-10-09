@@ -126,41 +126,66 @@ function openNewChatScreen(){
     }
     s.classList.remove('hidden')
     s.innerHTML = `
-    <header class="topbar">
-      <button class="topbar-btn" id="dnc-back">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
-      </button>
-      <div class="topbar-logo-static">Новый чат</div>
-      <span class="topbar-spacer-btn"></span>
-    </header>
-    <div style="padding:0 16px 8px">
-      <div class="search-input-wrap" style="position:relative;margin-bottom:14px">
-        <input type="text" id="dnc-input" placeholder="Поиск по ID или @" autocomplete="off" style="width:100%;padding:14px 16px;font-size:15px;background:var(--surface-2);border:1px solid transparent;border-radius:100px;outline:none">
-      </div>
+<header class="dnc-topbar">
+  <button class="dnc-back" id="dnc-back" aria-label="Назад">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+  </button>
 
-      <h2 style="font-size:20px;font-weight:800;margin:4px 0 12px">Напишите своим подписчикам</h2>
-      <div class="step-note" style="font-size:12.5px;line-height:1.55;color:var(--text-secondary);background:var(--surface-2);padding:14px;border-radius:14px;margin-bottom:14px">
-        Вы можете отправить сообщение своим подписчикам в безлимитном количестве, но пользователь не сможет вам ответить пока не подпишется на вас.
-        Или отправьте запрос на переписку, отправив <b>1 сообщение</b> — если вы и пользователь взаимно подпишитесь и пользователь примет ваш запрос, чат автоматически начнётся.
-        <br><br>
-        Перед отправкой сообщений другим ознакомьтесь с <a href="/rules" target="_blank" style="color:var(--blue)">правилами сообщества</a>.
-        Если человек странно себя ведёт или нарушает правила — немедленно заблокируйте его и отправьте жалобу.
-        Администрация <b>никогда</b> не попросит вас скинуть пароль, данные для входа или личные данные.
-        <b>НИКОГДА</b> не отправляйте свои личные данные и ссылки на соцсети в чатах, а также не переходите по подозрительным ссылкам от незнакомцев.
-        <br><br>
-        Читайте дальше на <a href="/rules" target="_blank" style="color:var(--blue)">listatread.online/rules</a>.
-      </div>
+  <div class="dnc-search">
+    <input type="text" id="dnc-input"
+           placeholder="Поиск по ID или @username"
+           autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text">
+    <button class="dnc-clear hidden" id="dnc-clear" aria-label="Очистить" type="button">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+</header>
 
-      <div id="dnc-results"></div>
-    </div>
-  `
+<div class="dnc-body">
+  <h2 class="dnc-title">Напишите своим подписчикам</h2>
+  <div class="dnc-note">
+    Вы можете отправить сообщение своим подписчикам в безлимитном количестве, но пользователь не сможет вам ответить пока не подпишется на вас.
+    Или отправьте запрос на переписку, отправив <b>1 сообщение</b> — если вы и пользователь взаимно подпишитесь и пользователь примет ваш запрос, чат автоматически начнётся.
+    <br><br>
+    Перед отправкой сообщений другим ознакомьтесь с <a href="/rules" target="_blank">правилами сообщества</a>.
+    Если человек странно себя ведёт или нарушает правила — немедленно заблокируйте его и отправьте жалобу.
+    Администрация <b>никогда</b> не попросит вас скинуть пароль, данные для входа или личные данные.
+    <b>НИКОГДА</b> не отправляйте свои личные данные и ссылки на соцсети в чатах, а также не переходите по подозрительным ссылкам от незнакомцев.
+    <br><br>
+    Читайте дальше на <a href="/rules" target="_blank">listatread.online/rules</a>.
+  </div>
+
+  <div id="dnc-results"></div>
+</div>
+`
+
     $('dnc-back').addEventListener('click', () => s.classList.add('hidden'))
+
     const input = $('dnc-input')
+    const clear = $('dnc-clear')
     let debounce = null
+
+    const updateClear = () => clear.classList.toggle('hidden', !input.value)
     input.addEventListener('input', () => {
+        updateClear()
         clearTimeout(debounce)
         debounce = setTimeout(() => searchNewChat(input.value.trim()), 200)
     })
+    clear.addEventListener('click', () => {
+        input.value = ''
+        updateClear()
+        searchNewChat('')
+        input.focus()
+    })
+
+// Enter — как сабмит
+    input.addEventListener('keydown', e => {
+        if(e.key === 'Enter'){
+            e.preventDefault()
+            searchNewChat(input.value.trim())
+        }
+    })
+
     input.focus()
 }
 
