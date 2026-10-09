@@ -1,6 +1,9 @@
 /* ============================================================
-   listatread — direct.js
+   listatread — direct.js (v2)
    Директ (личные сообщения) — стиль Telegram
+   - Без требования взаимной подписки
+   - Защита от null-элементов
+   - Поддержка открытия чата с любого места приложения
 ============================================================ */
 import { supabase } from './supabase.js'
 
@@ -12,9 +15,8 @@ const D = {
     tab: 'direct',
     editMode: false,
     chats: [],
-    currentChat: null,        // { peerId, peerProfile }
-    refreshTimer: null,
-    allUsersCache: null
+    currentChat: null,
+    refreshTimer: null
 }
 
 /* ============================================================
@@ -57,12 +59,13 @@ export function buildDirectScreen(){
 
 export function openDirectTab(){
     buildDirectScreen()
-    // закрыть всё, активировать
     document.querySelectorAll('.app-screen').forEach(x => x.classList.remove('active'))
     $('screen-direct').classList.add('active')
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'))
     if (D.refreshTimer) clearInterval(D.refreshTimer)
-    D.refreshTimer = setInterval(() => { if ($('screen-direct')?.classList.contains('active')) loadDirectChats(true) }, 5000)
+    D.refreshTimer = setInterval(() => {
+        if ($('screen-direct')?.classList.contains('active') && !D.currentChat) loadDirectChats(true)
+    }, 5000)
     loadDirectChats()
     window.scrollTo(0,0)
 }
@@ -86,8 +89,8 @@ function openDirectMenu(){
         { label:'Настройки чатов', icon:'⚙️', onClick: () => window.showToast('info','Скоро',{icon:'⚙️'}) },
         { label:'Найти пользователя', icon:'🔎', onClick: findUserPrompt },
         { label:'Данные и память', icon:'💾', onClick: () => window.showToast('info','Скоро',{icon:'💾'}) },
-        { label:'Настройки профиля', icon:'👤', onClick: () => window.switchScreen('settings') },
-        { label:'Приватность', icon:'🔒', onClick: () => { window.switchScreen('settings'); window.switchSettingsTab('privacy') } },
+        { label:'Настройки профиля', icon:'👤', onClick: () => window.switchScreen?.('settings') },
+        { label:'Приватность', icon:'🔒', onClick: () => { window.switchScreen?.('settings'); window.switchSettingsTab?.('privacy') } },
         { label:'Приложения', icon:'📱', onClick: () => window.showToast('info','Скоро',{icon:'📱'}) }
     ])
 }
@@ -112,21 +115,26 @@ async function findUserPrompt(){
 ============================================================ */
 async function loadDirectChats(silent = false){
     const box = $('direct-list')
+    if(!box) return
     if(!silent) box.innerHTML = '<div class="loading-block"><span class="loading-spinner-inline"></span></div>'
 
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user){ box.innerHTML = '<p class="empty">Войдите</p>'; return }
 
-    // получаем всех собеседников (кто мне писал / кому я писал)
-    const { data: msgs } = await supabase.from('direct_messages')
+    const { data: msgs, error } = await supabase.from('direct_messages')
         .select('id, from_id, to_id, content, media_url, media_type, is_read, created_at')
         .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
         .order('created_at', { ascending:false })
         .limit(500)
 
+    if(error){
+        console.warn('[direct] loadDirectChats', error.message)
+        box.innerHTML = `<p class="empty">Ошибка загрузки: ${esc(error.message)}</p>`
+        return
+    }
+
     if(!msgs?.length){ box.innerHTML = `<p class="empty">Нет чатов. Начните общение.</p>`; return }
 
-    // группируем по собеседнику
     const byPeer = new Map()
     for(const m of msgs){
         const peerId = m.from_id === user.id ? m.to_id : m.from_id
@@ -136,7 +144,6 @@ async function loadDirectChats(silent = false){
         if(m.to_id === user.id && !m.is_read) byPeer.get(peerId).unread++
     }
 
-    // подгружаем профили
     const ids = [...byPeer.keys()]
     const { data: profs } = await supabase.from('profiles')
         .select('id, username, full_name, avatar_url, status, status_emoji')
@@ -151,12 +158,12 @@ async function loadDirectChats(silent = false){
 
 function renderChats(){
     const box = $('direct-list')
+    if(!box) return
     if(!D.chats.length){ box.innerHTML = '<p class="empty">Нет чатов</p>'; return }
 
     box.innerHTML = D.chats.map(c => {
         const p = c.profile || {}
         const name = p.full_name || p.username || 'Пользователь'
-        const uname = '@' + (p.username || 'user')
         const emoji = p.status_emoji || p.status || '👋'
         const last = c.lastMsg
         let preview = ''
@@ -205,6 +212,7 @@ function renderChats(){
 ============================================================ */
 async function openChatActions(peerId){
     const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
     const { data:blockRow } = await supabase.from('blocks')
         .select('id').eq('blocker_id', user.id).eq('blocked_id', peerId).maybeSingle()
     const isBlocked = !!blockRow
@@ -222,6 +230,7 @@ async function openChatActions(peerId){
 async function deleteChat(peerId){
     if(!confirm('Удалить чат? Сообщения будут удалены навсегда')) return
     const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
     await supabase.from('direct_messages').delete().or(
         `and(from_id.eq.${user.id},to_id.eq.${peerId}),and(from_id.eq.${peerId},to_id.eq.${user.id})`
     )
@@ -230,36 +239,39 @@ async function deleteChat(peerId){
 }
 async function toggleBlock(peerId, isBlocked){
     const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
     if(isBlocked) await supabase.from('blocks').delete().eq('blocker_id', user.id).eq('blocked_id', peerId)
     else await supabase.from('blocks').insert({ blocker_id:user.id, blocked_id:peerId })
     window.showToast('success', isBlocked ? 'Разблокирован' : 'Заблокирован', {icon:'✓'})
 }
 async function toggleMute(peerId, isMuted){
     const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
     if(isMuted) await supabase.from('direct_mutes').delete().eq('user_id', user.id).eq('peer_id', peerId)
     else await supabase.from('direct_mutes').insert({ user_id:user.id, peer_id:peerId })
     window.showToast('success', isMuted ? 'Размучен' : 'Замучен', {icon:'✓'})
 }
 
 /* ============================================================
-   ОТКРЫТИЕ ЧАТА
+   ОТКРЫТИЕ ЧАТА — БЕЗ ТРЕБОВАНИЯ ВЗАИМНОЙ ПОДПИСКИ
 ============================================================ */
 export async function openDirectChat(peerId, peerProfile = null){
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user) return
     if(peerId === user.id){ window.showToast('error','Нельзя писать себе',{icon:'⚠️'}); return }
     if (!peerId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(peerId)){
-        console.warn('[openDirectChat] invalid peerId:', peerId);
-        window.showToast?.('error', 'Некорректный пользователь', { icon:'⚠️' });
-        return;
+        console.warn('[openDirectChat] invalid peerId:', peerId)
+        window.showToast?.('error', 'Некорректный пользователь', { icon:'⚠️' })
+        return
     }
-    // проверка взаимной подписки
-    const [{ data:f1 }, { data:f2 }] = await Promise.all([
-        supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', peerId).maybeSingle(),
-        supabase.from('follows').select('id').eq('follower_id', peerId).eq('following_id', user.id).maybeSingle()
+
+    // Проверка блокировок (в обе стороны)
+    const [{ data:blockRow }, { data:blockedBy }] = await Promise.all([
+        supabase.from('blocks').select('id').eq('blocker_id', user.id).eq('blocked_id', peerId).maybeSingle(),
+        supabase.from('blocks').select('id').eq('blocker_id', peerId).eq('blocked_id', user.id).maybeSingle()
     ])
-    if(!f1 || !f2){
-        window.showToast('error','Переписка только при взаимной подписке', {icon:'🔒', duration:4000})
+    if(blockRow || blockedBy){
+        window.showToast('error', 'Переписка недоступна', { icon:'🔒' })
         return
     }
 
@@ -268,11 +280,22 @@ export async function openDirectChat(peerId, peerProfile = null){
             .select('id, username, full_name, avatar_url, status, status_emoji').eq('id', peerId).maybeSingle()
         peerProfile = data || {}
     }
+
+    // Убеждаемся, что экран директа построен
+    buildDirectScreen()
+    document.querySelectorAll('.app-screen').forEach(x => x.classList.remove('active'))
+    $('screen-direct')?.classList.add('active')
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'))
+
     D.currentChat = { peerId, peerProfile }
     renderChatRoom()
 }
 
+/* ============================================================
+   КОМНАТА ЧАТА
+============================================================ */
 function renderChatRoom(){
+    if(!D.currentChat) return
     const { peerId, peerProfile } = D.currentChat
     const p = peerProfile || {}
     const name = p.full_name || p.username || 'Пользователь'
@@ -310,24 +333,33 @@ function renderChatRoom(){
             </button>
         </div>
     `
+
     $('dr-back').addEventListener('click', closeChatRoom)
     $('dr-dots').addEventListener('click', openPeerMenu)
+
     const input = $('dr-input')
     const send = async () => {
         const text = input.value.trim()
         if(!text) return
         input.value = ''
-        const { data:{ user } } = await supabase.auth.getUser()
-        await supabase.from('direct_messages').insert({
-            from_id:user.id, to_id:peerId, content:text
-        })
-        loadMessages()
+        try {
+            const { data:{ user } } = await supabase.auth.getUser()
+            if(!user){ window.showToast('error','Не авторизован',{icon:'⚠️'}); return }
+            const { error } = await supabase.from('direct_messages').insert({
+                from_id: user.id, to_id: peerId, content: text
+            })
+            if(error) throw error
+            loadMessages()
+        } catch(e){
+            console.error('[direct send]', e)
+            window.showToast?.('error', 'Не удалось отправить: ' + (e.message || 'ошибка'), { icon:'⚠️' })
+        }
     }
     $('dr-send').addEventListener('click', send)
     input.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); send() } })
 
-    // отрисовка welcome
     loadMessages()
+
     if(D.refreshTimer) clearInterval(D.refreshTimer)
     D.refreshTimer = setInterval(() => {
         if($('direct-room') && !$('direct-room').classList.contains('hidden')) loadMessages()
@@ -339,26 +371,34 @@ async function closeChatRoom(){
     if(r) r.classList.add('hidden')
     D.currentChat = null
     if(D.refreshTimer) clearInterval(D.refreshTimer)
-    D.refreshTimer = setInterval(() => { if($('screen-direct')?.classList.contains('active')) loadDirectChats(true) }, 5000)
+    D.refreshTimer = setInterval(() => {
+        if($('screen-direct')?.classList.contains('active') && !D.currentChat) loadDirectChats(true)
+    }, 5000)
     loadDirectChats()
 }
 
 async function loadMessages(){
     const room = $('direct-room'); if(!room) return
+    if(!D.currentChat) return
     const { peerId } = D.currentChat
     const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
 
-    const { data:msgs } = await supabase.from('direct_messages')
+    const { data:msgs, error } = await supabase.from('direct_messages')
         .select('*').or(`and(from_id.eq.${user.id},to_id.eq.${peerId}),and(from_id.eq.${peerId},to_id.eq.${user.id})`)
         .order('created_at', { ascending:true }).limit(200)
 
-    // прочитано
+    if(error) console.warn('[direct loadMessages]', error.message)
+
+    // Помечаем как прочитанные
     if(msgs?.length){
         const unread = msgs.filter(m => m.to_id === user.id && !m.is_read).map(m => m.id)
         if(unread.length) await supabase.from('direct_messages').update({ is_read:true }).in('id', unread)
     }
 
     const box = $('direct-messages')
+    if(!box) return
+
     if(!msgs?.length){
         box.innerHTML = `
             <div class="direct-welcome">
@@ -389,8 +429,10 @@ async function loadMessages(){
 }
 
 async function openPeerMenu(){
+    if(!D.currentChat) return
     const { peerId } = D.currentChat
     const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
     const { data:blockRow } = await supabase.from('blocks')
         .select('id').eq('blocker_id', user.id).eq('blocked_id', peerId).maybeSingle()
     const isBlocked = !!blockRow
@@ -408,5 +450,6 @@ async function openPeerMenu(){
     ])
 }
 
-// глобальный хелпер
+// Глобальные хелперы
 window.openDirectChat = openDirectChat
+window.openDirectTab = openDirectTab
