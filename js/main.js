@@ -5,7 +5,7 @@
 import { supabase } from './supabase.js'
 import { loadPosts } from './feed.js'
 import { checkAdminStatus, ADMIN_STATE, showBlockedScreen, renderAdminReports, autoCloseOldReports } from './admin.js'
-
+import { openDirectTab, buildDirectScreen, openDirectChat } from './direct.js'
 /* ============================================================
    SVG-ИКОНКИ
 ============================================================ */
@@ -130,7 +130,34 @@ const STATUSES = [
     { code:'cat2',    label:'Кошка',        emoji:'🐱' },
     { code:'bow',     label:'Бантик',       emoji:'🎀' },
     { code:'bear',    label:'Мишка',        emoji:'🧸' },
-    { code:'plane',   label:'Путешествую',  emoji:'✈️' }
+    { code:'plane',   label:'Путешествую',  emoji:'✈️' },
+    { code:'clown',   label:'Клоун',        emoji:'🤡' },
+    { code:'angel',   label:'Ангел',        emoji:'😇' },
+    { code:'sick',    label:'Болею',        emoji:'🤒' },
+    { code:'friends', label:'Друзья',       emoji:'👥' },
+    { code:'cop',     label:'Коп',          emoji:'👮' },
+    { code:'ninja',   label:'Ниндзя',       emoji:'🥷' },
+    { code:'zombie',  label:'Зомби',        emoji:'🧟‍♂️' },
+    { code:'business',label:'Бизнес',       emoji:'💼' },
+    { code:'pig',     label:'Свинка',       emoji:'🐽' },
+    { code:'tree',    label:'Ёлка',         emoji:'🎄' },
+    { code:'mushroom',label:'Гриб',         emoji:'🍄' },
+    { code:'rose',    label:'Роза',         emoji:'🌹' },
+    { code:'wilted',  label:'Увядшая',      emoji:'🥀' },
+    { code:'snow',    label:'Снег',         emoji:'❄️' },
+    { code:'apple',   label:'Яблоко',       emoji:'🍎' },
+    { code:'strawberry',label:'Земляника',  emoji:'🍓' },
+    { code:'cake',    label:'Тортик',       emoji:'🎂' },
+    { code:'soccer',  label:'Футбол',       emoji:'⚽️' },
+    { code:'car',     label:'Машина',       emoji:'🚗' },
+    { code:'camera',  label:'Фото',         emoji:'📸' },
+    { code:'magnet',  label:'Магнит',       emoji:'🧲' },
+    { code:'bath',    label:'Ванна',        emoji:'🛁' },
+    { code:'note',    label:'Заметка',      emoji:'📝' },
+    { code:'done',    label:'Готово',       emoji:'✅' },
+    { code:'male',    label:'Мужской',      emoji:'🚹' },
+    { code:'female',  label:'Женский',      emoji:'🚺' },
+    { code:'baby',    label:'Ребёнок',      emoji:'🚼' }
 ]
 const STATUS_MAP = Object.fromEntries(STATUSES.map(s => [s.code, s]))
 function statusEmoji(c){ return STATUS_MAP[c]?.emoji || '👋' }
@@ -604,16 +631,33 @@ document.querySelectorAll('.sidebar-item').forEach(item => {
     item.addEventListener('click', () => {
         const a = item.dataset.action
         closeSidebar()
+        if(a === 'home'){ state.currentProfileViewId = null; state.viewingOwnProfile = true; return switchScreen('home') }
+        if(a === 'direct') return openDirectTab()
         if(a === 'profile'){ state.currentProfileViewId = null; state.viewingOwnProfile = true; return switchScreen('profile') }
         if(a === 'inbox') return switchScreen('inbox')
         if(a === 'channels') return switchScreen('channels')
         if(a === 'music') return switchScreen('music')
         if(a === 'storr') return openPrioriti()
+        if(a === 'live'){ return switchScreen('inbox') }
+        if(a === 'ai') return showToast('info','AI — скоро',{icon:'🤖'})
         if(a === 'lang') return openLangModal()
         if(a === 'settings') return switchScreen('settings')
         if(a === 'privacy'){ switchScreen('settings'); switchSettingsTab('privacy'); return }
+        if(a === 'additional'){
+            showActionSheet('Дополнительно', [
+                { label:'Экранное время', onClick:() => showToast('info','Скоро',{icon:'⏱'}) },
+                { label:'Очистить кэш', onClick:() => { localStorage.removeItem('lt_cache'); showToast('success','Кэш очищен',{icon:'✓'}) } },
+                { label:'Центр обновлений', onClick:() => showToast('info','Скоро',{icon:'🔄'}) }
+            ])
+            return
+        }
+        if(a === 'help-support') return showToast('info','support@listatread.online',{icon:'✉️'})
+        if(a === 'help-terms')    return window.open('/terms','_blank')
+        if(a === 'help-policy')   return window.open('/policy','_blank')
+        if(a === 'help-rules')    return window.open('/rules','_blank')
+        if(a === 'help-cookie')   return window.open('/cookie','_blank')
+        if(a === 'help-about')    return showToast('info','listatread.online · v15',{icon:'ℓ'})
         if(a === 'karsq') return showScreen('karsq')
-        alert('Раздел «' + item.textContent.trim() + '» — скоро')
     })
 })
 $('sidebar-logout')?.addEventListener('click', async () => {
@@ -2313,53 +2357,33 @@ document.addEventListener('click', e => {
 function updateProfileTopbar(){
     const screen = $('screen-profile'); if(!screen) return
     const topbar = screen.querySelector('.topbar'); if(!topbar) return
+
     if(state.viewingOwnProfile){
         topbar.innerHTML = `
-      <button class="topbar-btn" data-menu="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-      <div class="topbar-logo-static">профиль</div>
-      <div style="display:flex;gap:4px;align-items:center">
-        <button class="topbar-btn" id="qr-open-btn" title="QR-код профиля"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h.01"/></svg></button>
-        <button class="topbar-btn topbar-star" data-prioriti="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></button>
-      </div>
-    `
-        $('qr-open-btn')?.addEventListener('click', openQrModal)
+            <button class="topbar-btn" data-menu="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <div class="topbar-logo-static">профиль</div>
+            <div style="display:flex;gap:4px;align-items:center">
+                <button class="topbar-btn" id="profile-share-own" title="Поделиться"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
+                <button class="topbar-btn topbar-star" data-prioriti="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></button>
+            </div>`
+        $('profile-share-own')?.addEventListener('click', () => {
+            const { data:{ user } } = supabase.auth.getUser().then(({ data }) => {
+                if(data.user) openShareSheet({ type:'profile', profileId: data.user.id })
+            })
+        })
     } else {
         topbar.innerHTML = `
-      <button class="topbar-btn" id="profile-back-btn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
-      <div class="topbar-logo-static" id="profile-topbar-name">@user</div>
-      <div style="display:flex;gap:4px;align-items:center">
-        <button class="topbar-btn" id="profile-share-btn" title="Поделиться"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
-        <button class="topbar-btn" id="profile-dots-btn"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
-      </div>
-    `
+            <button class="topbar-btn" id="profile-back-btn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+            <div class="topbar-logo-static" id="profile-topbar-name">@user</div>
+            <div style="display:flex;gap:4px;align-items:center">
+                <button class="topbar-btn" id="profile-share-btn" title="Поделиться"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
+                <button class="topbar-btn" id="profile-dots-btn"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+            </div>`
         $('profile-back-btn').addEventListener('click', () => { state.currentProfileViewId = null; state.viewingOwnProfile = true; switchScreen('home') })
         $('profile-share-btn').addEventListener('click', () => {
             if(state.currentProfileViewId) openShareSheet({ type:'profile', profileId: state.currentProfileViewId })
         })
-        $('profile-dots-btn').addEventListener('click', async () => {
-            const targetId = state.currentProfileViewId; if(!targetId) return
-            const { data:{ user } } = await supabase.auth.getUser()
-            const { data:blockRow } = await supabase.from('blocks').select('id').eq('blocker_id', user.id).eq('blocked_id', targetId).maybeSingle()
-            const isBlocked = !!blockRow
-            const items = [
-                { label:'Поделиться профилем', icon:ICONS.share, onClick: () => openShareSheet({ type:'profile', profileId: targetId }) },
-                { label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => {
-                        const p = state.currentProfile
-                        if(!p) return
-                        openReportModal({
-                            targetType:'profile',
-                            targetId: p.id,
-                            author: { username: p.username, full_name: p.full_name, avatar_url: p.avatar_url },
-                            text: p.bio,
-                            media: p.avatar_url
-                        })
-                    } },
-                { label:'Скопировать ссылку', icon:ICONS.link, onClick: () => navigator.clipboard?.writeText(`${location.origin}${urlFor('profile', state.currentProfile?.username || targetId)}`) }
-            ]
-            if(isBlocked) items.push({ label:'Разблокировать', icon:ICONS.check, onClick: async () => { await supabase.from('blocks').delete().eq('blocker_id', user.id).eq('blocked_id', targetId); loadProfile(targetId) } })
-            else items.push({ label:'Заблокировать', icon:ICONS.trash, danger:true, onClick: async () => { if(!confirm('Заблокировать?')) return; await supabase.from('blocks').insert({ blocker_id:user.id, blocked_id:targetId }); loadProfile(targetId) } })
-            showActionSheet('Действия', items)
-        })
+        $('profile-dots-btn').addEventListener('click', async () => { /* … оставить как было … */ })
     }
 }
 
@@ -2425,21 +2449,22 @@ async function renderProfileActions(targetId, myId, iBlocked){
     const box = $('profile-actions'); box.innerHTML = ''
     if(targetId === myId){
         const wrap = document.createElement('div'); wrap.className = 'profile-actions-own'
-        const editBtn = document.createElement('button'); editBtn.className = 'profile-edit-btn'; editBtn.textContent = 'Изменить профиль'; editBtn.addEventListener('click', () => switchScreen('settings'))
-        const shareBtn = document.createElement('button'); shareBtn.className = 'btn-icon-round'; shareBtn.innerHTML = ICONS.share
-        shareBtn.addEventListener('click', () => openShareSheet({ type:'profile', profileId: targetId }))
-        wrap.appendChild(editBtn); wrap.appendChild(shareBtn); box.appendChild(wrap); return
+        const editBtn = document.createElement('button'); editBtn.className = 'profile-edit-btn'; editBtn.textContent = 'Изменить профиль'
+        editBtn.addEventListener('click', () => switchScreen('settings'))
+        wrap.appendChild(editBtn)
+        box.appendChild(wrap)
+        return
     }
     const { data:isSub } = await supabase.from('follows').select('id').eq('follower_id', myId).eq('following_id', targetId).maybeSingle()
     const following = !!isSub
     const wrap = document.createElement('div'); wrap.className = 'profile-actions-other'
     const followBtn = document.createElement('button'); followBtn.className = 'btn-follow ' + (following ? 'following' : ''); followBtn.textContent = following ? 'Отписаться' : 'Подписаться'
-    followBtn.addEventListener('click', async () => { if(following) await supabase.from('follows').delete().eq('follower_id', myId).eq('following_id', targetId); else await supabase.from('follows').insert({ follower_id:myId, following_id:targetId }); await refreshFollowCache(); loadProfile(targetId); renderStories() })
-    const shareBtn = document.createElement('button'); shareBtn.className = 'btn-icon-round'; shareBtn.innerHTML = ICONS.share
-    shareBtn.addEventListener('click', () => openShareSheet({ type:'profile', profileId: targetId }))
+    followBtn.addEventListener('click', async () => { /* … оставить как было … */ })
     const giftBtn = document.createElement('button'); giftBtn.className = 'btn-icon-round btn-gift-round'; giftBtn.innerHTML = ICONS.gift
     giftBtn.addEventListener('click', () => openPrioriti())
-    wrap.appendChild(followBtn); wrap.appendChild(shareBtn); wrap.appendChild(giftBtn); box.appendChild(wrap)
+    // share уже в топбаре — здесь только follow + gift
+    wrap.appendChild(followBtn); wrap.appendChild(giftBtn)
+    box.appendChild(wrap)
 }
 
 document.querySelectorAll('#profile-tabs .profile-tab').forEach(tab => tab.addEventListener('click', () => {
@@ -2899,7 +2924,35 @@ $('save-general')?.addEventListener('click', async () => {
     const btn = $('save-general'); btn.disabled = true; btn.textContent = 'Сохранение...'
     try {
         const { data:{ user } } = await supabase.auth.getUser()
-        const update = { full_name:$('set-name').value.trim(), username:$('set-username').value.trim().toLowerCase().replace(/[^a-z0-9_.]/g, ''), bio:$('set-bio').value.trim() }
+        const newUsername = $('set-username').value.trim().toLowerCase().replace(/[^a-z0-9_.]/g, '')
+
+        const { data:prof } = await supabase.from('profiles')
+            .select('username, username_changed_at').eq('id', user.id).maybeSingle()
+
+        // Проверка смены юзернейма
+        if(newUsername && prof?.username !== newUsername){
+            if(prof?.username_changed_at){
+                const last = new Date(prof.username_changed_at).getTime()
+                const week = 7 * 24 * 60 * 60 * 1000
+                const elapsed = Date.now() - last
+                if(elapsed < week){
+                    const daysLeft = Math.ceil((week - elapsed) / (24*60*60*1000))
+                    showToast('error', `Юзернейм можно менять раз в 7 дней. Осталось ${daysLeft} д.`, {icon:'⏳', duration:5000})
+                    btn.disabled = false; btn.textContent = 'Сохранить изменения'
+                    return
+                }
+            }
+        }
+
+        const update = {
+            full_name: $('set-name').value.trim(),
+            username: newUsername,
+            bio: $('set-bio').value.trim()
+        }
+        if(newUsername && prof?.username !== newUsername){
+            update.username_changed_at = new Date().toISOString()
+        }
+
         const { error } = await supabase.from('profiles').update(update).eq('id', user.id)
         if(error) throw error
         showToast('success', 'Профиль сохранён', { icon:'✓' })
@@ -4144,32 +4197,35 @@ function pauseTrack(){ globalAudio.pause(); music.isPlaying = false; updatePlayI
 function togglePlayTrack(){ if(music.isPlaying) pauseTrack(); else playTrack() }
 
 let _lastIconState = null
+let _lastIconState = null
 function updatePlayIcons(){
-    const realPlaying = !globalAudio.paused && globalAudio.currentTime > 0 && globalAudio.readyState > 2
-    if(!globalAudio.src) music.isPlaying = false
-    else music.isPlaying = realPlaying
-    const icon = music.isPlaying ? SVG.pause : SVG.play
+    // Простое надёжное условие: не пауза, есть src, не закончился
+    const realPlaying = !!globalAudio.src && !globalAudio.paused && !globalAudio.ended
+    music.isPlaying = realPlaying
+
+    const icon = realPlaying ? SVG.pause : SVG.play
     const miniBtn = document.getElementById('mini-play-btn')
     const fullBtn = document.getElementById('full-play')
     if(miniBtn && miniBtn.dataset.icon !== icon){ miniBtn.innerHTML = icon; miniBtn.dataset.icon = icon }
     if(fullBtn && fullBtn.dataset.icon !== icon){ fullBtn.innerHTML = icon; fullBtn.dataset.icon = icon }
-    const stateKey = (music.src || '') + '|' + (music.isPlaying ? 1 : 0)
+
+    const stateKey = (music.src || '') + '|' + (realPlaying ? 1 : 0)
     if(_lastIconState !== stateKey){
         _lastIconState = stateKey
         document.querySelectorAll('.track-card').forEach(card => {
             const isCurrent = card.dataset.trackSrc === music.src
             const btn = card.querySelector('.track-play')
-            const wantIcon = (isCurrent && music.isPlaying) ? SVG.pause : SVG.play
+            const wantIcon = (isCurrent && realPlaying) ? SVG.pause : SVG.play
             if(btn && btn.dataset.icon !== wantIcon){ btn.innerHTML = wantIcon; btn.dataset.icon = wantIcon }
-            card.classList.toggle('playing', isCurrent && music.isPlaying)
+            card.classList.toggle('playing', isCurrent && realPlaying)
         })
     }
     const mp = document.getElementById('mini-player')
     const fp = document.getElementById('full-player')
-    if(mp) mp.classList.toggle('paused', !music.isPlaying)
-    if(fp) fp.classList.toggle('paused', !music.isPlaying)
+    if(mp) mp.classList.toggle('paused', !realPlaying)
+    if(fp) fp.classList.toggle('paused', !realPlaying)
     const nowEl = document.querySelector('.mini-now')
-    if(nowEl) nowEl.textContent = music.isPlaying ? 'Сейчас играет' : 'Приостановлено'
+    if(nowEl) nowEl.textContent = realPlaying ? 'Сейчас играет' : 'Приостановлено'
 }
 function updateMiniPlayer(){
     setMarqueeText(document.getElementById('mini-title'), music.title)
@@ -4992,7 +5048,7 @@ function openSearchMenu(){
         { label: 'Сканировать QR', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>', onClick: () => openQrScanModal() }
     ])
 }
-document.getElementById('home-chats-btn')?.addEventListener('click', () => { switchScreen('inbox') })
+document.getElementById('home-chats-btn')?.addEventListener('click', () => { openDirectTab() })
 
 ;(function initTopbarAutoHide(){
     let lastY = window.scrollY, ticking = false
