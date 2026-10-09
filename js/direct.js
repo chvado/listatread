@@ -248,7 +248,11 @@ export async function openDirectChat(peerId, peerProfile = null){
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user) return
     if(peerId === user.id){ window.showToast('error','Нельзя писать себе',{icon:'⚠️'}); return }
-
+    if (!peerId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(peerId)){
+        console.warn('[openDirectChat] invalid peerId:', peerId);
+        window.showToast?.('error', 'Некорректный пользователь', { icon:'⚠️' });
+        return;
+    }
     // проверка взаимной подписки
     const [{ data:f1 }, { data:f2 }] = await Promise.all([
         supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', peerId).maybeSingle(),

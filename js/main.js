@@ -3,6 +3,10 @@
    PART 1 / 3 — до uploadAvatar()
 ============================================================ */
 import { supabase } from './supabase.js'
+function isUuid(s){
+    return typeof s === 'string'
+        && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+}
 import { loadPosts } from './feed.js'
 import { checkAdminStatus, ADMIN_STATE, showBlockedScreen, renderAdminReports, autoCloseOldReports } from './admin.js'
 import { openDirectTab, buildDirectScreen, openDirectChat } from './direct.js'
@@ -2718,9 +2722,23 @@ function openUserProfile(userId){
         console.warn('[openUserProfile] skipped invalid userId:', userId)
         return
     }
+    if (!isUuid(userId)){
+        console.warn('[openUserProfile] not a uuid:', userId, '— ищу по нику/коду');
+        (async () => {
+            const { data } = await supabase.from('profiles')
+                .select('id')
+                .or(`username.eq.${userId.toLowerCase()},public_id.eq.${userId.toUpperCase()}`)
+                .maybeSingle();
+            if (data?.id) {
+                openUserProfile(data.id);
+            } else {
+                showToast('error', 'Профиль не найден', { icon:'⚠️' });
+            }
+        })();
+        return;
+    }
     state.currentProfileViewId = userId
     state.viewingOwnProfile = false
-
     Router.push('/?u=' + userId)
     ;(async () => {
         try {
@@ -2729,7 +2747,6 @@ function openUserProfile(userId){
             if (data?.username) Router.replace('/@' + data.username)
         } catch(e){ console.warn('[openUserProfile]', e.message) }
     })()
-
     switchScreen('profile')
 }
 
