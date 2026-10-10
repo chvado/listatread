@@ -1,7 +1,5 @@
 /* ============================================================
-   listatread — direct.js v4 (Telegram-style)
-   Мессенджер: скелетоны, SVG-иконки, стикеры, темы,
-   typing-индикатор, онлайн-статус, правильные галочки.
+   listatread — direct.js v4.1 (Telegram-style, fixed)
 ============================================================ */
 import { supabase } from './supabase.js'
 
@@ -10,13 +8,14 @@ const esc = t => { const d = document.createElement('div'); d.textContent = t ??
 const av = (url, name) => url ? `<img src="${url}" alt="">` : (name || '?').charAt(0).toUpperCase()
 
 /* ============================================================
-   SVG-ИКОНКИ (без эмодзи)
+   SVG-ИКОНКИ
 ============================================================ */
 const I = {
     menu: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
     pencil: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>',
     x: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
     back: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
+    arrowRight: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
     user: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>',
     star: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-.1z"/></svg>',
     users: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><circle cx="17" cy="9" r="2.5"/><path d="M14.5 14.5c2.5 0 4.5 2 4.5 4.5"/></svg>',
@@ -39,10 +38,6 @@ const I = {
     pin: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 17v5M9 3h6l-1 8 4 3v2H6v-2l4-3z"/></svg>',
     plus: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     image: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>',
-    download: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 11l6 6 6-6M5 21h14"/></svg>',
-    upload: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9M6 13l6-6 6 6M5 3h14"/></svg>',
-    stickerPack: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/><path d="M8 14.5s1.5 2 4 2 4-2 4-2"/></svg>',
-    clock: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     reply: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M9 17l-5-5 5-5M4 12h11a5 5 0 0 1 5 5v2"/></svg>',
     copy: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
     forward: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M15 17l5-5-5-5M20 12H9a5 5 0 0 0-5 5v2"/></svg>',
@@ -50,26 +45,25 @@ const I = {
 }
 
 /* ============================================================
-   ТЕМЫ ЧАТА (15)
+   ТЕМЫ (15) и РАЗМЕРЫ
 ============================================================ */
 const CHAT_THEMES = [
-    { id:'t01', name:'Ночной',     light:false, bg:'#0e1621', own:'#2b5278', ownText:'#fff', peer:'#182533', peerText:'#fff' },
-    { id:'t02', name:'Графит',     light:false, bg:'#1a1a1a', own:'#4a4a4a', ownText:'#fff', peer:'#2a2a2a', peerText:'#fff' },
-    { id:'t03', name:'Океан',      light:false, bg:'#0d1b2a', own:'#1b6ca8', ownText:'#fff', peer:'#1b263b', peerText:'#fff' },
-    { id:'t04', name:'Лес',        light:false, bg:'#0f2417', own:'#2d6a4f', ownText:'#fff', peer:'#1b3a2a', peerText:'#fff' },
-    { id:'t05', name:'Виноград',   light:false, bg:'#1e1b2e', own:'#6a4c93', ownText:'#fff', peer:'#2d2745', peerText:'#fff' },
-    { id:'t06', name:'Закат',      light:false, bg:'#2b1a1a', own:'#b23a48', ownText:'#fff', peer:'#3d2828', peerText:'#fff' },
-    { id:'t07', name:'Пудра',      light:true,  bg:'#fdf2f8', own:'#ec4899', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
-    { id:'t08', name:'Мята',       light:true,  bg:'#ecfdf5', own:'#10b981', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
-    { id:'t09', name:'Небо',       light:true,  bg:'#eff6ff', own:'#3b82f6', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
-    { id:'t10', name:'Песок',      light:true,  bg:'#fef9ec', own:'#d97706', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
-    { id:'t11', name:'Лаванда',    light:true,  bg:'#f5f3ff', own:'#8b5cf6', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
-    { id:'t12', name:'Роза',       light:true,  bg:'#fff1f2', own:'#e11d48', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
-    { id:'t13', name:'Классика',   light:true,  bg:'#f2f2f7', own:'#0a84ff', ownText:'#fff', peer:'#ffffff', peerText:'#000' },
-    { id:'t14', name:'Терракота',  light:true,  bg:'#fef2ee', own:'#ea580c', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
-    { id:'t15', name:'Изумруд',    light:false, bg:'#052e2b', own:'#059669', ownText:'#fff', peer:'#0a3d38', peerText:'#fff' },
+    { id:'t01', name:'Ночной',    light:false, bg:'#0e1621', own:'#2b5278', ownText:'#fff', peer:'#182533', peerText:'#fff' },
+    { id:'t02', name:'Графит',    light:false, bg:'#1a1a1a', own:'#4a4a4a', ownText:'#fff', peer:'#2a2a2a', peerText:'#fff' },
+    { id:'t03', name:'Океан',     light:false, bg:'#0d1b2a', own:'#1b6ca8', ownText:'#fff', peer:'#1b263b', peerText:'#fff' },
+    { id:'t04', name:'Лес',       light:false, bg:'#0f2417', own:'#2d6a4f', ownText:'#fff', peer:'#1b3a2a', peerText:'#fff' },
+    { id:'t05', name:'Виноград',  light:false, bg:'#1e1b2e', own:'#6a4c93', ownText:'#fff', peer:'#2d2745', peerText:'#fff' },
+    { id:'t06', name:'Закат',     light:false, bg:'#2b1a1a', own:'#b23a48', ownText:'#fff', peer:'#3d2828', peerText:'#fff' },
+    { id:'t07', name:'Пудра',     light:true,  bg:'#fdf2f8', own:'#ec4899', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
+    { id:'t08', name:'Мята',      light:true,  bg:'#ecfdf5', own:'#10b981', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
+    { id:'t09', name:'Небо',      light:true,  bg:'#eff6ff', own:'#3b82f6', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
+    { id:'t10', name:'Песок',     light:true,  bg:'#fef9ec', own:'#d97706', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
+    { id:'t11', name:'Лаванда',   light:true,  bg:'#f5f3ff', own:'#8b5cf6', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
+    { id:'t12', name:'Роза',      light:true,  bg:'#fff1f2', own:'#e11d48', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
+    { id:'t13', name:'Классика',  light:true,  bg:'#f2f2f7', own:'#0a84ff', ownText:'#fff', peer:'#ffffff', peerText:'#000' },
+    { id:'t14', name:'Терракота', light:true,  bg:'#fef2ee', own:'#ea580c', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
+    { id:'t15', name:'Изумруд',   light:false, bg:'#052e2b', own:'#059669', ownText:'#fff', peer:'#0a3d38', peerText:'#fff' },
 ]
-
 const MSG_SIZES = [
     { id:'sm', label:'Мелкий',  fontSize:'13px', lineHeight:'1.35', pad:'7px 10px' },
     { id:'md', label:'Обычный', fontSize:'14px', lineHeight:'1.45', pad:'8px 12px' },
@@ -77,7 +71,7 @@ const MSG_SIZES = [
 ]
 
 /* ============================================================
-   ХЕЛПЕРЫ ДЛЯ БД
+   PREFS / STATE
 ============================================================ */
 const PREFS_KEY = 'lt_direct_prefs_v4'
 function loadLocalPrefs(){
@@ -88,29 +82,14 @@ function saveLocalPrefs(p){
 }
 
 const D = {
-        tab: 'chats',
-        chats: [],
-        requests: [],
-        currentChat: null,
-        refreshTimer: null,
-        typingTimer: null,
-        typingChannel: null,
-        editMode: false,
-        selectedChats: new Set(),
-        currentUser: null,
-        isAdmin: false,
-        prefs: {},
-        unreadTotal: 0,
-        lastSlideAt: 0,
-        loading: true,
-        emojiTab: 'emoji',
-        stickerPacks: [],
-        currentStickerPack: null,
-        stickerSendTimes: [],
-        mutedUntil: 0,
+        chats: [], requests: [], currentChat: null,
+        refreshTimer: null, typingTimer: null, typingChannel: null,
+        editMode: false, selectedChats: new Set(),
+        currentUser: null, isAdmin: false, prefs: {},
+        unreadTotal: 0, loading: true,
+        emojiTab: 'emoji', stickerPacks: [], currentStickerPack: null,
+        stickerSendTimes: [], mutedUntil: 0,
     }
-
-    /* загружаем локальные настройки в prefs */
 ;(function initPrefs(){
     const lp = loadLocalPrefs()
     if(lp.chatTheme) D.chatThemeId = lp.chatTheme
@@ -119,105 +98,143 @@ const D = {
     if(lp.stickers) D.stickerPacks = lp.stickers
     if(lp.mutedUntil) D.mutedUntil = lp.mutedUntil || 0
 })()
-
 function getTheme(){ return CHAT_THEMES.find(t => t.id === (D.chatThemeId || 't13')) || CHAT_THEMES[12] }
 function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || MSG_SIZES[1] }
 
 /* ============================================================
-   CSS
+   CSS (инжектируется)
 ============================================================ */
 (function injectCSS(){
     if(document.getElementById('direct-v4-css')) return
     const st = document.createElement('style')
     st.id = 'direct-v4-css'
     st.textContent = `
-    /* --- Skeleton --- */
     @keyframes dskel { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-    .dr-skel {
-        display:flex; gap:12px; align-items:center;
-        padding:12px; border-radius:16px;
-    }
-    .dr-skel-ava {
-        width:56px; height:56px; border-radius:50%; flex-shrink:0;
+    @keyframes dblink { 0%,100%{opacity:1} 50%{opacity:.35} }
+    @keyframes dbounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-6px);opacity:1} }
+    @keyframes drFadeIn { from { opacity:0; transform:translateY(8px) scale(.985); } to { opacity:1; transform:translateY(0) scale(1); } }
+    @keyframes drMsgIn { from{ opacity:0; transform: translateY(8px) scale(.96) } to { opacity:1; transform: translateY(0) scale(1) } }
+    @keyframes drMsgInMine { from{ opacity:0; transform: translateY(8px) translateX(16px) scale(.96) } to { opacity:1; transform: translateY(0) translateX(0) scale(1) } }
+    @keyframes drSlideDown { from{ opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes drMenuIn { from{ opacity:0; transform: scale(.92) translateY(-6px) } to { opacity:1; transform: scale(1) translateY(0) } }
+    @keyframes drProfIn { from{ opacity:0; transform: translateY(28px) } to { opacity:1; transform: translateY(0) } }
+    @keyframes drSheetUp { from { transform: translate(-50%, 100%) } to { transform: translate(-50%, 0) } }
+    @keyframes drHighlight { 0%,100% { box-shadow: 0 1px 2px rgba(0,0,0,.06) } 20%,80% { box-shadow: 0 0 0 3px var(--blue), 0 4px 16px rgba(10,132,255,.35) } }
+
+    /* Skeleton */
+    .dr-skel { display:flex; gap:12px; align-items:center; padding:12px; border-radius:16px; }
+    .dr-skel-ava { width:56px; height:56px; border-radius:50%; flex-shrink:0;
         background:linear-gradient(90deg, rgba(120,120,128,.12) 25%, rgba(120,120,128,.22) 50%, rgba(120,120,128,.12) 75%);
-        background-size:200% 100%; animation:dskel 1.4s linear infinite;
-    }
+        background-size:200% 100%; animation:dskel 1.4s linear infinite; }
     .dr-skel-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
-    .dr-skel-line{
-        height:12px; border-radius:6px;
+    .dr-skel-line{ height:12px; border-radius:6px;
         background:linear-gradient(90deg, rgba(120,120,128,.12) 25%, rgba(120,120,128,.22) 50%, rgba(120,120,128,.12) 75%);
-        background-size:200% 100%; animation:dskel 1.4s linear infinite;
-    }
+        background-size:200% 100%; animation:dskel 1.4s linear infinite; }
     .dr-skel-line.short{width:40%}
     .dr-skel-line.mid{width:70%}
 
-    /* --- Connecting --- */
-    @keyframes dblink { 0%,100%{opacity:1} 50%{opacity:.35} }
-    @keyframes dbounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-6px);opacity:1} }
-    .dr-connecting {
-        position:absolute; inset:0; display:flex;
-        align-items:center; justify-content:center; gap:10px;
-        pointer-events:none; z-index:5;
+    /* Topbar (fixed, не уезжает) */
+    #screen-direct .topbar{
+        position: fixed !important;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 420px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: calc(env(safe-area-inset-top,0) + 14px) 16px 12px;
+        box-sizing: border-box;
+        background: rgba(255,255,255,.88);
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        z-index: 100;
+        margin: 0;
     }
-    .dr-connecting-text {
-        font-size:15px; font-weight:600;
-        color:var(--text-secondary);
-        animation:dblink 1.4s ease-in-out infinite;
-    }
-    .dr-connecting-dots{ display:inline-flex; gap:4px; margin-left:4px; vertical-align:middle }
-    .dr-connecting-dots i{
-        width:6px;height:6px;border-radius:50%;background:var(--blue);
-        animation:dbounce 1.2s ease-in-out infinite;display:inline-block;
-    }
-    .dr-connecting-dots i:nth-child(2){animation-delay:.15s}
-    .dr-connecting-dots i:nth-child(3){animation-delay:.3s}
+    html[data-theme="dark"] #screen-direct .topbar{ background: rgba(0,0,0,.72); }
 
-    /* --- Chat list --- */
+    /* Принудительно показываем шапку — не даём topbar-hidden её унести */
+    #screen-direct .topbar.topbar-hidden{
+        transform: translateX(-50%) !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    #screen-direct .topbar-title{
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding: 0 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+    }
+    .direct-topbar-right{
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        min-width: 40px;
+        justify-content: flex-end;
+    }
+    .direct-trash-btn{
+        background: transparent; border: none; color: var(--red);
+        cursor: pointer; padding: 8px; display: flex; align-items: center;
+        animation: drFadeIn .2s ease both;
+    }
+    .direct-title-dots{ display: inline-flex; gap: 3px; margin-left: 4px; vertical-align: middle; }
+    .direct-title-dots i{
+        width: 4px; height: 4px; border-radius: 50%;
+        background: currentColor; display: inline-block;
+        animation: dbounce 1.2s ease-in-out infinite;
+    }
+    .direct-title-dots i:nth-child(2){ animation-delay: .15s }
+    .direct-title-dots i:nth-child(3){ animation-delay: .3s }
+
+    #screen-direct #direct-body{ padding-top: 72px; }
+
+    /* New chat button */
     .direct-new-chat-btn{
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: calc(100% - 20px);
-    margin: 8px 10px 6px;
-    padding: 12px 14px;
-    background: var(--surface-2);
-    border: none;
-    border-radius: 14px;
-    font-family: inherit;
-    text-align: left;
-    cursor: pointer;
-    transition: background .18s, transform .12s;
-}
-.direct-new-chat-btn:active{ transform: scale(.985) }
-.direct-new-chat-btn:hover{ background: var(--surface-3) }
-.dnc-icon{
-    width: 40px; height: 40px;
-    border-radius: 50%;
-    background: var(--blue); color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-}
-.dnc-icon svg{ width: 20px; height: 20px }
-.dnc-text{
-    flex: 1; min-width: 0;
-    display: flex; flex-direction: column; gap: 2px;
-}
-.dnc-title{
-    font-size: 15px; font-weight: 600;
-    color: var(--text);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.dnc-sub{
-    font-size: 12.5px;
-    color: var(--text-secondary);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.dnc-arrow{
-    color: var(--text-tertiary);
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-}
-.dnc-arrow svg{ width: 18px; height: 18px }
+        display: flex; align-items: center; gap: 12px;
+        width: calc(100% - 20px); margin: 8px 10px 6px;
+        padding: 12px 14px;
+        background: var(--surface-2); border: none; border-radius: 14px;
+        font-family: inherit; text-align: left; cursor: pointer;
+        transition: background .18s, transform .12s;
+    }
+    .direct-new-chat-btn:active{ transform: scale(.985) }
+    .direct-new-chat-btn:hover{ background: var(--surface-3) }
+    .dnc-icon{
+        width: 40px; height: 40px; border-radius: 50%;
+        background: var(--blue); color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .dnc-icon svg{ width: 20px; height: 20px }
+    .dnc-text{ flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .dnc-title{
+        font-size: 15px; font-weight: 600; color: var(--text);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dnc-sub{
+        font-size: 12.5px; color: var(--text-secondary);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dnc-arrow{
+        color: var(--text-tertiary);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .dnc-arrow svg{ width: 18px; height: 18px }
+
+    /* Chat list */
     .direct-list { padding:0 8px 24px }
     .direct-item {
         display:flex; gap:12px; align-items:center;
@@ -226,16 +243,8 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
         transition: background .18s ease;
         animation: drFadeIn .32s cubic-bezier(.34,1.4,.64,1) both;
     }
-    @keyframes drFadeIn {
-        from { opacity:0; transform:translateY(8px) scale(.985); }
-        to   { opacity:1; transform:translateY(0) scale(1); }
-    }
     .direct-item:hover { background: var(--surface-2) }
-    .direct-item + .direct-item { }
-    .direct-item-sep {
-        height:1px; margin:0 6px 0 74px;
-        background: var(--border);
-    }
+    .direct-item-sep { height:1px; margin:0 6px 0 74px; background: var(--border); }
     .direct-item-avatar {
         width:54px; height:54px; border-radius:50%;
         background:linear-gradient(135deg,#ffd60a,#ff375f);
@@ -245,15 +254,10 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
     }
     .direct-item-avatar img{ width:100%; height:100%; object-fit:cover }
     .direct-item-info{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px }
-    .direct-item-row1{
-        display:flex; align-items:center; gap:6px;
-        min-width:0;
-    }
+    .direct-item-row1{ display:flex; align-items:center; gap:6px; min-width:0; }
     .direct-item-name{
-        flex:1; min-width:0;
-        font-size:15px; font-weight:500;
-        color:var(--text);
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        flex:1; min-width:0; font-size:15px; font-weight:500;
+        color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
         line-height:1.15;
     }
     .direct-item-date{
@@ -266,29 +270,18 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
         flex:1; min-width:0;
         font-size:13.5px; color:var(--text-secondary);
         line-height:1.3;
-        display:-webkit-box;
-        -webkit-line-clamp:2;
-        -webkit-box-orient:vertical;
-        overflow:hidden;
-        word-break:break-word;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+        overflow:hidden; word-break:break-word;
     }
     .direct-item-preview b { color: var(--text); font-weight:600 }
-    .direct-item-preview .drp-emoji { font-style: normal }
-    .direct-item-right{
-        display:flex; flex-direction:column; align-items:flex-end; gap:4px;
-        flex-shrink:0;
-    }
+    .direct-item-right{ display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
     .direct-item-badge{
         min-width:20px; height:20px; padding:0 6px;
         background:#ff3b30; color:#fff;
         border-radius:100px; font-size:11px; font-weight:700;
         display:flex; align-items:center; justify-content:center;
     }
-    .direct-item-pin{
-        position:absolute; right:12px; top:6px;
-        color:var(--blue); opacity:.85;
-        pointer-events:none;
-    }
+    .direct-item-pin{ position:absolute; right:12px; top:6px; color:var(--blue); opacity:.85; pointer-events:none; }
     .direct-item-check{
         width:22px; height:22px; border-radius:50%;
         border:1.6px solid var(--border-strong);
@@ -297,9 +290,7 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
         margin-right:2px;
         transition: background .15s, border-color .15s, transform .15s;
     }
-    .direct-item-check.on{
-        background: var(--blue); border-color: var(--blue); color:#fff;
-    }
+    .direct-item-check.on{ background: var(--blue); border-color: var(--blue); color:#fff; }
     .direct-item-check.on::after{
         content:''; width:6px; height:10px;
         border:solid #fff; border-width:0 2px 2px 0;
@@ -307,90 +298,11 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
     }
     .direct-item.selected { background: rgba(10,132,255,.08) }
 
-    /* --- Topbar --- */
-    /* --- Topbar (fix) --- */
-#screen-direct .topbar{
-    position: fixed;                    /* как у остальных экранов */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    max-width: 420px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px 12px;
-    box-sizing: border-box;
-    background: rgba(255,255,255,.88);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    z-index: 100;
-}
-html[data-theme="dark"] #screen-direct .topbar{
-    background: rgba(0,0,0,.72);
-}
-#screen-direct .topbar-title{
-    flex: 1;
-    min-width: 0;
-    text-align: center;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding: 0 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-}
-.direct-topbar-right{
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    min-width: 40px;      /* = ширина одного topbar-btn, чтобы title стоял ровно по центру */
-    justify-content: flex-end;
-}
-.direct-trash-btn{
-    background: transparent;
-    border: none;
-    color: var(--red);
-    cursor: pointer;
-    padding: 8px;
-    display: flex;
-    align-items: center;
-    animation: drFadeIn .2s ease both;
-}
-
-/* Точки рядом с «Соединение» */
-.direct-title-dots{
-    display: inline-flex;
-    gap: 3px;
-    margin-left: 4px;
-    vertical-align: middle;
-}
-.direct-title-dots i{
-    width: 4px; height: 4px; border-radius: 50%;
-    background: currentColor;
-    display: inline-block;
-    animation: dbounce 1.2s ease-in-out infinite;
-}
-.direct-title-dots i:nth-child(2){ animation-delay: .15s }
-.direct-title-dots i:nth-child(3){ animation-delay: .3s }
-
-#screen-direct{
-    padding-top: 0;          /* сбрасываем возможный конфликт */
-}
-#screen-direct #direct-body{
-    padding-top: 68px;       /* высота topbar */
-}
-
-    /* --- Sidebar (direct) --- */
+    /* Sidebar */
     .ds-backdrop{
         position:fixed; inset:0; background:rgba(0,0,0,.4);
         backdrop-filter:blur(4px); z-index:250;
-        opacity:0; pointer-events:none;
-        transition: opacity .28s ease;
+        opacity:0; pointer-events:none; transition: opacity .28s ease;
     }
     .ds-backdrop.show{ opacity:1; pointer-events:auto }
     .ds-sidebar{
@@ -410,8 +322,7 @@ html[data-theme="dark"] #screen-direct .topbar{
     }
     .ds-brand{
         font-size:22px; font-weight:800; letter-spacing:-.03em;
-        color: var(--text);
-        display:flex; align-items:center; gap:8px;
+        color: var(--text); display:flex; align-items:center; gap:8px;
     }
     .ds-brand-mark{
         width:32px; height:32px; border-radius:50%;
@@ -442,14 +353,9 @@ html[data-theme="dark"] #screen-direct .topbar{
         width:22px; height:22px; display:flex; align-items:center; justify-content:center;
         color:var(--text-secondary); flex-shrink:0;
     }
-    .ds-item.danger .ds-item-icon,
-    .ds-item.danger { color:var(--red) }
-    .ds-item-chev{
-        margin-left:auto; color:var(--text-tertiary);
-        transition: transform .2s ease;
-    }
+    .ds-item-chev{ margin-left:auto; color:var(--text-tertiary); transition: transform .2s ease; }
 
-    /* --- Chat room --- */
+    /* Chat room */
     .dr-topbar{
         display:flex; gap:8px;
         padding: calc(env(safe-area-inset-top,0) + 10px) 12px 10px;
@@ -467,12 +373,9 @@ html[data-theme="dark"] #screen-direct .topbar{
     .dr-back-btn:active{ background:var(--surface-3) }
     .dr-user-pill{
         flex:1; display:flex; align-items:center; gap:12px;
-        padding:5px 14px 5px 6px;
-        border-radius:100px;
-        background:var(--surface-2);
-        min-width:0;
-        cursor:pointer;
-        transition: background .18s;
+        padding:5px 14px 5px 6px; border-radius:100px;
+        background:var(--surface-2); min-width:0;
+        cursor:pointer; transition: background .18s;
     }
     .dr-user-pill:hover{ background:var(--surface-3) }
     .dr-user-ava{
@@ -489,10 +392,8 @@ html[data-theme="dark"] #screen-direct .topbar{
         line-height:1.2;
     }
     .dr-user-status{
-        font-size:11.5px; font-weight:500;
-        color:var(--text-secondary);
-        margin-top:2px;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        font-size:11.5px; font-weight:500; color:var(--text-secondary);
+        margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .dr-user-status.online{ color: var(--blue) }
     .dr-user-status.typing{ color: var(--blue) }
@@ -504,37 +405,27 @@ html[data-theme="dark"] #screen-direct .topbar{
     .dr-typing-dots i:nth-child(2){ animation-delay:.15s }
     .dr-typing-dots i:nth-child(3){ animation-delay:.3s }
 
-    /* --- Messages --- */
     .direct-messages{
         flex:1; overflow-y:auto;
         padding: 14px 10px 8px;
         display:flex; flex-direction:column; gap:3px;
         scroll-behavior: smooth;
         transition: background .3s ease;
+        min-height: 0;
     }
     .dr-date-sep{
         align-self:center; margin:14px 0 10px;
         padding:4px 12px; background:var(--surface-2);
         border-radius:100px; font-size:11px; font-weight:600;
-        color:var(--text-secondary);
-        animation: drFadeIn .3s ease both;
+        color:var(--text-secondary); animation: drFadeIn .3s ease both;
     }
     .dr-row{
-        display:flex; align-items:flex-end; gap:6px;
-        max-width:82%;
+        display:flex; align-items:flex-end; gap:6px; max-width:82%;
         animation: drMsgIn .3s cubic-bezier(.34,1.4,.64,1) both;
-    }
-    @keyframes drMsgIn {
-        from{ opacity:0; transform: translateY(8px) scale(.96) }
-        to { opacity:1; transform: translateY(0) scale(1) }
     }
     .dr-row.mine{
         align-self:flex-end; flex-direction:row-reverse;
         animation: drMsgInMine .3s cubic-bezier(.34,1.4,.64,1) both;
-    }
-    @keyframes drMsgInMine {
-        from{ opacity:0; transform: translateY(8px) translateX(16px) scale(.96) }
-        to { opacity:1; transform: translateY(0) translateX(0) scale(1) }
     }
     .dr-row-ava{
         width:28px; height:28px; border-radius:50%;
@@ -551,80 +442,41 @@ html[data-theme="dark"] #screen-direct .topbar{
         border-radius: 18px;
         font-size: var(--bubble-size, 14px);
         line-height: var(--bubble-lh, 1.45);
-        word-break:break-word;
-        position:relative;
-        max-width:100%;
+        word-break:break-word; position:relative; max-width:100%;
         box-shadow: 0 1px 2px rgba(0,0,0,.06);
         border-top-left-radius: 6px;
     }
-    .dr-row.mine .direct-bubble{
-        border-top-left-radius: 18px;
-        border-top-right-radius: 6px;
-    }
+    .dr-row.mine .direct-bubble{ border-top-left-radius: 18px; border-top-right-radius: 6px; }
     .direct-bubble-content{ white-space:pre-wrap; word-break:break-word }
     .direct-bubble-foot{
         display:flex; align-items:center; justify-content:flex-end; gap:4px;
-        font-size:10.5px; opacity:.7;
-        margin-top:3px;
-        min-height:12px;
+        font-size:10.5px; opacity:.7; margin-top:3px; min-height:12px;
     }
     .dr-row.mine .direct-bubble-foot{ color: rgba(255,255,255,.85) }
     .direct-bubble-foot .dr-check{ display:inline-flex; margin-left:2px }
     .direct-bubble-foot .dr-check svg{ display:block }
     .direct-bubble-foot .dr-check.read{ color:#5fdfff }
 
-    /* Sticker message */
-    .dr-sticker{
-        background:transparent !important;
-        box-shadow:none !important;
-        padding:0 !important;
-        border-radius:0 !important;
-    }
-    .dr-sticker img{
-        width: 140px; height:140px; object-fit:contain;
-        display:block; filter: drop-shadow(0 4px 12px rgba(0,0,0,.15));
-    }
+    .dr-sticker{ background:transparent !important; box-shadow:none !important; padding:0 !important; border-radius:0 !important; }
+    .dr-sticker img{ width: 140px; height:140px; object-fit:contain; display:block; filter: drop-shadow(0 4px 12px rgba(0,0,0,.15)); }
 
-    /* Pin mark */
-    .dr-msg-pin{
-        display:inline-block; margin-right:4px; opacity:.7;
-        vertical-align:middle;
-    }
+    .dr-msg-pin{ display:inline-block; margin-right:4px; opacity:.7; vertical-align:middle; }
 
-    /* Long-press states */
-    .dr-row.pressing .direct-bubble{
-        transform: scale(.96);
-        transition: transform .12s var(--ease);
-    }
+    .dr-row.pressing .direct-bubble{ transform: scale(.96); transition: transform .12s var(--ease); }
+    .dr-row.highlight .direct-bubble{ animation: drHighlight 1.8s var(--ease); }
 
-    /* Highlight */
-    .dr-row.highlight .direct-bubble{
-        animation: drHighlight 1.8s var(--ease);
-    }
-    @keyframes drHighlight {
-        0%,100% { box-shadow: 0 1px 2px rgba(0,0,0,.06) }
-        20%,80% { box-shadow: 0 0 0 3px var(--blue), 0 4px 16px rgba(10,132,255,.35) }
-    }
-
-    /* Pinned bar */
     .dr-pinned-bar{
         display:flex; align-items:center; gap:10px;
-        padding:8px 14px;
-        background:var(--surface-2);
+        padding:8px 14px; background:var(--surface-2);
         border-bottom:1px solid var(--border);
         cursor:pointer; flex-shrink:0;
         animation: drSlideDown .28s ease both;
-    }
-    @keyframes drSlideDown {
-        from{ opacity:0; transform:translateY(-8px) }
-        to { opacity:1; transform:translateY(0) }
     }
     .dr-pinned-bar.hidden{ display:none }
     .dr-pinned-icon{
         width:26px; height:26px; border-radius:50%;
         background: var(--pin-color, var(--blue)); color:#fff;
-        display:flex; align-items:center; justify-content:center;
-        flex-shrink:0;
+        display:flex; align-items:center; justify-content:center; flex-shrink:0;
     }
     .dr-pinned-body{ flex:1; min-width:0 }
     .dr-pinned-title{
@@ -632,29 +484,15 @@ html[data-theme="dark"] #screen-direct .topbar{
         color: var(--pin-color, var(--blue));
         text-transform:uppercase; letter-spacing:.05em;
     }
-    .dr-pinned-text{
-        font-size:13px; color:var(--text-secondary);
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        margin-top:2px;
-    }
-    .dr-pinned-unpin{
-        background:transparent; border:none; color:var(--text-secondary);
-        cursor:pointer; padding:4px 6px; flex-shrink:0;
-        display:flex; align-items:center;
-    }
-    .dr-pinned-count{
-        background: var(--pin-color, var(--blue)); color:#fff;
-        font-size:10px; font-weight:700;
-        padding:2px 7px; border-radius:100px; flex-shrink:0;
-    }
+    .dr-pinned-text{ font-size:13px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+    .dr-pinned-unpin{ background:transparent; border:none; color:var(--text-secondary); cursor:pointer; padding:4px 6px; flex-shrink:0; display:flex; align-items:center; }
+    .dr-pinned-count{ background: var(--pin-color, var(--blue)); color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; flex-shrink:0; }
 
-    /* Composer */
     .dr-composer{
         display:flex; gap:6px; align-items:flex-end;
         padding: 8px 10px;
         padding-bottom: calc(8px + env(safe-area-inset-bottom,0));
-        background: var(--bg);
-        border-top:1px solid var(--border);
+        background: var(--bg); border-top:1px solid var(--border);
     }
     .dr-composer-btn{
         width:38px; height:38px; border-radius:50%;
@@ -666,13 +504,9 @@ html[data-theme="dark"] #screen-direct .topbar{
     .dr-composer-btn:hover{ background: var(--surface-2); color: var(--text) }
     .dr-composer-btn.active{ color: var(--blue) }
     .dr-input-wrap{
-        flex:1;
-        position:relative;
-        display:flex; align-items:center;
-        background: var(--surface-2);
-        border-radius: 22px;
-        min-height:38px;
-        padding: 0 6px 0 4px;
+        flex:1; position:relative; display:flex; align-items:center;
+        background: var(--surface-2); border-radius: 22px;
+        min-height:38px; padding: 0 6px 0 4px;
     }
     .dr-input-wrap input{
         flex:1;
@@ -680,15 +514,12 @@ html[data-theme="dark"] #screen-direct .topbar{
         border:none !important;
         box-shadow:none !important;
         padding: 9px 6px !important;
-        font-size:15px;
-        color:var(--text);
-        outline:none;
+        font-size:15px; color:var(--text); outline:none;
     }
     .dr-input-wrap input::placeholder{ color: var(--text-tertiary) }
     .dr-input-emoji{
         width:32px; height:32px; border-radius:50%;
-        background:transparent; border:none;
-        color:var(--text-secondary);
+        background:transparent; border:none; color:var(--text-secondary);
         display:flex; align-items:center; justify-content:center;
         cursor:pointer; flex-shrink:0;
     }
@@ -698,42 +529,31 @@ html[data-theme="dark"] #screen-direct .topbar{
         background: var(--blue); color:#fff;
         border:none; cursor:pointer;
         display:flex; align-items:center; justify-content:center;
-        flex-shrink:0;
-        transition: transform .15s, background .15s;
+        flex-shrink:0; transition: transform .15s, background .15s;
     }
     .dr-send-btn:active{ transform: scale(.93) }
 
-    /* Emoji / Sticker panel */
     .dr-panel{
         max-height: 0; overflow:hidden;
-        background: var(--bg);
-        border-top: 1px solid var(--border);
+        background: var(--bg); border-top: 1px solid var(--border);
         transition: max-height .3s cubic-bezier(.32,.72,.24,1);
         flex-shrink:0;
     }
     .dr-panel.open{ max-height: 45vh; overflow-y:auto }
     .dr-panel-tabs{
-        display:flex; gap:6px;
-        padding: 10px 12px 6px;
+        display:flex; gap:6px; padding: 10px 12px 6px;
         border-bottom: 1px solid var(--border);
         position:sticky; top:0; background:var(--bg); z-index:2;
     }
     .dr-panel-tab{
         padding:8px 14px; border-radius:100px;
-        border:none; background: transparent;
-        color: var(--text-secondary);
+        border:none; background: transparent; color: var(--text-secondary);
         font-family:inherit; font-size:13px; font-weight:600;
-        cursor:pointer;
-        display:flex; align-items:center; gap:6px;
+        cursor:pointer; display:flex; align-items:center; gap:6px;
     }
     .dr-panel-tab.active{ background: var(--surface-2); color: var(--text) }
     .dr-panel-body{ padding: 8px 6px 14px }
-    .dr-emoji-grid{
-        display:grid;
-        grid-template-columns: repeat(8, 1fr);
-        gap: 2px;
-        padding: 6px;
-    }
+    .dr-emoji-grid{ display:grid; grid-template-columns: repeat(8, 1fr); gap: 2px; padding: 6px; }
     .dr-emoji-grid button{
         aspect-ratio:1; background:transparent; border:none;
         font-size:24px; cursor:pointer; border-radius:8px;
@@ -742,17 +562,14 @@ html[data-theme="dark"] #screen-direct .topbar{
     .dr-emoji-grid button:hover{ background: var(--surface-2) }
     .dr-emoji-grid button:active{ transform: scale(.9) }
 
-    /* Stickers */
     .dr-sticker-packs{
-        display:flex; gap:8px;
-        padding: 6px 10px 10px;
+        display:flex; gap:8px; padding: 6px 10px 10px;
         overflow-x:auto; scrollbar-width:none;
     }
     .dr-sticker-packs::-webkit-scrollbar{ display:none }
     .dr-sticker-pack{
         width:52px; height:52px; border-radius:14px;
-        background: var(--surface-2);
-        border: 2px solid transparent;
+        background: var(--surface-2); border: 2px solid transparent;
         cursor:pointer; flex-shrink:0;
         display:flex; align-items:center; justify-content:center;
         overflow:hidden;
@@ -761,149 +578,80 @@ html[data-theme="dark"] #screen-direct .topbar{
     .dr-sticker-pack.active{ border-color: var(--blue) }
     .dr-sticker-pack:active{ transform: scale(.94) }
     .dr-sticker-pack img{ width:100%; height:100%; object-fit:cover }
-    .dr-sticker-pack-add{
-        color: var(--text-secondary);
-        font-size:24px; font-weight:300;
-    }
-    .dr-stickers-grid{
-        display:grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
-        padding: 10px 12px;
-    }
-    .dr-sticker-item{
-        aspect-ratio:1; background: transparent; border:none;
-        cursor:pointer; padding:4px;
-        transition: transform .12s;
-    }
+    .dr-sticker-pack-add{ color: var(--text-secondary); font-size:24px; font-weight:300; }
+    .dr-stickers-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px 12px; }
+    .dr-sticker-item{ aspect-ratio:1; background: transparent; border:none; cursor:pointer; padding:4px; transition: transform .12s; }
     .dr-sticker-item:active{ transform: scale(.9) }
-    .dr-sticker-item img{
-        width:100%; height:100%; object-fit:contain;
-    }
-    .dr-sticker-empty{
-        text-align:center; padding:30px 20px;
-        color: var(--text-secondary); font-size:13.5px;
-    }
+    .dr-sticker-item img{ width:100%; height:100%; object-fit:contain; }
+    .dr-sticker-empty{ text-align:center; padding:30px 20px; color: var(--text-secondary); font-size:13.5px; }
     .dr-sticker-empty-btn{
-        margin-top:14px;
-        padding:10px 18px;
+        margin-top:14px; padding:10px 18px;
         background: var(--blue); color:#fff;
         border:none; border-radius: 12px;
-        font-family:inherit; font-size:14px; font-weight:600;
-        cursor:pointer;
+        font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;
     }
-
-    /* Mute banner */
     .dr-mute-banner{
-        margin: 6px 12px 0;
-        padding: 8px 12px;
-        background: rgba(255,59,48,.12);
-        color: var(--red);
-        font-size:12.5px;
-        border-radius: 10px;
+        margin: 6px 12px 0; padding: 8px 12px;
+        background: rgba(255,59,48,.12); color: var(--red);
+        font-size:12.5px; border-radius: 10px;
         display:flex; align-items:center; gap:8px;
     }
 
-    /* Модалка создания пака / темы */
     .dr-sheet-backdrop{
         position:fixed; inset:0; background:rgba(0,0,0,.5);
-        backdrop-filter: blur(8px);
-        z-index:900;
+        backdrop-filter: blur(8px); z-index:900;
         animation: drFadeIn .2s ease both;
     }
     .dr-sheet{
         position:fixed; left:50%; bottom:0; transform:translateX(-50%);
-        width:100%; max-width:480px;
-        background: var(--bg);
+        width:100%; max-width:480px; background: var(--bg);
         border-radius: 24px 24px 0 0;
         padding: 12px 18px calc(24px + env(safe-area-inset-bottom,0));
-        z-index:901;
-        animation: drSheetUp .3s cubic-bezier(.32,.72,.24,1) both;
-        max-height: 90dvh;
-        display:flex; flex-direction:column;
-    }
-    @keyframes drSheetUp {
-        from { transform: translate(-50%, 100%) }
-        to   { transform: translate(-50%, 0) }
+        z-index:901; animation: drSheetUp .3s cubic-bezier(.32,.72,.24,1) both;
+        max-height: 90dvh; display:flex; flex-direction:column;
     }
     .dr-sheet-handle{
         width:44px; height:5px; border-radius:100px;
-        background: var(--border-strong);
-        margin: 6px auto 14px;
-        flex-shrink:0;
+        background: var(--border-strong); margin: 6px auto 14px; flex-shrink:0;
     }
-    .dr-sheet-title{
-        font-size:18px; font-weight:700;
-        margin-bottom: 12px; text-align:center;
-    }
+    .dr-sheet-title{ font-size:18px; font-weight:700; margin-bottom: 12px; text-align:center; }
     .dr-sheet-scroll{ overflow-y:auto; flex:1; min-height:0 }
 
-    /* Theme picker */
-    .dr-theme-grid{
-        display:grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        padding: 4px 0 8px;
-    }
+    .dr-theme-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 4px 0 8px; }
     .dr-theme-cell{
-        aspect-ratio: 1 / 1.15;
-        border-radius: 14px;
-        border: 2px solid transparent;
-        background: transparent;
-        cursor:pointer;
-        padding:0; overflow:hidden;
+        aspect-ratio: 1 / 1.15; border-radius: 14px;
+        border: 2px solid transparent; background: transparent;
+        cursor:pointer; padding:0; overflow:hidden;
         display:flex; flex-direction:column;
-        transition: border-color .15s, transform .15s;
-        position:relative;
+        transition: border-color .15s, transform .15s; position:relative;
     }
     .dr-theme-cell:active{ transform: scale(.96) }
     .dr-theme-cell.active{ border-color: var(--blue) }
     .dr-theme-preview{
         flex:1; display:flex; flex-direction:column;
-        justify-content:flex-end;
-        padding: 6px;
-        gap: 4px;
+        justify-content:flex-end; padding: 6px; gap: 4px;
     }
-    .dr-theme-bubble{
-        height: 12px; border-radius: 7px;
-        max-width: 70%;
-        box-shadow: 0 1px 2px rgba(0,0,0,.06);
-    }
+    .dr-theme-bubble{ height: 12px; border-radius: 7px; max-width: 70%; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
     .dr-theme-bubble.p{ align-self:flex-start }
     .dr-theme-bubble.o{ align-self:flex-end }
     .dr-theme-name{
-        font-size:10.5px; font-weight:600;
-        text-align:center; padding: 4px 0;
-        background: var(--surface-2);
-        color: var(--text);
+        font-size:10.5px; font-weight:600; text-align:center;
+        padding: 4px 0; background: var(--surface-2); color: var(--text);
     }
     .dr-theme-cell.active .dr-theme-name{ color: var(--blue) }
-
     .dr-section-label{
-        font-size:12px; font-weight:700;
-        text-transform:uppercase; letter-spacing:.06em;
-        color: var(--text-tertiary);
-        padding: 14px 2px 8px;
+        font-size:12px; font-weight:700; text-transform:uppercase;
+        letter-spacing:.06em; color: var(--text-tertiary); padding: 14px 2px 8px;
     }
-    .dr-color-row{
-        display:flex; gap:8px; flex-wrap:wrap;
-        padding-bottom: 6px;
-    }
+    .dr-color-row{ display:flex; gap:8px; flex-wrap:wrap; padding-bottom: 6px; }
     .dr-color-dot{
         width:38px; height:38px; border-radius:50%;
-        border: 2px solid transparent;
-        cursor:pointer; padding:0;
+        border: 2px solid transparent; cursor:pointer; padding:0;
         transition: transform .15s, border-color .15s;
     }
     .dr-color-dot:active{ transform: scale(.9) }
-    .dr-color-dot.active{
-        border-color: var(--text);
-        box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text);
-    }
-    .dr-size-row{
-        display:grid; grid-template-columns: repeat(3, 1fr);
-        gap:8px;
-    }
+    .dr-color-dot.active{ border-color: var(--text); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
+    .dr-size-row{ display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; }
     .dr-size-btn{
         padding: 12px 6px; border-radius: 12px;
         border: 2px solid transparent; background: var(--surface-2);
@@ -914,26 +662,18 @@ html[data-theme="dark"] #screen-direct .topbar{
     .dr-size-btn.active{ border-color: var(--blue); background: rgba(10,132,255,.08); color: var(--blue) }
     .dr-size-btn small{ display:block; opacity:.65; font-size:11px; margin-top:2px }
 
-    /* Long-press menu */
     .dr-msg-menu{
         position:fixed; z-index:1500;
-        background: var(--bg);
-        border-radius: 14px;
+        background: var(--bg); border-radius: 14px;
         box-shadow: 0 12px 40px rgba(0,0,0,.35), 0 0 0 1px var(--border);
-        overflow:hidden;
-        min-width:200px;
+        overflow:hidden; min-width:200px;
         animation: drMenuIn .18s cubic-bezier(.34,1.4,.64,1) both;
         padding: 4px 0;
     }
-    @keyframes drMenuIn {
-        from{ opacity:0; transform: scale(.92) translateY(-6px) }
-        to  { opacity:1; transform: scale(1) translateY(0) }
-    }
     .dr-msg-menu-item{
         display:flex; align-items:center; gap:14px;
-        padding: 11px 16px;
-        background:transparent; border:none; width:100%;
-        font-family:inherit; font-size:14.5px; font-weight:500;
+        padding: 11px 16px; background:transparent; border:none;
+        width:100%; font-family:inherit; font-size:14.5px; font-weight:500;
         color: var(--text); cursor:pointer; text-align:left;
         transition: background .12s;
     }
@@ -941,22 +681,16 @@ html[data-theme="dark"] #screen-direct .topbar{
     .dr-msg-menu-item.danger{ color: var(--red) }
     .dr-msg-menu-item svg{ flex-shrink:0; opacity:.9 }
 
-    /* Profile overlay */
     .dr-profile-overlay{
         position:fixed; inset:0; z-index:200;
-        background: var(--bg);
-        display:flex; flex-direction:column; overflow-y:auto;
+        background: var(--bg); display:flex; flex-direction:column;
+        overflow-y:auto;
         animation: drProfIn .32s cubic-bezier(.32,.72,.24,1) both;
-    }
-    @keyframes drProfIn {
-        from{ opacity:0; transform: translateY(28px) }
-        to  { opacity:1; transform: translateY(0) }
     }
     .dr-prof-topbar{
         display:flex; align-items:center; justify-content:space-between;
         padding: calc(env(safe-area-inset-top,0) + 12px) 16px 12px;
-        position:sticky; top:0;
-        background: var(--bg); z-index:10;
+        position:sticky; top:0; background: var(--bg); z-index:10;
     }
     .dr-prof-back, .dr-prof-dots{
         width:42px; height:42px; border-radius:50%;
@@ -965,18 +699,13 @@ html[data-theme="dark"] #screen-direct .topbar{
         cursor:pointer;
     }
     .dr-prof-hero{
-        position:relative; width: calc(100% - 24px);
-        margin: 0 12px;
+        position:relative; width: calc(100% - 24px); margin: 0 12px;
         aspect-ratio: 1/1; max-height: 50vh;
         border-radius: 24px; overflow:hidden;
         background: linear-gradient(135deg,#ffd60a,#ff375f);
-        display:flex; align-items:flex-end; padding: 20px;
-        color:#fff;
+        display:flex; align-items:flex-end; padding: 20px; color:#fff;
     }
-    .dr-prof-hero-img{
-        position:absolute; inset:0; width:100%; height:100%;
-        object-fit: cover;
-    }
+    .dr-prof-hero-img{ position:absolute; inset:0; width:100%; height:100%; object-fit: cover; }
     .dr-prof-hero-fallback{
         position:absolute; inset:0;
         display:flex; align-items:center; justify-content:center;
@@ -991,13 +720,9 @@ html[data-theme="dark"] #screen-direct .topbar{
     }
     .dr-prof-name{ font-size:24px; font-weight:800 }
     .dr-prof-username{ font-size:14px; opacity:.9; margin-top:2px }
-    .dr-prof-controls{
-        display:grid; grid-template-columns: repeat(5,1fr);
-        gap: 6px; padding: 16px 12px 0;
-    }
+    .dr-prof-controls{ display:grid; grid-template-columns: repeat(5,1fr); gap: 6px; padding: 16px 12px 0; }
     .dr-prof-ctrl{
-        aspect-ratio: 1/1;
-        border-radius: 16px;
+        aspect-ratio: 1/1; border-radius: 16px;
         background: var(--surface-2); border:none; color:var(--text);
         display:flex; flex-direction:column; align-items:center; justify-content:center;
         gap:4px; cursor:pointer; font-family:inherit;
@@ -1012,9 +737,8 @@ html[data-theme="dark"] #screen-direct .topbar{
         background: var(--surface-2); border-radius: 16px;
     }
     .dr-prof-info-label{
-        font-size:11px; font-weight:700;
-        text-transform:uppercase; letter-spacing:.05em;
-        color: var(--text-tertiary); margin-bottom: 6px;
+        font-size:11px; font-weight:700; text-transform:uppercase;
+        letter-spacing:.05em; color: var(--text-tertiary); margin-bottom: 6px;
     }
     .dr-prof-info-value{ font-size:14px; color: var(--text); line-height:1.5 }
     .dr-prof-gifts{
@@ -1023,14 +747,76 @@ html[data-theme="dark"] #screen-direct .topbar{
         text-align:center; color: var(--text-secondary); font-size: 13px;
     }
 
-    /* Prevent layout shift while typing */
-    .direct-messages{ min-height: 0 }
+    /* --- Экран "Новый чат" --- */
+    #direct-new-chat{
+        position: fixed; inset:0; z-index:160;
+        background: var(--bg);
+        display:flex; flex-direction:column;
+        animation: drFadeIn .28s var(--ease) both;
+    }
+    #direct-new-chat.hidden{ display:none }
+    .dnc-topbar{
+        position: sticky; top:0; z-index:30;
+        display: flex; align-items: center; gap: 8px;
+        padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 10px;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        box-sizing: border-box;
+        min-height: 60px; flex-shrink: 0;
+    }
+    html[data-theme="dark"] .dnc-topbar{
+        background: rgba(0,0,0,.92);
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+    }
+    .dnc-back{
+        width:44px; height:44px; flex:0 0 44px;
+        border-radius:50%; border:none;
+        background:var(--surface-2); color:var(--text);
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; padding:0;
+        -webkit-tap-highlight-color:transparent;
+        transition:background .18s;
+    }
+    .dnc-back:active{ background:var(--surface-3) }
+    .dnc-search{ position:relative; flex:1 1 auto; min-width:0 }
+    .dnc-search input{
+        width:100%; height:44px;
+        padding:0 42px 0 16px;
+        font-size:15px; font-family:inherit; color:var(--text);
+        background:var(--surface-2);
+        border:1px solid transparent; border-radius:100px;
+        box-sizing:border-box; outline:none;
+        transition:background .18s, border-color .18s, box-shadow .18s;
+    }
+    .dnc-search input::placeholder{ color:var(--text-tertiary) }
+    .dnc-search input:focus{ background:var(--bg); border-color:var(--blue); box-shadow:0 0 0 4px rgba(10,132,255,.15); }
+    .dnc-clear{
+        position:absolute; right:8px; top:50%; transform:translateY(-50%);
+        width:26px; height:26px; border-radius:50%; border:none;
+        background:rgba(120,120,128,.25); color:var(--text);
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; padding:0;
+    }
+    .dnc-clear.hidden{ display:none }
+    .dnc-body{
+        flex:1; overflow-y:auto;
+        padding:14px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+        -webkit-overflow-scrolling:touch;
+    }
+    .dnc-title{ font-size:20px; font-weight:800; margin:4px 0 12px; }
+    .dnc-note{
+        font-size:12.5px; line-height:1.55;
+        color:var(--text-secondary);
+        background:var(--surface-2);
+        padding:14px; border-radius:14px; margin-bottom:14px;
+    }
     `
     document.head.appendChild(st)
 })()
 
 /* ============================================================
-   ЭКРАН
+   ЭКРАН ДИРЕКТА
 ============================================================ */
 export function buildDirectScreen(){
     if($('screen-direct')) return $('screen-direct')
@@ -1039,37 +825,123 @@ export function buildDirectScreen(){
     s.id = 'screen-direct'
     s.className = 'app-screen'
     s.innerHTML = `
-<header class="topbar">
-  <button class="topbar-btn" id="direct-menu-btn" title="Меню">${I.menu}</button>
-  <div class="topbar-title" id="direct-title">listadirect</div>
-  <div class="direct-topbar-right">
-    <button class="topbar-btn direct-trash-btn hidden" id="direct-trash-btn" title="Удалить выбранные">${I.trash}</button>
-    <button class="topbar-btn" id="direct-edit-btn" title="Изменить">
-      <span class="icon-pencil">${I.pencil}</span>
-      <span class="icon-x hidden">${I.x}</span>
-    </button>
-  </div>
-</header>
-<div id="direct-body" style="position:relative">
-  <button class="direct-new-chat-btn" id="direct-new-chat-btn">
-    <span class="dnc-icon">${I.pencil}</span>
-    <span class="dnc-text">
-      <span class="dnc-title">Добавить новый чат</span>
-      <span class="dnc-sub">Начните общение с кем-нибудь</span>
-    </span>
-    <span class="dnc-arrow">${I.back.replace('M15 6l-6 6 6 6','M9 6l6 6-6 6')}</span>
-  </button>
-  <div id="direct-requests-block"></div>
-  <div class="direct-list" id="direct-list"></div>
-</div>
-`
-    s.querySelector('#direct-new-chat-btn').addEventListener('click', openNewChatScreen)
+    <header class="topbar">
+      <button class="topbar-btn" id="direct-menu-btn" title="Меню">${I.menu}</button>
+      <div class="topbar-title" id="direct-title">listadirect</div>
+      <div class="direct-topbar-right">
+        <button class="topbar-btn direct-trash-btn hidden" id="direct-trash-btn" title="Удалить выбранные">${I.trash}</button>
+        <button class="topbar-btn" id="direct-edit-btn" title="Изменить">
+          <span class="icon-pencil">${I.pencil}</span>
+          <span class="icon-x hidden">${I.x}</span>
+        </button>
+      </div>
+    </header>
+    <div id="direct-body" style="position:relative">
+      <button class="direct-new-chat-btn" id="direct-new-chat-btn">
+        <span class="dnc-icon">${I.pencil}</span>
+        <span class="dnc-text">
+          <span class="dnc-title">Добавить новый чат</span>
+          <span class="dnc-sub">Начните общение с кем-нибудь</span>
+        </span>
+        <span class="dnc-arrow">${I.arrowRight}</span>
+      </button>
+      <div id="direct-requests-block"></div>
+      <div class="direct-list" id="direct-list"></div>
+    </div>
+    `
     document.getElementById('main-app').appendChild(s)
 
     s.querySelector('#direct-menu-btn').addEventListener('click', openDirectSidebar)
     s.querySelector('#direct-edit-btn').addEventListener('click', toggleDirectEdit)
     s.querySelector('#direct-trash-btn').addEventListener('click', deleteSelectedChats)
+    s.querySelector('#direct-new-chat-btn').addEventListener('click', openNewChatScreen)
     return s
+}
+
+/* ============================================================
+   ЭКРАН "НОВЫЙ ЧАТ"
+============================================================ */
+function openNewChatScreen(){
+    let s = $('direct-new-chat')
+    if(!s){
+        s = document.createElement('div')
+        s.id = 'direct-new-chat'
+        s.className = 'hidden'
+        document.getElementById('main-app').appendChild(s)
+    }
+    s.classList.remove('hidden')
+    s.innerHTML = `
+      <header class="dnc-topbar">
+        <button class="dnc-back" id="dnc-back" aria-label="Назад">${I.back}</button>
+        <div class="dnc-search">
+          <input type="text" id="dnc-input" placeholder="Поиск по ID или @username" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text">
+          <button class="dnc-clear hidden" id="dnc-clear" aria-label="Очистить" type="button">${I.x}</button>
+        </div>
+      </header>
+      <div class="dnc-body">
+        <h2 class="dnc-title">Начните новый чат</h2>
+        <div class="dnc-note">
+          Вы можете отправить сообщение своим подписчикам в безлимитном количестве, но пользователь не сможет вам ответить пока не подпишется на вас.
+          Или отправьте запрос на переписку, отправив <b>от 1 сообщения</b> — если вы и пользователь взаимно подпишитесь и пользователь примет ваш запрос на переписку, чат автоматически начнётся и появится в списке чатов.
+          <br><br>
+          Перед отправкой сообщений другим ознакомьтесь с <a href="/rules" target="_blank">правилами сообщества</a>.
+        </div>
+        <div id="dnc-results"></div>
+      </div>
+    `
+    $('dnc-back').addEventListener('click', () => s.classList.add('hidden'))
+
+    const input = $('dnc-input')
+    const clear = $('dnc-clear')
+    let debounce = null
+
+    const updateClear = () => clear.classList.toggle('hidden', !input.value)
+    input.addEventListener('input', () => {
+        updateClear()
+        clearTimeout(debounce)
+        debounce = setTimeout(() => searchNewChat(input.value.trim()), 200)
+    })
+    clear.addEventListener('click', () => {
+        input.value = ''
+        updateClear()
+        searchNewChat('')
+        input.focus()
+    })
+    input.addEventListener('keydown', e => {
+        if(e.key === 'Enter'){ e.preventDefault(); searchNewChat(input.value.trim()) }
+    })
+    input.focus()
+}
+
+async function searchNewChat(term){
+    const box = $('dnc-results'); if(!box) return
+    if(!term){ box.innerHTML = ''; return }
+    box.innerHTML = '<div class="loading-block"><span class="loading-spinner-inline"></span></div>'
+    const clean = term.replace(/^@/, '')
+    const { data:me } = await supabase.auth.getUser()
+    const myId = me?.user?.id
+    const { data } = await supabase.from('profiles')
+        .select('id, username, full_name, avatar_url, status, status_emoji, bio')
+        .or(`username.ilike.%${clean}%,full_name.ilike.%${clean}%,public_id.eq.${clean.toUpperCase()}`)
+        .neq('id', myId)
+        .limit(20)
+    if(!data?.length){ box.innerHTML = '<p class="empty small">Ничего не найдено</p>'; return }
+    box.innerHTML = data.map(p => {
+        const name = p.full_name || p.username || 'user'
+        return `<button class="search-person" data-uid="${p.id}" style="width:100%;border:none;font-family:inherit;text-align:left;cursor:pointer;margin-bottom:8px">
+          <div class="search-person-avatar">${av(p.avatar_url, name)}</div>
+          <div class="search-person-info">
+            <div class="search-person-name">${esc(name)}</div>
+            <div class="search-person-sub">@${esc(p.username || 'user')}</div>
+          </div>
+        </button>`
+    }).join('')
+    box.querySelectorAll('.search-person').forEach(el => {
+        el.addEventListener('click', () => {
+            $('direct-new-chat')?.classList.add('hidden')
+            openDirectChat(el.dataset.uid, null)
+        })
+    })
 }
 
 /* ============================================================
@@ -1123,42 +995,24 @@ function ensureSidebar(){
     sb.querySelectorAll('[data-ds]').forEach(btn => btn.addEventListener('click', async () => {
         const k = btn.dataset.ds
         closeDirectSidebar()
-        // закрываем директ перед переходом
         const directScreen = $('screen-direct')
         if(directScreen) directScreen.classList.remove('active')
         const room = $('direct-room'); if(room) room.classList.add('hidden')
         D.currentChat = null
         if(D.refreshTimer){ clearInterval(D.refreshTimer); D.refreshTimer = null }
-
-        // небольшая задержка для анимации
         await new Promise(r => setTimeout(r, 180))
-
         switch(k){
-            case 'profile':
-                window.switchScreen?.('profile'); break
-            case 'favorites':
-                window.showToast?.('info', 'Избранное — скоро', { icon: I.star }); window.openDirectTab?.(); break
-            case 'groups':
-                window.showToast?.('info', 'Группы — скоро', { icon: I.users }); window.openDirectTab?.(); break
-            case 'notifications':
-                window.switchScreen?.('settings'); window.switchSettingsTab?.('additional'); break
-            case 'privacy':
-                window.switchScreen?.('settings'); window.switchSettingsTab?.('privacy'); break
-            case 'storage':
-                window.showToast?.('info', 'Загрузка и память — скоро', { icon: I.database }); window.openDirectTab?.(); break
-            case 'theme':
-                window.openDirectTab?.();
-                setTimeout(() => openThemePicker(), 220); break
-            case 'lang':
-                window.openDirectTab?.();
-                setTimeout(() => { document.getElementById('lang-selector')?.click() }, 220); break
-            case 'chvad':
-                window.showToast?.('info', 'listatread chvad', { icon: I.crown }); window.openDirectTab?.(); break
-            case 'gifts':
-                window.openDirectTab?.();
-                setTimeout(() => { document.querySelector('[data-prioriti="open"]')?.click() }, 220); break
-            case 'rules':
-                window.open('/rules','_blank'); window.openDirectTab?.(); break
+            case 'profile': window.switchScreen?.('profile'); break
+            case 'favorites': window.showToast?.('info','Избранное — скоро'); window.openDirectTab?.(); break
+            case 'groups': window.showToast?.('info','Группы — скоро'); window.openDirectTab?.(); break
+            case 'notifications': window.switchScreen?.('settings'); window.switchSettingsTab?.('additional'); break
+            case 'privacy': window.switchScreen?.('settings'); window.switchSettingsTab?.('privacy'); break
+            case 'storage': window.showToast?.('info','Загрузка и память — скоро'); window.openDirectTab?.(); break
+            case 'theme': window.openDirectTab?.(); setTimeout(() => openThemePicker(), 220); break
+            case 'lang': window.openDirectTab?.(); setTimeout(() => { document.getElementById('lang-selector')?.click() }, 220); break
+            case 'chvad': window.showToast?.('info','listatread chvad'); window.openDirectTab?.(); break
+            case 'gifts': window.openDirectTab?.(); setTimeout(() => { document.querySelector('[data-prioriti="open"]')?.click() }, 220); break
+            case 'rules': window.open('/rules','_blank'); window.openDirectTab?.(); break
         }
     }))
 }
@@ -1175,7 +1029,7 @@ function closeDirectSidebar(){
 }
 
 /* ============================================================
-   ЭКРАН ДИРЕКТА
+   ОТКРЫТИЕ ДИРЕКТА
 ============================================================ */
 export function openDirectTab(){
     buildDirectScreen()
@@ -1222,17 +1076,23 @@ async function deleteSelectedChats(){
     D.selectedChats.clear()
     updateTrashBtn()
     loadDirectChats()
-    window.showToast?.('success', 'Чаты удалены', { icon: I.check })
+    window.showToast?.('success','Чаты удалены', { icon: I.check })
 }
 
 /* ============================================================
    ЗАГРУЗКА СПИСКА
 ============================================================ */
+function setHeaderLoading(){
+    const title = $('direct-title')
+    if(title) title.innerHTML = `Соединение<span class="direct-title-dots"><i></i><i></i><i></i></span>`
+}
+function setHeaderReady(){
+    const title = $('direct-title')
+    if(title) title.textContent = 'listadirect'
+}
+
 function renderSkeletons(){
     const box = $('direct-list'); if(!box) return
-    const room = $('direct-body')
-    
-
     box.innerHTML = Array.from({length:7}).map(() => `
       <div class="dr-skel">
         <div class="dr-skel-ava"></div>
@@ -1242,9 +1102,7 @@ function renderSkeletons(){
         </div>
       </div>
     `).join('')
-
-    const title = $('direct-title')
-    if(title) title.innerHTML = `Соединение<span class="direct-title-dots"><i></i><i></i><i></i></span>`
+    setHeaderLoading()
 }
 
 async function loadDirectChats(silent = false){
@@ -1258,7 +1116,7 @@ async function loadDirectChats(silent = false){
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user){
         box.innerHTML = '<p class="empty">Войдите</p>'
-        clearConnecting()
+        setHeaderReady()
         return
     }
     D.currentUser = user
@@ -1268,14 +1126,13 @@ async function loadDirectChats(silent = false){
         D.isAdmin = !!prof?.is_admin
     } catch {}
 
-    // prefs
     try {
-        const { data:prefs } = await supabase.from('direct_chat_prefs').select('peer_id, pinned, pinned_at, muted, wallpaper').eq('user_id', user.id)
+        const { data:prefs } = await supabase.from('direct_chat_prefs')
+            .select('peer_id, pinned, pinned_at, muted, wallpaper').eq('user_id', user.id)
         D.prefs = {}
         ;(prefs||[]).forEach(p => { D.prefs[p.peer_id] = p })
     } catch { D.prefs = {} }
 
-    // messages
     const { data: msgs, error } = await supabase.from('direct_messages')
         .select('id, from_id, to_id, content, media_url, media_type, is_read, created_at')
         .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
@@ -1283,7 +1140,7 @@ async function loadDirectChats(silent = false){
 
     if(error){
         box.innerHTML = `<p class="empty">Ошибка: ${esc(error.message)}</p>`
-        clearConnecting()
+        setHeaderReady()
         return
     }
 
@@ -1294,7 +1151,6 @@ async function loadDirectChats(silent = false){
         if(m.to_id === user.id && !m.is_read) byPeer.get(peerId).unread++
     }
 
-    // requests
     let reqs = []
     try {
         const { data:cr } = await supabase.from('chat_requests')
@@ -1311,7 +1167,6 @@ async function loadDirectChats(silent = false){
         }
     } catch {}
 
-    // profiles
     const ids = [...byPeer.keys()]
     let pm = {}
     if(ids.length){
@@ -1343,19 +1198,8 @@ async function loadDirectChats(silent = false){
     })
 
     D.loading = false
-    clearConnecting()
+    setHeaderReady()
     renderChats()
-}
-
-function clearConnecting(){
-    const c = $('direct-connecting')
-    if(c){
-        c.style.transition = 'opacity .25s'
-        c.style.opacity = '0'
-        setTimeout(() => c.remove(), 260)
-    }
-    const title = $('direct-title')
-    if(title) title.textContent = 'listadirect'
 }
 
 function updateHomeBadge(n){
@@ -1370,7 +1214,7 @@ function updateHomeBadge(n){
 }
 
 /* ============================================================
-   ЗАПРОСЫ НА ЧАТ
+   ЗАПРОСЫ
 ============================================================ */
 function renderRequests(){
     const box = $('direct-requests-block'); if(!box) return
@@ -1410,13 +1254,13 @@ async function acceptRequest(reqId, peerId){
         if(!ex) await supabase.from('follows').insert({ follower_id: user.id, following_id: peerId })
     } catch {}
     await supabase.from('chat_requests').update({ status:'accepted' }).eq('id', reqId)
-    window.showToast?.('success', 'Запрос принят', { icon: I.check })
+    window.showToast?.('success','Запрос принят', { icon: I.check })
     await loadDirectChats()
     setTimeout(() => openDirectChat(peerId), 250)
 }
 
 /* ============================================================
-   ФОРМАТ ВРЕМЕНИ
+   ВРЕМЯ И СТАТУСЫ
 ============================================================ */
 function formatListTime(iso){
     const d = new Date(iso)
@@ -1424,23 +1268,13 @@ function formatListTime(iso){
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const yest = new Date(today); yest.setDate(yest.getDate() - 1)
     const dd = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-    if(dd.getTime() === today.getTime()){
-        return d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' })
-    }
+    if(dd.getTime() === today.getTime()) return d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' })
     if(dd.getTime() === yest.getTime()) return 'Вчера'
-    if(dd.getFullYear() === now.getFullYear()){
-        return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit' })
-    }
+    if(dd.getFullYear() === now.getFullYear()) return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit' })
     return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'2-digit' })
 }
+function timeOnly(iso){ return new Date(iso).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' }) }
 
-function timeOnly(iso){
-    return new Date(iso).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' })
-}
-
-/* ============================================================
-   ОНЛАЙН-СТАТУС
-============================================================ */
 function getOnlineStatus(profile){
     const lastSeen = profile?.last_seen
     if(!lastSeen) return { text:'не был(а) в сети', cls:'' }
@@ -1448,19 +1282,13 @@ function getOnlineStatus(profile){
     const now = Date.now()
     const diffMin = (now - last) / 60000
     if(diffMin < 5) return { text:'в сети', cls:'online' }
-
     const d = new Date(lastSeen)
     const nowD = new Date()
     const today = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate())
     const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1)
     const dd = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-
-    if(dd.getTime() === today.getTime()){
-        return { text:`не был(а) в сети ${timeOnly(lastSeen)}`, cls:'' }
-    }
-    if(dd.getTime() === yesterday.getTime()){
-        return { text:`был(а) в сети вчера в ${timeOnly(lastSeen)}`, cls:'' }
-    }
+    if(dd.getTime() === today.getTime()) return { text:`не был(а) в сети ${timeOnly(lastSeen)}`, cls:'' }
+    if(dd.getTime() === yesterday.getTime()) return { text:`был(а) в сети вчера в ${timeOnly(lastSeen)}`, cls:'' }
     return { text:`был(а) в сети ${d.toLocaleDateString('ru-RU', { day:'2-digit', month:'long' })}`, cls:'' }
 }
 
@@ -1485,11 +1313,8 @@ function renderChats(){
         else if(last.content?.startsWith('[sticker:')) preview = 'Стикер'
         else preview = last.content || ''
 
-        // Префикс для своих сообщений
         const isMine = last.from_id === D.currentUser?.id
-        const previewHtml = isMine
-            ? `<b>Вы:</b> ${esc(preview)}`
-            : esc(preview)
+        const previewHtml = isMine ? `<b>Вы:</b> ${esc(preview)}` : esc(preview)
 
         const pref = D.prefs[c.peerId] || {}
         const time = formatListTime(last.created_at)
@@ -1499,9 +1324,7 @@ function renderChats(){
           ${idx > 0 ? '<div class="direct-item-sep"></div>' : ''}
           <div class="direct-item ${selected ? 'selected' : ''}" data-peer="${c.peerId}">
             ${pref.pinned ? `<span class="direct-item-pin">${I.pin}</span>` : ''}
-            ${D.editMode
-            ? `<button class="direct-item-check ${selected ? 'on' : ''}" data-check="${c.peerId}"></button>`
-            : ''}
+            ${D.editMode ? `<button class="direct-item-check ${selected ? 'on' : ''}" data-check="${c.peerId}"></button>` : ''}
             <div class="direct-item-avatar">${av(p.avatar_url, name)}</div>
             <div class="direct-item-info">
               <div class="direct-item-row1">
@@ -1522,7 +1345,7 @@ function renderChats(){
     box.innerHTML = html
 
     box.querySelectorAll('.direct-item').forEach(el => {
-        el.addEventListener('click', e => {
+        el.addEventListener('click', () => {
             const peerId = el.dataset.peer
             if(D.editMode){
                 if(D.selectedChats.has(peerId)) D.selectedChats.delete(peerId)
@@ -1654,11 +1477,9 @@ function renderChatRoom(){
     $('dr-profile-btn').addEventListener('click', () => openChatProfile(peerId, p))
 
     const input = $('dr-input')
-    const send = () => sendCurrentMessage()
-    $('dr-send').addEventListener('click', send)
-    input.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); send() } })
+    $('dr-send').addEventListener('click', sendCurrentMessage)
+    input.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); sendCurrentMessage() } })
 
-    // typing broadcast
     let typingTimeout = null
     input.addEventListener('input', () => {
         if(typingTimeout) return
@@ -1666,20 +1487,16 @@ function renderChatRoom(){
         typingTimeout = setTimeout(() => { typingTimeout = null }, 2500)
     })
 
-    // panels
-    $('dr-emoji-btn').addEventListener('click', () => { openPanel('emoji') })
-    $('dr-sticker-btn').addEventListener('click', () => { openPanel('stickers') })
+    $('dr-emoji-btn').addEventListener('click', () => openPanel('emoji'))
+    $('dr-sticker-btn').addEventListener('click', () => openPanel('stickers'))
 
-    // panel tab switch
     room.querySelectorAll('.dr-panel-tab').forEach(tab => tab.addEventListener('click', () => {
         room.querySelectorAll('.dr-panel-tab').forEach(t => t.classList.toggle('active', t === tab))
         D.emojiTab = tab.dataset.ptab
         renderPanelBody()
     }))
 
-    // subscribe to typing
     subscribeTyping(peerId)
-
     loadMessages()
 
     if(D.refreshTimer) clearInterval(D.refreshTimer)
@@ -1687,7 +1504,6 @@ function renderChatRoom(){
         if($('direct-room') && !$('direct-room').classList.contains('hidden')) loadMessages(true)
     }, 3000)
 
-    // update status every 30 sec
     if(D.typingTimer) clearInterval(D.typingTimer)
     D.typingTimer = setInterval(() => {
         const el = $('dr-user-status')
@@ -1730,7 +1546,6 @@ async function pushMessage(payload){
         })
         if(error) throw error
 
-        // запрос на чат если не взаимно
         const { isMutual } = D.currentChat
         const peerAdmin = !!D.currentChat.peerProfile?.is_admin
         if(!isMutual && !D.isAdmin && !peerAdmin && payload.content){
@@ -1748,12 +1563,12 @@ async function pushMessage(payload){
             }
         }
 
-        _lastMsgSig = '' // force redraw
+        _lastMsgSig = ''
         loadMessages()
         loadDirectChats(true)
     } catch(e){
         console.error('[push]', e)
-        window.showToast?.('error', 'Не удалось отправить')
+        window.showToast?.('error','Не удалось отправить')
     }
 }
 
@@ -1776,7 +1591,6 @@ async function loadMessages(silent = false){
 
     const visible = (msgs || []).filter(m => !(m.hidden_for || []).includes(user.id))
 
-    // mark read
     if(visible.length){
         const unread = visible.filter(m => m.to_id === user.id && !m.is_read).map(m => m.id)
         if(unread.length){
@@ -1785,7 +1599,6 @@ async function loadMessages(silent = false){
         }
     }
 
-    // pinned
     const pinned = visible.filter(m => m.pinned_at)
     renderPinnedBar(pinned)
 
@@ -1800,7 +1613,6 @@ async function loadMessages(silent = false){
     const { data:myProf } = await supabase.from('profiles')
         .select('full_name, username, avatar_url').eq('id', user.id).maybeSingle()
     const mp = myProf || {}
-    const myName = mp.full_name || mp.username || 'me'
 
     const theme = getTheme()
 
@@ -1827,7 +1639,6 @@ async function loadMessages(silent = false){
     box.innerHTML = html
 
     box.querySelectorAll('.dr-row').forEach(row => attachMsgMenu(row))
-
     box.scrollTop = box.scrollHeight
 }
 
@@ -1846,12 +1657,10 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
     const mine = m.from_id === myId
     const time = timeOnly(m.created_at)
 
-    // показать аву?
     const prevDay = prev ? new Date(prev.created_at).toLocaleDateString('ru-RU') : null
     const curDay  = new Date(m.created_at).toLocaleDateString('ru-RU')
     const showAva = !prev || prev.from_id !== m.from_id || prevDay !== curDay
 
-    // контент
     let body = ''
     let isSticker = false
     const content = m.content || ''
@@ -1872,23 +1681,17 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
 
     const pinnedMark = m.pinned_at ? `<span class="dr-msg-pin">${I.pin}</span>` : ''
 
-    // галочки — только для своих
     let checkHtml = ''
     if(mine){
-        if(m.is_read){
-            checkHtml = `<span class="dr-check read" title="Прочитано">${I.checkDouble}</span>`
-        } else {
-            checkHtml = `<span class="dr-check" title="Отправлено">${I.check}</span>`
-        }
+        checkHtml = m.is_read
+            ? `<span class="dr-check read" title="Прочитано">${I.checkDouble}</span>`
+            : `<span class="dr-check" title="Отправлено">${I.check}</span>`
     }
 
     const avaSrc = mine ? myProf?.avatar_url : peerProf?.avatar_url
     const avaName = mine ? (myProf?.full_name || myProf?.username || 'me') : (peerProf?.full_name || peerProf?.username || 'user')
 
-    const bubbleStyle = `
-        background:${mine ? theme.own : theme.peer};
-        color:${mine ? theme.ownText : theme.peerText};
-    `
+    const bubbleStyle = `background:${mine ? theme.own : theme.peer};color:${mine ? theme.ownText : theme.peerText};`
 
     if(isSticker){
         return `<div class="dr-row ${mine ? 'mine' : ''}" data-mid="${m.id}" data-mine="${mine?1:0}">
@@ -1944,7 +1747,6 @@ function renderPinnedBar(pinned){
         await unpinMessage(pinned[pinned.length - 1].id)
     })
 }
-
 function openPinnedList(pinned){
     window.showActionSheet?.(`Закреплённые · ${pinned.length}`, pinned.map(m => ({
         label: (m.content?.startsWith('[sticker:') ? 'Стикер' : (m.content || 'Медиа')).slice(0, 40) || 'Медиа',
@@ -1952,7 +1754,6 @@ function openPinnedList(pinned){
         onClick: () => scrollToMessage(m.id)
     })))
 }
-
 function scrollToMessage(msgId){
     const box = $('direct-messages'); if(!box) return
     const row = box.querySelector(`.dr-row[data-mid="${msgId}"]`)
@@ -1961,7 +1762,6 @@ function scrollToMessage(msgId){
     row.classList.add('highlight')
     setTimeout(() => row.classList.remove('highlight'), 2000)
 }
-
 async function togglePinMsg(msgId){
     const { data:msg } = await supabase.from('direct_messages').select('pinned_at').eq('id', msgId).maybeSingle()
     if(!msg) return
@@ -1975,43 +1775,41 @@ async function togglePinMsg(msgId){
 }
 async function unpinMessage(msgId){
     await supabase.from('direct_messages').update({ pinned_at: null }).eq('id', msgId)
-    window.showToast?.('success', 'Откреплено', { icon: I.pin })
+    window.showToast?.('success','Откреплено', { icon: I.pin })
     _lastMsgSig = ''
     loadMessages()
 }
 
 /* ============================================================
-   КОНТЕКСТ-МЕНЮ СООБЩЕНИЯ
+   КОНТЕКСТ-МЕНЮ
 ============================================================ */
 function attachMsgMenu(row){
     let pressTimer = null
     let longPressed = false
-
-    const startPress = e => {
+    const startPress = () => {
         longPressed = false
         row.classList.add('pressing')
         pressTimer = setTimeout(() => {
             longPressed = true
             row.classList.remove('pressing')
-            showMsgMenu(row, e)
+            showMsgMenu(row)
         }, 420)
     }
     const cancelPress = () => {
         if(pressTimer){ clearTimeout(pressTimer); pressTimer = null }
         row.classList.remove('pressing')
     }
-
     row.addEventListener('touchstart', startPress, { passive:true })
     row.addEventListener('touchend', e => { if(longPressed) e.preventDefault(); cancelPress() })
     row.addEventListener('touchmove', cancelPress, { passive:true })
     row.addEventListener('touchcancel', cancelPress)
-    row.addEventListener('mousedown', e => { if(e.button !== 0) return; startPress(e) })
+    row.addEventListener('mousedown', e => { if(e.button !== 0) return; startPress() })
     row.addEventListener('mouseup', cancelPress)
     row.addEventListener('mouseleave', cancelPress)
-    row.addEventListener('contextmenu', e => { e.preventDefault(); showMsgMenu(row, e) })
+    row.addEventListener('contextmenu', e => { e.preventDefault(); showMsgMenu(row) })
 }
 
-function showMsgMenu(row, event){
+function showMsgMenu(row){
     document.querySelectorAll('.dr-msg-menu').forEach(m => m.remove())
     const msgId = row.dataset.mid
     const isMine = row.dataset.mine === '1'
@@ -2025,7 +1823,6 @@ function showMsgMenu(row, event){
         { label:'Закрепить',  icon: I.pin, onClick: () => togglePinMsg(msgId) },
         { label: isMine ? 'Удалить' : 'Удалить у себя', icon: I.trash, danger:true, onClick: () => deleteMsg(msgId, isMine, row) }
     ]
-
     menu.innerHTML = items.map((it, i) => `
       <button class="dr-msg-menu-item ${it.danger ? 'danger' : ''}" data-mi="${i}">
         ${it.icon}<span>${it.label}</span>
@@ -2049,14 +1846,12 @@ function showMsgMenu(row, event){
         menu.remove()
         if(it.onClick) setTimeout(it.onClick, 40)
     }))
-
     setTimeout(() => {
         const close = ev => {
             if(!menu.contains(ev.target)){ menu.remove(); document.removeEventListener('click', close) }
         }
         document.addEventListener('click', close)
     }, 50)
-
     try { navigator.vibrate?.(15) } catch {}
 }
 
@@ -2069,16 +1864,15 @@ async function copyMsg(msgId){
     }
 }
 async function replyMsg(msgId){
-    const { data:msg } = await supabase.from('direct_messages').select('content, from_id').eq('id', msgId).maybeSingle()
+    const { data:msg } = await supabase.from('direct_messages').select('content').eq('id', msgId).maybeSingle()
     if(!msg) return
     const input = $('dr-input'); if(!input) return
     input.value = `> ${(msg.content || '').slice(0, 40)}\n`
     input.focus()
 }
-async function forwardMsg(msgId){
+async function forwardMsg(){
     window.showToast?.('info','Пересылка — скоро', { icon: I.forward })
 }
-
 async function deleteMsg(msgId, isMine, row){
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user) return
@@ -2105,7 +1899,7 @@ async function deleteMsg(msgId, isMine, row){
 }
 
 /* ============================================================
-   ПАНЕЛЬ ЭМОДЗИ / СТИКЕРОВ
+   ЭМОДЗИ / СТИКЕРЫ
 ============================================================ */
 const EMOJI = ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','👍','👎','👌','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🧠','👀','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💕','💞','💓','💗','💖','💘','💝','🔥','⭐','🌟','✨','⚡','💥','💫','💦','🎉','🎊','🎈','🎁','🎀','🏆','🥇','🎯','🎲','🎮','🎰','🌸','🌹','🌻','🌷','🍀','🍁','🍇','🍉','🍊','🍋','🍌','🍎','🍓','🍒','🍑','🥝','🍔','🍟','🍕','🌭','🍿','🍣','⚽','🏀','🏈','🎾','🎱','🏓','🥊','🎽','🚗','🚕','🚌','🚓','🚑','🚒','🚲','🛵','✈️','🚀','🛸','⌚','📱','💻','🎧','📷','💡','🔦','💸','💰','💎','🔧','🔨','🔮','📿','🧸','🛍️','🛒']
 
@@ -2113,17 +1907,12 @@ function openPanel(tab){
     const panel = $('dr-panel')
     if(!panel) return
     const isOpen = panel.classList.contains('open') && D.emojiTab === tab
-    if(isOpen){
-        panel.classList.remove('open')
-        return
-    }
+    if(isOpen){ panel.classList.remove('open'); return }
     panel.classList.add('open')
     D.emojiTab = tab
-    const room = $('direct-room')
-    room?.querySelectorAll('.dr-panel-tab').forEach(t => t.classList.toggle('active', t.dataset.ptab === tab))
+    document.querySelectorAll('#dr-panel .dr-panel-tab').forEach(t => t.classList.toggle('active', t.dataset.ptab === tab))
     renderPanelBody()
 }
-
 function renderPanelBody(){
     const body = $('dr-panel-body'); if(!body) return
     if(D.emojiTab === 'emoji'){
@@ -2138,35 +1927,25 @@ function renderPanelBody(){
     }
 }
 
-/* ============================================================
-   СТИКЕРЫ
-============================================================ */
 function saveStickers(){
     const lp = loadLocalPrefs()
     lp.stickers = D.stickerPacks
     lp.mutedUntil = D.mutedUntil
     saveLocalPrefs(lp)
 }
-
 function renderStickersPanel(){
     const body = $('dr-panel-body'); if(!body) return
-
     if(!D.stickerPacks.length){
         body.innerHTML = `
           <div class="dr-sticker-empty">
             <p>У вас пока нет стикеров</p>
             <button class="dr-sticker-empty-btn" id="dr-new-pack">Создать стикерпак</button>
-          </div>
-        `
+          </div>`
         body.querySelector('#dr-new-pack').addEventListener('click', () => openCreateStickerPack())
         return
     }
-
-    const activePack = D.currentStickerPack
-        ? D.stickerPacks.find(p => p.id === D.currentStickerPack)
-        : D.stickerPacks[0]
+    const activePack = D.currentStickerPack ? D.stickerPacks.find(p => p.id === D.currentStickerPack) : D.stickerPacks[0]
     D.currentStickerPack = activePack?.id
-
     body.innerHTML = `
       <div class="dr-sticker-packs">
         ${D.stickerPacks.map(p => `
@@ -2180,15 +1959,12 @@ function renderStickersPanel(){
         ${(activePack?.stickers || []).map(s => `<button class="dr-sticker-item" data-sticker="${esc(s)}"><img src="${esc(s)}" alt=""></button>`).join('')}
       </div>
     `
-
     body.querySelectorAll('.dr-sticker-pack[data-pack]').forEach(b => b.addEventListener('click', () => {
         D.currentStickerPack = b.dataset.pack
         renderStickersPanel()
     }))
     body.querySelector('#dr-new-pack')?.addEventListener('click', () => openCreateStickerPack())
-    body.querySelectorAll('.dr-sticker-item').forEach(b => b.addEventListener('click', () => {
-        sendSticker(b.dataset.sticker)
-    }))
+    body.querySelectorAll('.dr-sticker-item').forEach(b => b.addEventListener('click', () => sendSticker(b.dataset.sticker)))
 }
 
 function checkMute(){
@@ -2203,7 +1979,6 @@ function checkMute(){
     }
     return false
 }
-
 function registerStickerSend(){
     const now = Date.now()
     D.stickerSendTimes = D.stickerSendTimes.filter(t => now - t < 60000)
@@ -2211,27 +1986,22 @@ function registerStickerSend(){
     if(D.stickerSendTimes.length > 10){
         D.mutedUntil = now + 3 * 60 * 1000
         saveStickers()
-        window.showToast?.('error', 'Слишком много стикеров — мут на 3 минуты во всех чатах', { duration: 4000 })
+        window.showToast?.('error','Слишком много стикеров — мут на 3 минуты во всех чатах', { duration: 4000 })
         return true
     }
     return false
 }
-
 async function sendSticker(url){
     if(checkMute()) return
     await pushMessage({ content: `[sticker:${url}]` })
-    if(registerStickerSend()) return
+    registerStickerSend()
 }
 
-/* ============================================================
-   СОЗДАНИЕ СТИКЕРПАКА
-============================================================ */
 function openCreateStickerPack(){
     closeAllSheets()
     const back = document.createElement('div')
     back.className = 'dr-sheet-backdrop'
     back.addEventListener('click', closeAllSheets)
-
     const sheet = document.createElement('div')
     sheet.className = 'dr-sheet'
     sheet.innerHTML = `
@@ -2250,8 +2020,7 @@ function openCreateStickerPack(){
         </label>
         <button class="btn-primary" id="dsp-create" style="margin-top:16px">Создать стикерпак</button>
         <button class="btn-gray" id="dsp-cancel" style="margin-top:8px">Отмена</button>
-      </div>
-    `
+      </div>`
     document.body.appendChild(back)
     document.body.appendChild(sheet)
 
@@ -2281,12 +2050,7 @@ function openCreateStickerPack(){
                     url = pub.publicUrl
                 }
             } catch {}
-            const pack = {
-                id: 'p_' + Date.now(),
-                name,
-                stickers: [url],
-                created_at: Date.now()
-            }
+            const pack = { id: 'p_' + Date.now(), name, stickers: [url], created_at: Date.now() }
             D.stickerPacks.unshift(pack)
             D.currentStickerPack = pack.id
             saveStickers()
@@ -2300,7 +2064,6 @@ function openCreateStickerPack(){
         }
     })
 }
-
 function closeAllSheets(){
     document.querySelectorAll('.dr-sheet, .dr-sheet-backdrop').forEach(el => el.remove())
 }
@@ -2310,7 +2073,6 @@ function closeAllSheets(){
 ============================================================ */
 function subscribeTyping(peerId){
     unsubscribeTyping()
-    const { data:{ user } } = { data:{ user:null } }
     ;(async () => {
         const u = (await supabase.auth.getUser()).data.user
         if(!u) return
@@ -2382,51 +2144,29 @@ async function openChatProfile(peerId, peerProfile){
         <button class="dr-prof-back" id="dr-prof-back">${I.back}</button>
         <button class="dr-prof-dots" id="dr-prof-dots">${I.dots}</button>
       </div>
-
       <div class="dr-prof-hero">
-        ${p.avatar_url
-        ? `<img class="dr-prof-hero-img" src="${p.avatar_url}" alt="">`
-        : `<div class="dr-prof-hero-fallback">${(name || 'U').charAt(0).toUpperCase()}</div>`}
+        ${p.avatar_url ? `<img class="dr-prof-hero-img" src="${p.avatar_url}" alt="">` : `<div class="dr-prof-hero-fallback">${(name || 'U').charAt(0).toUpperCase()}</div>`}
         <div class="dr-prof-hero-info">
           <div class="dr-prof-name">${esc(name)}</div>
           <div class="dr-prof-username">@${esc(p.username || 'user')}</div>
           <div class="dr-prof-username" style="opacity:.85;font-size:12.5px;margin-top:4px">${esc(status.text)}</div>
         </div>
       </div>
-
       <div class="dr-prof-controls">
-        <button class="dr-prof-ctrl ${muted ? '' : 'active'}" data-pctrl="notif">
-          ${muted ? I.bell : I.bell}
-          <span>${muted ? 'выкл' : 'вкл'}</span>
-        </button>
-        <button class="dr-prof-ctrl" data-pctrl="wall">
-          ${I.palette}
-          <span>тема</span>
-        </button>
-        <button class="dr-prof-ctrl" data-pctrl="search">
-          ${I.search}
-          <span>поиск</span>
-        </button>
-        <button class="dr-prof-ctrl ${pinned ? 'active' : ''}" data-pctrl="pin">
-          ${I.pin}
-          <span>${pinned ? 'откр' : 'креп'}</span>
-        </button>
-        <button class="dr-prof-ctrl" data-pctrl="gift">
-          ${I.gift}
-          <span>подарок</span>
-        </button>
+        <button class="dr-prof-ctrl ${muted ? '' : 'active'}" data-pctrl="notif">${I.bell}<span>${muted ? 'выкл' : 'вкл'}</span></button>
+        <button class="dr-prof-ctrl" data-pctrl="wall">${I.palette}<span>тема</span></button>
+        <button class="dr-prof-ctrl" data-pctrl="search">${I.search}<span>поиск</span></button>
+        <button class="dr-prof-ctrl ${pinned ? 'active' : ''}" data-pctrl="pin">${I.pin}<span>${pinned ? 'откр' : 'креп'}</span></button>
+        <button class="dr-prof-ctrl" data-pctrl="gift">${I.gift}<span>подарок</span></button>
       </div>
-
       <div class="dr-prof-info-block">
         <div class="dr-prof-info-label">О себе</div>
         <div class="dr-prof-info-value">${esc(p.bio || 'Описание отсутствует')}</div>
       </div>
-
       <div class="dr-prof-info-block">
         <div class="dr-prof-info-label">День рождения</div>
         <div class="dr-prof-info-value">${bday}</div>
       </div>
-
       <div class="dr-prof-gifts">Этому пользователю ещё не дарили подарки</div>
     `
 
@@ -2434,9 +2174,7 @@ async function openChatProfile(peerId, peerProfile){
         overlay.style.transition = 'opacity .22s, transform .22s'
         overlay.style.opacity = '0'
         overlay.style.transform = 'translateY(28px)'
-        setTimeout(() => {
-            overlay.remove()
-        }, 220)
+        setTimeout(() => overlay.remove(), 220)
     })
 
     $('dr-prof-dots').addEventListener('click', () => {
@@ -2444,12 +2182,7 @@ async function openChatProfile(peerId, peerProfile){
         window.showActionSheet?.('Действия', [
             { label:'Пожаловаться', icon: I.info, danger:true, onClick: () => {
                     if(window.openReportModal){
-                        window.openReportModal({
-                            targetType: 'profile', targetId: pid,
-                            author: p,
-                            text: p.bio || '',
-                            media: p.avatar_url || null
-                        })
+                        window.openReportModal({ targetType:'profile', targetId: pid, author: p, text: p.bio || '', media: p.avatar_url || null })
                     }
                 }},
             { label:'Заблокировать', icon: I.lock, danger:true, onClick: async () => {
@@ -2479,16 +2212,10 @@ async function openChatProfile(peerId, peerProfile){
             await loadDirectChats(true)
             openChatProfile(peerId, p)
         }
-        if(k === 'wall'){
-            overlay.remove()
-            openThemePicker()
-        }
-        if(k === 'search'){ window.showToast?.('info','Поиск — скоро', { icon: I.search }) }
-        if(k === 'pin'){
-            await togglePinChat(peerId)
-            openChatProfile(peerId, p)
-        }
-        if(k === 'gift'){ window.showToast?.('info','Подарки — скоро', { icon: I.gift }) }
+        if(k === 'wall'){ overlay.remove(); openThemePicker() }
+        if(k === 'search'){ window.showToast?.('info','Поиск — скоро') }
+        if(k === 'pin'){ await togglePinChat(peerId); openChatProfile(peerId, p) }
+        if(k === 'gift'){ window.showToast?.('info','Подарки — скоро') }
     }))
 }
 
@@ -2528,23 +2255,19 @@ function openThemePicker(){
     const back = document.createElement('div')
     back.className = 'dr-sheet-backdrop'
     back.addEventListener('click', closeAllSheets)
-
     const sheet = document.createElement('div')
     sheet.className = 'dr-sheet'
     sheet.innerHTML = `
       <div class="dr-sheet-handle"></div>
       <h3 class="dr-sheet-title">Оформление</h3>
-      <div class="dr-sheet-scroll" id="dt-body"></div>
-    `
+      <div class="dr-sheet-scroll" id="dt-body"></div>`
     document.body.appendChild(back)
     document.body.appendChild(sheet)
 
     const render = () => {
         const body = $('dt-body')
         const curTheme = D.chatThemeId || 't13'
-        const curPin = D.pinColor || 'var(--blue)'
         const curSize = D.msgSize || 'md'
-
         body.innerHTML = `
           <div class="dr-section-label">Тема чата</div>
           <div class="dr-theme-grid">
@@ -2555,42 +2278,34 @@ function openThemePicker(){
                   <div class="dr-theme-bubble o" style="background:${t.own};width:60%"></div>
                 </div>
                 <div class="dr-theme-name">${esc(t.name)}</div>
-              </button>
-            `).join('')}
+              </button>`).join('')}
           </div>
           <div class="dr-section-label">Цвет закреплённых</div>
           <div class="dr-color-row">
             ${['#0a84ff','#30d158','#ff9f0a','#ff375f','#bf5af2','#26a5e4','#a56a3a','#8e8e93'].map(c => `
-              <button class="dr-color-dot ${D.pinColor === c ? 'active' : ''}" data-pin="${c}" style="background:${c}"></button>
-            `).join('')}
+              <button class="dr-color-dot ${D.pinColor === c ? 'active' : ''}" data-pin="${c}" style="background:${c}"></button>`).join('')}
           </div>
           <div class="dr-section-label">Размер сообщений</div>
           <div class="dr-size-row">
             ${MSG_SIZES.map(s => `
               <button class="dr-size-btn ${curSize === s.id ? 'active' : ''}" data-size="${s.id}">
                 ${s.label}<small>${s.fontSize}</small>
-              </button>
-            `).join('')}
-          </div>
-        `
-
+              </button>`).join('')}
+          </div>`
         body.querySelectorAll('[data-theme]').forEach(b => b.addEventListener('click', () => {
             D.chatThemeId = b.dataset.theme
             const lp = loadLocalPrefs(); lp.chatTheme = D.chatThemeId; saveLocalPrefs(lp)
-            applyChatTheme()
-            render()
+            applyChatTheme(); render()
         }))
         body.querySelectorAll('[data-pin]').forEach(b => b.addEventListener('click', () => {
             D.pinColor = b.dataset.pin
             const lp = loadLocalPrefs(); lp.pinColor = D.pinColor; saveLocalPrefs(lp)
-            applyChatTheme()
-            render()
+            applyChatTheme(); render()
         }))
         body.querySelectorAll('[data-size]').forEach(b => b.addEventListener('click', () => {
             D.msgSize = b.dataset.size
             const lp = loadLocalPrefs(); lp.msgSize = D.msgSize; saveLocalPrefs(lp)
-            applyChatTheme()
-            render()
+            applyChatTheme(); render()
         }))
     }
     render()
@@ -2607,10 +2322,8 @@ function applyChatTheme(){
         room.style.setProperty('--pin-color', D.pinColor || 'var(--blue)')
         const msgs = $('direct-messages')
         if(msgs) msgs.style.background = theme.bg
-        // перерисуем сообщения с новыми цветами
         _lastMsgSig = ''
         if(D.currentChat) loadMessages()
-        // pinned bar color
         const bar = $('dr-pinned-bar')
         if(bar) bar.style.setProperty('--pin-color', D.pinColor || 'var(--blue)')
     }
