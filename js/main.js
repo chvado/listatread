@@ -11485,10 +11485,8 @@ function openSearchMenu(){
         { label: 'Сканировать QR', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>', onClick: () => openQrScanModal() }
     ])
 }
-document.addEventListener('click', e => {
-    if(e.target.closest('#home-chats-btn')){
-        openDirectTab()
-    }
+document.getElementById('home-chats-btn')?.addEventListener('click', () => {
+    openDirectTab()
 })
 
 ;(function initTopbarAutoHide(){

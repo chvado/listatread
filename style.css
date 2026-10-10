@@ -4202,31 +4202,16 @@ html[data-theme="dark"] .dnc-topbar{
     opacity: .8;
 }
 
-/* ==== direct topbar fix ==== */
-#screen-direct .topbar{
-    position: fixed !important;
-    top: 0 !important;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    max-width: 420px;
-    padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 12px;
-    box-sizing: border-box;
-    background: rgba(255,255,255,.88);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    z-index: 100;
-    margin: 0;
-}
-html[data-theme="dark"] #screen-direct .topbar{
-    background: rgba(0,0,0,.72);
-}
-/* не даём автоскрытию унести шапку */
-#screen-direct .topbar.topbar-hidden{
-    transform: translateX(-50%) !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-}
-#screen-direct #direct-body{
-    padding-top: 72px;
+/* 1. Убрать жирность имени в списке чатов */
+.direct-item-name{ font-weight:500 !important }
+
+/* 2. Разделитель между чатами */
+.direct-item + .direct-item{ border-top:1px solid var(--border) }
+
+/* 3. Превью в 2 строки с многоточием */
+.direct-item-preview{
+    display:-webkit-box !important;
+    -webkit-line-clamp:2 !important;
+    -webkit-box-orient:vertical !important;
+    overflow:hidden !important;
 }
