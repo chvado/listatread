@@ -4215,3 +4215,122 @@ html[data-theme="dark"] .dnc-topbar{
     -webkit-box-orient:vertical !important;
     overflow:hidden !important;
 }
+/* ============================================================
+   Компактный список директа
+============================================================ */
+#screen-direct{ padding:0 0 24px !important; }          /* убираем дубль 68px */
+#screen-direct #direct-body{ padding-top:60px !important; }  /* ровно под топбаром */
+
+/* Кнопка «Добавить новый чат» — прижимаем к шапке */
+#screen-direct .new-chat-btn{
+    margin:4px 12px 4px !important;
+    padding:12px 14px !important;
+}
+
+/* Список — компактнее */
+#screen-direct .direct-list{
+    padding:4px 8px 24px !important;
+}
+#screen-direct .direct-item{
+    padding:8px 10px 8px 6px !important;
+    gap:10px !important;
+}
+#screen-direct .direct-item-avatar{
+    width:48px !important;
+    height:48px !important;
+    font-size:20px !important;
+}
+#screen-direct .direct-item-info{
+    gap:1px !important;
+}
+#screen-direct .direct-item-sep{
+    margin:0 6px 0 66px !important;
+}
+/* ============================================================
+   ФИКС: время/дата в списке чатов не должна переноситься на 2-ю строку
+============================================================ */
+#screen-direct .direct-item-row1{
+    display:flex !important;
+    align-items:center !important;
+    flex-wrap:nowrap !important;
+    gap:6px !important;
+    min-width:0 !important;
+}
+#screen-direct .direct-item-name{
+    flex:1 1 auto !important;
+    min-width:0 !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+}
+#screen-direct .direct-item-date{
+    flex:0 0 auto !important;
+    white-space:nowrap !important;
+    word-break:keep-all !important;
+    overflow:visible !important;
+    margin-left:auto !important;
+    font-variant-numeric:tabular-nums !important;
+}
+
+/* На очень узких экранах (iPhone SE и т.п.) — чуть меньше шрифт даты, чтобы влезала */
+@media (max-width: 360px){
+    #screen-direct .direct-item-date{
+        font-size:11px !important;
+    }
+    #screen-direct .direct-item-name{
+        font-size:14.5px !important;
+    }
+    #screen-direct .direct-item{
+        padding:6px 8px 6px 4px !important;
+    }
+    #screen-direct .direct-item-avatar{
+        width:44px !important;
+        height:44px !important;
+        font-size:18px !important;
+    }
+    #screen-direct .direct-item-sep{
+        margin:0 6px 0 58px !important;
+    }
+}
+
+/* ============================================================
+   Плитка «+» внутри сетки стикеров + спиннер загрузки
+============================================================ */
+.dr-stickers-grid .dr-sticker-add{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:transparent;
+    border:2px dashed var(--border-strong);
+    border-radius:12px;
+    color:var(--text-secondary);
+    cursor:pointer;
+    padding:4px;
+    transition:background .15s, border-color .15s, color .15s;
+}
+.dr-stickers-grid .dr-sticker-add:hover,
+.dr-stickers-grid .dr-sticker-add:active{
+    background:var(--surface-2);
+    border-color:var(--blue);
+    color:var(--blue);
+}
+.dr-stickers-grid .dr-sticker-add svg{
+    width:28px; height:28px;
+}
+
+/* Спиннер загрузки стикера */
+.dr-sticker-loading{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--surface-2);
+    border-radius:12px;
+}
+.dr-sticker-spinner{
+    width:22px; height:22px;
+    border-radius:50%;
+    border:2px solid rgba(120,120,128,.35);
+    border-top-color:var(--blue);
+    animation:mqSpin .8s linear infinite;
+}
+@keyframes mqSpin{ to{ transform: rotate(360deg) } }

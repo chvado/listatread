@@ -1623,6 +1623,9 @@ function renderStickersPanel(){
     }
     const activePack = D.currentStickerPack ? D.stickerPacks.find(p => p.id === D.currentStickerPack) : D.stickerPacks[0]
     D.currentStickerPack = activePack?.id
+
+    const stickers = activePack?.stickers || []
+
     body.innerHTML = `
       <div class="dr-sticker-packs">
         ${D.stickerPacks.map(p => `
@@ -1632,14 +1635,72 @@ function renderStickersPanel(){
         <button class="dr-sticker-pack dr-sticker-pack-add" id="dr-new-pack" title="Создать стикерпак">${I.plus}</button>
       </div>
       <div class="dr-stickers-grid">
-        ${(activePack?.stickers || []).map(s => `<button class="dr-sticker-item" data-sticker="${esc(s)}"><img src="${esc(s)}" alt=""></button>`).join('')}
-      </div>`
+        ${stickers.map(s => `<button class="dr-sticker-item" data-sticker="${esc(s)}"><img src="${esc(s)}" alt=""></button>`).join('')}
+        <button class="dr-sticker-item dr-sticker-add" id="dr-add-sticker" title="Добавить стикер">
+          ${I.plus}
+        </button>
+      </div>
+      <input type="file" id="dr-add-sticker-file" accept="image/*" hidden>`
+
     body.querySelectorAll('.dr-sticker-pack[data-pack]').forEach(b => b.addEventListener('click', () => {
         D.currentStickerPack = b.dataset.pack
         renderStickersPanel()
     }))
     body.querySelector('#dr-new-pack')?.addEventListener('click', openCreateStickerPack)
-    body.querySelectorAll('.dr-sticker-item').forEach(b => b.addEventListener('click', () => sendSticker(b.dataset.sticker)))
+    body.querySelectorAll('.dr-sticker-item[data-sticker]').forEach(b => b.addEventListener('click', () => sendSticker(b.dataset.sticker)))
+
+    // ---- Добавление стикера в текущий пак ----
+    const addBtn = body.querySelector('#dr-add-sticker')
+    const addInput = body.querySelector('#dr-add-sticker-file')
+    addBtn?.addEventListener('click', () => addInput?.click())
+    addInput?.addEventListener('change', async e => {
+        const f = e.target.files?.[0]
+        if(!f) return
+        await addStickerToPack(D.currentStickerPack, f)
+        addInput.value = ''
+    })
+}
+
+async function addStickerToPack(packId, file){
+    if(!packId || !file) return
+    const pack = D.stickerPacks.find(p => p.id === packId)
+    if(!pack) return
+
+    // Временный превью-спиннер прямо в сетке
+    const grid = $('dr-panel-body')?.querySelector('.dr-stickers-grid')
+    let spinnerEl = null
+    if(grid){
+        spinnerEl = document.createElement('div')
+        spinnerEl.className = 'dr-sticker-item dr-sticker-loading'
+        spinnerEl.innerHTML = '<div class="dr-sticker-spinner"></div>'
+        grid.appendChild(spinnerEl)
+    }
+
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user) throw new Error('not authed')
+
+        const ext = file.name.split('.').pop() || 'png'
+        const path = `stickers/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.${ext}`
+
+        let url = URL.createObjectURL(file)
+        try {
+            const up = await supabase.storage.from('posts').upload(path, file, { contentType:file.type })
+            if(!up.error){
+                const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
+                url = pub.publicUrl
+            }
+        } catch {}
+
+        pack.stickers.push(url)
+        saveStickers()
+        spinnerEl?.remove()
+        renderStickersPanel()
+        window.showToast?.('success','Стикер добавлен', { icon: I.check })
+    } catch(e){
+        spinnerEl?.remove()
+        window.showToast?.('error', e.message || 'Не удалось добавить')
+    }
 }
 function checkMute(){
     if(D.mutedUntil && Date.now() < D.mutedUntil){
