@@ -67,7 +67,7 @@ const CHAT_THEMES = [
     { id:'t13', name:'Классика',  light:true,  bg:'#f2f2f7', own:'#0a84ff', ownText:'#fff', peer:'#ffffff', peerText:'#000' },
     { id:'t14', name:'Терракота', light:true,  bg:'#fef2ee', own:'#ea580c', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
     { id:'t15', name:'Изумруд',   light:false, bg:'#052e2b', own:'#059669', ownText:'#fff', peer:'#0a3d38', peerText:'#fff' },
-    
+
 ]
 const MSG_SIZES = [
     { id:'sm', label:'Мелкий',  fontSize:'13px', lineHeight:'1.35', pad:'7px 10px' },
@@ -769,7 +769,7 @@ function getOnlineStatus(profile){
     const today = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate())
     const yest  = new Date(today); yest.setDate(yest.getDate() - 1)
     const dd = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-    if(dd.getTime() === today.getTime()) return { text:`Был(а) в сети ${timeOnly(lastSeen)}`, cls:'' }
+    if(dd.getTime() === today.getTime()) return { text:`Был(а) в сети в ${timeOnly(lastSeen)}`, cls:'' }
     if(dd.getTime() === yest.getTime())  return { text:`Был(а) в сети вчера в ${timeOnly(lastSeen)}`, cls:'' }
     return { text:`был(а) в сети ${d.toLocaleDateString('ru-RU', { day:'2-digit', month:'long' })}`, cls:'' }
 }
