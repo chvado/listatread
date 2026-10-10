@@ -4167,3 +4167,37 @@ html[data-theme="dark"] .dnc-topbar{
 .dr-msg-pin{
     display:inline-block; margin-right:4px; opacity:.65; font-size:12px;
 }
+
+/* --- v4 direct fixes: перебивают глобальные input:focus и topbar --- */
+
+/* 1) Убираем «белый квадрат» при фокусе внутри капсулы ввода чата */
+.dr-input-wrap input,
+.dr-input-wrap input:focus{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 9px 6px !important;
+    outline: none !important;
+    color: var(--text);
+    font-size: 15px;
+}
+
+/* 2) Не даём моему #screen-direct .topbar стать sticky —
+      на главной он fixed (как и все остальные), и мне тоже так нужно */
+#screen-direct .topbar{
+    position: fixed;
+}
+/* страховка: контент списка не должен залезать под topbar */
+#screen-direct .app-screen,
+#screen-direct.app-screen{
+    padding-top: 68px;
+}
+
+/* 3) Галочки в foot: не даём глобальному .direct-bubble-time
+      влиять на новый класс .direct-bubble-foot */
+.direct-bubble-foot{
+    font-size: 10.5px;
+    line-height: 1.2;
+    color: inherit;
+    opacity: .8;
+}
