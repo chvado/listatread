@@ -4334,3 +4334,141 @@ html[data-theme="dark"] .dnc-topbar{
     animation:mqSpin .8s linear infinite;
 }
 @keyframes mqSpin{ to{ transform: rotate(360deg) } }
+
+/* ============================================================
+   СПИСОК ЧАТОВ — новая структура: имя / превью / время+бейдж
+============================================================ */
+
+/* Строка 1 — имя */
+#screen-direct .direct-item-row1{
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    flex-wrap: nowrap !important;
+}
+#screen-direct .direct-item-name{
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    font-size: 15px;
+    font-weight: 500 !important;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+/* Строка 2 — превью + мета (время, бейдж) */
+#screen-direct .direct-item-row2{
+    display: flex !important;
+    align-items: flex-end !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    flex-wrap: nowrap !important;
+}
+#screen-direct .direct-item-preview{
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+}
+#screen-direct .direct-item-preview b{
+    color: var(--text);
+    font-weight: 600;
+}
+
+/* Мета справа снизу — время + бейдж */
+#screen-direct .direct-item-meta{
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    align-self: flex-end;
+}
+#screen-direct .direct-item-time{
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+#screen-direct .direct-item-badge{
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    background: #ff3b30;
+    color: #fff;
+    border-radius: 100px;
+    font-size: 10.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* Значок закрепления — маленький бейдж на аватарке */
+#screen-direct .direct-item-avatar{
+    position: relative;
+}
+#screen-direct .direct-item-pin-badge{
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--pin-color, var(--blue));
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 2px var(--bg);
+    z-index: 3;
+    pointer-events: none;
+}
+#screen-direct .direct-item-pin-badge svg{
+    width: 10px;
+    height: 10px;
+    display: block;
+}
+
+/* Убираем устаревший правый блок с датой (если где-то остался в разметке) */
+#screen-direct .direct-item-right{ display: none !important }
+
+/* Закреплённый чат — при hover не перебиваем inline background */
+#screen-direct .direct-item.is-pinned:hover{
+    background: var(--pin-color, var(--blue)) !important;
+    background: color-mix(in srgb, var(--pin-color, #0a84ff) 20%, transparent) !important;
+}
+
+/* ============================================================
+   ВРЕМЯ И ГАЛОЧКИ В СООБЩЕНИЯХ
+============================================================ */
+.direct-bubble-foot{
+    /* цвет задаётся inline из JS, здесь только базовые стили */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    font-size: 10.5px;
+    margin-top: 3px;
+    min-height: 12px;
+}
+.direct-bubble-foot .dr-check{
+    display: inline-flex;
+    margin-left: 2px;
+}
+.direct-bubble-foot .dr-check.read{
+    /* прочитано — всегда ярко-голубая, чтобы сразу видно */
+    color: #5fdfff !important;
+}

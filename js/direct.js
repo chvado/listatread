@@ -644,7 +644,7 @@ async function loadDirectChats(silent = false){
     if(!silent){ renderSkeletons() }
 
     const { data:{ user } } = await supabase.auth.getUser()
-    if(!user){ box.innerHTML = '<p class="empty">Войдите</p>'; setHeaderReady(); return }
+    if(!user){ box.innerHTML = '<p class="empty">Не удалось подключиться</p>'; setHeaderReady(); return }
     D.currentUser = user
 
     try {
@@ -758,18 +758,18 @@ function timeOnly(iso){ return new Date(iso).toLocaleTimeString('ru-RU', { hour:
 ============================================================ */
 function getOnlineStatus(profile){
     const lastSeen = profile?.last_seen
-    if(!lastSeen) return { text:'не был(а) в сети', cls:'' }
+    if(!lastSeen) return { text:'Был(а) в сети', cls:'' }
     const last = new Date(lastSeen).getTime()
     const now = Date.now()
     const diffMin = (now - last) / 60000
-    if(diffMin < 5) return { text:'в сети', cls:'online' }
+    if(diffMin < 5) return { text:'В сети', cls:'online' }
     const d = new Date(lastSeen)
     const nowD = new Date()
     const today = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate())
     const yest  = new Date(today); yest.setDate(yest.getDate() - 1)
     const dd = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-    if(dd.getTime() === today.getTime()) return { text:`не был(а) в сети ${timeOnly(lastSeen)}`, cls:'' }
-    if(dd.getTime() === yest.getTime())  return { text:`был(а) в сети вчера в ${timeOnly(lastSeen)}`, cls:'' }
+    if(dd.getTime() === today.getTime()) return { text:`Был(а) в сети ${timeOnly(lastSeen)}`, cls:'' }
+    if(dd.getTime() === yest.getTime())  return { text:`Был(а) в сети вчера в ${timeOnly(lastSeen)}`, cls:'' }
     return { text:`был(а) в сети ${d.toLocaleDateString('ru-RU', { day:'2-digit', month:'long' })}`, cls:'' }
 }
 
@@ -779,6 +779,8 @@ function getOnlineStatus(profile){
 function renderChats(){
     const box = $('direct-list'); if(!box) return
     if(!D.chats.length){ box.innerHTML = '<p class="empty">Нет чатов. Начните общение.</p>'; return }
+
+    const pinColor = D.pinColor || '#0a84ff'
 
     const html = D.chats.map((c, idx) => {
         const p = c.profile || {}
@@ -797,22 +799,30 @@ function renderChats(){
         const pref = D.prefs[c.peerId] || {}
         const time = formatListTime(last.created_at)
         const selected = D.selectedChats.has(c.peerId)
+        const pinned = !!pref.pinned
+
+        // Еле заметная заливка для закреплённых (цвет берётся из --pin-color в настройках оформления)
+        const pinnedStyle = pinned
+            ? `style="background: color-mix(in srgb, ${pinColor} 14%, transparent)"`
+            : ''
 
         return `
           ${idx > 0 ? '<div class="direct-item-sep"></div>' : ''}
-          <div class="direct-item ${selected ? 'selected' : ''}" data-peer="${c.peerId}">
-            ${pref.pinned ? `<span class="direct-item-pin">${I.pin}</span>` : ''}
+          <div class="direct-item ${selected ? 'selected' : ''} ${pinned ? 'is-pinned' : ''}" data-peer="${c.peerId}" ${pinnedStyle}>
             ${D.editMode ? `<button class="direct-item-check ${selected ? 'on' : ''}" data-check="${c.peerId}"></button>` : ''}
-            <div class="direct-item-avatar">${av(p.avatar_url, name)}</div>
+            <div class="direct-item-avatar">
+              ${av(p.avatar_url, name)}
+              ${pinned ? `<span class="direct-item-pin-badge">${I.pin}</span>` : ''}
+            </div>
             <div class="direct-item-info">
               <div class="direct-item-row1">
                 <div class="direct-item-name">${esc(name)}</div>
-                <div class="direct-item-date">${time}</div>
               </div>
               <div class="direct-item-row2">
                 <div class="direct-item-preview">${previewHtml}</div>
-                <div class="direct-item-right">
+                <div class="direct-item-meta">
                   ${c.unread ? `<div class="direct-item-badge">${c.unread > 99 ? '99+' : c.unread}</div>` : ''}
+                  <div class="direct-item-time">${time}</div>
                 </div>
               </div>
             </div>
@@ -1362,7 +1372,9 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
         body = `<div>${esc(content)}</div>`
     }
 
-    const pinnedMark = m.pinned_at ? `<span style="display:inline-block;margin-right:4px;opacity:.7;vertical-align:middle">${I.pin}</span>` : ''
+    const pinnedMark = m.pinned_at
+        ? `<span style="display:inline-block;margin-right:4px;opacity:.7;vertical-align:middle">${I.pin}</span>`
+        : ''
 
     let checkHtml = ''
     if(mine){
@@ -1374,6 +1386,14 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
     const avaSrc = mine ? myProf?.avatar_url : peerProf?.avatar_url
     const avaName = mine ? (myProf?.full_name || myProf?.username || 'me') : (peerProf?.full_name || peerProf?.username || 'user')
 
+    // Цвет времени и пустой галочки:
+    // - свои пузыри всегда цветные (синие) → светло-серый
+    // - чужие в светлой теме (белый пузырь) → тёмно-серый
+    // - чужие в тёмной теме (тёмный пузырь) → светло-серый
+    const footColor = mine
+        ? 'rgba(255,255,255,.75)'
+        : (theme.light ? 'rgba(0,0,0,.4)' : 'rgba(255,255,255,.55)')
+
     const bubbleStyle = `background:${mine ? theme.own : theme.peer};color:${mine ? theme.ownText : theme.peerText};`
 
     if(isSticker){
@@ -1381,7 +1401,7 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
           <div class="dr-row-ava ${showAva ? '' : 'ghost'}">${av(avaSrc, avaName)}</div>
           <div class="direct-bubble dr-sticker">
             ${body}
-            <div class="direct-bubble-foot" style="color:${mine ? 'rgba(255,255,255,.7)' : 'rgba(0,0,0,.5)'}">
+            <div class="direct-bubble-foot" style="color:${footColor}">
               <span>${time}</span>${checkHtml}
             </div>
           </div>
@@ -1392,7 +1412,7 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
       <div class="dr-row-ava ${showAva ? '' : 'ghost'}">${av(avaSrc, avaName)}</div>
       <div class="direct-bubble" style="${bubbleStyle}">
         ${pinnedMark}${body}
-        <div class="direct-bubble-foot" style="color:${mine ? 'rgba(255,255,255,.75)' : 'rgba(0,0,0,.45)'}">
+        <div class="direct-bubble-foot" style="color:${footColor}">
           <span>${time}</span>${checkHtml}
         </div>
       </div>
