@@ -173,6 +173,51 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
     .dr-connecting-dots i:nth-child(3){animation-delay:.3s}
 
     /* --- Chat list --- */
+    .direct-new-chat-btn{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: calc(100% - 20px);
+    margin: 8px 10px 6px;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: none;
+    border-radius: 14px;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background .18s, transform .12s;
+}
+.direct-new-chat-btn:active{ transform: scale(.985) }
+.direct-new-chat-btn:hover{ background: var(--surface-3) }
+.dnc-icon{
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.dnc-icon svg{ width: 20px; height: 20px }
+.dnc-text{
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 2px;
+}
+.dnc-title{
+    font-size: 15px; font-weight: 600;
+    color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dnc-sub{
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dnc-arrow{
+    color: var(--text-tertiary);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.dnc-arrow svg{ width: 18px; height: 18px }
     .direct-list { padding:0 8px 24px }
     .direct-item {
         display:flex; gap:12px; align-items:center;
@@ -263,17 +308,82 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
     .direct-item.selected { background: rgba(10,132,255,.08) }
 
     /* --- Topbar --- */
-    #screen-direct .topbar{ position:sticky; top:0 }
-    #screen-direct .topbar-title{
-        flex:1; text-align:center;
-        font-size:16px; font-weight:600; color:var(--text);
-        overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    }
-    .direct-trash-btn{
-        background:transparent; border:none; color:var(--red);
-        cursor:pointer; padding:8px; display:flex; align-items:center;
-        animation: drFadeIn .2s ease both;
-    }
+    /* --- Topbar (fix) --- */
+#screen-direct .topbar{
+    position: fixed;                    /* как у остальных экранов */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 12px;
+    box-sizing: border-box;
+    background: rgba(255,255,255,.88);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    z-index: 100;
+}
+html[data-theme="dark"] #screen-direct .topbar{
+    background: rgba(0,0,0,.72);
+}
+#screen-direct .topbar-title{
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+.direct-topbar-right{
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 40px;      /* = ширина одного topbar-btn, чтобы title стоял ровно по центру */
+    justify-content: flex-end;
+}
+.direct-trash-btn{
+    background: transparent;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    animation: drFadeIn .2s ease both;
+}
+
+/* Точки рядом с «Соединение» */
+.direct-title-dots{
+    display: inline-flex;
+    gap: 3px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+.direct-title-dots i{
+    width: 4px; height: 4px; border-radius: 50%;
+    background: currentColor;
+    display: inline-block;
+    animation: dbounce 1.2s ease-in-out infinite;
+}
+.direct-title-dots i:nth-child(2){ animation-delay: .15s }
+.direct-title-dots i:nth-child(3){ animation-delay: .3s }
+
+#screen-direct{
+    padding-top: 0;          /* сбрасываем возможный конфликт */
+}
+#screen-direct #direct-body{
+    padding-top: 68px;       /* высота topbar */
+}
 
     /* --- Sidebar (direct) --- */
     .ds-backdrop{
@@ -929,22 +1039,31 @@ export function buildDirectScreen(){
     s.id = 'screen-direct'
     s.className = 'app-screen'
     s.innerHTML = `
-    <header class="topbar">
-      <button class="topbar-btn" id="direct-menu-btn">${I.menu}</button>
-      <div class="topbar-title" id="direct-title">listadirect</div>
-      <div style="display:flex; align-items:center; gap:2px; min-width:40px; justify-content:flex-end">
-        <button class="topbar-btn direct-trash-btn hidden" id="direct-trash-btn" title="Удалить выбранные">${I.trash}</button>
-        <button class="topbar-btn" id="direct-edit-btn" title="Изменить">
-          <span class="icon-pencil">${I.pencil}</span>
-          <span class="icon-x hidden">${I.x}</span>
-        </button>
-      </div>
-    </header>
-    <div id="direct-body" style="position:relative">
-      <div id="direct-requests-block"></div>
-      <div class="direct-list" id="direct-list"></div>
-    </div>
-  `
+<header class="topbar">
+  <button class="topbar-btn" id="direct-menu-btn" title="Меню">${I.menu}</button>
+  <div class="topbar-title" id="direct-title">listadirect</div>
+  <div class="direct-topbar-right">
+    <button class="topbar-btn direct-trash-btn hidden" id="direct-trash-btn" title="Удалить выбранные">${I.trash}</button>
+    <button class="topbar-btn" id="direct-edit-btn" title="Изменить">
+      <span class="icon-pencil">${I.pencil}</span>
+      <span class="icon-x hidden">${I.x}</span>
+    </button>
+  </div>
+</header>
+<div id="direct-body" style="position:relative">
+  <button class="direct-new-chat-btn" id="direct-new-chat-btn">
+    <span class="dnc-icon">${I.pencil}</span>
+    <span class="dnc-text">
+      <span class="dnc-title">Добавить новый чат</span>
+      <span class="dnc-sub">Начните общение с кем-нибудь</span>
+    </span>
+    <span class="dnc-arrow">${I.back.replace('M15 6l-6 6 6 6','M9 6l6 6-6 6')}</span>
+  </button>
+  <div id="direct-requests-block"></div>
+  <div class="direct-list" id="direct-list"></div>
+</div>
+`
+    s.querySelector('#direct-new-chat-btn').addEventListener('click', openNewChatScreen)
     document.getElementById('main-app').appendChild(s)
 
     s.querySelector('#direct-menu-btn').addEventListener('click', openDirectSidebar)
@@ -1112,16 +1231,7 @@ async function deleteSelectedChats(){
 function renderSkeletons(){
     const box = $('direct-list'); if(!box) return
     const room = $('direct-body')
-    let connecting = $('direct-connecting')
-    if(!connecting && room){
-        connecting = document.createElement('div')
-        connecting.id = 'direct-connecting'
-        connecting.className = 'dr-connecting'
-        connecting.innerHTML = `
-          <span class="dr-connecting-text">Соединение<span class="dr-connecting-dots"><i></i><i></i><i></i></span></span>
-        `
-        room.appendChild(connecting)
-    }
+    
 
     box.innerHTML = Array.from({length:7}).map(() => `
       <div class="dr-skel">
@@ -1134,7 +1244,7 @@ function renderSkeletons(){
     `).join('')
 
     const title = $('direct-title')
-    if(title) title.textContent = ''
+    if(title) title.innerHTML = `Соединение<span class="direct-title-dots"><i></i><i></i><i></i></span>`
 }
 
 async function loadDirectChats(silent = false){
