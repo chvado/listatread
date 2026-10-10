@@ -67,6 +67,7 @@ const CHAT_THEMES = [
     { id:'t13', name:'Классика',  light:true,  bg:'#f2f2f7', own:'#0a84ff', ownText:'#fff', peer:'#ffffff', peerText:'#000' },
     { id:'t14', name:'Терракота', light:true,  bg:'#fef2ee', own:'#ea580c', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
     { id:'t15', name:'Изумруд',   light:false, bg:'#052e2b', own:'#059669', ownText:'#fff', peer:'#0a3d38', peerText:'#fff' },
+    { id:'t16', name:'Лава',   light:false, bg:'#4c2d15', own:'#9a8226', ownText:'#e11515', peer:'#ce5c0d', peerText:'#fff' },
 ]
 const MSG_SIZES = [
     { id:'sm', label:'Мелкий',  fontSize:'13px', lineHeight:'1.35', pad:'7px 10px' },
@@ -1314,7 +1315,7 @@ async function loadMessages(silent = false){
           <div class="direct-welcome" style="text-align:center;padding:60px 24px;max-width:340px;margin:auto">
             <div class="dr-user-ava" style="width:96px;height:96px;font-size:40px;margin:0 auto 18px">${av(peerProfile.avatar_url, pname)}</div>
             <h2 style="font-size:20px;font-weight:700;margin-bottom:10px;color:var(--text)">${esc(pname)}</h2>
-            <p style="font-size:14px;color:var(--text-secondary);line-height:1.5">Начните общение — сообщения, фото, видео, стикеры</p>
+            <p style="font-size:14px;color:var(--text-secondary);line-height:1.5">В этом чате пока нет сообщений. Начните новый чат, написав сообщение или отправьте стикер, музыку, видео или пост</p>
           </div>`
         return
     }
