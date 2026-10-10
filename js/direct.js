@@ -99,7 +99,6 @@ const D = {
     if(lp.chatTheme) D.chatThemeId = lp.chatTheme
     if(lp.pinColor) D.pinColor = lp.pinColor
     if(lp.msgSize) D.msgSize = lp.msgSize
-    if(lp.stickers) D.stickerPacks = lp.stickers
     if(lp.mutedUntil) D.mutedUntil = lp.mutedUntil || 0
 })()
 function getTheme(){ return CHAT_THEMES.find(t => t.id === (D.chatThemeId || 't13')) || CHAT_THEMES[12] }
@@ -1602,17 +1601,105 @@ function renderPanelBody(){
 }
 
 /* ============================================================
-   СТИКЕРЫ
+   СТИКЕРЫ — с сохранением в БД
 ============================================================ */
-function saveStickers(){
+D.ownPacks = []
+D.savedPacks = []
+D.publicPacks = []
+D._stickerPacksLoaded = false
+
+function normalizePack(p){
+    return {
+        id: p.id,
+        name: p.name || 'Без названия',
+        stickers: Array.isArray(p.stickers) ? p.stickers : [],
+        is_public: !!p.is_public,
+        user_id: p.user_id,
+        created_at: p.created_at ? new Date(p.created_at).getTime() : Date.now()
+    }
+}
+
+async function loadStickerPacks(force = false){
+    if(D._stickerPacksLoaded && !force) return
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
+    D._stickerPacksLoaded = true
+
+    const { data: own } = await supabase.from('sticker_packs')
+        .select('id, user_id, name, stickers, is_public, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+    const { data: savedRows } = await supabase.from('sticker_pack_saves')
+        .select('pack_id, sticker_packs:pack_id (id, user_id, name, stickers, is_public, created_at)')
+        .eq('user_id', user.id)
+        .order('saved_at', { ascending: false })
+
+    D.ownPacks = (own || []).map(normalizePack)
+    D.savedPacks = (savedRows || []).map(r => r.sticker_packs).filter(Boolean).map(normalizePack)
+
+    const excludeIds = new Set([...D.ownPacks.map(p => p.id), ...D.savedPacks.map(p => p.id)])
+    const { data: pub } = await supabase.from('sticker_packs')
+        .select('id, user_id, name, stickers, is_public, created_at')
+        .eq('is_public', true)
+        .neq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(40)
+
+    D.publicPacks = (pub || []).filter(p => !excludeIds.has(p.id)).map(normalizePack)
+}
+
+function getMyPacks(){ return [...D.ownPacks, ...D.savedPacks] }
+function isOwnPack(id){ return D.ownPacks.some(p => p.id === id) }
+function isSavedPack(id){ return D.savedPacks.some(p => p.id === id) }
+
+function saveMutedUntil(){
     const lp = loadLocalPrefs()
-    lp.stickers = D.stickerPacks
     lp.mutedUntil = D.mutedUntil
     saveLocalPrefs(lp)
 }
+
+function checkMute(){
+    if(D.mutedUntil && Date.now() < D.mutedUntil){
+        const left = Math.ceil((D.mutedUntil - Date.now()) / 1000)
+        window.showToast?.('error', `Вы в муте ещё ${left} с`, { duration:3000 })
+        return true
+    }
+    if(D.mutedUntil && Date.now() >= D.mutedUntil){ D.mutedUntil = 0; saveMutedUntil() }
+    return false
+}
+function registerStickerSend(){
+    const now = Date.now()
+    D.stickerSendTimes = D.stickerSendTimes.filter(t => now - t < 60000)
+    D.stickerSendTimes.push(now)
+    if(D.stickerSendTimes.length > 10){
+        D.mutedUntil = now + 3 * 60 * 1000
+        saveMutedUntil()
+        window.showToast?.('error','Слишком много стикеров — мут на 3 минуты во всех чатах', { duration: 4000 })
+        return true
+    }
+    return false
+}
+
+async function sendSticker(url){
+    if(checkMute()) return
+    await pushMessage({ content: `[sticker:${url}]` })
+    registerStickerSend()
+}
+
 function renderStickersPanel(){
     const body = $('dr-panel-body'); if(!body) return
-    if(!D.stickerPacks.length){
+
+    if(!D._stickerPacksLoaded){
+        body.innerHTML = '<div class="dr-sticker-empty"><p>Загрузка…</p></div>'
+        loadStickerPacks().then(() => renderStickersPanel())
+        return
+    }
+
+    const myPacks  = getMyPacks()
+    const pubPacks = D.publicPacks
+
+    if(!myPacks.length && !pubPacks.length){
         body.innerHTML = `
           <div class="dr-sticker-empty">
             <p>У вас пока нет стикеров</p>
@@ -1621,25 +1708,41 @@ function renderStickersPanel(){
         body.querySelector('#dr-new-pack').addEventListener('click', openCreateStickerPack)
         return
     }
-    const activePack = D.currentStickerPack ? D.stickerPacks.find(p => p.id === D.currentStickerPack) : D.stickerPacks[0]
-    D.currentStickerPack = activePack?.id
 
-    const stickers = activePack?.stickers || []
+    const allVisible = [...myPacks, ...pubPacks]
+    let activePack = allVisible.find(p => p.id === D.currentStickerPack)
+    if(!activePack){ activePack = myPacks[0] || pubPacks[0]; D.currentStickerPack = activePack?.id }
+
+    const stickers   = activePack?.stickers || []
+    const isOwn      = activePack && isOwnPack(activePack.id)
+    const isSaved    = activePack && isSavedPack(activePack.id)
+    const isPubOther = activePack && D.publicPacks.some(p => p.id === activePack.id)
 
     body.innerHTML = `
       <div class="dr-sticker-packs">
-        ${D.stickerPacks.map(p => `
-          <button class="dr-sticker-pack ${p.id === activePack?.id ? 'active' : ''}" data-pack="${p.id}">
+        ${myPacks.map(p => `
+          <button class="dr-sticker-pack ${p.id === activePack.id ? 'active' : ''}" data-pack="${p.id}">
             ${p.stickers[0] ? `<img src="${esc(p.stickers[0])}" alt="">` : ''}
           </button>`).join('')}
         <button class="dr-sticker-pack dr-sticker-pack-add" id="dr-new-pack" title="Создать стикерпак">${I.plus}</button>
+        ${pubPacks.length ? `<div class="dr-sticker-pack-sep" aria-hidden="true"></div>` : ''}
+        ${pubPacks.map(p => `
+          <button class="dr-sticker-pack dr-sticker-pack-pub ${p.id === activePack.id ? 'active' : ''}" data-pack="${p.id}">
+            ${p.stickers[0] ? `<img src="${esc(p.stickers[0])}" alt="">` : ''}
+          </button>`).join('')}
       </div>
+
+      <div class="dr-sticker-pack-info">
+        <div class="dr-sticker-pack-name">${esc(activePack.name)}</div>
+        ${isPubOther ? `<button class="dr-sticker-save-btn" id="dr-save-pack" data-pack="${activePack.id}">Сохранить пак</button>` : ''}
+        ${isSaved    ? `<button class="dr-sticker-save-btn saved" disabled>Сохранён</button>` : ''}
+      </div>
+
       <div class="dr-stickers-grid">
         ${stickers.map(s => `<button class="dr-sticker-item" data-sticker="${esc(s)}"><img src="${esc(s)}" alt=""></button>`).join('')}
-        <button class="dr-sticker-item dr-sticker-add" id="dr-add-sticker" title="Добавить стикер">
-          ${I.plus}
-        </button>
+        ${isOwn ? `<button class="dr-sticker-item dr-sticker-add" id="dr-add-sticker" title="Добавить стикер">${I.plus}</button>` : ''}
       </div>
+
       <input type="file" id="dr-add-sticker-file" accept="image/*" hidden>`
 
     body.querySelectorAll('.dr-sticker-pack[data-pack]').forEach(b => b.addEventListener('click', () => {
@@ -1649,85 +1752,77 @@ function renderStickersPanel(){
     body.querySelector('#dr-new-pack')?.addEventListener('click', openCreateStickerPack)
     body.querySelectorAll('.dr-sticker-item[data-sticker]').forEach(b => b.addEventListener('click', () => sendSticker(b.dataset.sticker)))
 
-    // ---- Добавление стикера в текущий пак ----
-    const addBtn = body.querySelector('#dr-add-sticker')
+    body.querySelector('#dr-save-pack')?.addEventListener('click', e => savePublicPack(e.currentTarget.dataset.pack))
+
+    const addBtn   = body.querySelector('#dr-add-sticker')
     const addInput = body.querySelector('#dr-add-sticker-file')
     addBtn?.addEventListener('click', () => addInput?.click())
     addInput?.addEventListener('change', async e => {
-        const f = e.target.files?.[0]
-        if(!f) return
-        await addStickerToPack(D.currentStickerPack, f)
+        const f = e.target.files?.[0]; if(!f) return
+        await addStickerToPack(activePack.id, f)
         addInput.value = ''
     })
 }
 
+async function savePublicPack(packId){
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user) return
+        const { error } = await supabase.from('sticker_pack_saves').insert({ user_id: user.id, pack_id: packId })
+        if(error && error.code !== '23505') throw error
+
+        const idx = D.publicPacks.findIndex(p => p.id === packId)
+        if(idx >= 0){
+            const [p] = D.publicPacks.splice(idx, 1)
+            D.savedPacks.unshift(p)
+        }
+        D.currentStickerPack = packId
+        window.showToast?.('success', 'Пак сохранён', { icon: I.check })
+        renderStickersPanel()
+    } catch(e){
+        window.showToast?.('error', 'Не удалось сохранить: ' + (e.message || ''))
+    }
+}
+
 async function addStickerToPack(packId, file){
     if(!packId || !file) return
-    const pack = D.stickerPacks.find(p => p.id === packId)
-    if(!pack) return
+    const pack = D.ownPacks.find(p => p.id === packId)
+    if(!pack){ window.showToast?.('error', 'Можно добавлять только в свои паки'); return }
 
-    // Временный превью-спиннер прямо в сетке
     const grid = $('dr-panel-body')?.querySelector('.dr-stickers-grid')
-    let spinnerEl = null
+    let spinner = null
     if(grid){
-        spinnerEl = document.createElement('div')
-        spinnerEl.className = 'dr-sticker-item dr-sticker-loading'
-        spinnerEl.innerHTML = '<div class="dr-sticker-spinner"></div>'
-        grid.appendChild(spinnerEl)
+        spinner = document.createElement('div')
+        spinner.className = 'dr-sticker-item dr-sticker-loading'
+        spinner.innerHTML = '<div class="dr-sticker-spinner"></div>'
+        grid.appendChild(spinner)
     }
 
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         if(!user) throw new Error('not authed')
+        const ext  = file.name.split('.').pop() || 'png'
+        const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.${ext}`
 
-        const ext = file.name.split('.').pop() || 'png'
-        const path = `stickers/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.${ext}`
+        const up = await supabase.storage.from('stickers').upload(path, file, { contentType:file.type })
+        if(up.error) throw up.error
+        const { data:pub } = supabase.storage.from('stickers').getPublicUrl(path)
+        const url = pub.publicUrl
 
-        let url = URL.createObjectURL(file)
-        try {
-            const up = await supabase.storage.from('posts').upload(path, file, { contentType:file.type })
-            if(!up.error){
-                const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
-                url = pub.publicUrl
-            }
-        } catch {}
+        const next = [...pack.stickers, url]
+        const { error } = await supabase.from('sticker_packs').update({ stickers: next }).eq('id', packId)
+        if(error) throw error
 
-        pack.stickers.push(url)
-        saveStickers()
-        spinnerEl?.remove()
+        pack.stickers = next
+        spinner?.remove()
         renderStickersPanel()
-        window.showToast?.('success','Стикер добавлен', { icon: I.check })
+        window.showToast?.('success', 'Стикер добавлен', { icon: I.check })
     } catch(e){
-        spinnerEl?.remove()
+        spinner?.remove()
         window.showToast?.('error', e.message || 'Не удалось добавить')
     }
 }
-function checkMute(){
-    if(D.mutedUntil && Date.now() < D.mutedUntil){
-        const left = Math.ceil((D.mutedUntil - Date.now()) / 1000)
-        window.showToast?.('error', `Вы в муте ещё ${left} с`, { duration:3000 })
-        return true
-    }
-    if(D.mutedUntil && Date.now() >= D.mutedUntil){ D.mutedUntil = 0; saveStickers() }
-    return false
-}
-function registerStickerSend(){
-    const now = Date.now()
-    D.stickerSendTimes = D.stickerSendTimes.filter(t => now - t < 60000)
-    D.stickerSendTimes.push(now)
-    if(D.stickerSendTimes.length > 10){
-        D.mutedUntil = now + 3 * 60 * 1000
-        saveStickers()
-        window.showToast?.('error','Слишком много стикеров — мут на 3 минуты во всех чатах', { duration: 4000 })
-        return true
-    }
-    return false
-}
-async function sendSticker(url){
-    if(checkMute()) return
-    await pushMessage({ content: `[sticker:${url}]` })
-    registerStickerSend()
-}
+
 function openCreateStickerPack(){
     closeAllSheets()
     const back = document.createElement('div')
@@ -1749,6 +1844,10 @@ function openCreateStickerPack(){
           <input type="file" id="dsp-file" accept="image/*" hidden>
           <span style="font-size:13px;color:var(--text-secondary)">Нажмите, чтобы выбрать фото</span>
         </label>
+        <label class="dr-sticker-public-row" style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px;background:var(--surface-2);border-radius:12px;cursor:pointer">
+          <input type="checkbox" id="dsp-public" checked style="width:auto">
+          <span style="font-size:13.5px">Показывать другим в стикерах</span>
+        </label>
         <button class="btn-primary" id="dsp-create" style="margin-top:16px">Создать стикерпак</button>
         <button class="btn-gray" id="dsp-cancel" style="margin-top:8px">Отмена</button>
       </div>`
@@ -1762,27 +1861,30 @@ function openCreateStickerPack(){
     })
     $('dsp-cancel').addEventListener('click', closeAllSheets)
     $('dsp-create').addEventListener('click', async () => {
-        const name = $('dsp-name').value.trim()
+        const name     = $('dsp-name').value.trim()
+        const isPublic = $('dsp-public').checked
         if(name.length < 2){ window.showToast?.('error','Введите название'); return }
         if(!file){ window.showToast?.('error','Выберите фото'); return }
         const btn = $('dsp-create'); btn.disabled = true; btn.textContent = 'Загрузка...'
         try {
             const { data:{ user } } = await supabase.auth.getUser()
             if(!user) throw new Error('not authed')
-            const ext = file.name.split('.').pop() || 'png'
-            const path = `stickers/${user.id}/${Date.now()}.${ext}`
-            let url = URL.createObjectURL(file)
-            try {
-                const up = await supabase.storage.from('posts').upload(path, file, { contentType:file.type })
-                if(!up.error){
-                    const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
-                    url = pub.publicUrl
-                }
-            } catch {}
-            const pack = { id:'p_' + Date.now(), name, stickers:[url], created_at:Date.now() }
-            D.stickerPacks.unshift(pack)
+
+            const ext  = file.name.split('.').pop() || 'png'
+            const path = `${user.id}/${Date.now()}.${ext}`
+            const up = await supabase.storage.from('stickers').upload(path, file, { contentType:file.type })
+            if(up.error) throw up.error
+            const { data:pub } = supabase.storage.from('stickers').getPublicUrl(path)
+            const url = pub.publicUrl
+
+            const { data:created, error } = await supabase.from('sticker_packs')
+                .insert({ user_id: user.id, name, stickers:[url], is_public:isPublic })
+                .select().single()
+            if(error) throw error
+
+            const pack = normalizePack(created)
+            D.ownPacks.unshift(pack)
             D.currentStickerPack = pack.id
-            saveStickers()
             closeAllSheets()
             renderStickersPanel()
             window.showToast?.('success','Стикерпак создан', { icon: I.check })
@@ -1793,6 +1895,7 @@ function openCreateStickerPack(){
         }
     })
 }
+
 function closeAllSheets(){
     document.querySelectorAll('.dr-sheet, .dr-sheet-backdrop').forEach(el => el.remove())
 }
