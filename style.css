@@ -5616,3 +5616,373 @@ html[data-theme="dark"] .code-box:focus{ background:#1c1c1e; color:#fff; }
 .avatar-preview img{
     width:100%; height:100%; object-fit:cover;
 }
+
+/* ============================================================
+   AUTH v2 — ПЛАВНАЯ АНИМАЦИЯ ВХОД <-> РЕГИСТРАЦИЯ
+============================================================ */
+
+/* Слоты и views — растягиваются на всю ширину */
+.auth-slot,
+.auth-view {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Показываем/скрываем по режиму */
+.auth-register-only { display: none !important; }
+#auth-screen.is-register .auth-login-only { display: none !important; }
+#auth-screen.is-register .auth-register-only { display: flex !important; }
+
+/* Плавная смена заголовка */
+.auth-title {
+    position: relative;
+    height: 26px;
+    width: 100%;
+    overflow: hidden;
+    margin: 0 0 12px;
+    font-size: 17px;
+    font-weight: 700;
+    color: rgba(255,255,255,.85);
+    text-align: center;
+}
+.auth-title > span {
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    transition: opacity .38s cubic-bezier(.4,0,.2,1),
+    transform .38s cubic-bezier(.4,0,.2,1);
+}
+.auth-title-register {
+    opacity: 0;
+    transform: translateY(100%);
+}
+#auth-screen.is-register .auth-title-login {
+    opacity: 0;
+    transform: translateY(-100%);
+}
+#auth-screen.is-register .auth-title-register {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Views сворачиваются/разворачиваются */
+.auth-view {
+    overflow: hidden;
+    transition: max-height .45s cubic-bezier(.4,0,.2,1),
+    opacity .32s cubic-bezier(.4,0,.2,1),
+    margin .35s cubic-bezier(.4,0,.2,1);
+}
+.auth-view-login    { max-height: 600px; opacity: 1; }
+.auth-view-register { max-height: 0;     opacity: 0; margin: 0; }
+#auth-screen.is-register .auth-view-login    { max-height: 0;     opacity: 0; margin: 0; }
+#auth-screen.is-register .auth-view-register { max-height: 600px; opacity: 1; margin: 4px 0; }
+
+/* Соцсети и "или" плавно исчезают в режиме регистрации */
+.auth-slot-socials .auth-or,
+.auth-slot-socials .auth-methods {
+    transition: opacity .35s, transform .35s, max-height .4s, margin .35s;
+    max-height: 200px;
+    overflow: hidden;
+}
+#auth-screen.is-register .auth-slot-socials .auth-or,
+#auth-screen.is-register .auth-slot-socials .auth-methods {
+    opacity: 0;
+    transform: translateY(8px);
+    max-height: 0;
+    margin: 0;
+    overflow: hidden;
+}
+
+/* Кнопка "Назад" */
+.auth-btn-back {
+    width: 100%;
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: #fff;
+    color: #000;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .15s, background .15s;
+    animation: authBackIn .42s cubic-bezier(.34,1.56,.64,1) both;
+}
+.auth-btn-back:hover { background: #e8e8e8; }
+.auth-btn-back:active { transform: scale(.98); }
+@keyframes authBackIn {
+    from { opacity: 0; transform: translateY(-14px) scale(.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Кнопка "Продолжить >" */
+.auth-btn-continue {
+    width: 100%;
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: #fff;
+    color: #000;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    animation: authBtnIn .42s cubic-bezier(.34,1.56,.64,1) both;
+}
+.auth-btn-continue:active { transform: scale(.98); }
+@keyframes authBtnIn {
+    from { opacity: 0; transform: translateY(10px) scale(.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Кнопка Регистрация — красная обводка */
+.auth-btn-danger {
+    background: transparent !important;
+    color: #e63946 !important;
+    border: 1.5px solid #e63946 !important;
+}
+.auth-btn-danger:hover { background: rgba(230,57,70,.1) !important; }
+
+/* Loader */
+.btn-label { display: inline-flex; align-items: center; gap: 6px; }
+.btn-loader { display: inline-flex; align-items: center; gap: 8px; }
+.btn-loader.hidden { display: none !important; }
+.btn-spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(0,0,0,.22);
+    border-top-color: #000;
+    animation: spin .7s linear infinite;
+}
+.btn-spinner-light {
+    border-color: rgba(255,255,255,.35);
+    border-top-color: #fff;
+}
+
+/* Hint */
+.auth-hint {
+    font-size: 11.5px;
+    color: rgba(255,255,255,.5);
+    text-align: left;
+    padding: 4px 4px 6px;
+    line-height: 1.4;
+}
+.auth-hint b { color: rgba(255,255,255,.8); font-weight: 600; }
+
+/* Чекбокс согласия */
+.auth-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-top: 2px;
+    background: rgba(255,255,255,.05);
+    border-radius: 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: rgba(255,255,255,.65);
+    cursor: pointer;
+    transition: background .15s;
+}
+.auth-consent:active { background: rgba(255,255,255,.08); }
+.auth-consent input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px;
+    padding: 0 !important;
+    margin: 2px 0 0;
+    background: transparent !important;
+    border: 1.5px solid rgba(255,255,255,.4) !important;
+    border-radius: 5px !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: all .15s;
+}
+.auth-consent input[type="checkbox"]:checked {
+    background: #0a84ff !important;
+    border-color: #0a84ff !important;
+}
+.auth-consent input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px; top: 1px;
+    width: 4px; height: 9px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+.auth-consent a {
+    color: #fff;
+    text-decoration: underline;
+    text-decoration-color: rgba(255,255,255,.3);
+    text-underline-offset: 2px;
+    font-weight: 500;
+}
+.auth-consent a:hover { text-decoration-color: #fff; }
+
+/* ============================================================
+   REGISTER — новые шаги
+============================================================ */
+
+/* Сетка даты */
+.date-picker {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr;
+    gap: 8px;
+    padding: 4px 0;
+    width: 100%;
+}
+.date-select {
+    width: 100%;
+    padding: 14px 10px;
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1.5px solid transparent;
+    border-radius: 14px;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    text-align: center;
+    cursor: pointer;
+    transition: background .18s, border-color .18s, box-shadow .18s;
+}
+.date-select:focus {
+    background: #fff;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 4px rgba(10,132,255,.15);
+}
+html[data-theme="dark"] .date-select {
+    color: #fff;
+    background: rgba(120,120,128,.24);
+}
+html[data-theme="dark"] .date-select:focus {
+    background: #1c1c1e;
+    color: #fff;
+}
+
+/* 5 квадратов для кода */
+.code-boxes {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin: 8px 0 12px;
+    width: 100%;
+}
+.code-box {
+    width: 100%;
+    aspect-ratio: 1 / 1.15;
+    text-align: center;
+    font-size: 26px;
+    font-weight: 800;
+    font-family: ui-monospace, monospace;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 2px solid transparent;
+    border-radius: 14px;
+    outline: none;
+    padding: 0;
+    transition: background .18s, border-color .18s, box-shadow .18s;
+}
+.code-box:focus {
+    background: #fff;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 4px rgba(10,132,255,.15);
+}
+.code-box.filled { border-color: var(--blue); }
+html[data-theme="dark"] .code-box { background: rgba(120,120,128,.24); color: #fff; }
+html[data-theme="dark"] .code-box:focus { background: #1c1c1e; color: #fff; }
+
+/* Аватар с плюсиком */
+.avatar-upload {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0 8px;
+    cursor: pointer;
+}
+.avatar-preview {
+    width: 124px;
+    height: 124px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 2px dashed var(--border-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    transition: background .2s, border-color .2s;
+}
+.avatar-preview:has(img:not([hidden])) {
+    border-style: solid;
+    border-color: var(--blue);
+    background: none;
+}
+#avatar-placeholder {
+    font-size: 44px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    line-height: 1;
+    transform: translateY(-3px);
+}
+.avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ============================================================
+   ГЛОБАЛЬНЫЕ HOVER-АНИМАЦИИ
+============================================================ */
+button,
+.btn-primary,
+.btn-gray,
+.btn-karsq-red,
+.auth-btn-primary,
+.auth-btn-danger,
+.auth-btn-back,
+.auth-btn-continue,
+.auth-method,
+.auth-lang,
+.auth-forgot,
+.auth-topnav-link,
+.auth-legal a,
+.theme-choice,
+.profile-edit-btn,
+.btn-follow,
+.settings-row,
+.chan-item,
+.feed-tab,
+.inbox-tab,
+.nav-btn {
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1),
+    background .15s ease,
+    color .15s ease,
+    border-color .15s ease,
+    opacity .15s ease !important;
+}
+
+/* Мягкое увеличение при наведении (без навигации) */
+button:not(:disabled):not(.nav-btn):not(.topbar-btn):not(.bottom-nav *):hover,
+.btn-primary:not(:disabled):hover,
+.btn-gray:not(:disabled):hover {
+    transform: scale(1.03);
+}
+
+/* Нажатие */
+button:not(:disabled):active,
+.btn-primary:not(:disabled):active,
+.btn-gray:not(:disabled):active {
+    transform: scale(.97);
+}

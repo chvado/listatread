@@ -877,16 +877,7 @@ $('reset-lt-btn')?.addEventListener('click', () => {
     $('reset-step-1').classList.add('hidden'); $('reset-step-2').classList.remove('hidden')
 })
 
-$('go-register-btn')?.addEventListener('click', (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    showScreen('register-landing')
-    const stage = $('logo-stage')
-    if(stage){
-        stage.classList.remove('animate'); void stage.offsetWidth
-        requestAnimationFrame(() => stage.classList.add('animate'))
-    }
-})
+
 $('reg-landing-back')?.addEventListener('click', () => showScreen('auth'))
 $('create-account-btn')?.addEventListener('click', () => startRegistration())
 $('find-account-btn')?.addEventListener('click', () => alert('В разработке'))
