@@ -806,62 +806,80 @@ $('actionsheet-cancel').addEventListener('click', closeActionSheet)
 /* ============================================================
    PWD TOGGLE
 ============================================================ */
-document.querySelectorAll('.pwd-toggle').forEach(btn => {
+document.querySelectorAll('.pwd-toggle, .auth-pwd-toggle').forEach(btn => {
     btn.addEventListener('click', () => {
         const inp = document.getElementById(btn.dataset.target); if(!inp) return
         const isPwd = inp.type === 'password'
-        inp.type = isPwd ? 'text' : 'password'; btn.textContent = isPwd ? '🙈' : '👁'
+        inp.type = isPwd ? 'text' : 'password'
+        btn.textContent = isPwd ? '🙈' : '👁'
     })
 })
 
 /* ============================================================
-   AUTH
-============================================================ */
-$('login-form').addEventListener('submit', async e => {
-    e.preventDefault()
-    const errEl = $('login-error'); errEl.textContent = ''
-    const email = $('login-email').value.trim(), password = $('login-password').value
-    if(!email || !password){ errEl.textContent = 'Заполните email и пароль'; return }
-    const btn = $('login-btn'); btn.disabled = true; btn.textContent = 'Входим...'
-    try {
-        const { data, error } = await withTimeout(supabase.auth.signInWithPassword({ email, password }), 15000, 'signIn')
-        if(error) throw error
-        await enterApp()
-        const uname = data?.user?.email?.split('@')[0] || 'user'
-        showToast('success', 'Вход в аккаунт @' + uname + ' успешно выполнен', { icon:'✓' })
-    } catch(err){
-        let m = err.message || 'Неверный email или пароль'
-        if(m.includes('Timeout')) m = 'Превышено время ожидания'
-        errEl.textContent = m
-    } finally { btn.disabled = false; btn.textContent = 'Вход' }
-})
+   AUTH — безопасные обработчики (не падают, если элемента нет)
+   ============================================================ */
 
-$('karsq-btn').addEventListener('click', () => { $('karsq-error').textContent=''; $('karsq-email').value=''; $('karsq-password').value=''; showScreen('karsq') })
-$('karsq-back').addEventListener('click', () => showScreen('auth'))
-$('karsq-continue').addEventListener('click', () => {
+/* karsq (экран может отсутствовать после редизайна) */
+$('karsq-btn')?.addEventListener('click', () => {
+    $('karsq-error').textContent=''; $('karsq-email').value=''; $('karsq-password').value=''
+    showScreen('karsq')
+})
+$('karsq-back')?.addEventListener('click', () => showScreen('auth'))
+$('karsq-continue')?.addEventListener('click', () => {
     if(!$('karsq-email').value.trim()){ $('karsq-error').textContent = 'Введите почту'; return }
     $('karsq-error').textContent = 'Аккаунт karsq не найден'
 })
-document.querySelectorAll('.karsq-method').forEach(b => b.addEventListener('click', () => $('karsq-error').textContent = 'Аккаунт не поддерживает метод'))
+document.querySelectorAll('.karsq-method').forEach(b =>
+    b.addEventListener('click', () => $('karsq-error').textContent = 'Аккаунт не поддерживает метод'))
 
-$('forgot-password').addEventListener('click', () => {
+/* forgot / reset */
+$('forgot-password')?.addEventListener('click', () => {
     $('reset-step-1').classList.remove('hidden'); $('reset-step-2').classList.add('hidden')
-    $('reset-error').textContent = ''; $('reset-email').value = ''; showScreen('reset')
+    $('reset-error').textContent = ''; $('reset-email').value = ''
+    showScreen('reset')
 })
-$('reset-back').addEventListener('click', () => showScreen('auth'))
-$('reset-karsq-btn').addEventListener('click', () => { $('reset-hint').textContent='Сброс karsq'; $('reset-step-1').classList.add('hidden'); $('reset-step-2').classList.remove('hidden') })
-$('reset-lt-btn').addEventListener('click', () => { $('reset-hint').textContent='Сброс listatread'; $('reset-step-1').classList.add('hidden'); $('reset-step-2').classList.remove('hidden') })
+$('reset-back')?.addEventListener('click', () => showScreen('auth'))
+$('reset-karsq-btn')?.addEventListener('click', () => {
+    $('reset-hint').textContent='Сброс karsq'
+    $('reset-step-1').classList.add('hidden'); $('reset-step-2').classList.remove('hidden')
+})
+$('reset-lt-btn')?.addEventListener('click', () => {
+    $('reset-hint').textContent='Сброс listatread'
+    $('reset-step-1').classList.add('hidden'); $('reset-step-2').classList.remove('hidden')
+})
 
-$('go-register-btn').addEventListener('click', () => {
+/* register landing */
+$('go-register-btn')?.addEventListener('click', () => {
     showScreen('register-landing')
-    const stage = $('logo-stage'); stage.classList.remove('animate'); void stage.offsetWidth
-    requestAnimationFrame(() => stage.classList.add('animate'))
+    const stage = $('logo-stage')
+    if(stage){
+        stage.classList.remove('animate'); void stage.offsetWidth
+        requestAnimationFrame(() => stage.classList.add('animate'))
+    }
 })
-$('reg-landing-back').addEventListener('click', () => showScreen('auth'))
-$('create-account-btn').addEventListener('click', () => startRegistration())
-$('find-account-btn').addEventListener('click', () => alert('В разработке'))
+$('reg-landing-back')?.addEventListener('click', () => showScreen('auth'))
+$('create-account-btn')?.addEventListener('click', () => startRegistration())
+$('find-account-btn')?.addEventListener('click', () => alert('В разработке'))
 
-/* --- VK --- */
+/* oauth-кнопки (в новой разметке их нет, оставлены для совместимости) */
+$('github-btn')?.addEventListener('click', async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider:'github', options:{ redirectTo: location.origin + location.pathname }
+    })
+    if(error) alert('GitHub вход не настроен: ' + error.message)
+})
+$('apple-btn')?.addEventListener('click', async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider:'apple', options:{ redirectTo: location.origin + location.pathname }
+    })
+    if(error) alert('Apple вход не настроен: ' + error.message)
+})
+$('telegram-btn')?.addEventListener('click', () => alert('Telegram скоро'))
+$('email-btn')?.addEventListener('click', () => alert('Используйте форму'))
+
+/* ============================================================
+   НОВЫЕ КНОПКИ АВТОРИЗАЦИИ
+   ============================================================ */
 $('vk-login-btn')?.addEventListener('click', async () => {
     try {
         const { error } = await supabase.auth.signInWithOAuth({
@@ -874,19 +892,17 @@ $('vk-login-btn')?.addEventListener('click', async () => {
     }
 })
 
-/* --- listaID (открываем форму логина/пароля) --- */
 $('lista-login-btn')?.addEventListener('click', () => {
     $('login-email')?.focus()
     showToast('info', 'Введите ваш listaID и пароль', { icon:'ℓ' })
 })
 
-/* --- QR-вход --- */
 $('qr-login-btn')?.addEventListener('click', () => {
     if(typeof openQrScanModal === 'function') openQrScanModal()
     else showToast('info', 'QR-сканер загружается…', { icon:'▢' })
 })
 
-/* --- Desktop-навигация сверху --- */
+/* Desktop-навигация сверху */
 document.querySelectorAll('.auth-topnav-link').forEach(btn => {
     btn.addEventListener('click', () => {
         const k = btn.dataset.nav
