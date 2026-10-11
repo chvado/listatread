@@ -100,39 +100,41 @@
                 </div>
             </div>
 
-            <!-- SOCIALS SLOT -->
-            <div class="auth-slot auth-slot-socials">
-                <div class="auth-or auth-login-only"><span>или</span></div>
-                <div class="auth-methods auth-login-only">
-                    <button type="button" class="auth-method" id="vk-login-btn" aria-label="Войти через VK">
-                    <span class="auth-method-icon" style="background:#0077FF">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M13.16 18.99c.6 0 .86-.4.85-.92-.03-1.92.71-2.95 2.06-1.6 1.49 1.49 1.8 2.52 3.6 2.52h3.2c.81 0 1.13-.26 1.13-.67 0-.86-1.42-2.39-2.63-3.5-1.68-1.57-1.76-1.6-.31-3.49 1.8-2.34 4.16-5.34 2.07-5.34h-3.98c-.77 0-.83.44-1.1 1.08-.99 2.35-2.89 5.39-3.6 4.92-.75-.48-.4-2.4-.35-5.26.02-.75.01-1.27-1.14-1.54-.63-.14-1.24-.2-1.81-.2-2.27 0-3.84.95-2.95 1.12 1.57.29 1.42 3.69 1.05 5.16-.63 2.56-3.03-2.02-4.03-4.3-.24-.55-.32-.98-1.18-.98H1.66c-.49 0-.79.16-.79.52 0 .6 2.96 6.72 5.79 9.77 2.75 2.97 5.48 2.71 7.37 2.71z"/></svg>
-                    </span>
-                        <span class="auth-method-label">VK</span>
-                    </button>
-                    <button type="button" class="auth-method" id="lista-login-btn" aria-label="Войти через listaID">
-                    <span class="auth-method-icon" style="background:#e11515">
-                        <span class="auth-method-lista-letter">ℓ⦿</span>
-                    </span>
-                        <span class="auth-method-label">listaID</span>
-                    </button>
-                    <button type="button" class="auth-method" id="qr-login-btn" aria-label="Войти по QR">
-                    <span class="auth-method-icon" style="background:#4a4a4b">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
-                    </span>
-                        <span class="auth-method-label">QR</span>
-                    </button>
-                </div>
-                <button type="button" class="auth-btn-back auth-register-only" id="go-back-btn">Назад</button>
-            </div>
-
-            <!-- MAIN SLOT -->
-            <div class="auth-slot auth-slot-main">
+            <!-- CTA 1: ПОД ВОЙТИ — Регистрация / Продолжить -->
+            <div class="auth-cta-main">
                 <button type="button" class="auth-btn-danger auth-login-only" id="go-register-btn">Регистрация ></button>
                 <button type="button" class="auth-btn-continue auth-register-only" id="go-continue-btn">
                     <span class="btn-label">Продолжить ></span>
-                    <span class="btn-loader hidden"><span class="btn-spinner"></span>Проверяем</span>
+                    <span class="btn-loader hidden"><span class="btn-spinner btn-spinner-light"></span>Проверяем</span>
                 </button>
+            </div>
+
+            <!-- CTA 2: НИЖЕ — соцсети / Назад -->
+            <div class="auth-cta-socials">
+                <div class="auth-login-only auth-socials-block">
+                    <div class="auth-or"><span>или</span></div>
+                    <div class="auth-methods">
+                        <button type="button" class="auth-method" id="vk-login-btn" aria-label="Войти через VK">
+                        <span class="auth-method-icon" style="background:#0077FF">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M13.16 18.99c.6 0 .86-.4.85-.92-.03-1.92.71-2.95 2.06-1.6 1.49 1.49 1.8 2.52 3.6 2.52h3.2c.81 0 1.13-.26 1.13-.67 0-.86-1.42-2.39-2.63-3.5-1.68-1.57-1.76-1.6-.31-3.49 1.8-2.34 4.16-5.34 2.07-5.34h-3.98c-.77 0-.83.44-1.1 1.08-.99 2.35-2.89 5.39-3.6 4.92-.75-.48-.4-2.4-.35-5.26.02-.75.01-1.27-1.14-1.54-.63-.14-1.24-.2-1.81-.2-2.27 0-3.84.95-2.95 1.12 1.57.29 1.42 3.69 1.05 5.16-.63 2.56-3.03-2.02-4.03-4.3-.24-.55-.32-.98-1.18-.98H1.66c-.49 0-.79.16-.79.52 0 .6 2.96 6.72 5.79 9.77 2.75 2.97 5.48 2.71 7.37 2.71z"/></svg>
+                        </span>
+                            <span class="auth-method-label">VK</span>
+                        </button>
+                        <button type="button" class="auth-method" id="lista-login-btn" aria-label="Войти через listaID">
+                        <span class="auth-method-icon" style="background:#e11515">
+                            <span class="auth-method-lista-letter">ℓ⦿</span>
+                        </span>
+                            <span class="auth-method-label">listaID</span>
+                        </button>
+                        <button type="button" class="auth-method" id="qr-login-btn" aria-label="Войти по QR">
+                        <span class="auth-method-icon" style="background:#4a4a4b">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
+                        </span>
+                            <span class="auth-method-label">QR</span>
+                        </button>
+                    </div>
+                </div>
+                <button type="button" class="auth-btn-back auth-register-only" id="go-back-btn">Назад</button>
             </div>
 
             <button type="button" class="auth-lang" id="lang-selector">
