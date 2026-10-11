@@ -2,6 +2,7 @@
    listatread — main.js (v14, с роутером, фиолетовые галочки, жалобы)
    PART 1 / 3 — до uploadAvatar()
 ============================================================ */
+import './offline.js'
 import { supabase } from './supabase.js'
 function isUuid(s){
     return typeof s === 'string'
@@ -11,7 +12,7 @@ import { loadPosts } from './feed.js'
 import { checkAdminStatus, ADMIN_STATE, showBlockedScreen, renderAdminReports, autoCloseOldReports } from './admin.js'
 import { openDirectTab, buildDirectScreen, openDirectChat } from './direct.js'
 import { initPush } from './push.js'
-import './offline.js'
+
 /* ============================================================
    SVG-ИКОНКИ
 ============================================================ */
