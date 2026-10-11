@@ -1155,7 +1155,7 @@ async function completeRegistration(){
 /* ============================================================
    LANG / REGION
 ============================================================ */
-let currentLang = localStorage.getItem('lang') || 'en'
+let currentLang = localStorage.getItem('lang') || 'ru'
 const langModal = $('lang-modal'), langList = $('lang-list')
 const regionModal = $('region-modal'), regionList = $('region-list')
 

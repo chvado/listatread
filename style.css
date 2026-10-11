@@ -108,208 +108,193 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Sego
 .brand-name-lg{font-size:40px;margin-bottom:20px}
 
 /* ============================================================
-   AUTH SCREEN v2 — лого + едущие посты + минимализм
+   AUTH SCREEN v3 — TikTok-style card
 ============================================================ */
 #auth-screen{
     position:fixed; inset:0;
-    background:#0a0a0a;
+    background:#000;
     color:#fff;
     overflow:hidden;
     display:flex;
     align-items:center;
     justify-content:center;
-    padding:24px 20px;
-    isolation:isolate;
+    padding:20px;
     z-index:50;
 }
 
-/* Фон: едущие посты */
+/* Фон — едущие посты */
 .auth-feed-bg{
     position:absolute;
-    inset:-15% -5%;
+    inset:-15%;
     display:flex;
-    gap:14px;
+    gap:12px;
     padding:20px;
     transform:rotate(-6deg) scale(1.15) translate3d(0,0,0);
-    opacity:.32;
+    opacity:.28;
     pointer-events:none;
     z-index:0;
-    -webkit-mask-image:radial-gradient(ellipse at center,transparent 25%,#000 80%);
-    mask-image:radial-gradient(ellipse at center,transparent 25%,#000 80%);
+    -webkit-mask-image:radial-gradient(ellipse at center,transparent 30%,#000 85%);
+    mask-image:radial-gradient(ellipse at center,transparent 30%,#000 85%);
     contain:strict;
     will-change:transform;
 }
-.auth-feed-bg .offline-col{ display:flex; flex-direction:column; gap:14px; flex-shrink:0 }
+.auth-feed-bg .offline-col{ display:flex; flex-direction:column; gap:12px; flex-shrink:0 }
 .auth-feed-bg .offline-col-inner{
-    display:flex; flex-direction:column; gap:14px;
+    display:flex; flex-direction:column; gap:12px;
     animation: offlineScroll linear infinite;
     transform: translate3d(0,0,0);
     will-change: transform;
 }
 .auth-feed-bg .offline-post{
-    background:#161618;
+    background:#141416;
     border:1px solid rgba(255,255,255,.06);
-    border-radius:16px; padding:12px;
-    display:flex; flex-direction:column; gap:10px;
-    contain: layout style paint;
+    border-radius:14px; padding:10px;
+    display:flex; flex-direction:column; gap:8px;
 }
 
-/* Затемнение под контент — градиент на правую сторону на ПК, в центр на мобилке */
-#auth-screen::before{
-    content:'';
-    position:absolute; inset:0;
-    z-index:1;
-    pointer-events:none;
-    background:
-            radial-gradient(ellipse at 50% 50%, rgba(0,0,0,.75) 0%, rgba(0,0,0,.4) 45%, rgba(0,0,0,0) 75%);
-}
-
-/* ================== Контент ================== */
-.auth-content{
+/* ================== Карточка ================== */
+.auth-card{
     position:relative;
     z-index:2;
     width:100%;
-    max-width:400px;
-    margin:0 auto;
+    max-width:360px;
+    background:rgba(18,18,20,.92);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:24px;
+    padding:26px 22px 20px;
+    box-shadow:0 24px 64px rgba(0,0,0,.6);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
     display:flex;
     flex-direction:column;
-    gap:14px;
+    gap:12px;
 }
 
 .auth-brand-row{
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:12px;
-    margin-bottom:8px;
+    gap:10px;
+    margin-bottom:2px;
 }
 .auth-logo-circle{
-    width:52px; height:52px;
+    width:38px; height:38px;
     border-radius:50%;
     background:#fff;
     color:#000;
     display:flex; align-items:center; justify-content:center;
     font-family:Georgia,'Times New Roman',serif;
-    font-size:34px; line-height:1;
-    padding-bottom:4px; box-sizing:border-box;
+    font-size:24px; line-height:1;
+    padding-bottom:3px; box-sizing:border-box;
     flex-shrink:0;
-    box-shadow:0 4px 20px rgba(255,255,255,.15);
 }
 .auth-brand-text{
-    font-size:26px;
-    font-weight:900;
-    letter-spacing:-.04em;
+    font-size:20px;
+    font-weight:800;
+    letter-spacing:-.03em;
     color:#fff;
 }
 
 .auth-title{
-    font-size:20px;
-    font-weight:800;
+    font-size:17px;
+    font-weight:700;
     text-align:center;
-    margin:4px 0 8px;
+    margin:2px 0 4px;
     color:#fff;
-    letter-spacing:-.02em;
+    letter-spacing:-.01em;
 }
 
 /* Форма */
-.auth-form{ display:flex; flex-direction:column; gap:10px }
+.auth-form{ display:flex; flex-direction:column; gap:8px }
 
 .auth-input{
     width:100%;
-    padding:16px 18px;
-    font-size:15px;
+    height:42px;
+    padding:0 14px;
+    font-size:13.5px;
     font-family:inherit;
     color:#fff;
-    background:rgba(255,255,255,.08);
-    border:1px solid rgba(255,255,255,.1);
-    border-radius:14px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:10px;
     outline:none;
-    transition: background .18s, border-color .18s, box-shadow .18s;
+    transition: background .15s, border-color .15s;
     box-sizing:border-box;
 }
-.auth-input::placeholder{ color:rgba(255,255,255,.4) }
+.auth-input::placeholder{ color:rgba(255,255,255,.38) }
 .auth-input:focus{
-    background:rgba(255,255,255,.12);
-    border-color:#0a84ff;
-    box-shadow:0 0 0 4px rgba(10,132,255,.25);
+    background:rgba(255,255,255,.09);
+    border-color:rgba(255,255,255,.22);
 }
 
 .auth-field{ position:relative }
-.auth-field .auth-input{ padding-right:52px }
+.auth-field .auth-input{ padding-right:42px }
 .auth-pwd-toggle{
-    position:absolute; right:10px; top:50%; transform:translateY(-50%);
-    background:transparent; border:none; font-size:16px;
-    opacity:.6; cursor:pointer; padding:8px; color:#fff;
+    position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    background:transparent; border:none; font-size:14px;
+    opacity:.55; cursor:pointer; padding:6px; color:#fff;
 }
 .auth-pwd-toggle:hover{ opacity:1 }
 
-.auth-row-forgot{ display:flex; justify-content:flex-end; margin-top:2px }
 .auth-forgot{
     background:transparent; border:none;
-    color:rgba(255,255,255,.6);
-    font-size:13px; font-weight:500;
-    cursor:pointer; padding:4px 0;
+    color:rgba(255,255,255,.55);
+    font-size:12px; font-weight:500;
+    cursor:pointer; padding:2px 0;
+    align-self:flex-end;
     font-family:inherit;
     text-decoration:underline;
-    text-decoration-color:rgba(255,255,255,.25);
+    text-decoration-color:rgba(255,255,255,.2);
     text-underline-offset:3px;
 }
 .auth-forgot:hover{ color:#fff }
 
 .login-error{
-    color:#ff453a;
-    font-size:12.5px;
+    color:#ff5c5c;
+    font-size:12px;
     text-align:center;
-    min-height:0;
     line-height:1.3;
+    min-height:0;
 }
+.login-error:empty{ display:none }
 
-/* check — белая кнопка */
-.auth-btn-check{
+/* Кнопки */
+.auth-btn-primary,
+.auth-btn-danger{
     width:100%;
-    padding:15px;
+    height:42px;
     border:none;
-    border-radius:14px;
+    border-radius:10px;
+    font-family:inherit;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    letter-spacing:-.01em;
+    transition: transform .12s, background .15s, opacity .15s;
+}
+.auth-btn-primary{
     background:#fff;
     color:#000;
-    font-family:inherit;
-    font-size:16px;
-    font-weight:700;
-    cursor:pointer;
-    letter-spacing:-.01em;
-    transition: transform .15s, background .18s;
 }
-.auth-btn-check:hover{ background:#ececec }
-.auth-btn-check:active{ transform:scale(.98) }
-.auth-btn-check:disabled{ opacity:.5; cursor:not-allowed }
+.auth-btn-primary:hover{ background:#e8e8e8 }
+.auth-btn-primary:active{ transform:scale(.98) }
+.auth-btn-primary:disabled{ opacity:.5; cursor:not-allowed }
 
-/* create your lista account — светло-красная */
-.auth-btn-create{
-    width:100%;
-    padding:15px;
-    border:none;
-    border-radius:14px;
-    background:#ff5c72;          /* светло-красная */
+.auth-btn-danger{
+    background:#e63946;   /* КРАСНАЯ, не розовая */
     color:#fff;
-    font-family:inherit;
-    font-size:15px;
-    font-weight:700;
-    cursor:pointer;
-    letter-spacing:-.01em;
-    transition: transform .15s, background .18s, box-shadow .18s;
-    box-shadow:0 6px 22px rgba(255,92,114,.28);
 }
-.auth-btn-create:hover{ background:#ff4b64; box-shadow:0 8px 26px rgba(255,92,114,.4) }
-.auth-btn-create:active{ transform:scale(.98) }
+.auth-btn-danger:hover{ background:#d32c39 }
+.auth-btn-danger:active{ transform:scale(.98) }
 
-/* or */
+/* или */
 .auth-or{
     display:flex;
     align-items:center;
-    gap:12px;
-    margin:6px 0 2px;
-    color:rgba(255,255,255,.4);
-    font-size:12px;
+    gap:10px;
+    margin:4px 0 0;
+    color:rgba(255,255,255,.35);
+    font-size:11px;
     font-weight:600;
     letter-spacing:.02em;
 }
@@ -318,154 +303,125 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Sego
     content:'';
     flex:1;
     height:1px;
-    background:rgba(255,255,255,.12);
+    background:rgba(255,255,255,.1);
 }
 
 /* 3 метода */
 .auth-methods{
     display:grid;
     grid-template-columns:repeat(3,1fr);
-    gap:10px;
+    gap:6px;
+    margin-top:2px;
 }
 .auth-method{
     display:flex;
     flex-direction:column;
     align-items:center;
-    gap:8px;
-    padding:14px 8px;
+    gap:6px;
+    padding:8px 4px;
     background:transparent;
     border:none;
     cursor:pointer;
     font-family:inherit;
     color:#fff;
-    transition: transform .15s;
-    border-radius:14px;
+    border-radius:10px;
+    transition: transform .12s, background .15s;
 }
+.auth-method:hover{ background:rgba(255,255,255,.05) }
 .auth-method:active{ transform:scale(.95) }
 .auth-method-icon{
-    width:52px; height:52px;
-    border-radius:16px;
+    width:40px; height:40px;
+    border-radius:12px;
     display:flex; align-items:center; justify-content:center;
     overflow:hidden;
-    box-shadow: 0 6px 20px rgba(0,0,0,.35);
-    transition: box-shadow .18s;
 }
-.auth-method:hover .auth-method-icon{ box-shadow:0 8px 26px rgba(0,0,0,.5) }
 .auth-method-lista-letter{
     font-family:Georgia,'Times New Roman',serif;
-    font-size:32px;
+    font-size:24px;
     line-height:1;
     color:#fff;
-    padding-bottom:4px;
+    padding-bottom:3px;
 }
 .auth-method-label{
-    font-size:12px;
+    font-size:11px;
     font-weight:600;
-    color:rgba(255,255,255,.7);
+    color:rgba(255,255,255,.6);
     letter-spacing:.02em;
 }
 
-/* Язык снизу */
+/* Язык */
 .auth-lang{
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:8px;
-    margin:8px auto 0;
-    padding:10px 16px;
+    gap:6px;
+    margin:4px auto 0;
+    padding:6px 12px;
     background:transparent;
     border:none;
-    color:rgba(255,255,255,.6);
+    color:rgba(255,255,255,.5);
     font-family:inherit;
-    font-size:13px;
+    font-size:12px;
     font-weight:600;
     cursor:pointer;
-    align-self:center;
     border-radius:100px;
     transition: background .15s, color .15s;
 }
-.auth-lang:hover{ background:rgba(255,255,255,.08); color:#fff }
-.auth-lang-flag{ font-size:16px }
-.auth-lang-chevron{ font-size:10px; opacity:.6 }
+.auth-lang:hover{ background:rgba(255,255,255,.06); color:#fff }
+.auth-lang-flag{ font-size:14px }
+.auth-lang-chevron{ font-size:9px; opacity:.6 }
 
-/* Desktop-only: topnav + legal — по умолчанию СКРЫТЫ */
-.auth-topnav,
-.auth-legal{ display:none }
-
-/* Desktop-only: topnav (top-right) + legal (bottom-right) */
-@media (min-width:768px){
-    .auth-topnav{
-        display:flex;
-        gap:6px;
-        position:absolute;
-        top:20px;
-        right:24px;
-        z-index:5;
-    }
-    .auth-topnav-link{
-        background:transparent;
-        border:none;
-        color:rgba(255,255,255,.55);
-        font-family:inherit;
-        font-size:13px;
-        font-weight:500;
-        cursor:pointer;
-        padding:8px 12px;
-        border-radius:100px;
-        transition: background .15s, color .15s;
-    }
-    .auth-topnav-link:hover{ background:rgba(255,255,255,.08); color:#fff }
-
-    .auth-legal{
-        display:flex;
-        gap:6px;
-        position:absolute;
-        bottom:16px;
-        right:24px;
-        z-index:5;
-        flex-wrap:wrap;
-        justify-content:flex-end;
-        max-width:60vw;
-    }
-    .auth-legal a{
-        color:rgba(255,255,255,.4);
-        font-size:11.5px;
-        text-decoration:none;
-        padding:6px 10px;
-        border-radius:100px;
-        transition: color .15s, background .15s;
-        white-space:nowrap;
-    }
-    .auth-legal a:hover{ color:#fff; background:rgba(255,255,255,.06) }
-
-    /* На ПК контент — к правому краю */
-    #auth-screen{
-        justify-content:flex-end;
-        padding:80px 6vw 80px 20px;
-    }
-    #auth-screen::before{
-        background:
-                radial-gradient(ellipse at 78% 50%, rgba(0,0,0,.88) 0%, rgba(0,0,0,.55) 35%, rgba(0,0,0,.15) 70%, transparent 100%);
-    }
-    .auth-content{
-        margin:0;
-        max-width:420px;
-    }
+/* Верхнее меню (правый верхний угол) */
+.auth-topnav{
+    position:fixed;
+    top:16px;
+    right:16px;
+    z-index:5;
+    display:flex;
+    gap:2px;
 }
+.auth-topnav-link{
+    background:transparent;
+    border:none;
+    color:rgba(255,255,255,.5);
+    font-family:inherit;
+    font-size:12px;
+    font-weight:500;
+    cursor:pointer;
+    padding:6px 10px;
+    border-radius:100px;
+    transition: background .15s, color .15s;
+}
+.auth-topnav-link:hover{ background:rgba(255,255,255,.07); color:#fff }
 
-/* Мобильные: контент по центру, всё вертикально удобно */
-@media (max-width:767px){
-    #auth-screen{
-        justify-content:center;
-        align-items:center;
-        padding:24px 20px 28px;
-    }
-    .auth-content{ max-width:100% }
-    .auth-brand-row{ margin-bottom:2px }
-    .auth-methods{ gap:6px }
-    .auth-method{ padding:10px 4px }
-    .auth-method-icon{ width:46px; height:46px }
-    .auth-method-lista-letter{ font-size:28px }
+/* Нижнее право */
+.auth-legal{
+    position:fixed;
+    bottom:14px;
+    right:16px;
+    z-index:5;
+    display:flex;
+    gap:4px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+    max-width:60vw;
+}
+.auth-legal a{
+    color:rgba(255,255,255,.35);
+    font-size:11px;
+    text-decoration:none;
+    padding:5px 8px;
+    border-radius:100px;
+    transition: color .15s, background .15s;
+    white-space:nowrap;
+}
+.auth-legal a:hover{ color:#fff; background:rgba(255,255,255,.06) }
+
+/* Мобильные — карточка чуть уже, кнопки сверху/снизу прячем */
+@media (max-width:600px){
+    .auth-card{ max-width:100%; padding:22px 18px 16px }
+    .auth-topnav,
+    .auth-legal{ display:none }
 }
 /* lang modal */
 .lang-modal{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center}

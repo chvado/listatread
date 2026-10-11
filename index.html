@@ -49,81 +49,80 @@
     <section id="auth-screen" class="screen hidden">
         <div class="auth-feed-bg" id="auth-feed-bg"></div>
 
-        <!-- Desktop top nav -->
-        <nav class="auth-topnav" aria-label="Help">
-            <button type="button" class="auth-topnav-link" data-nav="about">about</button>
-            <button type="button" class="auth-topnav-link" data-nav="terms">terms</button>
-            <button type="button" class="auth-topnav-link" data-nav="support">support</button>
-            <button type="button" class="auth-topnav-link" data-nav="download">download app</button>
+        <!-- Верхнее меню — правый верхний угол экрана -->
+        <nav class="auth-topnav" aria-label="Меню">
+            <button type="button" class="auth-topnav-link" data-nav="about">О компании ></button>
+            <button type="button" class="auth-topnav-link" data-nav="terms">Условия ></button>
+            <button type="button" class="auth-topnav-link" data-nav="support">Контакты ></button>
+            <button type="button" class="auth-topnav-link" data-nav="download">Скачать приложение ></button>
         </nav>
 
-        <div class="auth-content">
+        <!-- Карточка как в TikTok -->
+        <div class="auth-card">
             <div class="auth-brand-row">
-                <div class="auth-logo-circle" aria-hidden="true">ℓ</div>
+                <div class="auth-logo-circle">ℓ</div>
                 <div class="auth-brand-text">listatread</div>
             </div>
 
-            <h2 class="auth-title">Sign in</h2>
+            <h2 class="auth-title">Добро пожаловать</h2>
 
             <form id="login-form" class="auth-form" novalidate>
                 <input type="text" id="login-email" class="auth-input"
-                       placeholder="username, listaID, mobile phone or mail"
+                       placeholder="Username, listaID, телефон или почта"
                        required autocomplete="username">
 
                 <div class="auth-field">
                     <input type="password" id="login-password" class="auth-input"
-                           placeholder="Password" required autocomplete="current-password">
-                    <button type="button" class="auth-pwd-toggle" data-target="login-password" aria-label="Показать пароль">👁</button>
+                           placeholder="Пароль" required autocomplete="current-password">
+                    <button type="button" class="auth-pwd-toggle" data-target="login-password">👁</button>
                 </div>
 
-                <div class="auth-row-forgot">
-                    <button type="button" class="auth-forgot" id="forgot-password">forgot your password?</button>
-                </div>
+                <button type="button" class="auth-forgot" id="forgot-password">Забыли пароль?</button>
 
                 <span class="login-error" id="login-error"></span>
-                <button type="submit" class="auth-btn-check" id="login-btn">check</button>
+
+                <button type="submit" class="auth-btn-primary" id="login-btn">Войти</button>
+                <button type="button" class="auth-btn-danger" id="go-register-btn">Регистрация ></button>
             </form>
 
-            <button type="button" class="auth-btn-create" id="go-register-btn">create your lista account</button>
-
-            <div class="auth-or"><span>or</span></div>
+            <div class="auth-or"><span>или</span></div>
 
             <div class="auth-methods">
                 <button type="button" class="auth-method" id="vk-login-btn" aria-label="Войти через VK">
                 <span class="auth-method-icon" style="background:#0077FF">
-                    <svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M13.16 18.99c.6 0 .86-.4.85-.92-.03-1.92.71-2.95 2.06-1.6 1.49 1.49 1.8 2.52 3.6 2.52h3.2c.81 0 1.13-.26 1.13-.67 0-.86-1.42-2.39-2.63-3.5-1.68-1.57-1.76-1.6-.31-3.49 1.8-2.34 4.16-5.34 2.07-5.34h-3.98c-.77 0-.83.44-1.1 1.08-.99 2.35-2.89 5.39-3.6 4.92-.75-.48-.4-2.4-.35-5.26.02-.75.01-1.27-1.14-1.54-.63-.14-1.24-.2-1.81-.2-2.27 0-3.84.95-2.95 1.12 1.57.29 1.42 3.69 1.05 5.16-.63 2.56-3.03-2.02-4.03-4.3-.24-.55-.32-.98-1.18-.98H1.66c-.49 0-.79.16-.79.52 0 .6 2.96 6.72 5.79 9.77 2.75 2.97 5.48 2.71 7.37 2.71z"/></svg>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><path d="M13.16 18.99c.6 0 .86-.4.85-.92-.03-1.92.71-2.95 2.06-1.6 1.49 1.49 1.8 2.52 3.6 2.52h3.2c.81 0 1.13-.26 1.13-.67 0-.86-1.42-2.39-2.63-3.5-1.68-1.57-1.76-1.6-.31-3.49 1.8-2.34 4.16-5.34 2.07-5.34h-3.98c-.77 0-.83.44-1.1 1.08-.99 2.35-2.89 5.39-3.6 4.92-.75-.48-.4-2.4-.35-5.26.02-.75.01-1.27-1.14-1.54-.63-.14-1.24-.2-1.81-.2-2.27 0-3.84.95-2.95 1.12 1.57.29 1.42 3.69 1.05 5.16-.63 2.56-3.03-2.02-4.03-4.3-.24-.55-.32-.98-1.18-.98H1.66c-.49 0-.79.16-.79.52 0 .6 2.96 6.72 5.79 9.77 2.75 2.97 5.48 2.71 7.37 2.71z"/></svg>
                 </span>
                     <span class="auth-method-label">VK</span>
                 </button>
 
                 <button type="button" class="auth-method" id="lista-login-btn" aria-label="Войти через listaID">
-                <span class="auth-method-icon" style="background:#000">
-                    <span class="auth-method-lista-letter">ℓ</span>
+                <span class="auth-method-icon" style="background:#050505">
+                    <span class="auth-method-lista-letter">ℓID</span>
                 </span>
                     <span class="auth-method-label">listaID</span>
                 </button>
 
                 <button type="button" class="auth-method" id="qr-login-btn" aria-label="Войти по QR">
-                <span class="auth-method-icon" style="background:#1c1c1e">
-                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
+                <span class="auth-method-icon" style="background:#383636">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
                 </span>
                     <span class="auth-method-label">QR</span>
                 </button>
             </div>
 
             <button type="button" class="auth-lang" id="lang-selector">
-                <span class="auth-lang-flag" id="current-lang-flag">🇬🇧</span>
-                <span class="auth-lang-name" id="current-lang-name">English</span>
+                <span class="auth-lang-flag" id="current-lang-flag">🇷🇺</span>
+                <span class="auth-lang-name" id="current-lang-name">Русский</span>
                 <span class="auth-lang-chevron">▾</span>
             </button>
         </div>
 
-        <!-- Desktop bottom-right legal -->
-        <div class="auth-legal" aria-label="Legal">
-            <a href="/policy">Privacy Policy</a>
-            <a href="/terms">Terms of Use</a>
-            <a href="/cookies">Cookies</a>
-            <a href="/rules">Server Status</a>
+        <!-- Нижнее право -->
+        <div class="auth-legal" aria-label="Право">
+            <a href="/policy">Политика конфиденциальности</a>
+            <a href="/terms">Пользовательское соглашение</a>
+            <a href="/cookies">Политика Cookies</a>
+            <a href="/rules">Статус серверов</a>
         </div>
     </section>
 
