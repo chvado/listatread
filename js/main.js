@@ -748,7 +748,36 @@ $('sidebar-logout')?.addEventListener('click', async () => {
     await supabase.auth.signOut()
     closeSidebar(); showScreen('auth'); $('login-form').reset(); $('login-error').textContent = ''
 })
+$('login-form').addEventListener('submit', async e => {
+    e.preventDefault()
+    e.stopPropagation()
 
+    const errEl = $('login-error'); errEl.textContent = ''
+    const email = $('login-email').value.trim()
+    const password = $('login-password').value
+    if(!email || !password){ errEl.textContent = 'Некоторые поля не заполнены'; return }
+
+    const btn = $('login-btn')
+    btn.disabled = true
+    btn.innerHTML = '<span class="btn-spinner"></span> Проверяем...'
+
+    try {
+        const { data, error } = await withTimeout(
+            supabase.auth.signInWithPassword({ email, password }),
+            15000, 'signIn'
+        )
+        if(error) throw error
+        await enterApp()
+        showToast('success', 'Вход выполнен', { icon:'✓' })
+    } catch(err){
+        let m = err.message || 'Неверный логин или пароль'
+        if(m.includes('Timeout')) m = 'Сервер не отвечает, попробуйте выключить VPN, проверить подключение к интернету или повторить позднее'
+        errEl.textContent = m
+    } finally {
+        btn.disabled = false
+        btn.textContent = 'Войти'
+    }
+})
 /* ============================================================
    STORR
 ============================================================ */
@@ -848,7 +877,9 @@ $('reset-lt-btn')?.addEventListener('click', () => {
     $('reset-step-1').classList.add('hidden'); $('reset-step-2').classList.remove('hidden')
 })
 
-$('go-register-btn')?.addEventListener('click', () => {
+$('go-register-btn')?.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
     showScreen('register-landing')
     const stage = $('logo-stage')
     if(stage){

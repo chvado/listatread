@@ -4876,3 +4876,234 @@ html, body{
 /* Убираем подчёркивания и цвета */
 .auth-forgot,
 .auth-btn-check{ text-decoration-color:rgba(255,255,255,.25) !important }
+
+/* ============================================================
+   ФИНАЛЬНЫЙ ФИКС AUTH — цвета, фон, скролл
+============================================================ */
+
+/* Весь фон чёрный, включая .app и body */
+html, body, .app, .main-app{
+    background:#000 !important;
+}
+html.bg-dark, html.bg-dark body, html.bg-dark .app{
+    background:#000 !important;
+}
+
+/* Экран входа — на весь viewport, по центру */
+#auth-screen{
+    position:fixed !important;
+    inset:0 !important;
+    width:100vw !important;
+    height:100vh !important;
+    height:100dvh !important;
+    background:#000 !important;
+    background-image:none !important;
+    animation:none !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    padding:20px 20px 90px !important;   /* снизу место под язык */
+    z-index:9999 !important;
+    color:#fff !important;
+}
+
+/* Фон с постами — ВИДНЕЕ, без обесцвечивания */
+.auth-feed-bg{
+    filter:none !important;
+    opacity:.55 !important;
+}
+.auth-feed-bg .offline-post{
+    background:#161618 !important;
+    border-color:rgba(255,255,255,.06) !important;
+    box-shadow:0 8px 22px rgba(0,0,0,.3) !important;
+}
+.auth-feed-bg .offline-post-ava,
+.auth-feed-bg .offline-line,
+.auth-feed-bg .offline-img{
+    background:#232326 !important;
+}
+/* Лайки — красные, репосты — зелёные, комменты — синие */
+.auth-feed-bg .offline-action.like svg  { color:#ff375f !important }
+.auth-feed-bg .offline-action.comment svg{ color:#0a84ff !important }
+.auth-feed-bg .offline-action.repost svg{ color:#30d158 !important }
+
+/* Убираем квадрат за формой */
+.auth-content{
+    background:transparent !important;
+    background-image:none !important;
+    border:none !important;
+    box-shadow:none !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    border-radius:0 !important;
+    padding:0 !important;
+    max-width:320px;
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    text-align:center;
+    animation:none !important;
+}
+
+/* Логотип и бренд */
+.auth-brand-row{ margin-bottom:6px }
+.auth-logo-circle{
+    background:#fff !important; color:#000 !important;
+    box-shadow:0 0 0 1px rgba(255,255,255,.15) !important;
+    width:52px; height:52px; font-size:32px;
+}
+.auth-brand-text{
+    color:#fff !important;
+    background:none !important;
+    -webkit-text-fill-color:#fff !important;
+    -webkit-background-clip:initial !important;
+    background-clip:initial !important;
+    font-size:22px;
+}
+.auth-title{ color:#fff !important; font-size:15px !important; opacity:.7; margin:0 0 10px; font-weight:600 }
+
+/* Поля */
+.auth-input{
+    background:#111 !important;
+    border:1px solid #2a2a2a !important;
+    color:#fff !important;
+}
+.auth-input::placeholder{ color:rgba(255,255,255,.35) !important }
+.auth-input:focus{
+    border-color:#fff !important;
+    background:#111 !important;
+    box-shadow:none !important;
+}
+.auth-pwd-toggle{ color:#fff !important; opacity:.6 !important }
+.auth-forgot{ color:rgba(255,255,255,.55) !important }
+.auth-forgot:hover{ color:#fff !important }
+.login-error{ color:#ff5c5c !important }
+
+/* Кнопка Войти — белая */
+.auth-btn-primary{
+    background:#fff !important;
+    color:#000 !important;
+    border:none !important;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.auth-btn-primary:hover{ background:#e5e5e5 !important }
+.auth-btn-primary:disabled{ opacity:.7; cursor:wait }
+
+/* Кнопка Регистрация — красная */
+.auth-btn-danger{
+    background:#e63946 !important;
+    color:#fff !important;
+    border:none !important;
+}
+.auth-btn-danger:hover{ background:#d32c39 !important }
+
+/* «ИЛИ» */
+.auth-or{ color:rgba(255,255,255,.4) !important }
+.auth-or::before, .auth-or::after{ background:rgba(255,255,255,.18) !important }
+
+/* --- Методы входа: VK синий, listaID красный, QR чёрный --- */
+.auth-method-icon{
+    box-shadow:none !important;
+    border:1px solid rgba(255,255,255,.08);
+}
+#vk-login-btn .auth-method-icon{
+    background:#0077FF !important;
+}
+#lista-login-btn .auth-method-icon{
+    background:#e63946 !important;
+}
+#qr-login-btn .auth-method-icon{
+    background:#111 !important;
+    border-color:rgba(255,255,255,.2);
+}
+.auth-method-icon svg{ fill:#fff !important; stroke:#fff !important }
+.auth-method-icon svg path,
+.auth-method-icon svg circle,
+.auth-method-icon svg rect{ fill:#fff !important; stroke:#fff !important }
+.auth-method-lista-letter{ color:#fff !important }
+.auth-method-label{ color:rgba(255,255,255,.65) !important }
+.auth-method:hover{ background:rgba(255,255,255,.05) !important }
+
+/* --- Язык ВНИЗУ экрана, по центру --- */
+.auth-lang{
+    position:fixed !important;
+    left:50% !important;
+    bottom:28px !important;
+    transform:translateX(-50%) !important;
+    margin:0 !important;
+    padding:8px 16px !important;
+    background:transparent !important;
+    color:rgba(255,255,255,.7) !important;
+    z-index:10000 !important;
+}
+.auth-lang:hover{ background:rgba(255,255,255,.08) !important; color:#fff !important }
+/* Флаг — ЯРКИЙ, без обесцвечивания */
+.auth-lang-flag{ filter:none !important; font-size:18px !important }
+
+/* Верхнее меню — без фона */
+.auth-topnav-link,
+.auth-legal a{
+    color:rgba(255,255,255,.5) !important;
+    background:transparent !important;
+}
+.auth-topnav-link:hover,
+.auth-legal a:hover{ color:#fff !important; background:transparent !important }
+
+/* Спиннер внутри кнопки */
+.btn-spinner{
+    display:inline-block;
+    width:16px; height:16px;
+    border-radius:50%;
+    border:2px solid rgba(0,0,0,.25);
+    border-top-color:#000;
+    animation:mqSpin .7s linear infinite;
+    vertical-align:middle;
+}
+@keyframes mqSpin{ to{ transform:rotate(360deg) } }
+/* ============================================================
+   ЕДИНЫЙ ЛОГОТИП — белый круг + чёрная ℓ
+   для boot, loading, auth, offline
+============================================================ */
+
+/* BOOT-SCREEN */
+.boot-screen .brand-circle{
+    background:#fff !important;
+    box-shadow:0 0 0 1px rgba(255,255,255,.15),0 12px 40px rgba(255,255,255,.08) !important;
+}
+.boot-screen .brand-letter{
+    color:#000 !important;
+}
+
+/* LOADING-SCREEN */
+#loading-screen .brand-circle{
+    background:#fff !important;
+    box-shadow:0 0 0 1px rgba(255,255,255,.15),0 12px 40px rgba(255,255,255,.08) !important;
+}
+#loading-screen .brand-letter{
+    color:#000 !important;
+}
+
+/* AUTH-SCREEN — уже белый, но зафиксируем */
+.auth-logo-circle{
+    background:#fff !important;
+    color:#000 !important;
+    box-shadow:0 0 0 1px rgba(255,255,255,.15),0 12px 40px rgba(255,255,255,.08) !important;
+}
+
+/* OFFLINE — уже белый, но зафиксируем */
+.offline-logo{
+    background:#fff !important;
+    color:#000 !important;
+    box-shadow:0 0 0 1px rgba(255,255,255,.15),0 12px 40px rgba(255,255,255,.08) !important;
+}
+
+/* Одинаковый шрифт буквы ℓ везде */
+.brand-letter,
+.auth-logo-circle,
+.offline-logo{
+    font-family:Georgia,'Times New Roman',serif !important;
+    font-weight:400 !important;
+    line-height:1 !important;
+}
