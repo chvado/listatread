@@ -288,10 +288,10 @@ function buildScreen(){
         <div class="offline-overlay">
             <div class="offline-logo">ℓ</div>
             <div class="offline-brand">listatread</div>
-            <h1 class="offline-title">Сервис недоступен</h1>
+            <h1 class="offline-title">Сервис временно недоступен</h1>
             <p class="offline-desc">
-                Кажется, у нас технические работы. Мы <b>уже чиним</b> — попробуйте обновить страницу через минуту.
-                Если проблема не исчезнет, напишите в поддержку.
+                Кажется, у нас технические работы. Мы <b>уже чиним</b> сервера, это может занять неопределенное количество времени
+                Следите за статусом на listatread.online/rules поддержка - chvadoorigins@gmail.com
             </p>
             <button class="offline-retry" id="offline-retry">
                 ${ICONS.refresh} Обновить
