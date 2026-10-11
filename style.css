@@ -1111,13 +1111,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Sego
 .qr-social-btn svg{width:22px;height:22px;display:block}
 .social-input-icon svg{width:20px;height:20px;display:block}
 /* ---------- Auth фон: анимированный градиент + плавающие круги ---------- */
-#auth-screen{
-    position:relative;
-    overflow:hidden;
-    background:linear-gradient(135deg,#fff7e6,#f0e8ff,#e6f7ff,#fff0f5,#fff7e6);
-    background-size:400% 400%;
-    animation:authBgShift 18s ease-in-out infinite;
-}
+
 @keyframes authBgShift{
     0%,100%{background-position:0% 50%}
     25%    {background-position:100% 0%}
@@ -4706,3 +4700,179 @@ html[data-theme="dark"] .dnc-topbar{
     /* прочитано — всегда ярко-голубая, чтобы сразу видно */
     color: #5fdfff !important;
 }
+
+/* ============================================================
+   ФИНАЛЬНЫЙ ФИКС ЭКРАНА ВХОДА — ЧЁРНО-БЕЛЫЙ, ПО ЦЕНТРУ
+============================================================ */
+html, body{
+    background:#000 !important;
+}
+
+#auth-screen{
+    position:fixed !important;
+    inset:0 !important;
+    width:100vw !important;
+    height:100vh !important;
+    height:100dvh !important;
+    background:#000 !important;
+    background-image:none !important;
+    animation:none !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    padding:20px !important;
+    overflow:hidden !important;
+    z-index:9999 !important;
+    color:#fff !important;
+}
+
+/* Фон с постами — только ЧБ */
+.auth-feed-bg{
+    filter:grayscale(1) !important;
+    opacity:.28 !important;
+}
+.auth-feed-bg .offline-post{
+    background:#111 !important;
+    border-color:#1e1e1e !important;
+    box-shadow:none !important;
+}
+.auth-feed-bg .offline-post-ava,
+.auth-feed-bg .offline-line,
+.auth-feed-bg .offline-img{
+    background:#1c1c1c !important;
+}
+.auth-feed-bg .offline-action,
+.auth-feed-bg .offline-action svg{
+    color:#666 !important;
+    filter:grayscale(1) !important;
+}
+
+/* УБИРАЕМ КВАДРАТ ЗА ФОРМОЙ */
+.auth-content{
+    background:transparent !important;
+    background-image:none !important;
+    border:none !important;
+    border-radius:0 !important;
+    box-shadow:none !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    padding:0 !important;
+    max-width:320px;
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    text-align:center;
+    animation:none !important;
+}
+
+/* Логотип — ЧБ */
+.auth-brand-row{ margin-bottom:6px }
+.auth-logo-circle{
+    background:#fff !important;
+    color:#000 !important;
+    box-shadow:none !important;
+    width:52px; height:52px;
+    font-size:32px;
+}
+.auth-brand-text{
+    color:#fff !important;
+    background:none !important;
+    -webkit-background-clip:initial !important;
+    background-clip:initial !important;
+    -webkit-text-fill-color:#fff !important;
+    font-size:22px;
+}
+
+.auth-title{
+    color:#fff !important;
+    font-size:15px !important;
+    opacity:.7;
+    margin:0 0 10px;
+    font-weight:600;
+}
+
+/* Поля — тёмно-серые, текст белый */
+.auth-input{
+    background:#111 !important;
+    border:1px solid #2a2a2a !important;
+    color:#fff !important;
+    box-shadow:none !important;
+}
+.auth-input::placeholder{ color:rgba(255,255,255,.35) !important }
+.auth-input:focus{
+    border-color:#fff !important;
+    background:#111 !important;
+    box-shadow:none !important;
+}
+
+.auth-pwd-toggle{ color:#fff !important; opacity:.6 !important }
+.auth-forgot{
+    color:rgba(255,255,255,.55) !important;
+    text-decoration-color:rgba(255,255,255,.25) !important;
+}
+.auth-forgot:hover{ color:#fff !important }
+.login-error{ color:#fff !important; opacity:.7 }
+
+/* КНОПКА «ВОЙТИ» — БЕЛАЯ */
+.auth-btn-primary{
+    background:#fff !important;
+    color:#000 !important;
+    border:none !important;
+}
+.auth-btn-primary:hover{ background:#e5e5e5 !important }
+
+/* КНОПКА «РЕГИСТРАЦИЯ» — ПРОЗРАЧНАЯ С БЕЛОЙ ОБВОДКОЙ */
+.auth-btn-danger{
+    background:transparent !important;
+    color:#fff !important;
+    border:1.5px solid #fff !important;
+}
+.auth-btn-danger:hover{ background:#fff !important; color:#000 !important }
+
+/* «ИЛИ» */
+.auth-or{
+    color:rgba(255,255,255,.4) !important;
+}
+.auth-or::before,
+.auth-or::after{
+    background:rgba(255,255,255,.18) !important;
+}
+
+/* ТРИ МЕТОДА — ЧБ */
+.auth-method-icon{
+    background:#111 !important;
+    box-shadow:none !important;
+}
+.auth-method-icon svg,
+.auth-method-icon svg path,
+.auth-method-icon svg circle,
+.auth-method-icon svg rect{
+    fill:#fff !important;
+    stroke:#fff !important;
+}
+.auth-method-lista-letter{ color:#fff !important }
+.auth-method-label{ color:rgba(255,255,255,.6) !important }
+.auth-method:hover{ background:rgba(255,255,255,.05) !important }
+
+/* Язык — ЧБ */
+.auth-lang{ color:rgba(255,255,255,.6) !important }
+.auth-lang:hover{ background:rgba(255,255,255,.06) !important; color:#fff !important }
+.auth-lang-flag{ filter:grayscale(1) !important }
+
+/* Верхнее меню и нижнее право — только белое, без фона */
+.auth-topnav-link,
+.auth-legal a{
+    color:rgba(255,255,255,.5) !important;
+    background:transparent !important;
+}
+.auth-topnav-link:hover,
+.auth-legal a:hover{
+    color:#fff !important;
+    background:transparent !important;
+}
+
+/* Убираем подчёркивания и цвета */
+.auth-forgot,
+.auth-btn-check{ text-decoration-color:rgba(255,255,255,.25) !important }
