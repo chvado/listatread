@@ -6328,7 +6328,34 @@ document.getElementById('share-track-download')?.addEventListener('click', async
         showToast('success', 'Баннер сохранён', { icon:'✓' })
     } catch(e){ showToast('error', 'Не удалось сохранить: ' + e.message) }
 })
-
+/* ============================================================
+   СТРАХОВКА — регистрация и язык через делегирование
+============================================================ */
+document.addEventListener('click', (e) => {
+    // Регистрация
+    const reg = e.target.closest('#go-register-btn');
+    if (reg){
+        e.preventDefault();
+        e.stopPropagation();
+        showScreen('register-landing');
+        const stage = document.getElementById('logo-stage');
+        if (stage){
+            stage.classList.remove('animate');
+            void stage.offsetWidth;
+            requestAnimationFrame(() => stage.classList.add('animate'));
+        }
+        return;
+    }
+    // Выбор языка
+    const lang = e.target.closest('#lang-selector');
+    if (lang){
+        e.preventDefault();
+        e.stopPropagation();
+        const lm = document.getElementById('lang-modal');
+        if (lm) lm.classList.remove('hidden');
+        return;
+    }
+}, true);   // ← capture:true — срабатывает ПЕРВЫМ, до любых других
 /* ============================================================
    СТАРТ
 ============================================================ */

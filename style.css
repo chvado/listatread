@@ -5107,3 +5107,115 @@ html.bg-dark, html.bg-dark body, html.bg-dark .app{
     font-weight:400 !important;
     line-height:1 !important;
 }
+
+/* ============================================================
+   ФИНАЛЬНЫЙ ФИКС — z-index, лента, кнопки
+============================================================ */
+
+/* Никаких 9999! Ставим 100 — модалки выше */
+#auth-screen{
+    position:fixed !important;
+    inset:0 !important;
+    width:100vw !important;
+    height:100vh !important;
+    height:100dvh !important;
+    z-index:100 !important;          /* ← было 9999, теперь 100 */
+    background:#0a0a0a !important;
+    background-image:none !important;
+    animation:none !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    padding:20px 20px 90px !important;
+    color:#fff !important;
+    overflow:hidden !important;
+}
+#auth-screen.hidden{ display:none !important }
+
+/* Убираем «квадрат» за формой */
+.auth-content{
+    background:transparent !important;
+    background-image:none !important;
+    border:none !important;
+    box-shadow:none !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    border-radius:0 !important;
+    padding:0 !important;
+    max-width:320px;
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    text-align:center;
+    animation:none !important;
+}
+
+/* ============================================================
+   ФОН С ПОСТАМИ — ВИДНЕЕ
+============================================================ */
+.auth-feed-bg{
+    filter:none !important;
+    opacity:.78 !important;          /* ← было .55, стало .78 */
+}
+.auth-feed-bg .offline-post{
+    background:#18181b !important;
+    border-color:rgba(255,255,255,.08) !important;
+    box-shadow:0 8px 22px rgba(0,0,0,.4) !important;
+}
+.auth-feed-bg .offline-post-ava,
+.auth-feed-bg .offline-line,
+.auth-feed-bg .offline-img{
+    background:#2c2c30 !important;   /* ← было #232326, стало светлее */
+}
+
+/* Лайки — красные, репосты — зелёные, комменты — синие */
+.auth-feed-bg .offline-action.like svg   { color:#ff375f !important }
+.auth-feed-bg .offline-action.comment svg{ color:#0a84ff !important }
+.auth-feed-bg .offline-action.repost svg { color:#30d158 !important }
+
+/* ============================================================
+   КНОПКА РЕГИСТРАЦИЯ — ТОЛЬКО КОНТУР
+============================================================ */
+.auth-btn-danger{
+    background:transparent !important;
+    color:#e63946 !important;
+    border:1.5px solid #e63946 !important;
+    transition:transform .15s ease, background .15s ease, color .15s ease !important;
+}
+.auth-btn-danger:hover{
+    background:rgba(230,57,70,.1) !important;
+    transform:scale(1.03) !important;
+}
+.auth-btn-danger:active{ transform:scale(.97) !important }
+
+/* ============================================================
+   HOVER — ВСЕ КНОПКИ ЧУТЬ УВЕЛИЧИВАЮТСЯ
+============================================================ */
+.auth-btn-primary,
+.auth-method,
+.auth-lang,
+.auth-forgot,
+.auth-topnav-link,
+.auth-legal a{
+    transition: transform .15s ease, background .15s ease, color .15s ease !important;
+}
+.auth-btn-primary:hover{ transform:scale(1.03) !important }
+.auth-method:hover{ transform:scale(1.06) !important }
+.auth-lang:hover{ transform:scale(1.05) !important }
+.auth-forgot:hover{ transform:scale(1.04) !important }
+.auth-topnav-link:hover,
+.auth-legal a:hover{ transform:scale(1.05) !important }
+
+/* ============================================================
+   МОДАЛКИ — ВЫШЕ ЭКРАНА ВХОДА
+============================================================ */
+.lang-modal       { z-index:900  !important }
+.actionsheet-backdrop{ z-index:1000 !important }
+.actionsheet      { z-index:1001 !important }
+.prioriti-backdrop{ z-index:1010 !important }
+.prioriti-sheet   { z-index:1011 !important }
+.code-modal       { z-index:1020 !important }
+.share-modal      { z-index:1030 !important }
+.qr-modal         { z-index:1040 !important }
