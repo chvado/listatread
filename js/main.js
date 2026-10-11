@@ -816,14 +816,10 @@ document.querySelectorAll('.pwd-toggle, .auth-pwd-toggle').forEach(btn => {
 })
 
 /* ============================================================
-   AUTH — безопасные обработчики (не падают, если элемента нет)
+   AUTH — безопасные обработчики (optional chaining)
    ============================================================ */
 
-/* karsq (экран может отсутствовать после редизайна) */
-$('karsq-btn')?.addEventListener('click', () => {
-    $('karsq-error').textContent=''; $('karsq-email').value=''; $('karsq-password').value=''
-    showScreen('karsq')
-})
+
 $('karsq-back')?.addEventListener('click', () => showScreen('auth'))
 $('karsq-continue')?.addEventListener('click', () => {
     if(!$('karsq-email').value.trim()){ $('karsq-error').textContent = 'Введите почту'; return }
@@ -832,7 +828,6 @@ $('karsq-continue')?.addEventListener('click', () => {
 document.querySelectorAll('.karsq-method').forEach(b =>
     b.addEventListener('click', () => $('karsq-error').textContent = 'Аккаунт не поддерживает метод'))
 
-/* forgot / reset */
 $('forgot-password')?.addEventListener('click', () => {
     $('reset-step-1').classList.remove('hidden'); $('reset-step-2').classList.add('hidden')
     $('reset-error').textContent = ''; $('reset-email').value = ''
@@ -848,7 +843,6 @@ $('reset-lt-btn')?.addEventListener('click', () => {
     $('reset-step-1').classList.add('hidden'); $('reset-step-2').classList.remove('hidden')
 })
 
-/* register landing */
 $('go-register-btn')?.addEventListener('click', () => {
     showScreen('register-landing')
     const stage = $('logo-stage')
@@ -861,25 +855,9 @@ $('reg-landing-back')?.addEventListener('click', () => showScreen('auth'))
 $('create-account-btn')?.addEventListener('click', () => startRegistration())
 $('find-account-btn')?.addEventListener('click', () => alert('В разработке'))
 
-/* oauth-кнопки (в новой разметке их нет, оставлены для совместимости) */
-$('github-btn')?.addEventListener('click', async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-        provider:'github', options:{ redirectTo: location.origin + location.pathname }
-    })
-    if(error) alert('GitHub вход не настроен: ' + error.message)
-})
-$('apple-btn')?.addEventListener('click', async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-        provider:'apple', options:{ redirectTo: location.origin + location.pathname }
-    })
-    if(error) alert('Apple вход не настроен: ' + error.message)
-})
-$('telegram-btn')?.addEventListener('click', () => alert('Telegram скоро'))
-$('email-btn')?.addEventListener('click', () => alert('Используйте форму'))
 
-/* ============================================================
-   НОВЫЕ КНОПКИ АВТОРИЗАЦИИ
-   ============================================================ */
+
+/* --- Новые кнопки авторизации --- */
 $('vk-login-btn')?.addEventListener('click', async () => {
     try {
         const { error } = await supabase.auth.signInWithOAuth({
@@ -901,6 +879,18 @@ $('qr-login-btn')?.addEventListener('click', () => {
     if(typeof openQrScanModal === 'function') openQrScanModal()
     else showToast('info', 'QR-сканер загружается…', { icon:'▢' })
 })
+
+document.querySelectorAll('.auth-topnav-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const k = btn.dataset.nav
+        if(k === 'about')    showToast('info', 'listatread.online · v16', { icon:'ℓ' })
+        if(k === 'terms')    window.open('/terms', '_blank')
+        if(k === 'support')  window.open('mailto:chvadoorigins@gmail.com')
+        if(k === 'download') showToast('info', 'Мобильное приложение — скоро', { icon:'📱' })
+    })
+})
+
+
 
 /* Desktop-навигация сверху */
 document.querySelectorAll('.auth-topnav-link').forEach(btn => {
