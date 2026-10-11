@@ -4704,9 +4704,7 @@ html[data-theme="dark"] .dnc-topbar{
 /* ============================================================
    ФИНАЛЬНЫЙ ФИКС ЭКРАНА ВХОДА — ЧЁРНО-БЕЛЫЙ, ПО ЦЕНТРУ
 ============================================================ */
-html, body{
-    background:#000 !important;
-}
+
 
 #auth-screen{
     position:fixed !important;
@@ -5221,158 +5219,84 @@ html.bg-dark, html.bg-dark body, html.bg-dark .app{
 .qr-modal         { z-index:1040 !important }
 
 /* ============================================================
-   ФИКС: hover-увеличение всех кнопок + регистрация без красного вспыхивания
-============================================================ */
+   FIX — кнопки .btn-primary / .btn-gray / .btn-karsq-red
+   и мягкий hover без конфликтов с базовым CSS
+   ============================================================ */
 
-/* Единая плавная анимация для всех интерактивных элементов */
-button,
+/* Базовые кнопки (на случай, если классы нигде не определены) */
 .btn-primary,
 .btn-gray,
-a.auth-topnav-link,
-a.auth-legal,
-.auth-btn-primary,
-.auth-btn-danger {
-    transition:
-            transform .18s cubic-bezier(.34,1.56,.64,1),
-            background .15s ease,
-            color .15s ease,
-            border-color .15s ease,
-            opacity .15s ease !important;
+.btn-karsq-red{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:12px 20px;
+    border:none;
+    border-radius:12px;
+    font-family:inherit;
+    font-size:15px;
+    font-weight:700;
+    line-height:1.2;
+    cursor:pointer;
+    -webkit-appearance:none;
+    appearance:none;
+    -webkit-tap-highlight-color:transparent;
+    transition:transform .15s ease, background .15s ease, opacity .15s ease;
 }
 
-/* УВЕЛИЧЕНИЕ ПРИ НАВЕДЕНИИ — все кнопки, кроме мелких иконок в навигации */
-button:not(:disabled):not(.nav-btn):not(.topbar-btn):not(.bottom-nav *):hover,
-.btn-primary:not(:disabled):hover,
-.btn-gray:not(:disabled):hover {
-    transform: scale(1.05);
-}
-
-/* Лёгкое уменьшение при нажатии — тактильный отклик */
-button:not(:disabled):active {
-    transform: scale(.97);
-}
-
-/* Убираем фокусные обводки и синие/красные outline */
-button:focus,
-button:focus-visible,
-.auth-btn-danger:focus,
-.auth-btn-danger:focus-visible,
-.auth-btn-primary:focus,
-.auth-btn-primary:focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
-}
-
-/* ------- РЕГИСТРАЦИЯ: убираем красное вспыхивание ------- */
-.auth-btn-danger {
-    background: transparent !important;
-    color: #e63946 !important;
-    border: 1.5px solid #e63946 !important;
-    -webkit-tap-highlight-color: transparent !important;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-}
-.auth-btn-danger:hover {
-    background: transparent !important;
-    color: #e63946 !important;
-    border-color: #e63946 !important;
-    transform: scale(1.05) !important;
-}
-.auth-btn-danger:active {
-    background: transparent !important;
-    color: #e63946 !important;
-    border-color: #e63946 !important;
-    transform: scale(.97) !important;
-    -webkit-tap-highlight-color: transparent !important;
-}
-
-/* На всякий случай — отключаем синюю/серую подсветку у всех авторизационных кнопок */
-.auth-btn-primary,
-.auth-method,
-.auth-lang,
-.auth-forgot {
-    -webkit-tap-highlight-color: transparent !important;
-}
-
-/* ============================================================
-   ФИКС РЕГИСТРАЦИИ — кнопки, поля, тема
-   (вставить в самый конец style.css)
-============================================================ */
-
-/* ---------- 1. Кнопки .btn-primary / .btn-gray / .btn-karsq-red ---------- */
 .btn-primary{
-    display:inline-flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    gap:8px!important;
-    width:100%!important;
-    min-height:52px!important;
-    padding:14px 18px!important;
-    border:none!important;
-    border-radius:14px!important;
-    background:#0a84ff!important;
-    color:#fff!important;
-    font-family:inherit!important;
-    font-size:15px!important;
-    font-weight:700!important;
-    line-height:1.2!important;
-    cursor:pointer!important;
-    -webkit-appearance:none!important;
-    appearance:none!important;
-    -webkit-tap-highlight-color:transparent!important;
-    transition:transform .18s cubic-bezier(.34,1.56,.64,1),
-    background .15s ease,
-    opacity .15s ease!important;
+    background:#0a84ff;
+    color:#fff;
 }
-.btn-primary:hover:not(:disabled){ background:#0071e3!important; transform:scale(1.03)!important; }
-.btn-primary:active:not(:disabled){ transform:scale(.97)!important; }
-.btn-primary:disabled{ opacity:.5!important; cursor:not-allowed!important; }
+.btn-primary:hover:not(:disabled){ background:#0066cc; transform:translateY(-1px) }
+.btn-primary:active:not(:disabled){ transform:scale(.98) }
+.btn-primary:disabled{ opacity:.5; cursor:not-allowed }
 
 .btn-gray{
-    display:inline-flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    width:100%!important;
-    min-height:52px!important;
-    padding:14px 18px!important;
-    border:none!important;
-    border-radius:14px!important;
-    background:rgba(120,120,128,.14)!important;
-    color:inherit!important;
-    font-family:inherit!important;
-    font-size:15px!important;
-    font-weight:700!important;
-    cursor:pointer!important;
-    -webkit-appearance:none!important;
-    transition:transform .18s cubic-bezier(.34,1.56,.64,1),
-    background .15s ease,
-    opacity .15s ease!important;
-    -webkit-tap-highlight-color:transparent!important;
+    background:rgba(120,120,128,.16);
+    color:#000;
 }
-.btn-gray:hover:not(:disabled){ background:rgba(120,120,128,.24)!important; transform:scale(1.03)!important; }
-.btn-gray:active:not(:disabled){ transform:scale(.97)!important; }
-.btn-gray:disabled{ opacity:.5!important; cursor:not-allowed!important; }
+.btn-gray:hover:not(:disabled){ background:rgba(120,120,128,.26); transform:translateY(-1px) }
+.btn-gray:active:not(:disabled){ transform:scale(.98) }
+.btn-gray:disabled{ opacity:.5; cursor:not-allowed }
+html[data-theme="dark"] .btn-gray{ color:#fff }
 
 .btn-karsq-red{
-    width:100%!important;
-    min-height:52px!important;
-    padding:14px 18px!important;
-    border:none!important;
-    border-radius:14px!important;
-    background:#e63946!important;
-    color:#fff!important;
-    font-family:inherit!important;
-    font-size:15px!important;
-    font-weight:700!important;
-    cursor:pointer!important;
-    -webkit-appearance:none!important;
-    transition:transform .18s cubic-bezier(.34,1.56,.64,1), background .15s ease!important;
+    background:#e63946;
+    color:#fff;
 }
-.btn-karsq-red:hover{ background:#d32c39!important; transform:scale(1.03)!important; }
-.btn-karsq-red:active{ transform:scale(.97)!important; }
+.btn-karsq-red:hover{ background:#d32c39; transform:translateY(-1px) }
+.btn-karsq-red:active{ transform:scale(.98) }
 
-/* ---------- 2. Поля ввода регистрации / karsq / reset ---------- */
+/* Мягкий hover — только для известных, безопасных классов */
+.auth-btn-primary,
+.auth-btn-danger,
+.auth-method,
+.auth-lang,
+.auth-forgot{
+    transition:transform .15s ease, background .15s ease, color .15s ease;
+}
+.auth-btn-primary:hover:not(:disabled){ transform:scale(1.03) }
+.auth-btn-danger:hover:not(:disabled){ transform:scale(1.03) }
+.auth-method:hover{ transform:scale(1.05) }
+.auth-lang:hover{ transform:scale(1.04) }
+
+/* Убираем красное / синее вспыхивание при тапе */
+.auth-btn-danger,
+.auth-btn-danger:hover,
+.auth-btn-danger:active,
+.auth-btn-primary,
+.auth-btn-primary:hover,
+.auth-btn-primary:active,
+.auth-method,
+.auth-lang,
+.auth-forgot{
+    -webkit-tap-highlight-color:transparent;
+    outline:none;
+}
+
+/* Регистрация: поля — светлые, текст чёрный */
 #register-screen input[type="text"],
 #register-screen input[type="email"],
 #register-screen input[type="password"],
@@ -5380,104 +5304,98 @@ button:focus-visible,
 #register-screen textarea,
 #karsq-screen input,
 #reset-screen input{
-    width:100%!important;
-    min-height:52px!important;
-    padding:14px 18px!important;
-    font-size:16px!important;
-    font-family:inherit!important;
-    color:#000!important;
-    background:rgba(120,120,128,.1)!important;
-    border:1.5px solid transparent!important;
-    border-radius:14px!important;
-    outline:none!important;
-    box-sizing:border-box!important;
-    -webkit-appearance:none!important;
-    appearance:none!important;
-    transition:background .18s ease, border-color .18s ease, box-shadow .18s ease!important;
+    width:100%;
+    min-height:52px;
+    padding:14px 18px;
+    font-size:16px;
+    font-family:inherit;
+    color:#000;
+    background:rgba(120,120,128,.1);
+    border:1.5px solid transparent;
+    border-radius:14px;
+    outline:none;
+    box-sizing:border-box;
+    -webkit-appearance:none;
+    appearance:none;
+    transition:background .18s, border-color .18s, box-shadow .18s;
 }
 #register-screen input::placeholder,
 #register-screen textarea::placeholder,
 #karsq-screen input::placeholder,
 #reset-screen input::placeholder{
-    color:rgba(0,0,0,.4)!important;
+    color:rgba(0,0,0,.4);
 }
 #register-screen input:focus,
 #register-screen textarea:focus,
 #karsq-screen input:focus,
 #reset-screen input:focus{
-    background:#fff!important;
-    border-color:#0a84ff!important;
-    box-shadow:0 0 0 4px rgba(10,132,255,.15)!important;
+    background:#fff;
+    border-color:#0a84ff;
+    box-shadow:0 0 0 4px rgba(10,132,255,.15);
 }
-
-/* Тёмная тема — поля */
 html[data-theme="dark"] #register-screen input,
 html[data-theme="dark"] #register-screen textarea,
 html[data-theme="dark"] #karsq-screen input,
 html[data-theme="dark"] #reset-screen input{
-    color:#fff!important;
-    background:rgba(120,120,128,.24)!important;
+    color:#fff;
+    background:rgba(120,120,128,.24);
 }
 html[data-theme="dark"] #register-screen input::placeholder,
-html[data-theme="dark"] #register-screen textarea::placeholder,
-html[data-theme="dark"] #karsq-screen input::placeholder{
-    color:rgba(255,255,255,.35)!important;
+html[data-theme="dark"] #register-screen textarea::placeholder{
+    color:rgba(255,255,255,.35);
 }
 html[data-theme="dark"] #register-screen input:focus,
-html[data-theme="dark"] #register-screen textarea:focus,
-html[data-theme="dark"] #karsq-screen input:focus{
-    background:#1c1c1e!important;
-    color:#fff!important;
+html[data-theme="dark"] #register-screen textarea:focus{
+    background:#1c1c1e;
+    color:#fff;
 }
 
-/* ---------- 3. Отменяем форс чёрного фона для светлой темы ---------- */
+/* Отменяем форс чёрного фона в светлой теме для register */
 html.bg-light,
 html.bg-light body,
 html.bg-light .app,
 html.bg-light .main-app{
-    background:#fff!important;
+    background:#fff;
 }
-
-/* Экран регистрации — подстраиваем под тему */
 #register-screen,
-#register-landing-screen,
-#karsq-screen,
-#reset-screen{
-    background:#fff!important;
-    color:#000!important;
+#register-landing-screen{
+    background:#fff;
+    color:#000;
 }
-html[data-theme="dark"] #register-screen,
-html[data-theme="dark"] #karsq-screen,
-html[data-theme="dark"] #reset-screen{
-    background:#000!important;
-    color:#fff!important;
+html[data-theme="dark"] #register-screen{
+    background:#000;
+    color:#fff;
 }
 
-/* Заголовки и подписи */
-#register-screen .reg-step h2,
-#register-screen .reg-topbar-title,
-#register-screen .step-label{
-    color:#000!important;
-}
-html[data-theme="dark"] #register-screen .reg-step h2,
-html[data-theme="dark"] #register-screen .reg-topbar-title{
-    color:#fff!important;
-}
-#register-screen .step-hint{
-    color:rgba(0,0,0,.55)!important;
-}
-html[data-theme="dark"] #register-screen .step-hint{
-    color:rgba(255,255,255,.6)!important;
-}
-
-/* Чекбоксы согласий — читаемый текст */
+/* Читаемость текста согласий */
 .reg-consent,
 .reg-consent span,
 .reg-consent a{
-    color:#000!important;
+    color:#000;
 }
 html[data-theme="dark"] .reg-consent,
 html[data-theme="dark"] .reg-consent span,
 html[data-theme="dark"] .reg-consent a{
-    color:#fff!important;
+    color:#fff;
+}
+
+/* Кнопка в flex-строке должна растягиваться */
+.cc-nav .btn-primary,
+.cc-nav .btn-gray,
+.reg-nav  .btn-primary,
+.reg-nav  .btn-gray{
+    flex:1 1 auto;
+    width:100%;
+}
+
+/* В flex-колонке — на всю ширину (по умолчанию и так stretch, но подстрахуемся) */
+.reg-landing-actions .btn-primary,
+.reg-landing-actions .btn-gray{
+    width:100%;
+}
+
+/* В grid — на всю ячейку */
+.qr-scan-actions .btn-primary,
+.qr-scan-actions .btn-gray{
+    width:100%;
 }
