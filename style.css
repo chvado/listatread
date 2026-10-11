@@ -5294,3 +5294,190 @@ button:focus-visible,
 .auth-forgot {
     -webkit-tap-highlight-color: transparent !important;
 }
+
+/* ============================================================
+   ФИКС РЕГИСТРАЦИИ — кнопки, поля, тема
+   (вставить в самый конец style.css)
+============================================================ */
+
+/* ---------- 1. Кнопки .btn-primary / .btn-gray / .btn-karsq-red ---------- */
+.btn-primary{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:8px!important;
+    width:100%!important;
+    min-height:52px!important;
+    padding:14px 18px!important;
+    border:none!important;
+    border-radius:14px!important;
+    background:#0a84ff!important;
+    color:#fff!important;
+    font-family:inherit!important;
+    font-size:15px!important;
+    font-weight:700!important;
+    line-height:1.2!important;
+    cursor:pointer!important;
+    -webkit-appearance:none!important;
+    appearance:none!important;
+    -webkit-tap-highlight-color:transparent!important;
+    transition:transform .18s cubic-bezier(.34,1.56,.64,1),
+    background .15s ease,
+    opacity .15s ease!important;
+}
+.btn-primary:hover:not(:disabled){ background:#0071e3!important; transform:scale(1.03)!important; }
+.btn-primary:active:not(:disabled){ transform:scale(.97)!important; }
+.btn-primary:disabled{ opacity:.5!important; cursor:not-allowed!important; }
+
+.btn-gray{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:100%!important;
+    min-height:52px!important;
+    padding:14px 18px!important;
+    border:none!important;
+    border-radius:14px!important;
+    background:rgba(120,120,128,.14)!important;
+    color:inherit!important;
+    font-family:inherit!important;
+    font-size:15px!important;
+    font-weight:700!important;
+    cursor:pointer!important;
+    -webkit-appearance:none!important;
+    transition:transform .18s cubic-bezier(.34,1.56,.64,1),
+    background .15s ease,
+    opacity .15s ease!important;
+    -webkit-tap-highlight-color:transparent!important;
+}
+.btn-gray:hover:not(:disabled){ background:rgba(120,120,128,.24)!important; transform:scale(1.03)!important; }
+.btn-gray:active:not(:disabled){ transform:scale(.97)!important; }
+.btn-gray:disabled{ opacity:.5!important; cursor:not-allowed!important; }
+
+.btn-karsq-red{
+    width:100%!important;
+    min-height:52px!important;
+    padding:14px 18px!important;
+    border:none!important;
+    border-radius:14px!important;
+    background:#e63946!important;
+    color:#fff!important;
+    font-family:inherit!important;
+    font-size:15px!important;
+    font-weight:700!important;
+    cursor:pointer!important;
+    -webkit-appearance:none!important;
+    transition:transform .18s cubic-bezier(.34,1.56,.64,1), background .15s ease!important;
+}
+.btn-karsq-red:hover{ background:#d32c39!important; transform:scale(1.03)!important; }
+.btn-karsq-red:active{ transform:scale(.97)!important; }
+
+/* ---------- 2. Поля ввода регистрации / karsq / reset ---------- */
+#register-screen input[type="text"],
+#register-screen input[type="email"],
+#register-screen input[type="password"],
+#register-screen input[type="date"],
+#register-screen textarea,
+#karsq-screen input,
+#reset-screen input{
+    width:100%!important;
+    min-height:52px!important;
+    padding:14px 18px!important;
+    font-size:16px!important;
+    font-family:inherit!important;
+    color:#000!important;
+    background:rgba(120,120,128,.1)!important;
+    border:1.5px solid transparent!important;
+    border-radius:14px!important;
+    outline:none!important;
+    box-sizing:border-box!important;
+    -webkit-appearance:none!important;
+    appearance:none!important;
+    transition:background .18s ease, border-color .18s ease, box-shadow .18s ease!important;
+}
+#register-screen input::placeholder,
+#register-screen textarea::placeholder,
+#karsq-screen input::placeholder,
+#reset-screen input::placeholder{
+    color:rgba(0,0,0,.4)!important;
+}
+#register-screen input:focus,
+#register-screen textarea:focus,
+#karsq-screen input:focus,
+#reset-screen input:focus{
+    background:#fff!important;
+    border-color:#0a84ff!important;
+    box-shadow:0 0 0 4px rgba(10,132,255,.15)!important;
+}
+
+/* Тёмная тема — поля */
+html[data-theme="dark"] #register-screen input,
+html[data-theme="dark"] #register-screen textarea,
+html[data-theme="dark"] #karsq-screen input,
+html[data-theme="dark"] #reset-screen input{
+    color:#fff!important;
+    background:rgba(120,120,128,.24)!important;
+}
+html[data-theme="dark"] #register-screen input::placeholder,
+html[data-theme="dark"] #register-screen textarea::placeholder,
+html[data-theme="dark"] #karsq-screen input::placeholder{
+    color:rgba(255,255,255,.35)!important;
+}
+html[data-theme="dark"] #register-screen input:focus,
+html[data-theme="dark"] #register-screen textarea:focus,
+html[data-theme="dark"] #karsq-screen input:focus{
+    background:#1c1c1e!important;
+    color:#fff!important;
+}
+
+/* ---------- 3. Отменяем форс чёрного фона для светлой темы ---------- */
+html.bg-light,
+html.bg-light body,
+html.bg-light .app,
+html.bg-light .main-app{
+    background:#fff!important;
+}
+
+/* Экран регистрации — подстраиваем под тему */
+#register-screen,
+#register-landing-screen,
+#karsq-screen,
+#reset-screen{
+    background:#fff!important;
+    color:#000!important;
+}
+html[data-theme="dark"] #register-screen,
+html[data-theme="dark"] #karsq-screen,
+html[data-theme="dark"] #reset-screen{
+    background:#000!important;
+    color:#fff!important;
+}
+
+/* Заголовки и подписи */
+#register-screen .reg-step h2,
+#register-screen .reg-topbar-title,
+#register-screen .step-label{
+    color:#000!important;
+}
+html[data-theme="dark"] #register-screen .reg-step h2,
+html[data-theme="dark"] #register-screen .reg-topbar-title{
+    color:#fff!important;
+}
+#register-screen .step-hint{
+    color:rgba(0,0,0,.55)!important;
+}
+html[data-theme="dark"] #register-screen .step-hint{
+    color:rgba(255,255,255,.6)!important;
+}
+
+/* Чекбоксы согласий — читаемый текст */
+.reg-consent,
+.reg-consent span,
+.reg-consent a{
+    color:#000!important;
+}
+html[data-theme="dark"] .reg-consent,
+html[data-theme="dark"] .reg-consent span,
+html[data-theme="dark"] .reg-consent a{
+    color:#fff!important;
+}
