@@ -426,3 +426,16 @@ export async function withOfflineGuard(promise, opts = {}){
         throw e
     }
 }
+
+/* ============================================================
+   АВТОПОКАЗ — экран вылезает сразу при загрузке страницы.
+   Убрать эту логику потом = удалить этот блок целиком.
+============================================================ */
+function __autoShowOffline(){
+    showOfflineScreen('force')
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', __autoShowOffline)
+} else {
+    __autoShowOffline()
+}
