@@ -3,6 +3,7 @@
    PART 1 / 3 — до uploadAvatar()
 ============================================================ */
 import './offline.js'
+import { mountFeedBg } from './offline.js'   // ← добавь это
 import { supabase } from './supabase.js'
 function isUuid(s){
     return typeof s === 'string'
@@ -646,6 +647,12 @@ function showScreen(name){
         setPageBg(false)
     } else if(name === 'auth' || name === 'karsq' || name === 'reset'){
         setPageBg(true)
+        // Строим фон с едущими постами (один раз)
+        const feedBg = document.getElementById('auth-feed-bg')
+        if(feedBg && !feedBg.dataset.built){
+            feedBg.dataset.built = '1'
+            mountFeedBg(feedBg)
+        }
     } else if(name === 'register'){
         setPageBg()
     } else {
@@ -854,16 +861,41 @@ $('reg-landing-back').addEventListener('click', () => showScreen('auth'))
 $('create-account-btn').addEventListener('click', () => startRegistration())
 $('find-account-btn').addEventListener('click', () => alert('В разработке'))
 
-$('github-btn').addEventListener('click', async () => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider:'github', options:{ redirectTo: location.origin + location.pathname } })
-    if(error) alert('GitHub вход не настроен: ' + error.message)
+/* --- VK --- */
+$('vk-login-btn')?.addEventListener('click', async () => {
+    try {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'vk',
+            options: { redirectTo: location.origin + location.pathname }
+        })
+        if(error) showToast('error', 'VK вход не настроен: ' + error.message, { icon:'⚠️' })
+    } catch(e){
+        showToast('error', 'VK: ' + (e.message || 'ошибка'), { icon:'⚠️' })
+    }
 })
-$('apple-btn').addEventListener('click', async () => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider:'apple', options:{ redirectTo: location.origin + location.pathname } })
-    if(error) alert('Apple вход не настроен: ' + error.message)
+
+/* --- listaID (открываем форму логина/пароля) --- */
+$('lista-login-btn')?.addEventListener('click', () => {
+    $('login-email')?.focus()
+    showToast('info', 'Введите ваш listaID и пароль', { icon:'ℓ' })
 })
-$('telegram-btn').addEventListener('click', () => alert('Telegram скоро'))
-$('email-btn').addEventListener('click', () => alert('Используйте форму'))
+
+/* --- QR-вход --- */
+$('qr-login-btn')?.addEventListener('click', () => {
+    if(typeof openQrScanModal === 'function') openQrScanModal()
+    else showToast('info', 'QR-сканер загружается…', { icon:'▢' })
+})
+
+/* --- Desktop-навигация сверху --- */
+document.querySelectorAll('.auth-topnav-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const k = btn.dataset.nav
+        if(k === 'about')    showToast('info', 'listatread.online · v16', { icon:'ℓ' })
+        if(k === 'terms')    window.open('/terms', '_blank')
+        if(k === 'support')  window.open('mailto:chvadoorigins@gmail.com')
+        if(k === 'download') showToast('info', 'Мобильное приложение — скоро', { icon:'📱' })
+    })
+})
 
 /* ============================================================
    REGISTRATION

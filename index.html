@@ -47,32 +47,83 @@
 
     <!-- AUTH -->
     <section id="auth-screen" class="screen hidden">
-        <div class="auth-bg">
-            <span class="ab ab-1"></span>
-            <span class="ab ab-2"></span>
-            <span class="ab ab-3"></span>
-            <span class="ab ab-4"></span>
-            <span class="ab ab-5"></span>
-        </div>
-        <div class="auth-wrap">
-            <div class="brand-circle"><span class="brand-letter">ℓ</span></div>
-            <h1 class="brand-name">listatread</h1>
-            <form id="login-form" class="auth-form" novalidate>
-                <input type="text" id="login-email" placeholder="Телефон, email или логин" required>
-                <div class="pwd-wrap"><input type="password" id="login-password" placeholder="Пароль" required><button type="button" class="pwd-toggle" data-target="login-password">👁</button></div>
-                <div class="auth-form-footer"><span class="login-error" id="login-error"></span><button type="button" class="forgot-password" id="forgot-password">Забыли пароль?</button></div>
-                <div class="auth-buttons-row"><button type="submit" class="btn-primary" id="login-btn">Вход</button><button type="button" class="btn-primary btn-primary-outline" id="go-register-btn">Регистрация</button></div>
-            </form>
-            <button class="btn-karsq" id="karsq-btn"><span class="karsq-dot"></span> Войти через karsq</button>
-            <div class="divider"><span>или</span></div>
-            <div class="social-row-4">
-                <button class="social-icon-btn social-github" id="github-btn"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></button>
-                <button class="social-icon-btn social-email" id="email-btn"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg></button>
-                <button class="social-icon-btn social-apple" id="apple-btn"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg></button>
-                <button class="social-icon-btn social-telegram" id="telegram-btn"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg></button>
+        <div class="auth-feed-bg" id="auth-feed-bg"></div>
+
+        <!-- Desktop top nav -->
+        <nav class="auth-topnav" aria-label="Help">
+            <button type="button" class="auth-topnav-link" data-nav="about">about</button>
+            <button type="button" class="auth-topnav-link" data-nav="terms">terms</button>
+            <button type="button" class="auth-topnav-link" data-nav="support">support</button>
+            <button type="button" class="auth-topnav-link" data-nav="download">download app</button>
+        </nav>
+
+        <div class="auth-content">
+            <div class="auth-brand-row">
+                <div class="auth-logo-circle" aria-hidden="true">ℓ</div>
+                <div class="auth-brand-text">listatread</div>
             </div>
-            <p class="terms">Продолжая, вы принимаете <a href="#">условия пользования</a></p>
-            <button class="lang-selector" id="lang-selector"><span id="current-lang-flag">🇬🇧</span><span id="current-lang-name">English</span><span class="chevron">▾</span></button>
+
+            <h2 class="auth-title">Sign in</h2>
+
+            <form id="login-form" class="auth-form" novalidate>
+                <input type="text" id="login-email" class="auth-input"
+                       placeholder="username, listaID, mobile phone or mail"
+                       required autocomplete="username">
+
+                <div class="auth-field">
+                    <input type="password" id="login-password" class="auth-input"
+                           placeholder="Password" required autocomplete="current-password">
+                    <button type="button" class="auth-pwd-toggle" data-target="login-password" aria-label="Показать пароль">👁</button>
+                </div>
+
+                <div class="auth-row-forgot">
+                    <button type="button" class="auth-forgot" id="forgot-password">forgot your password?</button>
+                </div>
+
+                <span class="login-error" id="login-error"></span>
+                <button type="submit" class="auth-btn-check" id="login-btn">check</button>
+            </form>
+
+            <button type="button" class="auth-btn-create" id="go-register-btn">create your lista account</button>
+
+            <div class="auth-or"><span>or</span></div>
+
+            <div class="auth-methods">
+                <button type="button" class="auth-method" id="vk-login-btn" aria-label="Войти через VK">
+                <span class="auth-method-icon" style="background:#0077FF">
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M13.16 18.99c.6 0 .86-.4.85-.92-.03-1.92.71-2.95 2.06-1.6 1.49 1.49 1.8 2.52 3.6 2.52h3.2c.81 0 1.13-.26 1.13-.67 0-.86-1.42-2.39-2.63-3.5-1.68-1.57-1.76-1.6-.31-3.49 1.8-2.34 4.16-5.34 2.07-5.34h-3.98c-.77 0-.83.44-1.1 1.08-.99 2.35-2.89 5.39-3.6 4.92-.75-.48-.4-2.4-.35-5.26.02-.75.01-1.27-1.14-1.54-.63-.14-1.24-.2-1.81-.2-2.27 0-3.84.95-2.95 1.12 1.57.29 1.42 3.69 1.05 5.16-.63 2.56-3.03-2.02-4.03-4.3-.24-.55-.32-.98-1.18-.98H1.66c-.49 0-.79.16-.79.52 0 .6 2.96 6.72 5.79 9.77 2.75 2.97 5.48 2.71 7.37 2.71z"/></svg>
+                </span>
+                    <span class="auth-method-label">VK</span>
+                </button>
+
+                <button type="button" class="auth-method" id="lista-login-btn" aria-label="Войти через listaID">
+                <span class="auth-method-icon" style="background:#000">
+                    <span class="auth-method-lista-letter">ℓ</span>
+                </span>
+                    <span class="auth-method-label">listaID</span>
+                </button>
+
+                <button type="button" class="auth-method" id="qr-login-btn" aria-label="Войти по QR">
+                <span class="auth-method-icon" style="background:#1c1c1e">
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
+                </span>
+                    <span class="auth-method-label">QR</span>
+                </button>
+            </div>
+
+            <button type="button" class="auth-lang" id="lang-selector">
+                <span class="auth-lang-flag" id="current-lang-flag">🇬🇧</span>
+                <span class="auth-lang-name" id="current-lang-name">English</span>
+                <span class="auth-lang-chevron">▾</span>
+            </button>
+        </div>
+
+        <!-- Desktop bottom-right legal -->
+        <div class="auth-legal" aria-label="Legal">
+            <a href="/policy">Privacy Policy</a>
+            <a href="/terms">Terms of Use</a>
+            <a href="/cookies">Cookies</a>
+            <a href="/rules">Server Status</a>
         </div>
     </section>
 
