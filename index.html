@@ -896,7 +896,7 @@
     <div class="sys-notif-list" id="sys-notif-list"></div>
 </div>
 
-<script type="module" src="js/main.js?v=20"></script>
+<script type="module" src="js/main.js?v=21"></script>
 <script>
     /* ============================================================
        РЕЗЕРВНЫЕ ОБРАБОТЧИКИ — регистрация и язык
@@ -912,24 +912,14 @@
                 window.__ltOpenRegisterLanding();
                 return;
             }
-            /* Ручной фолбэк — просто показываем экран регистрации */
-            var app = document.getElementById('app');
-            if(app){
-                app.querySelectorAll('.screen').forEach(function(s){ s.classList.add('hidden'); });
-            }
-            var mainApp = document.getElementById('main-app');
-            if(mainApp) mainApp.classList.add('hidden');
-            var rl = document.getElementById('register-landing-screen');
-            if(rl) rl.classList.remove('hidden');
-            document.documentElement.style.background = '';
-            document.body.style.background = '';
-            var stage = document.getElementById('logo-stage');
-            if(stage){
-                stage.classList.remove('animate');
-                void stage.offsetWidth;
-                requestAnimationFrame(function(){ stage.classList.add('animate'); });
+            /* Фолбэк — включаем режим регистрации прямо на экране входа */
+            var auth = document.getElementById('auth-screen');
+            if(auth){
+                auth.classList.remove('hidden');
+                auth.classList.add('is-register');
             }
         }
+
 
         function handleLang(e){
             e.preventDefault();

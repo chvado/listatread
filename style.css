@@ -6307,3 +6307,156 @@ html[data-theme="dark"] .date-select { color: #fff; background: rgba(120,120,128
     color: var(--text-secondary); line-height: 1;
     transform: translateY(-3px);
 }
+
+/* ============================================================
+   AUTH — ДОПОЛНИТЕЛЬНЫЕ АНИМАЦИИ
+============================================================ */
+
+/* Логотип — импульс при переключении режима */
+@keyframes logoPulse {
+    0%   { transform: scale(1)    rotate(0deg); }
+    40%  { transform: scale(1.12) rotate(-6deg); }
+    70%  { transform: scale(1.06) rotate(3deg); }
+    100% { transform: scale(1)    rotate(0deg); }
+}
+
+/* Заголовок — плавная смена (уже есть, но ускорим и добавим пружину) */
+.auth-title > span {
+    transition: opacity .45s cubic-bezier(.4,0,.2,1),
+    transform .45s cubic-bezier(.34,1.56,.64,1) !important;
+}
+
+/* Поля в режиме регистрации — поочерёдное появление */
+@keyframes fieldSlideIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+#auth-screen.is-register .auth-view-register .auth-input {
+    animation: fieldSlideIn .5s cubic-bezier(.4,0,.2,1) .08s both;
+}
+#auth-screen.is-register .auth-view-register .auth-hint {
+    animation: fieldSlideIn .5s cubic-bezier(.4,0,.2,1) .16s both;
+}
+#auth-screen.is-register .auth-view-register .auth-consent {
+    animation: fieldSlideIn .5s cubic-bezier(.4,0,.2,1) .24s both;
+}
+
+/* Пульс галочки согласия */
+@keyframes consentPulse {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+.auth-consent input[type="checkbox"]:checked {
+    animation: consentPulse .35s cubic-bezier(.34,1.56,.64,1);
+}
+
+/* Email-инпут — мягкое свечение при фокусе */
+@keyframes inputGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(10,132,255,.35); }
+    50%      { box-shadow: 0 0 0 8px rgba(10,132,255,.08); }
+}
+#reg-email:focus {
+    animation: inputGlow 2.2s ease-in-out infinite;
+}
+
+/* Бренд — лёгкая вспышка при переключении */
+@keyframes brandFlash {
+    0%, 100% { filter: brightness(1)   drop-shadow(0 0 0 transparent); }
+    50%      { filter: brightness(1.3) drop-shadow(0 0 12px rgba(255,255,255,.35)); }
+}
+#auth-screen.is-register .auth-brand-text {
+    animation: brandFlash .6s ease-out;
+}
+
+/* Кнопка «Продолжить» — шёлковый шиммер */
+@keyframes btnShimmer {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    50%      { box-shadow: 0 0 22px 3px rgba(255,255,255,.18); }
+}
+#go-continue-btn {
+    animation: btnShimmer 2.6s ease-in-out infinite;
+}
+
+/* Кнопка «Регистрация» — мягкое дыхание обводки */
+@keyframes borderBreath {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(230,57,70,0); }
+    50%      { box-shadow: 0 0 16px 0 rgba(230,57,70,.35); }
+}
+#go-register-btn {
+    animation: borderBreath 2.2s ease-in-out infinite;
+}
+
+/* Соцсети — плавный стаггер при скрытии */
+.auth-slot-socials .auth-method {
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1),
+    opacity .25s ease !important;
+}
+.auth-slot-socials .auth-method:nth-child(1) { transition-delay: 0s;    }
+.auth-slot-socials .auth-method:nth-child(2) { transition-delay: .05s; }
+.auth-slot-socials .auth-method:nth-child(3) { transition-delay: .1s;  }
+
+/* Кнопка «назад» — живое нажатие */
+.auth-btn-back {
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1),
+    background .15s ease !important;
+}
+.auth-btn-back:active {
+    transform: scale(.95) !important;
+}
+.auth-btn-back:hover {
+    background: #f0f0f0 !important;
+    box-shadow: 0 6px 20px rgba(0,0,0,.25);
+}
+
+/* Заголовок «добро пожаловать / создать аккаунт» — приподнимаем */
+#auth-screen.is-register .auth-title {
+    letter-spacing: .2px;
+}
+
+/* Плавный переход CTA-кнопок */
+.auth-cta-main {
+    position: relative;
+    min-height: 44px;
+}
+
+/* CTA-1 (Регистрация / Продолжить) — красивая пружина */
+#go-register-btn,
+#go-continue-btn {
+    transition: opacity .45s cubic-bezier(.4,0,.2,1),
+    transform .5s cubic-bezier(.34,1.4,.64,1),
+    background .15s ease,
+    color .15s ease !important;
+}
+
+/* Заголовок при регистрации — лёгкий подъём */
+#auth-screen.is-register .auth-title-register {
+    text-shadow: 0 0 18px rgba(255,255,255,.15);
+}
+
+/* Email-инпут в режиме регистрации — крупнее, с градиентной обводкой */
+#auth-screen.is-register #reg-email {
+    height: 48px;
+    font-size: 15px;
+}
+
+/* Согласие — плавный фон */
+.auth-consent {
+    transition: background .25s ease, transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.auth-consent:hover {
+    background: rgba(255,255,255,.08);
+}
+.auth-consent:active {
+    transform: scale(.99);
+}
+
+/* Логотип — плавный переход цвета */
+.auth-logo-circle {
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1),
+    box-shadow .3s ease;
+}
+#auth-screen.is-register .auth-logo-circle {
+    box-shadow: 0 0 0 1px rgba(255,255,255,.25),
+    0 12px 40px rgba(255,255,255,.18);
+}

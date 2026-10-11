@@ -6268,12 +6268,22 @@ try {
 window.__ltShowScreen = showScreen;
 window.__ltOpenLangModal = openLangModal;
 window.__ltOpenRegisterLanding = function(){
-    showScreen('register-landing');
-    const stage = document.getElementById('logo-stage');
-    if(stage){
-        stage.classList.remove('animate');
-        void stage.offsetWidth;
-        requestAnimationFrame(() => stage.classList.add('animate'));
+    const auth = document.getElementById('auth-screen');
+    if(auth){
+        auth.classList.remove('hidden');
+        auth.classList.add('is-register');
+        /* лёгкий импульс логотипа */
+        const logo = auth.querySelector('.auth-logo-circle');
+        if(logo){
+            logo.style.animation = 'none';
+            void logo.offsetWidth;
+            logo.style.animation = 'logoPulse .6s cubic-bezier(.34,1.56,.64,1)';
+        }
+        /* автофокус на email */
+        setTimeout(() => {
+            const emailInput = document.getElementById('reg-email');
+            if(emailInput) emailInput.focus({ preventScroll: true });
+        }, 400);
     }
 };
 
