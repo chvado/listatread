@@ -932,153 +932,81 @@ document.querySelectorAll('.auth-topnav-link').forEach(btn => {
 
 
 /* ============================================================
-   REGISTRATION
+   REGISTRATION — обновлённая версия под новый HTML
 ============================================================ */
 function startRegistration(){
-    state.step = 1
-    state.data = { email:'', password:'', fullName:'', username:'', avatarFile:null, bio:'', socials:{}, gender:null, region:null, birthday:null, method:'skip', codeVerified:false, settings:{}, status:'default', theme:'light' }
-    clearRegForm(); updateStep(); showScreen('register')
+    /* Регистрация теперь живёт внутри #auth-screen (is-register) */
+    const authScreen = $('auth-screen');
+    if (authScreen){
+        authScreen.classList.remove('hidden');
+        authScreen.classList.add('is-register');
+    }
 }
+
 function clearRegForm(){
-    $('reg-email').value=''; $('reg-name').value=''; $('reg-password').value=''; $('reg-username').value=''
-    $('reg-bio').value=''; $('reg-birthday').value=''; $('reg-code').value=''; $('reg-avatar').value=''
-    $('avatar-img').hidden = true; $('avatar-img').src = ''; $('avatar-placeholder').hidden = false
-    $('code-checkmark').classList.remove('show'); $('verify-code-btn').classList.remove('hidden')
-    document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'))
-    document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'))
-    document.querySelector('.method-btn[data-method="skip"]')?.classList.add('active')
-    document.querySelectorAll('.social-input input').forEach(i => i.value = '')
-    document.querySelectorAll('.social-input').forEach(el => el.classList.remove('valid', 'invalid'))
-    document.querySelectorAll('.pwd-check').forEach(el => el.classList.remove('pass'))
-    document.querySelectorAll('.reg-consent input').forEach(cb => { cb.checked = false; cb.closest('.reg-consent')?.classList.remove('checked') })
-    const rf = $('region-flag'), rn = $('region-name'); if(rf) rf.textContent = '◯'; if(rn) rn.textContent = 'Выберите регион'
-    updateMethodInfo('skip')
-    applyTheme('light')
-}
-function updateStep(){
-    document.querySelectorAll('.reg-step').forEach(step => {
-        const n = +step.dataset.step
-        step.classList.remove('active', 'prev')
-        if(n === state.step) step.classList.add('active'); else if(n < state.step) step.classList.add('prev')
-    })
-    $('steps-bar').style.width = (state.step / state.totalSteps * 100) + '%'
-    if(state.step >= 5) $('reg-back-arrow').classList.add('hidden'); else $('reg-back-arrow').classList.remove('hidden')
-    const btn = $('reg-next')
-    btn.disabled = state.step === 5 && !state.data.codeVerified
-    btn.textContent = state.step === state.totalSteps ? 'Завершить' : 'Продолжить'
-    $('reg-error').textContent = ''
-    if(state.step === 5) $('verify-email-display').textContent = state.data.email
-}
-$('reg-back-arrow').addEventListener('click', () => { if(state.step > 1){ state.step--; updateStep() } else showScreen('register-landing') })
+    const setVal = (id, v) => { const el = $(id); if (el) el.value = v; };
+    setVal('reg-email', '');
+    setVal('reg-name', '');
+    setVal('reg-username', '');
+    setVal('reg-bio', '');
+    setVal('reg-avatar', '');
 
-function validateStep(){
-    const errEl = $('reg-error'); errEl.textContent = ''
-    const s = state.step
-    if(s === 1){
-        const email = $('reg-email').value.trim()
-        if(!/^[^\s@]{2,}@gmail\.com$/i.test(email)){
-            errEl.textContent = 'Почта должна быть вида name@gmail.com (минимум 2 символа до @)'
-            return false
-        }
-        const terms = document.querySelector('[data-consent="terms"]')?.checked
-        const privacy = document.querySelector('[data-consent="privacy"]')?.checked
-        const rules = document.querySelector('[data-consent="rules"]')?.checked
-        if(!terms || !privacy || !rules){
-            errEl.textContent = 'Подтвердите все три пункта ниже'
-            return false
-        }
-        state.data.email = email
-    }
-    if(s === 2){
-        const name = $('reg-name').value.trim()
-        if(name.length < 2){ errEl.textContent = 'Введите имя'; return false }
-        if(!state.data.gender){ errEl.textContent = 'Выберите пол'; return false }
-        if(!state.data.region){ errEl.textContent = 'Выберите регион'; return false }
-        const bd = $('reg-birthday').value
-        if(!bd){ errEl.textContent = 'Укажите дату'; return false }
-        const year = parseInt(bd.split('-')[0], 10)
-        if(year < 1950 || year > 2014){ errEl.textContent = 'Дата должна быть между 1950 и 2014'; return false }
-        state.data.fullName = name; state.data.birthday = bd
-    }
-    if(s === 3){
-        const pwd = $('reg-password').value
-        if(!isPasswordStrong(pwd)){ errEl.textContent = 'Пароль не соответствует требованиям'; return false }
-        if(/[А-Яа-яЁё]/.test(pwd)){ errEl.textContent = 'Пароль должен содержать только латинские буквы'; return false }
-        if(pwd.length > 30){ errEl.textContent = 'Пароль не должен превышать 30 символов'; return false }
-        state.data.password = pwd
-        state.data.method = document.querySelector('.method-btn.active')?.dataset.method || 'skip'
-    }
-    if(s === 4){
-        const u = $('reg-username').value.trim().toLowerCase().replace(/[^a-z0-9_.]/g, '')
-        $('reg-username').value = u
-        if(u.length < 3){ errEl.textContent = 'Никнейм минимум 3 символа'; return false }
-        state.data.username = u; state.data.bio = $('reg-bio').value.trim()
-        const socials = {}; let invalid = false
-        document.querySelectorAll('.social-input').forEach(wrap => {
-            const key = wrap.dataset.key, val = wrap.querySelector('input').value.trim()
-            if(!val) return
-            const meta = SOCIALS.find(x => x.key === key)
-            if(key === 'email'){ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) invalid = true; else socials[key] = val }
-            else { if(!val.toLowerCase().includes(meta.domain)) invalid = true; else socials[key] = val }
-        })
-        if(invalid){ errEl.textContent = 'Проверьте ссылки'; return false }
-        state.data.socials = socials
-    }
-    if(s === 5 && !state.data.codeVerified){ errEl.textContent = 'Сначала нажмите Проверить'; return false }
-    return true
+    const img = $('avatar-img');
+    if (img){ img.hidden = true; img.src = ''; }
+    const ph = $('avatar-placeholder');
+    if (ph) ph.hidden = false;
+
+    const cm = $('code-checkmark');
+    if (cm) cm.classList.remove('show');
+    const vc = $('verify-code-btn');
+    if (vc) vc.classList.remove('hidden');
+
+    const rf = $('region-flag'), rn = $('region-name');
+    if (rf) rf.textContent = '◯';
+    if (rn) rn.textContent = 'Выберите регион';
+
+    document.querySelectorAll('.code-box').forEach(b => {
+        b.value = ''; b.classList.remove('filled');
+    });
+    const consent = $('reg-consent');
+    if (consent) consent.checked = false;
+
+    applyTheme('light');
 }
 
-$('reg-next').addEventListener('click', async () => {
-    if(!validateStep()) return
+/* Заглушки — старые функции, используются ниже в коде */
+function updateStep(){ /* no-op — вся логика шагов теперь в auth-блоке */ }
+function validateStep(){ return true; }
 
-    if(state.step === 1){
-        const btn = $('reg-next'); btn.disabled = true; btn.textContent = 'Проверяем...'
-        try {
-            const { error } = await supabase.auth.signInWithOtp({
-                email: state.data.email,
-                options: { shouldCreateUser: false }
-            })
-            const emailTaken = error && !/not found|User.*not.*exist|Signups not allowed|Signups not allowed for otp/i.test(error.message || '')
-            if(emailTaken || !error){
-                btn.disabled = false; btn.textContent = 'Продолжить'
-                $('reg-error').textContent = 'Этот email уже зарегистрирован'
-                return
-            }
-        } catch(e){ console.warn('[email check]', e.message) }
-        btn.disabled = false; btn.textContent = 'Продолжить'
+/* ---- Безопасные обработчики (только для существующих элементов) ---- */
+
+/* Аватар */
+$('reg-avatar')?.addEventListener('change', e => {
+    const f = e.target.files?.[0]; if (!f) return;
+    state.data.avatarFile = f;
+    const img = $('avatar-img');
+    const ph = $('avatar-placeholder');
+    if (img){ img.src = URL.createObjectURL(f); img.hidden = false; }
+    if (ph){ ph.hidden = true; }
+});
+
+/* Кнопка Назад (стрелка в топбаре register-экрана) */
+$('reg-back-arrow')?.addEventListener('click', () => {
+    if (typeof window.__ltRegGoBack === 'function') {
+        window.__ltRegGoBack();
+    } else {
+        /* Фолбэк — возврат на auth */
+        const reg = $('register-screen');
+        const auth = $('auth-screen');
+        if (reg) reg.classList.add('hidden');
+        if (auth) auth.classList.remove('hidden');
     }
+});
 
-    if(state.step === 4){
-        const btn = $('reg-next'); btn.disabled = true
-        try {
-            const { data } = await withTimeout(supabase.from('profiles').select('id').eq('username', state.data.username).maybeSingle(), 8000, 'check')
-            if(data){ btn.disabled = false; $('reg-error').textContent = 'Никнейм занят'; return }
-        } catch {}
-        btn.disabled = false
-    }
-    if(state.step === state.totalSteps){ await completeRegistration(); return }
-    state.step++; updateStep()
-})
+/* Кнопка "Завершить" на шаге 5 не обрабатывается здесь —
+   её ловит общий обработчик в конце main.js */
 
-$('gender-row').addEventListener('click', e => {
-    const btn = e.target.closest('.gender-btn'); if(!btn) return
-    document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'))
-    btn.classList.add('active'); state.data.gender = btn.dataset.gender
-})
-
-const METHOD_INFO = {
-    skip:   { icon:'⏭', text:'Пропустить' },
-    faceid: { icon:'◉', text:'FaceID — временно недоступно' },
-    qr:     { icon:'▢', text:'QR — временно недоступно' },
-    gid:    { icon:'⬡', text:'GID — временно недоступно' }
-}
-function updateMethodInfo(m){ const i = METHOD_INFO[m] || METHOD_INFO.skip; $('method-info').innerHTML = `<div class="method-info-icon">${i.icon}</div><div class="method-info-text">${i.text}</div>` }
-$('method-slider').addEventListener('click', e => {
-    const btn = e.target.closest('.method-btn'); if(!btn) return
-    document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'))
-    btn.classList.add('active'); state.data.method = btn.dataset.method; updateMethodInfo(btn.dataset.method)
-})
-
+/* ---- Проверки пароля — оставляем как утилиту, но никуда не вешаем ---- */
 function checkPasswordRules(p){
     return {
         length:  p.length >= 8,
@@ -1088,48 +1016,15 @@ function checkPasswordRules(p){
         digit:   /[0-9]/.test(p),
         special: /[^A-Za-z0-9]/.test(p),
         latin:   !/[А-Яа-яЁё]/.test(p)
-    }
+    };
 }
-function isPasswordStrong(p){ return Object.values(checkPasswordRules(p)).every(v => v) }
-$('reg-password').addEventListener('input', () => {
-    const r = checkPasswordRules($('reg-password').value)
-    document.querySelectorAll('.pwd-check').forEach(el => el.classList.toggle('pass', !!r[el.dataset.rule]))
-})
-$('reg-avatar').addEventListener('change', e => {
-    const f = e.target.files?.[0]; if(!f) return
-    state.data.avatarFile = f
-    $('avatar-img').src = URL.createObjectURL(f); $('avatar-img').hidden = false; $('avatar-placeholder').hidden = true
-})
-$('reg-code').addEventListener('input', () => {
-    if(state.data.codeVerified){ state.data.codeVerified = false; $('code-checkmark').classList.remove('show'); $('verify-code-btn').classList.remove('hidden'); $('reg-next').disabled = true }
-    $('reg-error').textContent = ''
-})
-$('verify-code-btn').addEventListener('click', () => {
-    if($('reg-code').value.trim().length < 4){ $('reg-error').textContent = 'Введите код'; return }
-    state.data.codeVerified = true; $('code-checkmark').classList.add('show'); $('verify-code-btn').classList.add('hidden'); $('reg-next').disabled = false
-})
+function isPasswordStrong(p){ return Object.values(checkPasswordRules(p)).every(v => v); }
 
-/* Чекбоксы согласий */
-document.querySelectorAll('.reg-consent input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', () => {
-        cb.closest('.reg-consent')?.classList.toggle('checked', cb.checked)
-    })
-})
+/* ---- Соцсети — рендер отключён, поля убраны из HTML ---- */
+function renderSocialInputs(){ /* no-op */ }
 
-function renderSocialInputs(){
-    const box = $('social-inputs')
-    box.innerHTML = SOCIALS.map(s => `<div class="social-input" data-key="${s.key}"><div class="social-input-icon" style="background:${s.bg}">${s.svg}</div><input type="text" placeholder="${s.placeholder}"></div>`).join('')
-    box.querySelectorAll('.social-input').forEach(wrap => {
-        const input = wrap.querySelector('input'), key = wrap.dataset.key
-        input.addEventListener('input', () => {
-            const v = input.value.trim(), meta = SOCIALS.find(x => x.key === key)
-            wrap.classList.remove('valid', 'invalid'); if(!v) return
-            if(key === 'email') wrap.classList.add(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? 'valid' : 'invalid')
-            else wrap.classList.add(v.toLowerCase().includes(meta.domain) ? 'valid' : 'invalid')
-        })
-    })
-}
-renderSocialInputs()
+/* ---- Запуск очистки при старте ---- */
+clearRegForm();
 
 /* ============================================================
    PART 2 / 3 — uploadAvatar() → renderProfileTracks()
@@ -6667,12 +6562,22 @@ window.__ltOpenRegisterLanding = function(){
     }, true);
 
     // ---------- Кнопка "Назад" в register ----------
-    $('reg-back-arrow')?.addEventListener('click', e => {
+    // ---------- Кнопка "Назад" в register ----------
+    window.__ltRegGoBack = function(){
         if (currentStep > 1){
-            e.preventDefault();
-            e.stopImmediatePropagation();
             goToRegStep(currentStep - 1);
+        } else {
+            // С шага 1 — назад на auth
+            exitRegisterMode();
+            document.getElementById('register-screen')?.classList.add('hidden');
+            document.getElementById('auth-screen')?.classList.remove('hidden');
         }
+    };
+
+    $('reg-back-arrow')?.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (typeof window.__ltRegGoBack === 'function') window.__ltRegGoBack();
     }, true);
 
 })();
