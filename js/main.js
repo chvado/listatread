@@ -636,6 +636,11 @@ function showScreen(name){
     Object.values(screens).forEach(s => s?.classList.add('hidden'))
     mainApp.classList.add('hidden')
 
+    /* Фон страницы под auth-экранами — чёрный */
+    const darkNames = ['auth','karsq','reset'];
+    document.documentElement.style.background = darkNames.includes(name) ? '#0a0a0a' : '';
+    document.body.style.background = darkNames.includes(name) ? '#0a0a0a' : '';
+
     if(name === 'main'){
         mainApp.classList.remove('hidden')
         setPageBg()
@@ -893,15 +898,7 @@ document.querySelectorAll('.auth-topnav-link').forEach(btn => {
 
 
 /* Desktop-навигация сверху */
-document.querySelectorAll('.auth-topnav-link').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const k = btn.dataset.nav
-        if(k === 'about')    showToast('info', 'listatread.online · v16', { icon:'ℓ' })
-        if(k === 'terms')    window.open('/terms', '_blank')
-        if(k === 'support')  window.open('mailto:chvadoorigins@gmail.com')
-        if(k === 'download') showToast('info', 'Мобильное приложение — скоро', { icon:'📱' })
-    })
-})
+
 
 /* ============================================================
    REGISTRATION
