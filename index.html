@@ -900,6 +900,122 @@
 </div>
 
 <script type="module" src="js/main.js?v=19"></script>
+<script>
+    /* ============================================================
+       РЕЗЕРВНЫЕ ОБРАБОТЧИКИ — регистрация и язык
+       Работают независимо от main.js
+    ============================================================ */
+    (function(){
+        'use strict';
 
+        function handleRegister(e){
+            e.preventDefault();
+            e.stopPropagation();
+            if(typeof window.__ltOpenRegisterLanding === 'function'){
+                window.__ltOpenRegisterLanding();
+                return;
+            }
+            /* Ручной фолбэк — просто показываем экран регистрации */
+            var app = document.getElementById('app');
+            if(app){
+                app.querySelectorAll('.screen').forEach(function(s){ s.classList.add('hidden'); });
+            }
+            var mainApp = document.getElementById('main-app');
+            if(mainApp) mainApp.classList.add('hidden');
+            var rl = document.getElementById('register-landing-screen');
+            if(rl) rl.classList.remove('hidden');
+            document.documentElement.style.background = '';
+            document.body.style.background = '';
+            var stage = document.getElementById('logo-stage');
+            if(stage){
+                stage.classList.remove('animate');
+                void stage.offsetWidth;
+                requestAnimationFrame(function(){ stage.classList.add('animate'); });
+            }
+        }
+
+        function handleLang(e){
+            e.preventDefault();
+            e.stopPropagation();
+            if(typeof window.__ltOpenLangModal === 'function'){
+                window.__ltOpenLangModal();
+                return;
+            }
+            /* Ручной фолбэк — открываем модалку языка */
+            var lm = document.getElementById('lang-modal');
+            if(lm) lm.classList.remove('hidden');
+            /* Если список пустой — заполним базовыми языками */
+            var list = document.getElementById('lang-list');
+            if(list && !list.children.length){
+                var LANGS = [
+                    {code:'en',flag:'🇬🇧',name:'English'},
+                    {code:'ru',flag:'🇷🇺',name:'Русский'},
+                    {code:'zh',flag:'🇨🇳',name:'中文'},
+                    {code:'es',flag:'🇪🇸',name:'Español'},
+                    {code:'fr',flag:'🇫🇷',name:'Français'},
+                    {code:'de',flag:'🇩🇪',name:'Deutsch'},
+                    {code:'it',flag:'🇮🇹',name:'Italiano'},
+                    {code:'pt',flag:'🇵🇹',name:'Português'},
+                    {code:'ja',flag:'🇯🇵',name:'日本語'},
+                    {code:'ko',flag:'🇰🇷',name:'한국어'}
+                ];
+                var current = (function(){ try { return localStorage.getItem('lang') || 'ru'; } catch(e){ return 'ru'; } })();
+                list.innerHTML = LANGS.map(function(l){
+                    return '<button class="lang-item ' + (l.code===current?'active':'') + '" data-code="' + l.code + '">' +
+                        '<span class="lang-item-flag">' + l.flag + '</span>' +
+                        '<span>' + l.name + '</span>' +
+                        (l.code===current ? '<span class="lang-item-check">✓</span>' : '') +
+                        '</button>';
+                }).join('');
+                list.querySelectorAll('.lang-item').forEach(function(b){
+                    b.addEventListener('click', function(){
+                        var code = b.dataset.code;
+                        try { localStorage.setItem('lang', code); } catch(e){}
+                        var sel = LANGS.filter(function(x){ return x.code === code; })[0];
+                        var f = document.getElementById('current-lang-flag');
+                        var n = document.getElementById('current-lang-name');
+                        if(sel){
+                            if(f) f.textContent = sel.flag;
+                            if(n) n.textContent = sel.name;
+                        }
+                        document.getElementById('lang-modal').classList.add('hidden');
+                    });
+                });
+            }
+        }
+
+        function bind(){
+            var regBtn = document.getElementById('go-register-btn');
+            if(regBtn && !regBtn.__ltFallback){
+                regBtn.__ltFallback = true;
+                /* capture:true — чтобы фолбэк срабатывал даже при stopPropagation */
+                regBtn.addEventListener('click', handleRegister, true);
+            }
+            var langBtn = document.getElementById('lang-selector');
+            if(langBtn && !langBtn.__ltFallback){
+                langBtn.__ltFallback = true;
+                langBtn.addEventListener('click', handleLang, true);
+            }
+            /* Кнопка «Назад» в модалке языка — фолбэк для бэкдропа */
+            var langBackdrop = document.getElementById('lang-backdrop');
+            if(langBackdrop && !langBackdrop.__ltFallback){
+                langBackdrop.__ltFallback = true;
+                langBackdrop.addEventListener('click', function(){
+                    document.getElementById('lang-modal')?.classList.add('hidden');
+                });
+            }
+        }
+
+        if(document.readyState === 'loading'){
+            document.addEventListener('DOMContentLoaded', bind);
+        } else {
+            bind();
+        }
+        /* Пере-биндим на случай, если DOM появился позже */
+        setTimeout(bind, 400);
+        setTimeout(bind, 1200);
+        setTimeout(bind, 2500);
+    })();
+</script>
 </body>
 </html>

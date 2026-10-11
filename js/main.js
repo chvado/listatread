@@ -6375,3 +6375,18 @@ try {
         .on('postgres_changes', { event:'*', schema:'public', table:'lives' }, () => { if(state.screen === 'home') renderLiveNow(); if(state.screen === 'inbox') renderEventsScreen() })
     ch.subscribe((s, err) => { if(err) console.warn('[realtime]', err.message) })
 } catch(e){ console.warn('[realtime] disabled:', e.message) }
+
+/* ============================================================
+   ЭКСПОРТ ФУНКЦИЙ НА WINDOW — для inline-фолбэка в HTML
+============================================================ */
+window.__ltShowScreen = showScreen;
+window.__ltOpenLangModal = openLangModal;
+window.__ltOpenRegisterLanding = function(){
+    showScreen('register-landing');
+    const stage = document.getElementById('logo-stage');
+    if(stage){
+        stage.classList.remove('animate');
+        void stage.offsetWidth;
+        requestAnimationFrame(() => stage.classList.add('animate'));
+    }
+};

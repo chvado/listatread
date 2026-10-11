@@ -5219,3 +5219,78 @@ html.bg-dark, html.bg-dark body, html.bg-dark .app{
 .code-modal       { z-index:1020 !important }
 .share-modal      { z-index:1030 !important }
 .qr-modal         { z-index:1040 !important }
+
+/* ============================================================
+   ФИКС: hover-увеличение всех кнопок + регистрация без красного вспыхивания
+============================================================ */
+
+/* Единая плавная анимация для всех интерактивных элементов */
+button,
+.btn-primary,
+.btn-gray,
+a.auth-topnav-link,
+a.auth-legal,
+.auth-btn-primary,
+.auth-btn-danger {
+    transition:
+            transform .18s cubic-bezier(.34,1.56,.64,1),
+            background .15s ease,
+            color .15s ease,
+            border-color .15s ease,
+            opacity .15s ease !important;
+}
+
+/* УВЕЛИЧЕНИЕ ПРИ НАВЕДЕНИИ — все кнопки, кроме мелких иконок в навигации */
+button:not(:disabled):not(.nav-btn):not(.topbar-btn):not(.bottom-nav *):hover,
+.btn-primary:not(:disabled):hover,
+.btn-gray:not(:disabled):hover {
+    transform: scale(1.05);
+}
+
+/* Лёгкое уменьшение при нажатии — тактильный отклик */
+button:not(:disabled):active {
+    transform: scale(.97);
+}
+
+/* Убираем фокусные обводки и синие/красные outline */
+button:focus,
+button:focus-visible,
+.auth-btn-danger:focus,
+.auth-btn-danger:focus-visible,
+.auth-btn-primary:focus,
+.auth-btn-primary:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* ------- РЕГИСТРАЦИЯ: убираем красное вспыхивание ------- */
+.auth-btn-danger {
+    background: transparent !important;
+    color: #e63946 !important;
+    border: 1.5px solid #e63946 !important;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.auth-btn-danger:hover {
+    background: transparent !important;
+    color: #e63946 !important;
+    border-color: #e63946 !important;
+    transform: scale(1.05) !important;
+}
+.auth-btn-danger:active {
+    background: transparent !important;
+    color: #e63946 !important;
+    border-color: #e63946 !important;
+    transform: scale(.97) !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+/* На всякий случай — отключаем синюю/серую подсветку у всех авторизационных кнопок */
+.auth-btn-primary,
+.auth-method,
+.auth-lang,
+.auth-forgot {
+    -webkit-tap-highlight-color: transparent !important;
+}
