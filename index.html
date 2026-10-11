@@ -46,10 +46,10 @@
 <div class="app" id="app">
 
     <!-- AUTH -->
+    <!-- AUTH -->
     <section id="auth-screen" class="screen hidden">
         <div class="auth-feed-bg" id="auth-feed-bg"></div>
 
-        <!-- Только на компе: верхнее меню -->
         <nav class="auth-topnav" aria-label="Меню">
             <button type="button" class="auth-topnav-link" data-nav="about">О компании ></button>
             <button type="button" class="auth-topnav-link" data-nav="terms">Условия ></button>
@@ -57,58 +57,81 @@
             <button type="button" class="auth-topnav-link" data-nav="download">listatread приложение ></button>
         </nav>
 
-        <!-- Центральный блок -->
         <div class="auth-content">
             <div class="auth-brand-row">
                 <div class="auth-logo-circle">ℓ</div>
                 <div class="auth-brand-text">listatread</div>
             </div>
 
-            <h2 class="auth-title">добро пожаловать</h2>
+            <h2 class="auth-title">
+                <span class="auth-title-login">добро пожаловать</span>
+                <span class="auth-title-register">создать аккаунт</span>
+            </h2>
 
-            <form id="login-form" class="auth-form" novalidate>
-                <input type="text" id="login-email" class="auth-input"
-                       placeholder="Username, listaID, телефон или почта"
-                       required autocomplete="username">
+            <!-- LOGIN VIEW -->
+            <div class="auth-view auth-view-login">
+                <form id="login-form" class="auth-form" novalidate>
+                    <input type="text" id="login-email" class="auth-input"
+                           placeholder="Username, listaID, телефон или почта"
+                           required autocomplete="username">
+                    <div class="auth-field">
+                        <input type="password" id="login-password" class="auth-input"
+                               placeholder="Пароль" required autocomplete="current-password">
+                        <button type="button" class="auth-pwd-toggle" data-target="login-password">👁</button>
+                    </div>
+                    <button type="button" class="auth-forgot" id="forgot-password">Забыли пароль?</button>
+                    <span class="login-error" id="login-error"></span>
+                    <button type="submit" class="auth-btn-primary" id="login-btn">Войти</button>
+                </form>
+            </div>
 
-                <div class="auth-field">
-                    <input type="password" id="login-password" class="auth-input"
-                           placeholder="Пароль" required autocomplete="current-password">
-                    <button type="button" class="auth-pwd-toggle" data-target="login-password">👁</button>
+            <!-- REGISTER VIEW -->
+            <div class="auth-view auth-view-register">
+                <div class="auth-form">
+                    <input type="email" id="reg-email" class="auth-input"
+                           placeholder="Введите email" maxlength="60" autocomplete="email">
+                    <div class="auth-hint">
+                        используйте <b>gmail</b>, <b>outlook</b>, <b>yandex</b>, <b>mail.ru</b>, <b>yahoo</b>
+                    </div>
+                    <label class="auth-consent">
+                        <input type="checkbox" id="reg-consent">
+                        <span>продолжая, я принимаю <a href="#" data-doc="terms">условия пользования</a>, <a href="#" data-doc="privacy">политику конфиденциальности</a> и соглашаюсь с <a href="#" data-doc="cookies">политикой файлов Cookie</a> и <a href="#" data-doc="rules">правилами сообщества</a></span>
+                    </label>
                 </div>
+            </div>
 
-                <button type="button" class="auth-forgot" id="forgot-password">Забыли пароль?</button>
+            <!-- SOCIALS SLOT -->
+            <div class="auth-slot auth-slot-socials">
+                <div class="auth-or auth-login-only"><span>или</span></div>
+                <div class="auth-methods auth-login-only">
+                    <button type="button" class="auth-method" id="vk-login-btn" aria-label="Войти через VK">
+                    <span class="auth-method-icon" style="background:#0077FF">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M13.16 18.99c.6 0 .86-.4.85-.92-.03-1.92.71-2.95 2.06-1.6 1.49 1.49 1.8 2.52 3.6 2.52h3.2c.81 0 1.13-.26 1.13-.67 0-.86-1.42-2.39-2.63-3.5-1.68-1.57-1.76-1.6-.31-3.49 1.8-2.34 4.16-5.34 2.07-5.34h-3.98c-.77 0-.83.44-1.1 1.08-.99 2.35-2.89 5.39-3.6 4.92-.75-.48-.4-2.4-.35-5.26.02-.75.01-1.27-1.14-1.54-.63-.14-1.24-.2-1.81-.2-2.27 0-3.84.95-2.95 1.12 1.57.29 1.42 3.69 1.05 5.16-.63 2.56-3.03-2.02-4.03-4.3-.24-.55-.32-.98-1.18-.98H1.66c-.49 0-.79.16-.79.52 0 .6 2.96 6.72 5.79 9.77 2.75 2.97 5.48 2.71 7.37 2.71z"/></svg>
+                    </span>
+                        <span class="auth-method-label">VK</span>
+                    </button>
+                    <button type="button" class="auth-method" id="lista-login-btn" aria-label="Войти через listaID">
+                    <span class="auth-method-icon" style="background:#e11515">
+                        <span class="auth-method-lista-letter">ℓ⦿</span>
+                    </span>
+                        <span class="auth-method-label">listaID</span>
+                    </button>
+                    <button type="button" class="auth-method" id="qr-login-btn" aria-label="Войти по QR">
+                    <span class="auth-method-icon" style="background:#4a4a4b">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
+                    </span>
+                        <span class="auth-method-label">QR</span>
+                    </button>
+                </div>
+                <button type="button" class="auth-btn-back auth-register-only" id="go-back-btn">Назад</button>
+            </div>
 
-                <span class="login-error" id="login-error"></span>
-
-                <button type="submit" class="auth-btn-primary" id="login-btn">Войти</button>
-            </form>
-
-            <!-- Кнопка регистрации ВНЕ формы -->
-            <button type="button" class="auth-btn-danger" id="go-register-btn">Регистрация ></button>
-
-            <div class="auth-or"><span>или</span></div>
-
-            <div class="auth-methods">
-                <button type="button" class="auth-method" id="vk-login-btn" aria-label="Войти через VK">
-                <span class="auth-method-icon" style="background:#0077FF">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M13.16 18.99c.6 0 .86-.4.85-.92-.03-1.92.71-2.95 2.06-1.6 1.49 1.49 1.8 2.52 3.6 2.52h3.2c.81 0 1.13-.26 1.13-.67 0-.86-1.42-2.39-2.63-3.5-1.68-1.57-1.76-1.6-.31-3.49 1.8-2.34 4.16-5.34 2.07-5.34h-3.98c-.77 0-.83.44-1.1 1.08-.99 2.35-2.89 5.39-3.6 4.92-.75-.48-.4-2.4-.35-5.26.02-.75.01-1.27-1.14-1.54-.63-.14-1.24-.2-1.81-.2-2.27 0-3.84.95-2.95 1.12 1.57.29 1.42 3.69 1.05 5.16-.63 2.56-3.03-2.02-4.03-4.3-.24-.55-.32-.98-1.18-.98H1.66c-.49 0-.79.16-.79.52 0 .6 2.96 6.72 5.79 9.77 2.75 2.97 5.48 2.71 7.37 2.71z"/></svg>
-                </span>
-                    <span class="auth-method-label">VK</span>
-                </button>
-
-                <button type="button" class="auth-method" id="lista-login-btn" aria-label="Войти через listaID">
-                <span class="auth-method-icon" style="background:#e11515">
-                    <span class="auth-method-lista-letter">ℓ⦿</span>
-                </span>
-                    <span class="auth-method-label">listaID</span>
-                </button>
-
-                <button type="button" class="auth-method" id="qr-login-btn" aria-label="Войти по QR">
-                <span class="auth-method-icon" style="background:#4a4a4b">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
-                </span>
-                    <span class="auth-method-label">QR</span>
+            <!-- MAIN SLOT -->
+            <div class="auth-slot auth-slot-main">
+                <button type="button" class="auth-btn-danger auth-login-only" id="go-register-btn">Регистрация ></button>
+                <button type="button" class="auth-btn-continue auth-register-only" id="go-continue-btn">
+                    <span class="btn-label">Продолжить ></span>
+                    <span class="btn-loader hidden"><span class="btn-spinner"></span>Проверяем</span>
                 </button>
             </div>
 
@@ -119,7 +142,6 @@
             </button>
         </div>
 
-        <!-- Только на компе: нижнее право -->
         <div class="auth-legal" aria-label="Право">
             <a href="/policy">Политика конфиденциальности</a>
             <a href="/terms">Пользовательское соглашение</a>
@@ -162,116 +184,83 @@
     </section>
 
     <!-- REGISTER -->
+    <!-- REGISTER -->
     <section id="register-screen" class="screen hidden">
-        <div class="reg-topbar"><button class="reg-back-btn" id="reg-back-arrow">‹</button><span class="reg-topbar-title">Регистрация</span><span class="reg-topbar-spacer"></span></div>
+        <div class="reg-topbar">
+            <button class="reg-back-btn" id="reg-back-arrow">‹</button>
+            <span class="reg-topbar-title">Регистрация</span>
+            <span class="reg-topbar-spacer"></span>
+        </div>
         <div class="steps-progress"><div class="steps-progress-bar" id="steps-bar"></div></div>
         <div class="steps-viewport">
 
-            <!-- STEP 1 -->
+            <!-- STEP 1: Дата рождения -->
             <div class="reg-step active" data-step="1">
-                <h2>Ваш email</h2>
-                <p class="step-hint">Отправим код подтверждения</p>
-                <div class="step-emoji">📧</div>
-                <input type="email" id="reg-email" placeholder="name@example.com" maxlength="60" autocomplete="email">
-                <div class="step-note info">Используйте почту Gmail (name@gmail.com)</div>
-
-                <div class="reg-consent-list">
-                    <label class="reg-consent">
-                        <input type="checkbox" data-consent="terms">
-                        <span>Я ознакомился и принимаю условия пользования</span>
-                    </label>
-                    <label class="reg-consent">
-                        <input type="checkbox" data-consent="privacy">
-                        <span>Я даю согласие на обработку моих персональных данных согласно политике конфиденциальности</span>
-                    </label>
-                    <label class="reg-consent">
-                        <input type="checkbox" data-consent="rules">
-                        <span>Я ознакомился с правилами сообщества listatread и понимаю возможные последствия после их нарушения</span>
-                    </label>
+                <h2>Дата рождения</h2>
+                <p class="step-hint">Подберём контент для вашей возрастной группы</p>
+                <div class="step-emoji">🎂</div>
+                <div class="date-picker">
+                    <select id="reg-birth-day" class="date-select"></select>
+                    <select id="reg-birth-month" class="date-select"></select>
+                    <select id="reg-birth-year" class="date-select"></select>
                 </div>
             </div>
 
-            <!-- STEP 2 -->
+            <!-- STEP 2: Имя + Регион -->
             <div class="reg-step" data-step="2">
-                <h2>Немного о вас</h2>
+                <h2>О вас</h2>
                 <div class="step-emoji">👤</div>
                 <label class="step-label">Имя</label>
-                <input type="text" id="reg-name" placeholder="Имя или псевдоним">
-
-                <label class="step-label">Пол</label>
-                <div class="gender-row" id="gender-row">
-                    <button class="gender-btn" data-gender="male">Мужской</button>
-                    <button class="gender-btn" data-gender="female">Женский</button>
-                    <button class="gender-btn" data-gender="none">Не говорить</button>
-                </div>
-                <div class="step-note">Мы собираем эту информацию для аналитики контента и настройки вашей ленты рекомендаций. Эта информация не будет в открытом доступе</div>
-
+                <input type="text" id="reg-name" placeholder="Имя или псевдоним" maxlength="40">
                 <label class="step-label">Регион</label>
-                <button class="picker-btn" id="region-btn"><span class="picker-flag" id="region-flag">◯</span><span class="picker-name" id="region-name">Выберите</span><span class="chevron">▾</span></button>
-                <div class="step-note">Мы будем рекомендовать больше постов с выбранного региона, а также для входа в live chat region</div>
-
-                <label class="step-label">Дата рождения</label>
-                <input type="date" id="reg-birthday" min="1950-01-01" max="2014-12-31">
-                <div class="step-note">Мы подберём нужный контент для вашей возрастной группы</div>
+                <button class="picker-btn" id="region-btn">
+                    <span class="picker-flag" id="region-flag">◯</span>
+                    <span class="picker-name" id="region-name">Выберите</span>
+                    <span class="chevron">▾</span>
+                </button>
             </div>
 
-            <!-- STEP 3 -->
+            <!-- STEP 3: Подтверждение почты -->
             <div class="reg-step" data-step="3">
-                <h2>Методы входа</h2>
-                <div class="step-emoji">🔑</div>
-                <label class="step-label">Пароль</label>
-                <div class="pwd-wrap"><input type="password" id="reg-password" placeholder="Пароль"><button type="button" class="pwd-toggle" data-target="reg-password">👁</button></div>
-                <div class="password-checks">
-                    <div class="pwd-check" data-rule="length"><span class="pwd-dot"></span>8+ символов</div>
-                    <div class="pwd-check" data-rule="upper"><span class="pwd-dot"></span>Заглавная</div>
-                    <div class="pwd-check" data-rule="lower"><span class="pwd-dot"></span>Строчная</div>
-                    <div class="pwd-check" data-rule="digit"><span class="pwd-dot"></span>Цифра</div>
-                    <div class="pwd-check" data-rule="special"><span class="pwd-dot"></span>Спецсимвол</div>
-                    <div class="pwd-check" data-rule="latin"><span class="pwd-dot"></span>Только латиница</div>
+                <h2>Подтвердите email</h2>
+                <p class="step-hint">Код отправлен на <strong id="verify-email-display"></strong></p>
+                <div class="step-emoji">✉️</div>
+                <div class="code-boxes" id="code-boxes">
+                    <input type="text" maxlength="1" inputmode="numeric" class="code-box">
+                    <input type="text" maxlength="1" inputmode="numeric" class="code-box">
+                    <input type="text" maxlength="1" inputmode="numeric" class="code-box">
+                    <input type="text" maxlength="1" inputmode="numeric" class="code-box">
+                    <input type="text" maxlength="1" inputmode="numeric" class="code-box">
                 </div>
-                <label class="step-label">Дополнительный метод</label>
-                <div class="method-slider" id="method-slider">
-                    <button class="method-btn active" data-method="skip">Пропустить</button>
-                    <button class="method-btn" data-method="faceid">FaceID</button>
-                    <button class="method-btn" data-method="qr">QR</button>
-                    <button class="method-btn" data-method="gid">GID</button>
+                <div class="code-checkmark" id="code-checkmark">
+                    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" class="code-circle-path"/><path d="M30 52 L45 67 L72 38" class="code-check-path"/></svg>
                 </div>
-                <div class="method-info" id="method-info"></div>
+                <button class="btn-primary" id="verify-code-btn">Подтвердить</button>
             </div>
 
-            <!-- STEP 4 -->
+            <!-- STEP 4: Оформление -->
             <div class="reg-step" data-step="4">
                 <h2>Оформите профиль</h2>
                 <div class="step-emoji">🎨</div>
                 <label class="avatar-upload" for="reg-avatar">
-                    <div class="avatar-preview"><img id="avatar-img" hidden alt=""><span id="avatar-placeholder">+</span></div>
+                    <div class="avatar-preview">
+                        <img id="avatar-img" hidden alt="">
+                        <span id="avatar-placeholder">+</span>
+                    </div>
                     <input type="file" id="reg-avatar" accept="image/*" hidden>
-                    <span class="avatar-hint">Выберите аватарку</span>
+                    <span class="avatar-hint">Нажмите, чтобы выбрать</span>
                 </label>
                 <label class="step-label">Никнейм</label>
-                <div class="input-prefix"><span>@</span><input type="text" id="reg-username" placeholder="username" maxlength="20"></div>
+                <div class="input-prefix">
+                    <span>@</span>
+                    <input type="text" id="reg-username" placeholder="username" maxlength="20">
+                </div>
                 <label class="step-label">Описание</label>
                 <textarea id="reg-bio" placeholder="Добавьте описание" maxlength="150" rows="3"></textarea>
-
-                <label class="step-label">Ссылки на соцсети</label>
-                <div class="step-note">Ваши подписчики могут увидеть ваши другие соцсети на вашей странице.</div>
-                <div class="social-inputs" id="social-inputs"></div>
             </div>
 
-            <!-- STEP 5 -->
+            <!-- STEP 5: Почти готово -->
             <div class="reg-step" data-step="5">
-                <h2>Подтвердите email</h2>
-                <p class="step-hint">Код отправлен на <strong id="verify-email-display"></strong></p>
-                <div class="step-emoji">✉️</div>
-                <input type="text" id="reg-code" maxlength="6" inputmode="numeric">
-                <div class="code-checkmark" id="code-checkmark">
-                    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" class="code-circle-path"/><path d="M30 52 L45 67 L72 38" class="code-check-path"/></svg>
-                </div>
-                <button class="btn-primary" id="verify-code-btn">Проверить</button>
-            </div>
-
-            <!-- STEP 6 -->
-            <div class="reg-step" data-step="6">
                 <h2>Почти готово</h2>
                 <div class="step-emoji">⭐</div>
                 <div class="settings-group">
@@ -295,9 +284,15 @@
             </div>
 
         </div>
-        <div class="reg-nav"><button id="reg-next" class="btn-primary">Продолжить</button></div>
+        <div class="reg-nav">
+            <button id="reg-next" class="btn-primary">
+                <span class="btn-label">Продолжить</span>
+                <span class="btn-loader hidden"><span class="btn-spinner btn-spinner-light"></span>Проверяем</span>
+            </button>
+        </div>
         <p id="reg-error" class="error"></p>
     </section>
+
 
     <!-- LOADING -->
     <section id="loading-screen" class="screen hidden">

@@ -6390,3 +6390,289 @@ window.__ltOpenRegisterLanding = function(){
         requestAnimationFrame(() => stage.classList.add('animate'));
     }
 };
+
+
+/* ============================================================
+   НОВАЯ ЛОГИКА ВХОДА И РЕГИСТРАЦИИ
+============================================================ */
+;(function(){
+    'use strict';
+
+    const $ = id => document.getElementById(id);
+    const qs = sel => document.querySelector(sel);
+    const qsa = sel => document.querySelectorAll(sel);
+
+    const authScreen = $('auth-screen');
+    const goRegisterBtn = $('go-register-btn');
+    const goBackBtn = $('go-back-btn');
+    const goContinueBtn = $('go-continue-btn');
+    const regEmailInput = $('reg-email');
+    const regConsent = $('reg-consent');
+
+    if (!authScreen || !goRegisterBtn) return;
+
+    // ---------- Переключение режима ----------
+    function enterRegisterMode(){
+        authScreen.classList.add('is-register');
+    }
+    function exitRegisterMode(){
+        authScreen.classList.remove('is-register');
+        const err = $('auth-error');
+        if (err) err.textContent = '';
+    }
+
+    // Клик по "Регистрация >" — перехватываем (capture), чтобы не сработал старый обработчик
+    goRegisterBtn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        enterRegisterMode();
+    }, true);
+
+    goBackBtn?.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        exitRegisterMode();
+    });
+
+    // ---------- Кнопка "Продолжить >" ----------
+    goContinueBtn?.addEventListener('click', async e => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const email = regEmailInput.value.trim();
+        if (!email) return showAuthError('Введите email');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAuthError('Некорректный email');
+        if (!regConsent.checked) return showAuthError('Подтвердите согласие');
+
+        setBtnLoading(goContinueBtn, true);
+        await new Promise(r => setTimeout(r, 700));
+        setBtnLoading(goContinueBtn, false);
+
+        // сохраняем email
+        window.__ltRegEmail = email;
+        const emailDisplay = $('verify-email-display');
+        if (emailDisplay) emailDisplay.textContent = email;
+
+        // переключаем экраны
+        authScreen.classList.add('hidden');
+        $('register-screen').classList.remove('hidden');
+
+        goToRegStep(1);
+    });
+
+    function showAuthError(msg){
+        let el = $('auth-error');
+        if (!el){
+            el = document.createElement('div');
+            el.id = 'auth-error';
+            el.style.color = '#ff5c5c';
+            el.style.fontSize = '12px';
+            el.style.textAlign = 'center';
+            el.style.marginTop = '6px';
+            el.style.transition = 'opacity .25s';
+            authScreen.querySelector('.auth-slot-main').insertBefore(
+                el, authScreen.querySelector('.auth-slot-main').firstChild
+            );
+        }
+        el.textContent = msg;
+        el.style.opacity = '1';
+        clearTimeout(el._t);
+        el._t = setTimeout(() => { el.textContent = ''; }, 3200);
+    }
+
+    function setBtnLoading(btn, loading){
+        const lbl = btn.querySelector('.btn-label');
+        const ldr = btn.querySelector('.btn-loader');
+        if (!lbl || !ldr) return;
+        if (loading){
+            lbl.classList.add('hidden');
+            ldr.classList.remove('hidden');
+            btn.disabled = true;
+        } else {
+            lbl.classList.remove('hidden');
+            ldr.classList.add('hidden');
+            btn.disabled = false;
+        }
+    }
+
+    // ---------- Шаги регистрации ----------
+    let currentStep = 1;
+    const totalSteps = 5;
+
+    function goToRegStep(n){
+        currentStep = n;
+        qsa('.reg-step').forEach(step => {
+            const num = +step.dataset.step;
+            step.classList.remove('active', 'prev');
+            if (num === n) step.classList.add('active');
+            else if (num < n) step.classList.add('prev');
+        });
+
+        const bar = $('steps-bar');
+        if (bar) bar.style.width = (n / totalSteps * 100) + '%';
+
+        const backBtn = $('reg-back-arrow');
+        if (backBtn){
+            backBtn.style.visibility = (n >= 3) ? 'hidden' : 'visible';
+        }
+
+        const nextBtn = $('reg-next');
+        if (nextBtn){
+            const lbl = nextBtn.querySelector('.btn-label');
+            if (lbl) lbl.textContent = (n === totalSteps) ? 'Завершить' : 'Продолжить';
+        }
+
+        const err = $('reg-error');
+        if (err) err.textContent = '';
+
+        if (n === 1) initDatePicker();
+        if (n === 3) setTimeout(() => qs('.code-box')?.focus(), 200);
+    }
+
+    function initDatePicker(){
+        const daySel = $('reg-birth-day');
+        const monSel = $('reg-birth-month');
+        const yrSel = $('reg-birth-year');
+        if (!daySel || daySel.dataset.filled === '1') return;
+        daySel.dataset.filled = '1';
+
+        let html = '<option value="">День</option>';
+        for (let i = 1; i <= 31; i++) html += `<option value="${i}">${i}</option>`;
+        daySel.innerHTML = html;
+
+        const months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+        let mHtml = '<option value="">Месяц</option>';
+        months.forEach((m, i) => { mHtml += `<option value="${i+1}">${m}</option>`; });
+        monSel.innerHTML = mHtml;
+
+        let yHtml = '<option value="">Год</option>';
+        for (let y = 2014; y >= 1950; y--) yHtml += `<option value="${y}">${y}</option>`;
+        yrSel.innerHTML = yHtml;
+    }
+
+    // ---------- Код подтверждения ----------
+    const boxes = [...qsa('.code-box')];
+    boxes.forEach((box, idx) => {
+        box.addEventListener('input', () => {
+            box.value = box.value.replace(/\D/g, '').slice(0, 1);
+            box.classList.toggle('filled', !!box.value);
+            if (box.value && idx < boxes.length - 1) boxes[idx + 1].focus();
+            checkCodeComplete();
+        });
+        box.addEventListener('keydown', e => {
+            if (e.key === 'Backspace' && !box.value && idx > 0) boxes[idx - 1].focus();
+        });
+        box.addEventListener('paste', e => {
+            e.preventDefault();
+            const p = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 5);
+            [...p].forEach((ch, i) => { if (boxes[i]) { boxes[i].value = ch; boxes[i].classList.add('filled'); } });
+            const next = boxes.findIndex(b => !b.value);
+            (next >= 0 ? boxes[next] : boxes[boxes.length - 1]).focus();
+            checkCodeComplete();
+        });
+    });
+
+    function checkCodeComplete(){
+        const all = boxes.every(b => b.value);
+        if (all){
+            $('code-checkmark')?.classList.add('show');
+            $('verify-code-btn')?.classList.add('hidden');
+        } else {
+            $('code-checkmark')?.classList.remove('show');
+            $('verify-code-btn')?.classList.remove('hidden');
+        }
+    }
+
+    $('verify-code-btn')?.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const all = boxes.every(b => b.value);
+        if (!all){
+            const err = $('reg-error');
+            if (err){ err.textContent = 'Введите все 5 цифр'; setTimeout(() => err.textContent = '', 2500); }
+            return;
+        }
+        // заглушка — просто показываем галочку
+        $('code-checkmark')?.classList.add('show');
+        $('verify-code-btn')?.classList.add('hidden');
+    });
+
+    // ---------- Кнопка "Продолжить / Завершить" ----------
+    $('reg-next')?.addEventListener('click', async e => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const err = $('reg-error');
+        if (err) err.textContent = '';
+
+        if (!validateStep()) return;
+
+        const btn = $('reg-next');
+        setBtnLoading(btn, true);
+        await new Promise(r => setTimeout(r, 600));
+        setBtnLoading(btn, false);
+
+        if (currentStep === totalSteps){
+            finishReg();
+        } else {
+            goToRegStep(currentStep + 1);
+        }
+    }, true);
+
+    function validateStep(){
+        const err = $('reg-error');
+        const show = m => { if (err) err.textContent = m; };
+
+        if (currentStep === 1){
+            const d = $('reg-birth-day').value;
+            const m = $('reg-birth-month').value;
+            const y = $('reg-birth-year').value;
+            if (!d || !m || !y) return show('Выберите дату рождения'), false;
+        }
+        if (currentStep === 2){
+            const name = $('reg-name').value.trim();
+            if (name.length < 2) return show('Введите имя'), false;
+            if (!window.__ltRegRegion) return show('Выберите регион'), false;
+        }
+        if (currentStep === 4){
+            const u = $('reg-username').value.trim().toLowerCase().replace(/[^a-z0-9_.]/g, '');
+            $('reg-username').value = u;
+            if (u.length < 3) return show('Никнейм минимум 3 символа'), false;
+        }
+        return true;
+    }
+
+    async function finishReg(){
+        // Итоговая заглушка — можно здесь вызвать реальный signUp
+        const btn = $('reg-next');
+        setBtnLoading(btn, true);
+        try {
+            // TODO: реальный signUp
+            await new Promise(r => setTimeout(r, 900));
+            if (typeof window.showToast === 'function'){
+                window.showToast('success', 'Аккаунт создан', { icon: '✓' });
+            }
+        } catch(e){
+            const err = $('reg-error');
+            if (err) err.textContent = 'Ошибка: ' + e.message;
+        } finally {
+            setBtnLoading(btn, false);
+        }
+    }
+
+    // ---------- Регион — сохраняем в window ----------
+    document.addEventListener('click', e => {
+        const item = e.target.closest('#region-list .lang-item');
+        if (item) window.__ltRegRegion = item.dataset.code;
+    }, true);
+
+    // ---------- Кнопка "Назад" в register ----------
+    $('reg-back-arrow')?.addEventListener('click', e => {
+        if (currentStep > 1){
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            goToRegStep(currentStep - 1);
+        }
+    }, true);
+
+})();
