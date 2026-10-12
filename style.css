@@ -6544,3 +6544,59 @@ html[data-theme="dark"] .date-select { color: #fff; background: rgba(120,120,128
     gap: 10px;
     width: 100%;
 }
+
+/* ============================================================
+   ФИКС: кнопки в auth-режиме не должны сжиматься
+============================================================ */
+#auth-screen.is-register .auth-btn-continue,
+#auth-screen.is-register .auth-btn-back,
+#auth-screen.is-register .auth-btn-danger {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 0 16px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* View регистрации — растягиваем, но НЕ сжимаем вложенные кнопки */
+#auth-screen.is-register .auth-view-register {
+    display: flex !important;
+    max-height: none !important;
+    height: auto !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+    padding: 0 !important;
+}
+
+/* Обычное состояние формы входа — не сжимаем */
+#auth-screen:not(.is-register) .auth-view-login {
+    display: flex !important;
+    max-height: none !important;
+    height: auto !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+    padding: 0 !important;
+}
+
+/* Скрытое состояние — обнуляем, но НЕ трогаем padding у кнопок */
+#auth-screen:not(.is-register) .auth-view-register,
+#auth-screen:not(.is-register) .auth-register-only,
+#auth-screen.is-register .auth-view-login,
+#auth-screen.is-register .auth-login-only,
+#auth-screen.is-register .auth-socials-block {
+    display: none !important;
+    max-height: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+}

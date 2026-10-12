@@ -878,9 +878,8 @@ $('reset-lt-btn')?.addEventListener('click', () => {
 })
 
 
+// register-landing-screen — отключён, оставлен на всякий случай
 $('reg-landing-back')?.addEventListener('click', () => showScreen('auth'))
-$('create-account-btn')?.addEventListener('click', () => startRegistration())
-$('find-account-btn')?.addEventListener('click', () => alert('В разработке'))
 
 
 
@@ -6218,17 +6217,27 @@ document.getElementById('share-track-download')?.addEventListener('click', async
    СТРАХОВКА — регистрация и язык через делегирование
 ============================================================ */
 document.addEventListener('click', (e) => {
-    // Регистрация
+    // Регистрация — просто включаем режим, БЕЗ karsq-экрана
     const reg = e.target.closest('#go-register-btn');
     if (reg){
         e.preventDefault();
         e.stopPropagation();
-        showScreen('register-landing');
-        const stage = document.getElementById('logo-stage');
-        if (stage){
-            stage.classList.remove('animate');
-            void stage.offsetWidth;
-            requestAnimationFrame(() => stage.classList.add('animate'));
+
+        const auth = document.getElementById('auth-screen');
+        if (auth){
+            auth.classList.remove('hidden');
+            auth.classList.add('is-register');
+            // Убираем на всякий случай karsq-экран
+            document.getElementById('register-landing-screen')?.classList.add('hidden');
+            const logo = auth.querySelector('.auth-logo-circle');
+            if (logo){
+                logo.style.animation = 'none';
+                void logo.offsetWidth;
+                logo.style.animation = 'logoPulse .6s cubic-bezier(.34,1.56,.64,1)';
+            }
+            setTimeout(() => {
+                document.getElementById('reg-email')?.focus({ preventScroll: true });
+            }, 400);
         }
         return;
     }
@@ -6241,10 +6250,30 @@ document.addEventListener('click', (e) => {
         if (lm) lm.classList.remove('hidden');
         return;
     }
-}, true);   // ← capture:true — срабатывает ПЕРВЫМ, до любых других
-/* ============================================================
-   СТАРТ
-============================================================ */
+}, true);
+/* --- Скрыть karsq-экран навсегда — он не используется --- */
+;(function killKarsqLanding(){
+    const kill = () => {
+        const el = document.getElementById('register-landing-screen');
+        if (el){
+            el.classList.add('hidden');
+            el.style.display = 'none';
+        }
+    };
+    kill();
+    // Наблюдаем за классом — если кто-то её снова покажет, скрываем
+    const observer = new MutationObserver(() => {
+        const el = document.getElementById('register-landing-screen');
+        if (el && !el.classList.contains('hidden')){
+            el.classList.add('hidden');
+            el.style.display = 'none';
+        }
+    });
+    const target = document.getElementById('register-landing-screen');
+    if (target){
+        observer.observe(target, { attributes: true, attributeFilter: ['class'] });
+    }
+})();
 boot()
 setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
