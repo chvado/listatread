@@ -13,7 +13,13 @@ import { loadPosts } from './feed.js'
 import { checkAdminStatus, ADMIN_STATE, showBlockedScreen, renderAdminReports, autoCloseOldReports } from './admin.js'
 import { openDirectTab, buildDirectScreen, openDirectChat } from './direct.js'
 import { initPush } from './push.js'
-
+/* Защита от падения на отсутствующих элементах */
+window.addEventListener('error', (e) => {
+    if (e.message && e.message.includes('is not an object')){
+        console.warn('[safe-guard] ignored:', e.message)
+        e.preventDefault()
+    }
+}, true)
 /* ============================================================
    SVG-ИКОНКИ
 ============================================================ */
@@ -1080,18 +1086,31 @@ $('lang-selector').addEventListener('click', openLangModal)
 $('lang-backdrop').addEventListener('click', closeLangModal)
 
 function renderRegionList(){
-    regionList.innerHTML = COUNTRIES.map(c => `<button class="lang-item ${state.data.region === c.code ? 'active' : ''}" data-code="${c.code}"><span class="lang-item-flag">${c.flag}</span><span>${c.name}</span>${state.data.region === c.code ? '<span class="lang-item-check">✓</span>' : ''}</button>`).join('')
+    if(!regionList) return
+    regionList.innerHTML = COUNTRIES.map(c =>
+        `<button class="lang-item ${state.data.region === c.code ? 'active' : ''}" data-code="${c.code}">
+            <span class="lang-item-flag">${c.flag}</span>
+            <span>${c.name}</span>
+            ${state.data.region === c.code ? '<span class="lang-item-check">✓</span>' : ''}
+        </button>`
+    ).join('')
     regionList.querySelectorAll('.lang-item').forEach(b => b.addEventListener('click', () => {
         const c = COUNTRIES.find(x => x.code === b.dataset.code); if(!c) return
         state.data.region = c.code
-        $('region-flag').textContent = c.flag; $('region-name').textContent = c.name
+        // Обновляем и старую кнопку (если есть), и новую
+        const rf = $('region-flag'); if(rf) rf.textContent = c.flag
+        const rn = $('region-name'); if(rn) rn.textContent = c.name
+        const nrf = $('reg-region-flag'); if(nrf) nrf.textContent = c.flag
+        const nrn = $('reg-region-name'); if(nrn) nrn.textContent = c.name
+        window.__ltRegRegion = c.code
         closeRegionModal()
     }))
 }
 function openRegionModal(){ renderRegionList(); regionModal.classList.remove('hidden') }
 function closeRegionModal(){ regionModal.classList.add('hidden') }
-$('region-btn').addEventListener('click', openRegionModal)
-$('region-backdrop').addEventListener('click', closeRegionModal)
+// Кнопка региона в новой форме регистрации — защищённый вызов
+$('reg-region-btn')?.addEventListener('click', openRegionModal)
+$('region-backdrop')?.addEventListener('click', closeRegionModal)
 renderLangList()
 
 /* ============================================================
