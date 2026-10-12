@@ -326,3 +326,254 @@
     display: none !important;
     pointer-events: none !important;
 }
+
+/* ============================================================
+   FINAL FIX PACK
+============================================================ */
+
+/* --- 1. AUTH: кнопки одного размера с инпутами --- */
+#auth-screen .auth-btn-primary,
+#auth-screen .auth-btn-danger,
+#auth-screen .auth-btn-continue,
+#auth-screen .auth-btn-back {
+    display: inline-flex !important;
+    flex: 0 0 auto !important;
+    align-self: stretch !important;
+    width: 100% !important;
+    max-width: 340px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+    font-size: 14.5px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    border-radius: 12px !important;
+    margin: 0 auto 10px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    flex-shrink: 0 !important;
+}
+#auth-screen .auth-cta-main,
+#auth-screen .auth-cta-socials {
+    width: 100% !important;
+    max-width: 340px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+}
+
+/* --- 2. ACTIONSHEET: центрирование без translateX-скачка --- */
+#actionsheet {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 480px !important;
+    transform: translateY(100%) !important;
+    transition: transform .32s cubic-bezier(.32,.72,.24,1) !important;
+    z-index: 9001 !important;
+}
+#actionsheet.open {
+    transform: translateY(0) !important;
+}
+.prioriti-sheet {
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 auto !important;
+    transform: translateY(100%) !important;
+}
+.prioriti-sheet.open {
+    transform: translateY(0) !important;
+}
+
+/* --- 3. SHARE / REPORT / QR / CODE / LANG / BAN: реальный показ --- */
+#code-modal:not(.hidden),
+#lang-modal:not(.hidden),
+#region-modal:not(.hidden),
+#qr-modal:not(.hidden),
+#qr-scan-modal:not(.hidden),
+#share-modal:not(.hidden),
+#report-modal:not(.hidden),
+#ban-modal:not(.hidden) {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+}
+#code-modal:not(.hidden) > *,
+#lang-modal:not(.hidden) > *,
+#region-modal:not(.hidden) > *,
+#qr-modal:not(.hidden) > *,
+#qr-scan-modal:not(.hidden) > *,
+#share-modal:not(.hidden) > *,
+#report-modal:not(.hidden) > *,
+#ban-modal:not(.hidden) > * {
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+#code-modal.hidden,
+#lang-modal.hidden,
+#region-modal.hidden,
+#qr-modal.hidden,
+#qr-scan-modal.hidden,
+#share-modal.hidden,
+#report-modal.hidden,
+#ban-modal.hidden {
+    display: none !important;
+}
+
+/* Z-index эскалация */
+#lang-modal, #region-modal { z-index: 8800 !important; }
+#code-modal { z-index: 9100 !important; }
+#share-modal { z-index: 9200 !important; }
+#qr-modal { z-index: 9300 !important; }
+#qr-scan-modal { z-index: 9310 !important; }
+#report-modal { z-index: 9400 !important; }
+#ban-modal { z-index: 9500 !important; }
+#share-modal .share-backdrop { z-index: 9200 !important; }
+#share-modal .share-sheet    { z-index: 9201 !important; position: relative !important; }
+
+/* --- 4. AVATAR и ИМЯ в меню трёх точек --- */
+.feed-more-menu-avatar {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    background: linear-gradient(135deg, #ffd60a, #ff375f) !important;
+    color: #fff !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    flex-shrink: 0 !important;
+    vertical-align: middle !important;
+}
+.feed-more-menu-avatar img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 22px !important;
+    max-height: 22px !important;
+    object-fit: cover !important;
+    display: block !important;
+    border-radius: 50% !important;
+}
+.actionsheet-item > span { font-size: 15px !important; line-height: 1.4 !important; }
+
+/* --- 5. ФОН для айфонов (чёлка / safe-area) --- */
+/* ============================================================
+   SAFE-AREA / ЧЁЛКА: фон всегда совпадает с темой
+============================================================ */
+
+/* База — светлая */
+html {
+    background-color: #ffffff !important;
+    min-height: 100%;
+    overscroll-behavior-y: none;
+}
+html body {
+    background-color: #ffffff !important;
+}
+
+/* Тёмная тема — чёрный на всех уровнях */
+html[data-theme="dark"],
+html[data-theme="dark"] body,
+html.bg-dark,
+html.bg-dark body,
+html[data-theme="dark"] .app,
+html[data-theme="dark"] .main-app,
+html[data-theme="dark"] #auth-screen,
+html[data-theme="dark"] #loading-screen,
+html[data-theme="dark"] #boot-screen {
+    background-color: #000000 !important;
+}
+
+/* Мета-цвет для iOS Safari — тоже чёрный в тёмной теме */
+html[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+/* --- 6. Бренд-надписи: гарантированно видимы --- */
+.sidebar-brand,
+.topbar-logo,
+.topbar-logo-static,
+.loading-brand,
+.boot-brand,
+.auth-brand-text,
+.ds-brand,
+.ch-ig-name {
+    background: linear-gradient(135deg, #ffd60a 0%, #ff9f0a 40%, #ff375f 100%) !important;
+    background-size: 200% 200% !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    color: #ff375f !important;
+}
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+    .sidebar-brand,
+    .topbar-logo,
+    .topbar-logo-static,
+    .loading-brand,
+    .boot-brand,
+    .auth-brand-text,
+    .ds-brand,
+    .ch-ig-name {
+        background: none !important;
+        -webkit-text-fill-color: currentColor !important;
+        color: #ff375f !important;
+    }
+}
+/* Кружки с "ℓ" — НЕ трогать */
+.ds-brand-mark,
+.auth-logo-circle,
+.brand-circle,
+.brand-letter {
+    -webkit-text-fill-color: currentColor !important;
+    background-clip: border-box !important;
+    -webkit-background-clip: border-box !important;
+}
+
+/* --- 7. Инпут в QR-сканере --- */
+#qr-scan-input {
+    width: 100% !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+    font-size: 15px !important;
+    font-family: inherit !important;
+    border-radius: 12px !important;
+    margin: 0 0 12px !important;
+    background: var(--surface-2, rgba(120,120,128,.08)) !important;
+    border: 1.5px solid var(--border, rgba(0,0,0,.08)) !important;
+    color: var(--text, #000) !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+}
+html[data-theme="dark"] #qr-scan-input {
+    background: rgba(255,255,255,.08) !important;
+    border-color: rgba(255,255,255,.14) !important;
+    color: #fff !important;
+}
+#qr-scan-input::placeholder { color: var(--text-tertiary, rgba(0,0,0,.35)) !important; }
+#qr-scan-input:focus {
+    background: var(--bg, #fff) !important;
+    border-color: #0a84ff !important;
+    box-shadow: 0 0 0 4px rgba(10,132,255,.15) !important;
+}
+#qr-scan-modal .qr-scan-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    margin-top: 12px !important;
+}

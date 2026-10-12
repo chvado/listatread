@@ -219,27 +219,53 @@ function setPageBg(forceDark){
     if(meta) meta.setAttribute('content', dark ? '#000000' : '#ffffff')
 }
 function applyTheme(theme){
-    const t = theme === 'dark' ? 'dark' : 'light'
-    document.documentElement.setAttribute('data-theme', t)
+    const t = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+
     try { localStorage.setItem(THEME_KEY, t) } catch {}
 
-    const meta = document.querySelector('meta[name="theme-color"]')
-    if(meta) meta.setAttribute('content', t === 'dark' ? '#000000' : '#ffffff')
+    // 🔥 Мета theme-color — для iOS Safari (чёлка / статус-бар)
+    const bg = t === 'dark' ? '#000000' : '#ffffff';
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'theme-color');
+        document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', bg);
 
-    const icon = document.getElementById('theme-toggle-icon')
-    const text = document.getElementById('theme-toggle-text')
-    if(icon) icon.textContent = t === 'dark' ? '🌙' : '☀️'
-    if(text) text.textContent = t === 'dark' ? 'Тёмная' : 'Светлая'
+    // 🔥 Явно — на html и body, чтобы Safari не подставил белый под чёлкой
+    document.documentElement.style.backgroundColor = bg;
+    document.documentElement.style.colorScheme = t;
+    if (document.body) document.body.style.backgroundColor = bg;
 
-    const picker = document.getElementById('reg-theme-picker')
+    // Иконки/текст
+    const icon = document.getElementById('theme-toggle-icon');
+    const text = document.getElementById('theme-toggle-text');
+    if(icon) icon.textContent = t === 'dark' ? '🌙' : '☀️';
+    if(text) text.textContent = t === 'dark' ? 'Тёмная' : 'Светлая';
+
+    const picker = document.getElementById('reg-theme-picker');
     if(picker) picker.querySelectorAll('.auth-theme-choice').forEach(b =>
         b.classList.toggle('active', b.dataset.theme === t)
-    )
+    );
 
-    state.data.theme = t
+    state.data.theme = t;
+    setPageBg(t === 'dark');
+}
 
-    // ← ДОБАВЛЕНО: синхронизируем классы bg-* на <html>
-    setPageBg(t === 'dark')
+function setPageBg(forceDark){
+    const isDark = forceDark === true ||
+        document.documentElement.getAttribute('data-theme') === 'dark';
+    const bg = isDark ? '#000000' : '#ffffff';
+
+    document.documentElement.classList.toggle('bg-dark', isDark);
+    document.documentElement.classList.toggle('bg-light', !isDark);
+    document.documentElement.style.backgroundColor = bg;
+    if (document.body) document.body.style.backgroundColor = bg;
+
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute('content', bg);
 }
 function getTheme(){ try { return localStorage.getItem(THEME_KEY) || 'light' } catch { return 'light' } }
 function initTheme(){ applyTheme(getTheme()) }
@@ -6327,6 +6353,177 @@ document.addEventListener('click', (e) => {
         observer.observe(target, { attributes: true, attributeFilter: ['class'] });
     }
 })();
+/* ============================================================
+   FINAL FIX PACK (JS)
+============================================================ */
+
+/* --- A. Кнопки, лениво добавляющие .open (для модалок с emergency-hide) --- */
+(function ensureOpenClass(){
+    const pairs = [
+        ['code-modal',       'open'],
+        ['lang-modal',       'open'],
+        ['region-modal',     'open'],
+        ['qr-modal',         'open'],
+        ['qr-scan-modal',    'open'],
+        ['share-modal',      'open'],
+        ['report-modal',     'open'],
+        ['ban-modal',        'open'],
+        ['prioriti-sheet',   'open'],
+        ['prioriti-backdrop','open']
+    ];
+    const obs = new MutationObserver(() => {
+        pairs.forEach(([id, cls]) => {
+            const el = document.getElementById(id);
+            if(!el) return;
+            if(!el.classList.contains('hidden') && !el.classList.contains(cls)){
+                el.classList.add(cls);
+            }
+            if(el.classList.contains('hidden') && el.classList.contains(cls)){
+                el.classList.remove(cls);
+            }
+        });
+    });
+    pairs.forEach(([id]) => {
+        const el = document.getElementById(id);
+        if(el) obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+    });
+})();
+
+/* --- B. "По коду" на главной: чиним кликом с capture --- */
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#live-code-btn');
+    if(!btn) return;
+    // Если уже была реакция — не дублируем (проверяем по модалке)
+    const anyOpen = document.querySelector(
+        '#actionsheet:not(.hidden), #code-modal:not(.hidden), #qr-scan-modal:not(.hidden)'
+    );
+    if(anyOpen) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // Вызываем существующую функцию, если она доступна
+    if(typeof window.__ltOpenEnterMenu === 'function'){
+        window.__ltOpenEnterMenu();
+    } else {
+        // Фолбэк — напрямую открываем actionsheet
+        const as = document.getElementById('actionsheet');
+        const bd = document.getElementById('actionsheet-backdrop');
+        const title = document.getElementById('actionsheet-title');
+        const list = document.getElementById('actionsheet-list');
+        if(!as || !list) return;
+        if(title) title.textContent = 'Войти';
+        list.innerHTML = `
+            <button class="actionsheet-item" data-act="qr">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
+                <span>Вступить по QR</span>
+            </button>
+            <button class="actionsheet-item" data-act="channel">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg>
+                <span>Найти канал</span>
+            </button>
+            <button class="actionsheet-item" data-act="live">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2s4 3 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s-3 2-3 6a6 6 0 0 0 12 0c0-5-6-11-6-11z"/></svg>
+                <span>Вступить в LIVE</span>
+            </button>
+            <button class="actionsheet-item" data-act="profile">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+                <span>Найти профиль</span>
+            </button>`;
+        list.querySelectorAll('.actionsheet-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const act = item.dataset.act;
+                as.classList.remove('open');
+                as.classList.add('hidden');
+                bd?.classList.add('hidden');
+                if(act === 'qr' && typeof window.openQrScanModal === 'function') window.openQrScanModal();
+                if(act === 'live' || act === 'channel' || act === 'profile'){
+                    const m = document.getElementById('code-modal');
+                    if(!m) return;
+                    const t = m.querySelector('.code-modal-title');
+                    const s = m.querySelector('.code-modal-sub');
+                    const sb = document.getElementById('code-modal-submit');
+                    const inp = document.getElementById('code-modal-input');
+                    const map = {
+                        live:    { t:'Введите код LIVE',    s:'5 символов',           b:'Войти в LIVE' },
+                        channel: { t:'Введите код канала',  s:'5 символов',           b:'Войти в канал' },
+                        profile: { t:'Найти профиль',       s:'ID профиля или @ник',  b:'Найти' }
+                    };
+                    const cfg = map[act];
+                    if(t) t.textContent = cfg.t;
+                    if(s) s.textContent = cfg.s;
+                    if(sb) sb.textContent = cfg.b;
+                    if(inp){
+                        inp.value = '';
+                        inp.maxLength = act === 'profile' ? 30 : 5;
+                        inp.style.fontSize = act === 'profile' ? '22px' : '36px';
+                        inp.style.letterSpacing = act === 'profile' ? '2px' : '12px';
+                        inp.placeholder = act === 'profile' ? '@username или ID' : '';
+                    }
+                    m.classList.remove('hidden');
+                    m.classList.add('open');
+                    setTimeout(() => inp?.focus(), 100);
+                }
+            });
+        });
+        as.classList.remove('hidden');
+        as.classList.add('open');
+        bd?.classList.remove('hidden');
+        bd?.classList.add('open');
+    }
+}, true);
+
+/* --- C. Экспорт openEnterMenu на window, если его нет --- */
+try {
+    if(typeof openEnterMenu === 'function' && !window.__ltOpenEnterMenu){
+        window.__ltOpenEnterMenu = openEnterMenu;
+    }
+} catch(_) {}
+
+/* --- D. Подчищаем "залипшие" .open у модалок при загрузке --- */
+window.addEventListener('DOMContentLoaded', () => {
+    ['code-modal','lang-modal','region-modal','qr-modal','qr-scan-modal',
+        'share-modal','report-modal','ban-modal','prioriti-sheet']
+        .forEach(id => {
+            const el = document.getElementById(id);
+            if(el && el.classList.contains('hidden')) el.classList.remove('open');
+        });
+});
+
+/* --- E. Тема: при смене — обновляем фон и theme-color --- */
+(function syncThemeBg(){
+    const apply = () => {
+        const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const bg = dark ? '#000000' : '#ffffff';
+        document.documentElement.style.backgroundColor = bg;
+        document.body && (document.body.style.backgroundColor = bg);
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if(meta) meta.setAttribute('content', bg);
+        // iOS: явно обновим верхний край
+        window.scrollTo(window.scrollX, window.scrollY);
+    };
+    apply();
+    const obs = new MutationObserver(apply);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+
+/* --- F. Санитизация аватарки в меню трёх точек (если вдруг раздуется) --- */
+const _origShowActionSheet = window.showActionSheet;
+if(typeof _origShowActionSheet === 'function'){
+    window.showActionSheet = function(title, items){
+        _origShowActionSheet(title, items);
+        // Через тик — констрейним все аватарки в actionsheet
+        setTimeout(() => {
+            document.querySelectorAll('#actionsheet .feed-more-menu-avatar img').forEach(img => {
+                img.style.width = '22px';
+                img.style.height = '22px';
+                img.style.maxWidth = '22px';
+                img.style.maxHeight = '22px';
+                img.style.objectFit = 'cover';
+                img.style.borderRadius = '50%';
+            });
+        }, 0);
+    };
+}
+
 boot()
 setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
