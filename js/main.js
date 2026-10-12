@@ -220,15 +220,24 @@ function applyTheme(theme){
     const t = theme === 'dark' ? 'dark' : 'light'
     document.documentElement.setAttribute('data-theme', t)
     try { localStorage.setItem(THEME_KEY, t) } catch {}
+
     const meta = document.querySelector('meta[name="theme-color"]')
     if(meta) meta.setAttribute('content', t === 'dark' ? '#000000' : '#ffffff')
+
     const icon = document.getElementById('theme-toggle-icon')
     const text = document.getElementById('theme-toggle-text')
     if(icon) icon.textContent = t === 'dark' ? '🌙' : '☀️'
     if(text) text.textContent = t === 'dark' ? 'Тёмная' : 'Светлая'
+
     const picker = document.getElementById('reg-theme-picker')
-    if(picker) picker.querySelectorAll('.theme-choice').forEach(b => b.classList.toggle('active', b.dataset.theme === t))
+    if(picker) picker.querySelectorAll('.auth-theme-choice').forEach(b =>
+        b.classList.toggle('active', b.dataset.theme === t)
+    )
+
     state.data.theme = t
+
+    // ← ДОБАВЛЕНО: синхронизируем классы bg-* на <html>
+    setPageBg(t === 'dark')
 }
 function getTheme(){ try { return localStorage.getItem(THEME_KEY) || 'light' } catch { return 'light' } }
 function initTheme(){ applyTheme(getTheme()) }
@@ -5143,7 +5152,7 @@ async function boot(){
     Router.init()
 
     initTheme()
-    setPageBg(true)
+    setPageBg()
     const start = Date.now()
     try {
         const { data:{ session } } = await withTimeout(supabase.auth.getSession(), 6000, 'boot')
