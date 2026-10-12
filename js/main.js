@@ -3090,7 +3090,7 @@ $('save-general')?.addEventListener('click', async () => {
         const update = {
             full_name: $('set-name').value.trim(),
             username: newUsername,
-            bio: $('set-bio').value.trim()
+            bio: $('set-bio').value.trim(),
             theme: document.documentElement.getAttribute('data-theme') || 'light'  // ← ДОБАВИТЬ
         }
         if(newUsername && prof?.username !== newUsername){
