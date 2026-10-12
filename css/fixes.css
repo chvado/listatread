@@ -1,0 +1,327 @@
+/* ============================================================
+   listatread — fixes.css
+   1. Auth: PC = Mobile, только политика на десктопе
+   2. Язык всегда внизу
+   3. Actionsheet — по центру
+   4. Превью тем — большие прямоугольники
+   5. Единый размер кнопок
+============================================================ */
+
+/* ============================================================
+   1. AUTH: одинаково на PC и Mobile
+============================================================ */
+#auth-screen {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 100dvh !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+/* Контейнер формы — всегда 340px, как на текущем PC */
+#auth-screen .auth-content {
+    width: 100% !important;
+    max-width: 340px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    position: relative !important;
+    z-index: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+/* Верхние ссылки (О компании, Условия, Справка) — только на PC */
+.auth-topnav {
+    display: none !important;
+}
+@media (min-width: 769px) {
+    .auth-topnav {
+        display: flex !important;
+        position: fixed !important;
+        top: 20px !important;
+        right: 24px !important;
+        gap: 4px !important;
+        z-index: 50 !important;
+    }
+}
+
+/* Нижние ссылки политики — только на PC */
+.auth-legal {
+    display: none !important;
+}
+@media (min-width: 769px) {
+    .auth-legal {
+        display: flex !important;
+        gap: 4px !important;
+        flex-wrap: wrap !important;
+        justify-content: flex-end !important;
+        position: fixed !important;
+        bottom: 14px !important;
+        right: 20px !important;
+        z-index: 50 !important;
+        max-width: 70vw !important;
+    }
+}
+
+/* ============================================================
+   2. ЯЗЫК — всегда фиксирован внизу по центру
+============================================================ */
+#auth-screen #lang-selector,
+#auth-screen .auth-lang {
+    position: fixed !important;
+    bottom: 24px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 100 !important;
+    margin: 0 !important;
+    width: auto !important;
+    max-width: 340px !important;
+}
+@media (max-width: 480px) {
+    #auth-screen #lang-selector,
+    #auth-screen .auth-lang {
+        bottom: 16px !important;
+    }
+}
+
+/* ============================================================
+   3. ACTIONSHEET — по центру, как lang-modal
+============================================================ */
+#actionsheet-backdrop {
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+}
+
+#actionsheet {
+    position: fixed !important;
+    left: 50% !important;
+    bottom: 0 !important;
+    top: auto !important;
+    transform: translateX(-50%) translateY(100%) !important;
+    width: 100% !important;
+    max-width: 480px !important;
+    max-height: 85dvh !important;
+    overflow-y: auto !important;
+    border-radius: 24px 24px 0 0 !important;
+    background: var(--bg, #fff) !important;
+    color: var(--text, #000) !important;
+    box-shadow: 0 -12px 40px rgba(0,0,0,.25) !important;
+    transition: transform .32s cubic-bezier(.32,.72,.24,1) !important;
+    padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0)) !important;
+    z-index: 9001 !important;
+}
+
+#actionsheet.open {
+    transform: translateX(-50%) translateY(0) !important;
+}
+
+#actionsheet-backdrop {
+    z-index: 9000 !important;
+}
+
+/* ============================================================
+   4. ПРЕВЬЮ ТЕМ — большие прямоугольники (стилизуем span, не ::before)
+============================================================ */
+#reg-theme-picker {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+    margin: 12px 0 20px !important;
+    width: 100% !important;
+}
+
+#reg-theme-picker .auth-theme-choice {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+    transition: transform .18s !important;
+}
+
+/* Превью — стилизуем существующий span, без ::before! */
+#reg-theme-picker .auth-theme-choice > span:first-child {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1.2 !important;
+    border-radius: 14px !important;
+    border: 2px solid transparent !important;
+    box-sizing: border-box !important;
+    transition: border-color .2s, transform .2s !important;
+}
+
+/* Светлая */
+#reg-theme-picker .theme-light-preview {
+    background: linear-gradient(160deg, #ffffff 0%, #e5e5ea 100%) !important;
+    border: 1px solid rgba(0,0,0,.12) !important;
+}
+/* Тёмная */
+#reg-theme-picker .theme-dark-preview {
+    background: linear-gradient(160deg, #2c2c2e 0%, #000000 100%) !important;
+    border: 1px solid rgba(255,255,255,.18) !important;
+}
+
+/* Лейбл */
+#reg-theme-picker .auth-theme-choice > span:last-child {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: rgba(255,255,255,.75) !important;
+    text-align: center !important;
+}
+
+/* Активная тема — синяя рамка */
+#reg-theme-picker .auth-theme-choice.active > span:first-child {
+    border: 2px solid #0a84ff !important;
+    transform: scale(1.02) !important;
+}
+#reg-theme-picker .auth-theme-choice.active > span:last-child {
+    color: #fff !important;
+}
+
+/* Убираем ВСЕ случайные ::before / ::after которые могли остаться */
+#reg-theme-picker .auth-theme-choice::before,
+#reg-theme-picker .auth-theme-choice::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* ============================================================
+   5. ЕДИНЫЙ РАЗМЕР КНОПОК И ПОЛЕЙ
+============================================================ */
+#auth-screen input[type="text"],
+#auth-screen input[type="email"],
+#auth-screen input[type="password"],
+#auth-screen input[type="number"],
+#auth-screen select,
+#auth-screen textarea,
+#auth-screen .auth-input,
+#auth-screen .auth-field,
+#auth-screen .auth-picker {
+    display: block !important;
+    width: 100% !important;
+    max-width: 340px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    border-radius: 12px !important;
+    margin: 0 auto 10px !important;
+    background: rgba(255,255,255,.07) !important;
+    border: 1px solid rgba(255,255,255,.1) !important;
+    color: #fff !important;
+}
+
+#auth-screen .auth-input::placeholder,
+#auth-screen .auth-field input::placeholder {
+    color: rgba(255,255,255,.4) !important;
+}
+
+#auth-screen .auth-input:focus,
+#auth-screen .auth-field input:focus {
+    background: rgba(255,255,255,.1) !important;
+    border-color: rgba(255,255,255,.28) !important;
+    outline: none !important;
+}
+
+/* Все CTA-кнопки — одинаковые */
+#auth-screen .auth-btn-primary,
+#auth-screen .auth-btn-continue,
+#auth-screen .auth-btn-back,
+#auth-screen .auth-btn-danger,
+#auth-screen #go-register-btn,
+#auth-screen #go-continue-btn,
+#auth-screen #go-back-btn,
+#auth-screen #login-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    max-width: 340px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+    font-size: 14.5px !important;
+    font-weight: 700 !important;
+    border-radius: 12px !important;
+    margin: 0 auto 10px !important;
+    border: none !important;
+    cursor: pointer !important;
+    transition: transform .15s, background .15s, opacity .15s !important;
+}
+
+#auth-screen .auth-btn-primary,
+#auth-screen .auth-btn-continue,
+#auth-screen #go-continue-btn,
+#auth-screen #login-btn {
+    background: #ffffff !important;
+    color: #000000 !important;
+}
+
+#auth-screen .auth-btn-danger,
+#auth-screen #go-register-btn {
+    background: #ffffff !important;
+    color: #000000 !important;
+}
+
+#auth-screen .auth-btn-back,
+#auth-screen #go-back-btn {
+    background: #1c1c1e !important;
+    color: #ffffff !important;
+    border: 1px solid #2c2c2e !important;
+}
+
+#auth-screen .auth-btn-primary:hover:not(:disabled),
+#auth-screen .auth-btn-continue:hover:not(:disabled),
+#auth-screen .auth-btn-danger:hover:not(:disabled),
+#auth-screen #go-register-btn:hover:not(:disabled),
+#auth-screen #go-continue-btn:hover:not(:disabled),
+#auth-screen #login-btn:hover:not(:disabled) {
+    transform: scale(1.02) !important;
+}
+
+#auth-screen button:active:not(:disabled) {
+    transform: scale(.98) !important;
+}
+
+/* Ячейки кода — компактные */
+#auth-screen .auth-code-box {
+    width: 100% !important;
+    aspect-ratio: 1 / 1.15 !important;
+    padding: 0 !important;
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    text-align: center !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+}
+
+/* ============================================================
+   6. Z-INDEX ВСЕГДА ВЫШЕ ЭКРАНА
+============================================================ */
+.lang-modal              { z-index: 8800 !important; }
+.code-modal              { z-index: 9100 !important; }
+.share-modal             { z-index: 9200 !important; }
+.qr-modal                { z-index: 9300 !important; }
+.report-modal            { z-index: 9400 !important; }
+.ban-modal               { z-index: 9500 !important; }
+.actionsheet-backdrop    { z-index: 9000 !important; }
+.actionsheet             { z-index: 9001 !important; }
+.prioriti-backdrop       { z-index: 8900 !important; }
+.prioriti-sheet          { z-index: 8901 !important; }
+.grey-push               { z-index: 9900 !important; }
+.slide-notif             { z-index: 9950 !important; }
+.toast-container         { z-index: 9999 !important; }
