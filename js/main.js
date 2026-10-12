@@ -6443,10 +6443,16 @@ window.__ltOpenRegisterLanding = function(){
     function goToStep(n){
         currentStep = Math.max(1, Math.min(TOTAL_STEPS, n));
 
+        // 🔥 АВТО-РЕГИОН: Россия, без выбора
+        if (currentStep === 3){
+            window.__ltRegRegion = 'ru';
+            const nrf = $('reg-region-flag'); if (nrf) nrf.textContent = '🇷🇺';
+            const nrn = $('reg-region-name'); if (nrn) nrn.textContent = 'Россия';
+        }
+
         qsa('.reg-stage').forEach(s => {
             const num = +s.dataset.regstage;
             s.classList.toggle('active', num === currentStep);
-            // сброс анимации
             if (num === currentStep){
                 s.style.animation = 'none';
                 void s.offsetWidth;
@@ -6454,7 +6460,6 @@ window.__ltOpenRegisterLanding = function(){
             }
         });
 
-        // фокусы
         if (currentStep === 1) setTimeout(() => regEmailInput?.focus({ preventScroll: true }), 120);
         if (currentStep === 2){
             $('reg-code-email') && ($('reg-code-email').textContent = regEmailInput?.value || 'email');
@@ -6673,8 +6678,7 @@ window.__ltOpenRegisterLanding = function(){
                 return showErr('Пароль: должна быть хотя бы одна цифра'), false;
             }
             window.__ltRegPassword = pwd;
-
-            if (!window.__ltRegRegion) return showErr('Выберите регион'), false;
+            // ✅ проверка региона убрана — он ставится автоматически
         }
         if (currentStep === 4){
             const d = $('reg-birth-day').value;
