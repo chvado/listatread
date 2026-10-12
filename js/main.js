@@ -3091,7 +3091,7 @@ $('save-general')?.addEventListener('click', async () => {
             full_name: $('set-name').value.trim(),
             username: newUsername,
             bio: $('set-bio').value.trim(),
-            theme: document.documentElement.getAttribute('data-theme') || 'light'  // ← ДОБАВИТЬ
+            theme: document.documentElement.getAttribute('data-theme') || 'light'
         }
         if(newUsername && prof?.username !== newUsername){
             update.username_changed_at = new Date().toISOString()
