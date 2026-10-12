@@ -307,3 +307,14 @@
 .grey-push            { z-index: 9900 !important; }
 .slide-notif          { z-index: 9950 !important; }
 .toast-container      { z-index: 9999 !important; }
+
+/* Костыль: backdrop'ы всегда ниже контента, пока sheet скрыт */
+.code-modal:not(.open) .code-modal-backdrop,
+.lang-modal:not(.open) .lang-backdrop,
+.share-modal:not(.open) .share-backdrop,
+.report-modal:not(.open) .report-backdrop,
+.qr-modal:not(.open) .qr-backdrop,
+.ban-modal:not(.open) .ban-backdrop {
+    display: none !important;
+    pointer-events: none !important;
+}
