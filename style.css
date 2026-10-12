@@ -6460,3 +6460,87 @@ html[data-theme="dark"] .date-select { color: #fff; background: rgba(120,120,128
     box-shadow: 0 0 0 1px rgba(255,255,255,.25),
     0 12px 40px rgba(255,255,255,.18);
 }
+
+/* ============================================================
+   ЖЁСТКИЙ ФИКС AUTH — режимы вход / регистрация
+   Должно быть в самом конце файла!
+============================================================ */
+
+/* === ПО УМОЛЧАНИЮ (без .is-register) === */
+#auth-screen:not(.is-register) .auth-register-only,
+#auth-screen:not(.is-register) .auth-view-register {
+    display: none !important;
+    max-height: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+
+#auth-screen:not(.is-register) .auth-view-login {
+    display: flex !important;
+    max-height: 620px !important;
+    height: auto !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+}
+
+/* === В РЕЖИМЕ РЕГИСТРАЦИИ (.is-register) === */
+#auth-screen.is-register .auth-login-only,
+#auth-screen.is-register .auth-view-login,
+#auth-screen.is-register .auth-socials-block,
+#auth-screen.is-register #login-form {
+    display: none !important;
+    max-height: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+
+#auth-screen.is-register .auth-register-only,
+#auth-screen.is-register .auth-view-register {
+    display: flex !important;
+    max-height: 620px !important;
+    height: auto !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+}
+
+/* Кнопки CTA не должны накладываться друг на друга */
+.auth-cta-main {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+/* Отменяем grid-area 1/1 — из-за него кнопки пересекались */
+.auth-btn-danger,
+.auth-btn-continue,
+.auth-btn-back {
+    grid-area: auto !important;
+    position: relative !important;
+}
+
+/* Соцсети / «Назад» — чтобы не мешались */
+.auth-cta-socials {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}

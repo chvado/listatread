@@ -6582,3 +6582,32 @@ window.__ltOpenRegisterLanding = function(){
     }, true);
 
 })();
+/* --- ЖЁСТКИЙ ФИКС: при загрузке всегда режим "вход" --- */
+;(function forceLoginMode(){
+    function reset(){
+        const auth = document.getElementById('auth-screen');
+        if (!auth) return;
+        if (!auth.classList.contains('is-register')) {
+            auth.classList.remove('is-register');
+        }
+        /* гарантированно прячем регистрацию через inline display */
+        auth.querySelectorAll('.auth-register-only, .auth-view-register').forEach(el => {
+            el.style.display = 'none';
+            el.style.maxHeight = '0';
+            el.style.opacity = '0';
+            el.style.overflow = 'hidden';
+            el.style.pointerEvents = 'none';
+        });
+        auth.querySelectorAll('.auth-view-login, .auth-login-only').forEach(el => {
+            el.style.removeProperty('display');
+            el.style.removeProperty('max-height');
+            el.style.removeProperty('opacity');
+            el.style.removeProperty('overflow');
+            el.style.removeProperty('pointer-events');
+        });
+    }
+    reset();
+    setTimeout(reset, 100);
+    setTimeout(reset, 500);
+    setTimeout(reset, 1500);
+})();
