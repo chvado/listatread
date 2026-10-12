@@ -6643,3 +6643,375 @@ html:not(.bg-dark) .app,
 html:not(.bg-dark) .main-app {
     background-color: #fff !important;
 }
+
+/* ============================================================
+   ЭКСТРЕННЫЙ ФИКС — САМЫЙ КОНЕЦ ФАЙЛА
+   Решает: чёрный фон, голые инпуты, голые табы, слившиеся темы
+   Этот блок перебивает все предыдущие !important
+============================================================ */
+
+/* ---------- 1. ФОН ПО ТЕМАМ ---------- */
+html,
+html.bg-light,
+html.bg-light body,
+html.bg-light .app,
+html.bg-light .main-app,
+html.bg-light .app-screen,
+html.bg-light #screen-home,
+html.bg-light #screen-channels,
+html.bg-light #screen-inbox,
+html.bg-light #screen-profile,
+html.bg-light #screen-settings,
+html.bg-light #screen-music,
+html.bg-light #screen-livechat,
+html.bg-light #screen-direct {
+    background-color: #ffffff !important;
+    color: #000000;
+}
+
+html.bg-dark,
+html.bg-dark body,
+html.bg-dark .app,
+html.bg-dark .main-app,
+html.bg-dark .app-screen,
+html.bg-dark #screen-home,
+html.bg-dark #screen-channels,
+html.bg-dark #screen-inbox,
+html.bg-dark #screen-profile,
+html.bg-dark #screen-settings,
+html.bg-dark #screen-music,
+html.bg-dark #screen-livechat,
+html.bg-dark #screen-direct {
+    background-color: #000000 !important;
+    color: #ffffff;
+}
+
+/* Если класс bg-* не установлен — по умолчанию светлая */
+html:not(.bg-dark),
+html:not(.bg-dark) body,
+html:not(.bg-dark) .app,
+html:not(.bg-dark) .main-app {
+    background-color: #ffffff !important;
+}
+
+/* ---------- 2. ГЛОБАЛЬНЫЕ ИНПУТЫ ---------- */
+.main-app input[type="text"],
+.main-app input[type="email"],
+.main-app input[type="password"],
+.main-app input[type="search"],
+.main-app input[type="tel"],
+.main-app input[type="date"],
+.main-app input:not([type]),
+.main-app textarea,
+.app-screen input[type="text"],
+.app-screen input[type="email"],
+.app-screen input[type="password"],
+.app-screen input[type="search"],
+.app-screen input[type="tel"],
+.app-screen input[type="date"],
+.app-screen input:not([type]),
+.app-screen textarea,
+#set-name,
+#set-username,
+#set-bio,
+#set-email,
+#reg-bio,
+.dnc-search input,
+.dr-input-wrap input,
+.search-input-wrap input {
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 12px 16px !important;
+    font-size: 15px !important;
+    font-family: inherit !important;
+    color: var(--text, #000) !important;
+    background: rgba(120, 120, 128, 0.10) !important;
+    border: 1.5px solid transparent !important;
+    border-radius: 14px !important;
+    outline: none !important;
+    box-sizing: border-box !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    box-shadow: none !important;
+    transition: background .15s, border-color .15s, box-shadow .15s !important;
+}
+
+.main-app textarea,
+.app-screen textarea,
+#set-bio,
+#reg-bio {
+    min-height: 90px !important;
+    padding: 14px 16px !important;
+    resize: vertical !important;
+    line-height: 1.45 !important;
+}
+
+.main-app input::placeholder,
+.app-screen input::placeholder,
+.main-app textarea::placeholder,
+.app-screen textarea::placeholder {
+    color: rgba(0, 0, 0, 0.35) !important;
+}
+
+.main-app input:focus,
+.app-screen input:focus,
+.main-app textarea:focus,
+.app-screen textarea:focus {
+    background: #ffffff !important;
+    border-color: #0a84ff !important;
+    box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15) !important;
+}
+
+/* Инпуты в тёмной теме */
+html.bg-dark .main-app input,
+html.bg-dark .app-screen input,
+html.bg-dark .main-app textarea,
+html.bg-dark .app-screen textarea,
+html.bg-dark #set-name,
+html.bg-dark #set-username,
+html.bg-dark #set-bio,
+html.bg-dark #set-email {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.bg-dark .main-app input::placeholder,
+html.bg-dark .app-screen input::placeholder,
+html.bg-dark textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+html.bg-dark .main-app input:focus,
+html.bg-dark .app-screen input:focus,
+html.bg-dark textarea:focus {
+    background: #1c1c1e !important;
+    border-color: #0a84ff !important;
+}
+
+/* Убираем жирность у disabled email */
+#set-email:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+}
+
+/* ---------- 3. НАСТРОЙКИ: ТАБЫ, ЛЕЙБЛЫ, ГРУППЫ ---------- */
+#screen-settings {
+    background: #ffffff !important;
+    color: #000000 !important;
+}
+html.bg-dark #screen-settings {
+    background: #000000 !important;
+    color: #ffffff !important;
+}
+
+#screen-settings .settings-tabs {
+    display: flex !important;
+    gap: 4px !important;
+    padding: 4px !important;
+    background: rgba(120, 120, 128, 0.08) !important;
+    border-radius: 100px !important;
+    margin-bottom: 16px !important;
+}
+#screen-settings .settings-tab {
+    flex: 1 !important;
+    padding: 10px 12px !important;
+    border: none !important;
+    background: transparent !important;
+    font-family: inherit !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: rgba(0, 0, 0, 0.55) !important;
+    border-radius: 100px !important;
+    cursor: pointer !important;
+    transition: all .15s !important;
+}
+#screen-settings .settings-tab.active {
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+html.bg-dark #screen-settings .settings-tabs {
+    background: rgba(120, 120, 128, 0.24) !important;
+}
+html.bg-dark #screen-settings .settings-tab {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+html.bg-dark #screen-settings .settings-tab.active {
+    background: #2c2c2e !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+}
+
+#screen-settings .settings-label {
+    display: block !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: rgba(0, 0, 0, 0.55) !important;
+    margin: 14px 0 6px !important;
+}
+html.bg-dark #screen-settings .settings-label {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+#screen-settings .settings-group {
+    background: rgba(120, 120, 128, 0.08) !important;
+    border-radius: 16px !important;
+    padding: 4px 0 !important;
+    margin-bottom: 12px !important;
+}
+html.bg-dark #screen-settings .settings-group {
+    background: rgba(120, 120, 128, 0.24) !important;
+}
+
+#screen-settings .settings-group-title {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .05em !important;
+    color: rgba(0, 0, 0, 0.35) !important;
+    padding: 12px 16px 6px !important;
+}
+html.bg-dark #screen-settings .settings-group-title {
+    color: rgba(255, 255, 255, 0.35) !important;
+}
+
+#screen-settings .toggle-row span {
+    color: #000000 !important;
+}
+html.bg-dark #screen-settings .toggle-row span {
+    color: #ffffff !important;
+}
+
+/* Кнопка сохранения */
+#screen-settings .settings-save,
+#screen-settings .btn-primary {
+    width: 100% !important;
+    margin-top: 18px !important;
+}
+
+/* Кнопка "Сохранить изменения" для светлой темы */
+#save-general,
+#save-privacy {
+    background: #0a84ff !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 14px !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    display: block !important;
+    width: 100% !important;
+}
+
+/* ---------- 4. ИНФО-СТРОКИ В НАСТРОЙКАХ ---------- */
+#screen-settings .info-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    padding: 12px 16px !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+    font-size: 14px !important;
+}
+#screen-settings .info-row:last-child {
+    border-bottom: none !important;
+}
+#screen-settings .info-row span {
+    color: rgba(0, 0, 0, 0.55) !important;
+}
+#screen-settings .info-row strong {
+    color: #000000 !important;
+    font-weight: 600 !important;
+}
+html.bg-dark #screen-settings .info-row {
+    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+html.bg-dark #screen-settings .info-row span {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+html.bg-dark #screen-settings .info-row strong {
+    color: #ffffff !important;
+}
+
+/* ---------- 5. КНОПКА ТЕМЫ ---------- */
+#theme-toggle {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 14px 16px !important;
+    background: rgba(120, 120, 128, 0.08) !important;
+    border: none !important;
+    border-radius: 14px !important;
+    font-family: inherit !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: #000000 !important;
+    cursor: pointer !important;
+    width: 100% !important;
+    margin-top: 6px !important;
+}
+html.bg-dark #theme-toggle {
+    background: rgba(120, 120, 128, 0.24) !important;
+    color: #ffffff !important;
+}
+#theme-toggle-icon { font-size: 20px !important; width: 22px !important; text-align: center !important; }
+#theme-toggle-text { flex: 1 !important; text-align: left !important; }
+
+/* ---------- 6. ВКЛАДКА "АКТИВНОСТЬ" И ДРУГИЕ ПАНЕЛИ ---------- */
+.settings-panel { display: none !important; }
+.settings-panel.active { display: block !important; }
+
+/* ---------- 7. ПРОФИЛЬ И ДРУГИЕ ЭКРАНЫ ---------- */
+#screen-profile, #profile-body {
+    background: transparent !important;
+    color: inherit !important;
+}
+
+/* Глобальный текст в main-app */
+.main-app { color: #000000 !important; }
+html.bg-dark .main-app { color: #ffffff !important; }
+
+/* ---------- 8. ТОПБАР / БОТТОМ-НАВ ПОД ТЕМУ ---------- */
+html.bg-dark .topbar {
+    background: rgba(0, 0, 0, 0.72) !important;
+    color: #ffffff !important;
+}
+html.bg-dark .topbar-btn,
+html.bg-dark .topbar-logo-static {
+    color: #ffffff !important;
+}
+html.bg-light .topbar,
+html:not(.bg-dark) .topbar {
+    background: rgba(255, 255, 255, 0.88) !important;
+    color: #000000 !important;
+}
+html.bg-dark .bottom-nav {
+    background: rgba(0, 0, 0, 0.9) !important;
+    border-top-color: rgba(255, 255, 255, 0.1) !important;
+}
+html.bg-light .bottom-nav,
+html:not(.bg-dark) .bottom-nav {
+    background: #ffffff !important;
+    border-top-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ---------- 9. ДИРЕКТ (список + комната) ---------- */
+html.bg-dark #screen-direct .direct-item-name,
+html.bg-dark #screen-direct .direct-item-row1 {
+    color: #ffffff !important;
+}
+html.bg-light #screen-direct .direct-item-name,
+html.bg-light #screen-direct .direct-item-row1,
+html:not(.bg-dark) #screen-direct .direct-item-name {
+    color: #000000 !important;
+}
+
+/* ---------- 10. КАНАЛЫ ---------- */
+html.bg-dark .chan-item {
+    background: rgba(120, 120, 128, 0.24) !important;
+    color: #ffffff !important;
+}
+html.bg-light .chan-item,
+html:not(.bg-dark) .chan-item {
+    background: rgba(120, 120, 128, 0.08) !important;
+    color: #000000 !important;
+}
