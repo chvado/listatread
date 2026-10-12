@@ -502,37 +502,34 @@ html[data-theme="dark"] {
     color-scheme: dark;
 }
 
-/* --- 6. Бренд-надписи: гарантированно видимы --- */
-.sidebar-brand,
-.topbar-logo,
-.topbar-logo-static,
-.loading-brand,
+/* --- 6. Бренд-надписи --- */
+
+/* listatread — БЕЛЫЙ (boot, loading, sidebar, auth) */
 .boot-brand,
-.auth-brand-text,
-.ds-brand,
-.ch-ig-name {
-    background: linear-gradient(135deg, #ffd60a 0%, #ff9f0a 40%, #ff375f 100%) !important;
-    background-size: 200% 200% !important;
+.loading-brand,
+.sidebar-brand,
+.auth-brand-text {
+    background: none !important;
+    background-image: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: #ffffff !important;
+    color: #ffffff !important;
+}
+
+/* topbar-logo на главной — STORR (красно-розовый градиент) */
+.topbar-logo {
+    background: linear-gradient(135deg, #ff375f, #ff3b30) !important;
     -webkit-background-clip: text !important;
     background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
-    color: #ff375f !important;
+    color: transparent !important;
 }
-@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
-    .sidebar-brand,
-    .topbar-logo,
-    .topbar-logo-static,
-    .loading-brand,
-    .boot-brand,
-    .auth-brand-text,
-    .ds-brand,
-    .ch-ig-name {
-        background: none !important;
-        -webkit-text-fill-color: currentColor !important;
-        color: #ff375f !important;
-    }
-}
-/* Кружки с "ℓ" — НЕ трогать */
+
+/* topbar-logo-static, ds-brand, ch-ig-name — НЕ трогаем.
+   Они наследуют цвет темы из style.css (чёрный / белый). */
+
+/* Кружки с "ℓ" — НЕ трогаем (белый фон, чёрная буква) */
 .ds-brand-mark,
 .auth-logo-circle,
 .brand-circle,
