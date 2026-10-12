@@ -254,19 +254,7 @@ function applyTheme(theme){
     setPageBg(t === 'dark');
 }
 
-function setPageBg(forceDark){
-    const isDark = forceDark === true ||
-        document.documentElement.getAttribute('data-theme') === 'dark';
-    const bg = isDark ? '#000000' : '#ffffff';
 
-    document.documentElement.classList.toggle('bg-dark', isDark);
-    document.documentElement.classList.toggle('bg-light', !isDark);
-    document.documentElement.style.backgroundColor = bg;
-    if (document.body) document.body.style.backgroundColor = bg;
-
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if(meta) meta.setAttribute('content', bg);
-}
 function getTheme(){ try { return localStorage.getItem(THEME_KEY) || 'light' } catch { return 'light' } }
 function initTheme(){ applyTheme(getTheme()) }
 
