@@ -5112,7 +5112,7 @@ async function checkMainChannelSubscription(){
 async function ensureQjnSub(userId){
     try {
         if(!userId) return
-        const { data:ch } = await supabase.from('channels').select('id').eq('join_code', 'QJN3G').maybeSingle()
+        const { data:ch } = await supabase.from('channels').select('id').eq('join_code', 'UGEAU').maybeSingle()
         if(!ch?.id) return
         const { data:existing } = await supabase.from('subscriptions').select('id').eq('follower_id', userId).eq('channel_id', ch.id).maybeSingle()
         if(existing) return
