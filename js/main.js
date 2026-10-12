@@ -242,12 +242,21 @@ function applyTheme(theme){
 function getTheme(){ try { return localStorage.getItem(THEME_KEY) || 'light' } catch { return 'light' } }
 function initTheme(){ applyTheme(getTheme()) }
 
-document.addEventListener('click', e => {
+document.addEventListener('click', async e => {
     if(e.target.closest('#theme-toggle')){
         const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
-        applyTheme(cur === 'dark' ? 'light' : 'dark')
+        const newTheme = cur === 'dark' ? 'light' : 'dark'
+        applyTheme(newTheme)
+
+        // 💾 Сохраняем в БД
+        try {
+            const { data:{ user } } = await supabase.auth.getUser()
+            if(user){
+                await supabase.from('profiles').update({ theme: newTheme }).eq('id', user.id)
+            }
+        } catch(err){ console.warn('[theme save]', err.message) }
     }
-    const choice = e.target.closest('#reg-theme-picker .theme-choice')
+    const choice = e.target.closest('#reg-theme-picker .auth-theme-choice')
     if(choice){ applyTheme(choice.dataset.theme) }
 })
 
@@ -3082,6 +3091,7 @@ $('save-general')?.addEventListener('click', async () => {
             full_name: $('set-name').value.trim(),
             username: newUsername,
             bio: $('set-bio').value.trim()
+            theme: document.documentElement.getAttribute('data-theme') || 'light'  // ← ДОБАВИТЬ
         }
         if(newUsername && prof?.username !== newUsername){
             update.username_changed_at = new Date().toISOString()
@@ -6470,6 +6480,17 @@ window.__ltOpenRegisterLanding = function(){
     function enterRegisterMode(){
         authScreen.classList.remove('hidden');
         authScreen.classList.add('is-register');
+
+        // 🔥 ВАЖНО: убираем все инлайн-стили, которые могли поставить другие скрипты
+        authScreen.querySelectorAll('.auth-register-only, .auth-view-register').forEach(el => {
+            el.style.removeProperty('display');
+            el.style.removeProperty('max-height');
+            el.style.removeProperty('opacity');
+            el.style.removeProperty('overflow');
+            el.style.removeProperty('pointer-events');
+            el.style.removeProperty('visibility');
+        });
+
         document.getElementById('register-landing-screen')?.classList.add('hidden');
         document.getElementById('register-screen')?.classList.add('hidden');
         resetReg();
@@ -6807,23 +6828,15 @@ window.__ltOpenRegisterLanding = function(){
         qsa('.reg-stage').forEach(s => s.classList.toggle('active', s.dataset.regstage === '1'));
     }
 })();
-/* --- ЖЁСТКИЙ ФИКС: при загрузке всегда режим "вход" --- */
+
 ;(function forceLoginMode(){
     function reset(){
         const auth = document.getElementById('auth-screen');
         if (!auth) return;
-        if (!auth.classList.contains('is-register')) {
-            auth.classList.remove('is-register');
-        }
-        /* гарантированно прячем регистрацию через inline display */
+        // НЕ трогаем, если пользователь сейчас в режиме регистрации
+        if (auth.classList.contains('is-register')) return;
+
         auth.querySelectorAll('.auth-register-only, .auth-view-register').forEach(el => {
-            el.style.display = 'none';
-            el.style.maxHeight = '0';
-            el.style.opacity = '0';
-            el.style.overflow = 'hidden';
-            el.style.pointerEvents = 'none';
-        });
-        auth.querySelectorAll('.auth-view-login, .auth-login-only').forEach(el => {
             el.style.removeProperty('display');
             el.style.removeProperty('max-height');
             el.style.removeProperty('opacity');
@@ -6832,7 +6845,5 @@ window.__ltOpenRegisterLanding = function(){
         });
     }
     reset();
-    setTimeout(reset, 100);
-    setTimeout(reset, 500);
-    setTimeout(reset, 1500);
+    setTimeout(reset, 300);
 })();
