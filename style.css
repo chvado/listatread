@@ -6600,3 +6600,240 @@ html[data-theme="dark"] .date-select { color: #fff; background: rgba(120,120,128
     pointer-events: none !important;
     visibility: hidden !important;
 }
+/* ============================================================
+   МНОГОШАГОВАЯ РЕГИСТРАЦИЯ ВНУТРИ AUTH (тёмный стиль)
+============================================================ */
+
+/* Стейдж — по умолчанию скрыт, активный — виден */
+.reg-stage { display: none !important; }
+.reg-stage.active {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+    animation: fieldSlideIn .42s cubic-bezier(.4,0,.2,1) both;
+}
+
+.auth-stage-hint {
+    font-size: 12.5px;
+    color: rgba(255,255,255,.65);
+    text-align: center;
+    margin: 0 0 4px;
+    line-height: 1.4;
+}
+.auth-stage-hint strong { color: #fff; font-weight: 600; }
+
+.auth-stage-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,.4);
+    text-align: center;
+    margin: 2px 0 0;
+}
+
+/* 5 квадратов для кода */
+.auth-code-boxes {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    width: 100%;
+    margin-top: 4px;
+}
+.auth-code-box {
+    width: 100%;
+    aspect-ratio: 1 / 1.15;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 800;
+    font-family: ui-monospace, monospace;
+    color: #fff;
+    background: rgba(255,255,255,.07);
+    border: 1.5px solid rgba(255,255,255,.12);
+    border-radius: 12px;
+    outline: none;
+    padding: 0;
+    box-sizing: border-box;
+    transition: background .18s, border-color .18s;
+}
+.auth-code-box:focus {
+    background: rgba(255,255,255,.13);
+    border-color: #fff;
+}
+.auth-code-box.filled {
+    border-color: rgba(255,255,255,.5);
+    background: rgba(255,255,255,.1);
+}
+
+/* Дата — 3 селекта */
+.date-picker-dark {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr;
+    gap: 8px;
+    width: 100%;
+}
+.auth-select {
+    padding: 0 10px !important;
+    height: 48px !important;
+    text-align: center;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    font-weight: 600;
+    color: #fff !important;
+    background: rgba(255,255,255,.07) !important;
+    border: 1px solid rgba(255,255,255,.1) !important;
+    font-size: 14px;
+}
+.auth-select:focus {
+    background: rgba(255,255,255,.12) !important;
+    border-color: rgba(255,255,255,.28) !important;
+}
+.auth-select option { background: #111; color: #fff; }
+
+/* Пикер региона */
+.auth-picker {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    text-align: left;
+    padding: 0 16px !important;
+    height: 48px !important;
+    font-family: inherit;
+}
+.auth-picker .picker-flag { font-size: 18px; line-height: 1; }
+.auth-picker .picker-name { flex: 1; color: #fff; font-size: 14px; }
+.auth-picker .chevron { color: rgba(255,255,255,.4); font-size: 10px; }
+
+/* Аватар */
+.auth-avatar-upload {
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+    padding: 6px 0 4px;
+}
+.auth-avatar-preview {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.05);
+    border: 2px dashed rgba(255,255,255,.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 300;
+    color: rgba(255,255,255,.5);
+    overflow: hidden;
+    transition: border-color .2s, background .2s;
+}
+.auth-avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+.auth-avatar-preview.has-img {
+    border-style: solid;
+    border-color: #fff;
+    background: none;
+}
+
+/* Ник с @ */
+.auth-input-prefix {
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 12px;
+    height: 48px;
+    padding: 0 16px;
+    box-sizing: border-box;
+    transition: background .18s, border-color .18s;
+}
+.auth-input-prefix:focus-within {
+    background: rgba(255,255,255,.12);
+    border-color: rgba(255,255,255,.28);
+}
+.auth-input-prefix span {
+    color: rgba(255,255,255,.5);
+    font-size: 15px;
+    font-weight: 600;
+    margin-right: 4px;
+}
+.auth-input-prefix input {
+    flex: 1;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    color: #fff !important;
+    font-size: 14px;
+    font-family: inherit;
+    padding: 0 !important;
+    height: 100%;
+}
+
+/* textarea в тёмном стиле (перебиваем общий auth-input) */
+#auth-screen textarea.auth-input {
+    height: auto !important;
+    min-height: 56px;
+    padding: 12px 16px !important;
+    resize: none;
+    line-height: 1.45;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+/* Пикер темы */
+.auth-theme-picker {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+}
+.auth-theme-choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(255,255,255,.05);
+    border: 2px solid transparent;
+    border-radius: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,.65);
+    transition: all .2s;
+}
+.auth-theme-choice.active {
+    border-color: #fff;
+    background: rgba(255,255,255,.1);
+    color: #fff;
+}
+.auth-theme-choice > span:first-child {
+    width: 100%;
+    height: 40px;
+    border-radius: 8px;
+    display: block;
+}
+.theme-light-preview {
+    background: linear-gradient(135deg, #fff, #eaeaea);
+    border: 1px solid rgba(255,255,255,.15);
+}
+.theme-dark-preview {
+    background: linear-gradient(135deg, #1c1c1e, #000);
+    border: 1px solid rgba(255,255,255,.15);
+}
+
+/* Кнопки CTA — не сжимаем */
+#auth-screen.is-register .auth-btn-continue,
+#auth-screen.is-register .auth-btn-back {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 0 16px !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Скрыть старый белый экран регистрации навсегда */
+#register-screen,
+#register-landing-screen {
+    display: none !important;
+}

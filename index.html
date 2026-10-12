@@ -86,8 +86,11 @@
             </div>
 
             <!-- REGISTER VIEW -->
+            <!-- REGISTER VIEW — многошаговая регистрация в тёмном стиле -->
             <div class="auth-view auth-view-register">
-                <div class="auth-form">
+
+                <!-- ШАГ 1: email + согласие -->
+                <div class="auth-form reg-stage active" data-regstage="1">
                     <input type="email" id="reg-email" class="auth-input"
                            placeholder="Введите email" maxlength="60" autocomplete="email">
                     <div class="auth-hint">
@@ -98,6 +101,70 @@
                         <span>продолжая, я принимаю <a href="#" data-doc="terms">условия пользования</a>, <a href="#" data-doc="privacy">политику конфиденциальности</a> и соглашаюсь с <a href="#" data-doc="cookies">политикой файлов Cookie</a> и <a href="#" data-doc="rules">правилами сообщества</a></span>
                     </label>
                 </div>
+
+                <!-- ШАГ 2: код из письма -->
+                <div class="auth-form reg-stage" data-regstage="2">
+                    <p class="auth-stage-hint">Код отправлен на <strong id="reg-code-email">email</strong></p>
+                    <div class="auth-code-boxes" id="reg-code-boxes">
+                        <input type="text" maxlength="1" inputmode="numeric" class="auth-code-box">
+                        <input type="text" maxlength="1" inputmode="numeric" class="auth-code-box">
+                        <input type="text" maxlength="1" inputmode="numeric" class="auth-code-box">
+                        <input type="text" maxlength="1" inputmode="numeric" class="auth-code-box">
+                        <input type="text" maxlength="1" inputmode="numeric" class="auth-code-box">
+                    </div>
+                    <p class="auth-stage-sub">Введите 5 цифр из письма</p>
+                </div>
+
+                <!-- ШАГ 3: имя + регион -->
+                <div class="auth-form reg-stage" data-regstage="3">
+                    <input type="text" id="reg-name" class="auth-input"
+                           placeholder="Имя или псевдоним" maxlength="40" autocomplete="name">
+                    <button type="button" class="auth-input auth-picker" id="reg-region-btn">
+                        <span class="picker-flag" id="reg-region-flag">◯</span>
+                        <span class="picker-name" id="reg-region-name">Выберите регион</span>
+                        <span class="chevron">▾</span>
+                    </button>
+                </div>
+
+                <!-- ШАГ 4: дата рождения -->
+                <div class="auth-form reg-stage" data-regstage="4">
+                    <p class="auth-stage-hint">Дата рождения</p>
+                    <div class="date-picker-dark">
+                        <select id="reg-birth-day" class="auth-input auth-select"></select>
+                        <select id="reg-birth-month" class="auth-input auth-select"></select>
+                        <select id="reg-birth-year" class="auth-input auth-select"></select>
+                    </div>
+                    <p class="auth-stage-sub">Подберём контент для вашего возраста</p>
+                </div>
+
+                <!-- ШАГ 5: аватар + ник + описание -->
+                <div class="auth-form reg-stage" data-regstage="5">
+                    <label class="auth-avatar-upload" for="reg-avatar">
+                        <div class="auth-avatar-preview" id="reg-avatar-preview">+</div>
+                        <input type="file" id="reg-avatar" accept="image/*" hidden>
+                    </label>
+                    <div class="auth-input-prefix">
+                        <span>@</span>
+                        <input type="text" id="reg-username" placeholder="username" maxlength="20" autocomplete="off">
+                    </div>
+                    <textarea id="reg-bio" class="auth-input" placeholder="О себе (необязательно)" maxlength="150" rows="2"></textarea>
+                </div>
+
+                <!-- ШАГ 6: тема -->
+                <div class="auth-form reg-stage" data-regstage="6">
+                    <p class="auth-stage-hint">Выберите тему</p>
+                    <div class="auth-theme-picker" id="reg-theme-picker">
+                        <button type="button" class="auth-theme-choice active" data-theme="light">
+                            <span class="theme-light-preview"></span>
+                            <span>Светлая</span>
+                        </button>
+                        <button type="button" class="auth-theme-choice" data-theme="dark">
+                            <span class="theme-dark-preview"></span>
+                            <span>Тёмная</span>
+                        </button>
+                    </div>
+                </div>
+
             </div>
 
             <!-- CTA 1: ПОД ВОЙТИ — Регистрация / Продолжить -->
@@ -122,7 +189,7 @@
                         </button>
                         <button type="button" class="auth-method" id="lista-login-btn" aria-label="Войти через listaID">
                         <span class="auth-method-icon" style="background:#e11515">
-                            <span class="auth-method-lista-letter">ℓ⦿</span>
+                            <span class="auth-method-lista-letter">ℓ</span>
                         </span>
                             <span class="auth-method-label">listaID</span>
                         </button>
@@ -152,20 +219,7 @@
         </div>
     </section>
 
-    <!-- KARSQ -->
-    <section id="karsq-screen" class="screen hidden">
-        <div class="reg-topbar"><button class="reg-back-btn" id="karsq-back">‹</button><span class="reg-topbar-title">Вход через karsq</span><span class="reg-topbar-spacer"></span></div>
-        <div class="karsq-wrap">
-            <div class="karsq-blink"><span class="karsq-blink-dot"></span></div>
-            <h2 class="karsq-title">Войдите в аккаунт karsq любым подтвержденным методом</h2>
-            <input type="email" id="karsq-email" placeholder="Введите почту">
-            <div class="pwd-wrap"><input type="password" id="karsq-password" placeholder="Пароль"><button type="button" class="pwd-toggle" data-target="karsq-password">👁</button></div>
-            <div class="karsq-methods-label">Или выберите метод</div>
-            <div class="karsq-methods"><button class="karsq-method"><span class="karsq-method-icon">◉</span><span>FaceID</span></button><button class="karsq-method"><span class="karsq-method-icon">▢</span><span>QR</span></button><button class="karsq-method"><span class="karsq-method-icon">⬡</span><span>GID</span></button></div>
-            <button class="btn-karsq-red" id="karsq-continue">Продолжить</button>
-            <p class="karsq-error" id="karsq-error"></p>
-        </div>
-    </section>
+
 
     <!-- RESET -->
     <section id="reset-screen" class="screen hidden">
@@ -175,125 +229,9 @@
     </section>
 
     <!-- REG LANDING -->
-    <section id="register-landing-screen" class="screen hidden">
-        <div class="reg-topbar"><button class="reg-back-btn" id="reg-landing-back">‹</button><span class="reg-topbar-title">Регистрация</span><span class="reg-topbar-spacer"></span></div>
-        <div class="reg-landing-wrap">
-            <div class="logo-stage" id="logo-stage"><div class="flying-icons"><span class="fly-icon fly-1">⭐</span><span class="fly-icon fly-2">🦝</span><span class="fly-icon fly-3">👍</span><span class="fly-icon fly-4">❤️</span><span class="fly-icon fly-5">👤</span></div><div class="brand-circle brand-circle-lg"><span class="brand-letter brand-letter-lg">ℓ</span></div></div>
-            <h1 class="brand-name brand-name-lg">listatread</h1>
-            <div class="reg-landing-copy"><p class="reg-landing-title">Зарегистрируйте аккаунт <span class="karsq-word">karsq</span> сейчас</p><p class="reg-landing-text">Входите в любое время по удобному методу входа</p><p class="reg-landing-small">Используйте FaceID, QR, GID для входа</p></div>
-            <div class="reg-landing-actions"><button class="btn-primary" id="create-account-btn">Создать аккаунт</button><button class="btn-gray" id="find-account-btn" disabled>Найти аккаунт</button></div>
-        </div>
-    </section>
 
-    <!-- REGISTER -->
-    <!-- REGISTER -->
-    <section id="register-screen" class="screen hidden">
-        <div class="reg-topbar">
-            <button class="reg-back-btn" id="reg-back-arrow">‹</button>
-            <span class="reg-topbar-title">Регистрация</span>
-            <span class="reg-topbar-spacer"></span>
-        </div>
-        <div class="steps-progress"><div class="steps-progress-bar" id="steps-bar"></div></div>
-        <div class="steps-viewport">
 
-            <!-- STEP 1: Дата рождения -->
-            <div class="reg-step active" data-step="1">
-                <h2>Дата рождения</h2>
-                <p class="step-hint">Подберём контент для вашей возрастной группы</p>
-                <div class="step-emoji">🎂</div>
-                <div class="date-picker">
-                    <select id="reg-birth-day" class="date-select"></select>
-                    <select id="reg-birth-month" class="date-select"></select>
-                    <select id="reg-birth-year" class="date-select"></select>
-                </div>
-            </div>
 
-            <!-- STEP 2: Имя + Регион -->
-            <div class="reg-step" data-step="2">
-                <h2>О вас</h2>
-                <div class="step-emoji">👤</div>
-                <label class="step-label">Имя</label>
-                <input type="text" id="reg-name" placeholder="Имя или псевдоним" maxlength="40">
-                <label class="step-label">Регион</label>
-                <button class="picker-btn" id="region-btn">
-                    <span class="picker-flag" id="region-flag">◯</span>
-                    <span class="picker-name" id="region-name">Выберите</span>
-                    <span class="chevron">▾</span>
-                </button>
-            </div>
-
-            <!-- STEP 3: Подтверждение почты -->
-            <div class="reg-step" data-step="3">
-                <h2>Подтвердите email</h2>
-                <p class="step-hint">Код отправлен на <strong id="verify-email-display"></strong></p>
-                <div class="step-emoji">✉️</div>
-                <div class="code-boxes" id="code-boxes">
-                    <input type="text" maxlength="1" inputmode="numeric" class="code-box">
-                    <input type="text" maxlength="1" inputmode="numeric" class="code-box">
-                    <input type="text" maxlength="1" inputmode="numeric" class="code-box">
-                    <input type="text" maxlength="1" inputmode="numeric" class="code-box">
-                    <input type="text" maxlength="1" inputmode="numeric" class="code-box">
-                </div>
-                <div class="code-checkmark" id="code-checkmark">
-                    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" class="code-circle-path"/><path d="M30 52 L45 67 L72 38" class="code-check-path"/></svg>
-                </div>
-                <button class="btn-primary" id="verify-code-btn">Подтвердить</button>
-            </div>
-
-            <!-- STEP 4: Оформление -->
-            <div class="reg-step" data-step="4">
-                <h2>Оформите профиль</h2>
-                <div class="step-emoji">🎨</div>
-                <label class="avatar-upload" for="reg-avatar">
-                    <div class="avatar-preview">
-                        <img id="avatar-img" hidden alt="">
-                        <span id="avatar-placeholder">+</span>
-                    </div>
-                    <input type="file" id="reg-avatar" accept="image/*" hidden>
-                    <span class="avatar-hint">Нажмите, чтобы выбрать</span>
-                </label>
-                <label class="step-label">Никнейм</label>
-                <div class="input-prefix">
-                    <span>@</span>
-                    <input type="text" id="reg-username" placeholder="username" maxlength="20">
-                </div>
-                <label class="step-label">Описание</label>
-                <textarea id="reg-bio" placeholder="Добавьте описание" maxlength="150" rows="3"></textarea>
-            </div>
-
-            <!-- STEP 5: Почти готово -->
-            <div class="reg-step" data-step="5">
-                <h2>Почти готово</h2>
-                <div class="step-emoji">⭐</div>
-                <div class="settings-group">
-                    <h3 class="settings-group-title">Тема</h3>
-                    <div class="theme-picker" id="reg-theme-picker">
-                        <button type="button" class="theme-choice active" data-theme="light">
-                            <span class="theme-choice-preview theme-light"></span>
-                            <span class="theme-choice-label">Светлая</span>
-                        </button>
-                        <button type="button" class="theme-choice" data-theme="dark">
-                            <span class="theme-choice-preview theme-dark"></span>
-                            <span class="theme-choice-label">Тёмная</span>
-                        </button>
-                    </div>
-                </div>
-                <div class="settings-group">
-                    <h3 class="settings-group-title">Вероятные знакомые</h3>
-                    <p class="step-hint" style="padding:0 16px 8px">Скоро: находите знакомых по контактам и общим подпискам.</p>
-                    <div class="coming-soon-badge">Недоступно</div>
-                </div>
-            </div>
-
-        </div>
-        <div class="reg-nav">
-            <button id="reg-next" class="btn-primary">
-                <span class="btn-label">Продолжить</span>
-                <span class="btn-loader hidden"><span class="btn-spinner btn-spinner-light"></span>Проверяем</span>
-            </button>
-        </div>
-        <p id="reg-error" class="error"></p>
-    </section>
 
 
     <!-- LOADING -->
