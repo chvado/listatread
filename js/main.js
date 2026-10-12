@@ -1106,8 +1106,14 @@ function renderRegionList(){
         closeRegionModal()
     }))
 }
-function openRegionModal(){ renderRegionList(); regionModal.classList.remove('hidden') }
-function closeRegionModal(){ regionModal.classList.add('hidden') }
+function openRegionModal(){
+    if(!regionModal){ console.warn('[region] modal not found'); return }
+    renderRegionList()
+    regionModal.classList.remove('hidden')
+}
+function closeRegionModal(){
+    regionModal?.classList.add('hidden')
+}
 // Кнопка региона в новой форме регистрации — защищённый вызов
 $('reg-region-btn')?.addEventListener('click', openRegionModal)
 $('region-backdrop')?.addEventListener('click', closeRegionModal)
