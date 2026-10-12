@@ -809,9 +809,10 @@ $('login-form').addEventListener('submit', async e => {
 ============================================================ */
 const prioritiSheet = $('prioriti-sheet'), prioritiBackdrop = $('prioriti-backdrop')
 function openPrioriti(){
-    prioritiSheet.classList.remove('hidden');
-    prioritiSheet.classList.add('open');
-    prioritiBackdrop.classList.remove('hidden');
+    prioritiBackdrop.classList.remove('hidden')
+    prioritiSheet.classList.remove('hidden')
+    void prioritiSheet.offsetHeight
+    requestAnimationFrame(() => prioritiSheet.classList.add('open'))
 }
 function closePrioriti(){
     prioritiSheet.classList.remove('open');
@@ -863,9 +864,10 @@ function showActionSheet(title, items){
             if(it.onClick) setTimeout(it.onClick, 100)
         })
     })
-    actionsheet.classList.remove('hidden');
-    actionsheet.classList.add('open');
-    actionsheetBackdrop.classList.remove('hidden');
+    actionsheetBackdrop.classList.remove('hidden')
+    actionsheet.classList.remove('hidden')
+    void actionsheet.offsetHeight
+    requestAnimationFrame(() => actionsheet.classList.add('open'))
 }
 window.showActionSheet = showActionSheet
 window.showToast = showToast
@@ -4859,6 +4861,10 @@ document.getElementById('video-fs-more')?.addEventListener('click', async () => 
     attach($('lang-modal')?.querySelector('.lang-sheet'), closeLangModal, '')
     attach($('region-modal')?.querySelector('.lang-sheet'), closeRegionModal, '')
     attach($('code-modal')?.querySelector('.code-modal-sheet'), () => $('code-modal')?.classList.add('hidden'), '')
+    attach($('qr-modal')?.querySelector('.qr-sheet'), closeQrModal, '')
+    attach($('qr-scan-modal')?.querySelector('.qr-sheet'), closeQrScanModal, '')
+    attach($('share-modal')?.querySelector('.share-sheet'), closeShareSheet, '')
+    attach(document.getElementById('report-modal')?.querySelector('.report-sheet'), closeReportModal, '')
 })()
 
 /* ============================================================
@@ -6095,6 +6101,7 @@ async function openShareSheet(ctx){
 
     attachShareDrag()
 
+    void document.getElementById('share-sheet').offsetHeight
     requestAnimationFrame(() => {
         document.getElementById('share-sheet').style.transform = 'translateY(0)'
     })

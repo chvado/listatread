@@ -1735,3 +1735,153 @@ html[data-theme="dark"] #create-channel-screen textarea:focus {
 @media (max-width:440px){
     .chan-add-btn{right:20px}
 }
+/* ============================================================
+   ЛОГО: все — белые, topbar (главная) — storr star
+============================================================ */
+.boot-brand,
+.loading-brand,
+.sidebar-brand,
+.auth-brand-text {
+    color: #ffffff !important;
+    background: none !important;
+    -webkit-text-fill-color: #ffffff !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+}
+
+.topbar-logo {
+    background: linear-gradient(135deg, #ff375f, #ff3b30) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    color: transparent !important;
+}
+
+/* ============================================================
+   ШИТЫ: единая плавная анимация + блюр на затемнении
+============================================================ */
+
+/* Затемнение всегда с сильным блюром */
+.code-modal-backdrop,
+.lang-backdrop,
+.qr-backdrop,
+.actionsheet-backdrop,
+.prioriti-backdrop,
+.share-backdrop,
+.report-backdrop,
+.ban-backdrop {
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(14px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
+}
+
+/* share/report/ban — плавный выезд снизу */
+.share-sheet,
+.report-sheet,
+.ban-sheet {
+    transform: translateY(100%);
+    transition: transform .32s cubic-bezier(.32,.72,.24,1) !important;
+}
+.share-modal:not(.hidden) .share-sheet,
+.report-modal:not(.hidden) .report-sheet,
+.ban-modal:not(.hidden) .ban-sheet {
+    transform: translateY(0);
+}
+
+/* qr-sheet — тоже плавный выезд */
+.qr-sheet {
+    transform: translateY(100%);
+    transition: transform .32s cubic-bezier(.32,.72,.24,1) !important;
+}
+.qr-modal.open .qr-sheet,
+.qr-modal:not(.hidden) .qr-sheet {
+    transform: translateY(0);
+}
+/* ============================================================
+   ТЕМЫ В ЧАТАХ — жёсткие размеры превью (без aspect-ratio)
+============================================================ */
+.dr-sheet-scroll{
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.dr-theme-grid{
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px 10px !important;
+    width: 100% !important;
+    padding: 4px 0 8px !important;
+    box-sizing: border-box !important;
+}
+
+.dr-theme-cell{
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: auto !important;     /* ← выключаем неработающий aspect-ratio */
+    min-height: 0 !important;
+    border-radius: 14px !important;
+    border: 2px solid transparent !important;
+    background: transparent !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    transition: border-color .15s, transform .15s !important;
+}
+.dr-theme-cell:active{ transform: scale(.96) !important; }
+.dr-theme-cell.active{ border-color: var(--blue, #0a84ff) !important; }
+
+/* Превью — фиксированной высоты, гарантированно прямоугольник */
+.dr-theme-preview{
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    height: 110px !important;          /* ← жёстко задаём */
+    min-height: 110px !important;
+    flex: none !important;
+    border-radius: 12px 12px 0 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Пузыри — абсолютные, не зависят от flex-схлопывания */
+.dr-theme-bubble{
+    position: absolute !important;
+    height: 14px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,.12) !important;
+}
+.dr-theme-bubble.p{                    /* чужой пузырь — снизу-слева */
+    left: 10px !important;
+    bottom: 30px !important;
+    width: 68% !important;
+}
+.dr-theme-bubble.o{                    /* свой пузырь — снизу-справа */
+    right: 10px !important;
+    bottom: 10px !important;
+    width: 58% !important;
+}
+
+/* Подпись — снизу, полноширинная */
+.dr-theme-name{
+    display: block !important;
+    width: 100% !important;
+    padding: 8px 4px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    background: var(--surface-2, rgba(120,120,128,.12)) !important;
+    color: var(--text) !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+.dr-theme-cell.active .dr-theme-name{
+    color: var(--blue, #0a84ff) !important;
+}
