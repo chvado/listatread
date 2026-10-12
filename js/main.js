@@ -6614,6 +6614,22 @@ window.__ltOpenRegisterLanding = function(){
         if (currentStep === 3){
             const name = $('reg-name').value.trim();
             if (name.length < 2) return showErr('Введите имя'), false;
+
+            const pwd = $('reg-password')?.value || '';
+            if (pwd.length < 8 || pwd.length > 30) {
+                return showErr('Пароль: от 8 до 30 символов'), false;
+            }
+            if (!/^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]+$/.test(pwd)) {
+                return showErr('Пароль: только латиница, цифры и спецсимволы'), false;
+            }
+            if (!/[A-Za-z]/.test(pwd)) {
+                return showErr('Пароль: должна быть хотя бы одна буква'), false;
+            }
+            if (!/[0-9]/.test(pwd)) {
+                return showErr('Пароль: должна быть хотя бы одна цифра'), false;
+            }
+            window.__ltRegPassword = pwd;
+
             if (!window.__ltRegRegion) return showErr('Выберите регион'), false;
         }
         if (currentStep === 4){
@@ -6638,7 +6654,78 @@ window.__ltOpenRegisterLanding = function(){
         if (on){ lbl.classList.add('hidden'); ldr.classList.remove('hidden'); goContinueBtn.disabled = true; }
         else { lbl.classList.remove('hidden'); ldr.classList.add('hidden'); goContinueBtn.disabled = false; }
     }
+    /* ---------- РЕАЛЬНАЯ РЕГИСТРАЦИЯ ---------- */
+    async function registerUser(){
+        setLoading(true);
+        try {
+            // Динамический импорт клиента Supabase
+            const mod = await import('/js/supabase.js');
+            const supabase = mod.supabase;
 
+            const email = regEmailInput.value.trim();
+            const password = window.__ltRegPassword;
+
+            if (!email || !password){
+                throw new Error('Email или пароль не заполнены');
+            }
+
+            // Собираем данные из всех шагов
+            const fullName = $('reg-name')?.value.trim() || '';
+            const username = ($('reg-username')?.value || '').trim().toLowerCase().replace(/[^a-z0-9_.]/g, '');
+            const bio      = $('reg-bio')?.value.trim() || '';
+            const region   = window.__ltRegRegion || null;
+            const theme    = document.querySelector('#reg-theme-picker .auth-theme-choice.active')?.dataset.theme || 'light';
+
+            // Дата рождения
+            const bd = $('reg-birth-day')?.value;
+            const bm = $('reg-birth-month')?.value;
+            const by = $('reg-birth-year')?.value;
+            const birthday = (bd && bm && by)
+                ? `${by}-${String(bm).padStart(2,'0')}-${String(bd).padStart(2,'0')}`
+                : null;
+
+            // signUp
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: fullName,
+                        username: username || null,
+                        bio: bio || null,
+                        region,
+                        birthday,
+                        theme
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            // Если сессии нет (autoconfirm выключен) — логинимся вручную
+            if (!data.session){
+                const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+                if (signInErr) throw signInErr;
+            }
+
+            // Показываем loading screen и перезагружаем страницу.
+            // После reload boot() сам найдёт сессию и вызовет enterApp().
+            document.getElementById('auth-screen')?.classList.add('hidden');
+            document.getElementById('loading-screen')?.classList.remove('hidden');
+            const lt = document.getElementById('loading-text');
+            if (lt) lt.textContent = 'Почти готово...';
+
+            setTimeout(() => location.reload(), 1400);
+
+        } catch (err){
+            console.error('[register]', err);
+            setLoading(false);
+            let m = err.message || 'Не удалось создать аккаунт';
+            if (/already registered|user already exists/i.test(m)) m = 'Этот email уже зарегистрирован';
+            if (/password/i.test(m) && /short|weak|min/i.test(m)) m = 'Пароль слишком простой (минимум 8 символов, буквы+цифры)';
+            showErr('Ошибка: ' + m);
+        }
+    }
     goContinueBtn?.addEventListener('click', async e => {
         e.preventDefault();
         e.stopPropagation();
@@ -6652,14 +6739,8 @@ window.__ltOpenRegisterLanding = function(){
         if (currentStep < TOTAL_STEPS){
             goToStep(currentStep + 1);
         } else {
-            // Финальный шаг — заглушка, тут можно вызвать supabase.auth.signUp
-            showErr('Аккаунт создан (демо)');
-            setTimeout(() => {
-                exitRegisterMode();
-                if (typeof window.showToast === 'function'){
-                    window.showToast('success', 'Аккаунт создан', { icon: '✓' });
-                }
-            }, 700);
+            // Финальный шаг — реальная регистрация
+            await registerUser();
         }
     }, true);
 

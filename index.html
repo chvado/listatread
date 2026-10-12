@@ -116,9 +116,18 @@
                 </div>
 
                 <!-- ШАГ 3: имя + регион -->
+                <!-- ШАГ 3: имя + пароль + регион -->
                 <div class="auth-form reg-stage" data-regstage="3">
                     <input type="text" id="reg-name" class="auth-input"
                            placeholder="Имя или псевдоним" maxlength="40" autocomplete="name">
+                    <div class="auth-field">
+                        <input type="password" id="reg-password" class="auth-input"
+                               placeholder="Пароль" maxlength="30" autocomplete="new-password">
+                        <button type="button" class="auth-pwd-toggle" data-target="reg-password">👁</button>
+                    </div>
+                    <div class="auth-hint">
+                        используйте только <b>латинские буквы</b>, <b>спец. символы</b> и <b>цифры</b>, длина пароля не менее <b>8</b> и не более <b>30</b> символов
+                    </div>
                     <button type="button" class="auth-input auth-picker" id="reg-region-btn">
                         <span class="picker-flag" id="reg-region-flag">◯</span>
                         <span class="picker-name" id="reg-region-name">Выберите регион</span>
