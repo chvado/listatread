@@ -6664,10 +6664,10 @@ window.__ltOpenRegisterLanding = function(){
         else { lbl.classList.remove('hidden'); ldr.classList.add('hidden'); goContinueBtn.disabled = false; }
     }
     /* ---------- РЕАЛЬНАЯ РЕГИСТРАЦИЯ ---------- */
+    /* ---------- РЕАЛЬНАЯ РЕГИСТРАЦИЯ ---------- */
     async function registerUser(){
         setLoading(true);
         try {
-            // Динамический импорт клиента Supabase
             const mod = await import('/js/supabase.js');
             const supabase = mod.supabase;
 
@@ -6678,20 +6678,22 @@ window.__ltOpenRegisterLanding = function(){
                 throw new Error('Email или пароль не заполнены');
             }
 
-            // Собираем данные из всех шагов
+            // Собираем данные
             const fullName = $('reg-name')?.value.trim() || '';
             const username = ($('reg-username')?.value || '').trim().toLowerCase().replace(/[^a-z0-9_.]/g, '');
             const bio      = $('reg-bio')?.value.trim() || '';
             const region   = window.__ltRegRegion || null;
             const theme    = document.querySelector('#reg-theme-picker .auth-theme-choice.active')?.dataset.theme || 'light';
 
-            // Дата рождения
             const bd = $('reg-birth-day')?.value;
             const bm = $('reg-birth-month')?.value;
             const by = $('reg-birth-year')?.value;
             const birthday = (bd && bm && by)
                 ? `${by}-${String(bm).padStart(2,'0')}-${String(bd).padStart(2,'0')}`
                 : null;
+
+            // Файл аватара — берём ЗАРАНЕЕ, до reload
+            const avatarFile = document.getElementById('reg-avatar')?.files?.[0] || null;
 
             // signUp
             const { data, error } = await supabase.auth.signUp({
@@ -6711,14 +6713,58 @@ window.__ltOpenRegisterLanding = function(){
 
             if (error) throw error;
 
-            // Если сессии нет (autoconfirm выключен) — логинимся вручную
+            // Если сессии нет — логинимся вручную
             if (!data.session){
                 const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
                 if (signInErr) throw signInErr;
             }
 
-            // Показываем loading screen и перезагружаем страницу.
-            // После reload boot() сам найдёт сессию и вызовет enterApp().
+            // Получаем ID пользователя
+            const { data: { user: newUser } } = await supabase.auth.getUser();
+            const userId = newUser?.id || data.user?.id;
+
+            if (userId){
+                // ─── 1. Загружаем аватар в storage ───
+                if (avatarFile){
+                    try {
+                        const ext = avatarFile.name.split('.').pop() || 'jpg';
+                        const path = `${userId}/avatar-${Date.now()}.${ext}`;
+                        const up = await supabase.storage
+                            .from('avatars')
+                            .upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
+
+                        if (!up.error){
+                            const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+                            if (pub?.publicUrl){
+                                await supabase.from('profiles')
+                                    .update({ avatar_url: pub.publicUrl })
+                                    .eq('id', userId);
+                            }
+                        } else {
+                            console.warn('[reg] avatar upload error:', up.error.message);
+                        }
+                    } catch (e){
+                        console.warn('[reg] avatar exception:', e.message);
+                    }
+                }
+
+                // ─── 2. Обновляем bio и остальные поля в profiles ───
+                // (на случай если триггер в БД не переносит их из user_metadata)
+                try {
+                    await supabase.from('profiles').update({
+                        full_name: fullName || null,
+                        username: username || null,
+                        bio: bio || null,
+                        region: region || null,
+                        birthday: birthday || null,
+                        theme: theme || 'light'
+                    }).eq('id', userId);
+                } catch (e){
+                    console.warn('[reg] profile update error:', e.message);
+                }
+            }
+
+            // Loading + reload
             document.getElementById('auth-screen')?.classList.add('hidden');
             document.getElementById('loading-screen')?.classList.remove('hidden');
             const lt = document.getElementById('loading-text');
