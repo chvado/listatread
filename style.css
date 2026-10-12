@@ -1691,7 +1691,38 @@ html[data-theme="dark"] #create-channel-screen textarea:focus {
     justify-content: center !important;
     box-sizing: border-box !important;
 }
+/* ============================================================
+   SAFEGUARD: FOUC — модалки не видны, пока не .open
+   (защита от мелькания при загрузке страницы)
+============================================================ */
 
+.prioriti-sheet:not(.open),
+.actionsheet:not(.open),
+.lang-sheet:not(.open),
+.code-modal-sheet,
+.share-sheet,
+.report-sheet,
+.ban-sheet {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.prioriti-sheet.open,
+.actionsheet.open,
+.lang-modal:not(.hidden) .lang-sheet,
+.code-modal:not(.hidden) .code-modal-sheet,
+.share-modal:not(.hidden) .share-sheet,
+.report-modal:not(.hidden) .report-sheet,
+.ban-modal:not(.hidden) .ban-sheet {
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+/* Скрытые модалки полностью вырубаем, чтобы ничего не мелькало */
+.prioriti-sheet.hidden,
+.actionsheet.hidden {
+    display: none !important;
+}
 /* ============================================================
    21. АДАПТИВ
 ============================================================ */

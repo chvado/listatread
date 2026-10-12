@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#ffffff">
     <title>listatread</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22black%22/><text x=%2250%22 y=%2272%22 font-size=%2272%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22serif%22>ℓ</text></svg>">
-    <link rel="stylesheet" href="style.css?v=4">
-    <link rel="stylesheet" href="/css/fixes.css?v=3">
+    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="/css/fixes.css?v=4">
     <style>
         /* EMERGENCY: force-hide всё, что не .active/.open/show */
         .code-modal:not(.open):not(.show),
@@ -540,7 +540,7 @@
 
 <!-- STORR -->
 <div class="prioriti-backdrop hidden" id="prioriti-backdrop"></div>
-<aside class="prioriti-sheet" id="prioriti-sheet">
+<aside class="prioriti-sheet hidden" id="prioriti-sheet">
     <div class="prioriti-handle"></div>
     <div class="prioriti-header"><div class="prioriti-star"><svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></div><h2 class="prioriti-title">storr</h2><p class="prioriti-sub">Управление подарками и подписками</p></div>
     <div class="prioriti-block"><h3 class="prioriti-block-title">Ваши подарки</h3><div class="prioriti-empty"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg><p>Вам еще не дарили подарки</p></div></div>
@@ -553,7 +553,7 @@
 
 <!-- ACTIONSHEET -->
 <div class="actionsheet-backdrop hidden" id="actionsheet-backdrop"></div>
-<div class="actionsheet" id="actionsheet"><div class="actionsheet-handle"></div><h3 class="actionsheet-title" id="actionsheet-title">Действия</h3><div class="actionsheet-list" id="actionsheet-list"></div><button class="actionsheet-cancel" id="actionsheet-cancel">Отмена</button></div>
+<div class="actionsheet hidden" id="actionsheet"><div class="actionsheet-handle"></div><h3 class="actionsheet-title" id="actionsheet-title">Действия</h3><div class="actionsheet-list" id="actionsheet-list"></div><button class="actionsheet-cancel" id="actionsheet-cancel">Отмена</button></div>
 
 <!-- LANG / REGION -->
 <div class="lang-modal hidden" id="lang-modal"><div class="lang-backdrop" id="lang-backdrop"></div><div class="lang-sheet"><div class="lang-sheet-header"><div class="lang-sheet-handle"></div><h3 class="lang-sheet-title">Выберите язык</h3></div><div class="lang-list" id="lang-list"></div></div></div>
@@ -860,7 +860,7 @@
     <div class="sys-notif-list" id="sys-notif-list"></div>
 </div>
 
-<script type="module" src="js/main.js?v=27"></script>
+<script type="module" src="js/main.js?v=30"></script>
 <script>
     /* ============================================================
        РЕЗЕРВНЫЕ ОБРАБОТЧИКИ — регистрация и язык

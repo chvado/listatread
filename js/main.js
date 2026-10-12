@@ -806,8 +806,16 @@ $('login-form').addEventListener('submit', async e => {
    STORR
 ============================================================ */
 const prioritiSheet = $('prioriti-sheet'), prioritiBackdrop = $('prioriti-backdrop')
-function openPrioriti(){ prioritiSheet.classList.add('open'); prioritiBackdrop.classList.remove('hidden') }
-function closePrioriti(){ prioritiSheet.classList.remove('open'); prioritiBackdrop.classList.add('hidden') }
+function openPrioriti(){
+    prioritiSheet.classList.remove('hidden');
+    prioritiSheet.classList.add('open');
+    prioritiBackdrop.classList.remove('hidden');
+}
+function closePrioriti(){
+    prioritiSheet.classList.remove('open');
+    prioritiSheet.classList.add('hidden');
+    prioritiBackdrop.classList.add('hidden');
+}
 prioritiBackdrop.addEventListener('click', closePrioriti)
 $('storr-gifts-btn')?.addEventListener('click', () => { closePrioriti(); alert('Магазин подарков и клигов — скоро') })
 $('storr-chvad-btn')?.addEventListener('click', () => { closePrioriti(); alert('Подписка listatread chvad — скоро') })
@@ -853,11 +861,17 @@ function showActionSheet(title, items){
             if(it.onClick) setTimeout(it.onClick, 100)
         })
     })
-    actionsheet.classList.add('open'); actionsheetBackdrop.classList.remove('hidden')
+    actionsheet.classList.remove('hidden');
+    actionsheet.classList.add('open');
+    actionsheetBackdrop.classList.remove('hidden');
 }
 window.showActionSheet = showActionSheet
 window.showToast = showToast
-function closeActionSheet(){ actionsheet.classList.remove('open'); actionsheetBackdrop.classList.add('hidden') }
+function closeActionSheet(){
+    actionsheet.classList.remove('open');
+    actionsheet.classList.add('hidden');
+    actionsheetBackdrop.classList.add('hidden');
+}
 actionsheetBackdrop.addEventListener('click', closeActionSheet)
 $('actionsheet-cancel').addEventListener('click', closeActionSheet)
 
