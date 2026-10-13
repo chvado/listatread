@@ -92,7 +92,6 @@ const SHARE_CIRCLES = [
     { key:'instagram', label:'Instagram',    bg:'#E4405F', icon:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="#fff" stroke="none"/></svg>' },
     { key:'viber',     label:'Viber',        bg:'#7360f2', icon:'<svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M12 2C7 2 3 5.6 3 10c0 2 .7 3.8 2 5.3-.1 1.3-.5 2.6-1.4 3.6 1.5.1 3-.4 4.2-1.3 1.3.5 2.7.8 4.2.8 5 0 9-3.6 9-8S17 2 12 2z"/></svg>' },
     { key:'whatsapp',  label:'WhatsApp',     bg:'#25D366', icon:SVG.whatsapp },
-    { key:'wa_status', label:'WA status',    bg:'#128C7E', icon:'<svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M12 2a10 10 0 1 0 10 10h-3a7 7 0 1 1-7-7V2z"/></svg>' },
     { key:'facebook',  label:'Facebook',     bg:'#0866FF', icon:SVG.facebook },
     { key:'discord',   label:'Discord',      bg:'#5865F2', icon:SVG.discord },
     { key:'more',      label:'Больше',       bg:'#48484a', icon:'<svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>' }
@@ -170,7 +169,7 @@ const STATUSES = [
     { code:'magnet',  label:'Магнит',       emoji:'🧲' },
     { code:'bath',    label:'Ванна',        emoji:'🛁' },
     { code:'note',    label:'Заметка',      emoji:'📝' },
-    { code:'done',    label:'Готово',       emoji:'✅' },
+    { code:'done',    label:'Занят',       emoji:'🚫' },
     { code:'male',    label:'Мужской',      emoji:'🚹' },
     { code:'female',  label:'Женский',      emoji:'🚺' },
     { code:'baby',    label:'Ребёнок',      emoji:'🚼' }
