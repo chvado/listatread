@@ -429,8 +429,7 @@
 #qr-scan-modal { z-index: 9310 !important; }
 #report-modal { z-index: 9400 !important; }
 #ban-modal { z-index: 9500 !important; }
-#share-modal .share-backdrop { z-index: 9200 !important; }
-#share-modal .share-sheet    { z-index: 9201 !important; position: relative !important; }
+
 
 /* --- 4. AVATAR и ИМЯ в меню трёх точек --- */
 .feed-more-menu-avatar {
