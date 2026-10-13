@@ -52,6 +52,7 @@
     --nav-height:68px;
     --mini-player-offset:-8px;
     color-scheme:light;
+    overscroll-behavior: none;
 }
 html[data-theme="dark"]{
     --bg:#000000;
@@ -1068,7 +1069,28 @@ html[data-theme="dark"] .ch-post{background:#1c1c1e;color:#fff}
 .full-close:hover,.full-more:hover{background:rgba(255,255,255,.2)}
 .full-now{font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:rgba(255,255,255,.6)}
 .full-body{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 24px calc(env(safe-area-inset-bottom,0) + 24px);overflow-y:auto}
-.full-cover{width:260px;height:260px;max-width:70vw;max-height:70vw;border-radius:26px;background:linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2);display:flex;align-items:center;justify-content:center;font-size:90px;font-weight:900;color:#fff;overflow:hidden;box-shadow:0 12px 32px rgba(255,55,95,.28);flex-shrink:0;margin-top:8px}
+.full-cover{
+    width: 260px;
+    height: 260px;
+    min-width: 260px;
+    min-height: 260px;
+    max-width: 70vw;
+    max-height: 70vw;
+    aspect-ratio: 1 / 1;
+    flex-shrink: 0;
+    border-radius: 26px;
+    background: linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 90px;
+    font-weight: 900;
+    color: #fff;
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(255,55,95,.28);
+    margin-top: 8px;
+}
+.full-cover img { width:100%; height:100%; object-fit:cover; display:block; }
 .full-cover img{width:100%;height:100%;object-fit:cover}
 .full-channel-row{display:flex;align-items:center;gap:10px;margin-top:22px;max-width:260px}
 .full-channel-ava{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#ff9f0a,#ff375f);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;overflow:hidden;flex-shrink:0;cursor:pointer}
@@ -1100,6 +1122,68 @@ html[data-theme="dark"] .ch-post{background:#1c1c1e;color:#fff}
 .full-channel-follow{width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:8px;cursor:pointer}
 .full-channel-follow.subscribed{background:rgba(255,59,48,.85);color:#fff}
 .full-channel-follow svg{width:18px;height:18px;display:block}
+
+/* ============================================================
+   ПОЛНОЭКРАННЫЙ ВИДЕО-РЕЖИМ
+============================================================ */
+#video-fs {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease;
+    touch-action: none;
+}
+#video-fs.show { opacity: 1; pointer-events: auto; }
+#video-fs.hidden { display: none !important; }
+
+#video-fs-el {
+    width: 100%;
+    height: 100%;
+    max-width: 100vw;
+    max-height: 100dvh;
+    object-fit: contain;
+    background: #000;
+    display: block;
+}
+
+.video-fs-top {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 3;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 100%);
+}
+.video-fs-back,
+.video-fs-more {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,.45);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    pointer-events: auto;
+    flex-shrink: 0;
+}
+.video-fs-back:active,
+.video-fs-more:active { transform: scale(.94); }
+.video-fs-back svg,
+.video-fs-more svg { fill: currentColor; }
 
 /* ============================================================
    16. ПОИСК
@@ -1256,7 +1340,8 @@ html[data-theme="dark"] .share-sheet{background:#1c1c1e;color:#fff}
 .share-mini-ava img,.share-mini-ch img{width:100%;height:100%;object-fit:cover}
 .share-track-banner{position:relative;width:100%;aspect-ratio:1/1;border-radius:20px;overflow:hidden;margin-bottom:16px;background:#111;color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.28)}
 .share-track-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(4px) saturate(1.4);transform:scale(1.25)}
-.share-track-content{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;padding:20px;gap:6px;background:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.7) 100%)}
+.share-track-content{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;padding:20px;gap:6px;background:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.7) 100%);aspect-ratio: 1 / 1 !important;
+    min-height: 280px;}
 .share-track-title{font-size:22px;font-weight:900;line-height:1.2;text-shadow:0 2px 10px rgba(0,0,0,.6)}
 .share-track-sub{display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:12px;opacity:.92}
 .share-track-download{position:absolute;right:14px;top:14px;z-index:3;width:44px;height:44px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.3)}
@@ -1266,14 +1351,91 @@ html[data-theme="dark"] .share-sheet{background:#1c1c1e;color:#fff}
 .share-profile-name{font-size:20px;font-weight:800;color:var(--text)}
 .share-profile-username{font-size:13px;color:var(--text-secondary)}
 .share-friends-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-tertiary);padding:6px 4px 10px}
-.share-friends-row{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 12px;scrollbar-width:none}
+.share-friends-row{
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px 4px 20px;
+    scrollbar-width: none;
+    min-height: 92px;
+    align-items: flex-start;
+    -webkit-overflow-scrolling: touch;
+}
+.share-friends-row::-webkit-scrollbar { display: none; }
 .share-friends-row::-webkit-scrollbar{display:none}
-.share-friend{display:flex;flex-direction:column;align-items:center;gap:6px;width:66px;flex-shrink:0;background:transparent;border:none;font-family:inherit;cursor:pointer}
-.share-friend-ava{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--yellow),var(--red-pink));color:#fff;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;border:3px solid transparent;transition:border-color .2s,transform .18s}
-.share-friend-ava img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-.share-friend.selected .share-friend-ava{border-color:var(--blue);transform:scale(1.04)}
-.share-friend.selected .share-friend-ava::after{content:'✓';position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
-.share-friend-name{font-size:11px;font-weight:600;text-align:center;max-width:66px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary)}
+.share-friend{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 64px;
+    flex: 0 0 64px;
+    background: transparent;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0;
+}
+.share-friend-ava{
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    min-height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--yellow), var(--red-pink));
+    color: #fff;
+    font-size: 22px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    border: 3px solid transparent;
+    transition: border-color .2s, transform .18s;
+    box-sizing: border-box;
+}
+.share-friend-ava img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+.share-friend.selected .share-friend-ava{
+    border-color: var(--blue);
+    transform: scale(1.04);
+}
+.share-friend.selected .share-friend-ava::after{
+    content: '✓';
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--blue);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg);
+    box-sizing: border-box;
+}
+.share-friend-name{
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    max-width: 64px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-secondary);
+    line-height: 1.1;
+}
 .share-send-direct{width:100%;padding:14px;border:none;border-radius:14px;background:var(--blue);color:#fff;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:18px;transition:opacity .2s}
 .share-send-direct:disabled{opacity:.4;cursor:not-allowed}
 .share-qr-banner{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px;border-radius:20px;margin-bottom:16px;background:linear-gradient(135deg,#ff9f0a,#ff375f);cursor:pointer;transition:transform .2s}
@@ -1696,7 +1858,17 @@ html[data-theme="dark"] #create-channel-screen textarea:focus {
    (защита от мелькания при загрузке страницы)
 ============================================================ */
 
-.prioriti-sheet:not(.open),
+/* Плавное появление/исчезновение — БЕЗ visibility:hidden */
+.prioriti-sheet {
+    visibility: visible !important;
+    pointer-events: auto;
+    transition: transform .32s cubic-bezier(.32,.72,.24,1), opacity .25s ease;
+    opacity: 1;
+}
+.prioriti-sheet.hidden {
+    display: none !important;      /* прячем только когда совсем закрыт */
+    opacity: 0;
+}
 .actionsheet:not(.open),
 .lang-sheet:not(.open),
 .code-modal-sheet,
@@ -1774,7 +1946,17 @@ html[data-theme="dark"] #create-channel-screen textarea:focus {
     backdrop-filter: blur(14px) saturate(140%) !important;
     -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
 }
-
+.prioriti-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 8900 !important;
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+.prioriti-sheet {
+    z-index: 8901 !important;
+}
 /* share/report/ban — плавный выезд снизу */
 .share-sheet,
 .report-sheet,
@@ -1884,4 +2066,59 @@ html[data-theme="dark"] #create-channel-screen textarea:focus {
 }
 .dr-theme-cell.active .dr-theme-name{
     color: var(--blue, #0a84ff) !important;
+}
+
+/* ============================================================
+   SHARE SHEET — правильный скролл
+============================================================ */
+#share-modal {
+    align-items: flex-end !important;
+    padding: 0 !important;
+}
+
+#share-modal #share-sheet,
+.share-modal #share-sheet {
+    max-height: 92dvh !important;
+    height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+    padding: 0 20px calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    will-change: auto !important; /* ← важно: НЕ transform */
+    touch-action: pan-y !important;
+}
+
+/* Ручка сверху не должна скроллиться — она в начале */
+#share-modal .share-handle {
+    flex-shrink: 0;
+}
+
+/* Кнопка «Отмена» — не залипает, но не сжимается */
+#share-modal #share-cancel {
+    flex-shrink: 0;
+    margin-top: 8px;
+}
+
+html {
+    background-color: var(--bg);
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+}
+html, body {
+    background-color: var(--bg);
+    color: var(--text);
+}
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+    background-color: #000 !important;
+    color: #fff;
+}
+html[data-theme="light"],
+html[data-theme="light"] body {
+    background-color: #fff !important;
+    color: #000;
 }

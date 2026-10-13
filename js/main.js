@@ -215,8 +215,7 @@ function setPageBg(forceDark){
     const dark = forceDark === true || (forceDark !== false && theme === 'dark')
     document.documentElement.classList.toggle('bg-dark', dark)
     document.documentElement.classList.toggle('bg-light', !dark)
-    const meta = document.querySelector('meta[name="theme-color"]')
-    if(meta) meta.setAttribute('content', dark ? '#000000' : '#ffffff')
+
 }
 function applyTheme(theme){
     const t = theme === 'dark' ? 'dark' : 'light'
@@ -810,25 +809,78 @@ $('login-form').addEventListener('submit', async e => {
 const prioritiSheet    = $('prioriti-sheet')
 const prioritiBackdrop = $('prioriti-backdrop')
 
+let _prioritiOpen = false
+
 function openPrioriti(){
-    if(!prioritiSheet) return
+    if(!prioritiSheet || _prioritiOpen) return
+    _prioritiOpen = true
+
+    // 1. Показываем backdrop и sheet БЕЗ анимации
+    prioritiBackdrop.style.transition = 'none'
+    prioritiBackdrop.style.opacity = '0'
     prioritiBackdrop.classList.remove('hidden')
+
+    prioritiSheet.style.transition = 'none'
+    prioritiSheet.style.transform  = 'translateY(100%)'
     prioritiSheet.classList.remove('hidden')
+
+    // 2. Форсим reflow, чтобы браузер «увидел» стартовое состояние
     void prioritiSheet.offsetHeight
-    requestAnimationFrame(() => prioritiSheet.classList.add('open'))
+
+    // 3. Включаем анимацию и запускаем
+    requestAnimationFrame(() => {
+        prioritiBackdrop.style.transition = 'opacity .25s ease'
+        prioritiSheet.style.transition    = 'transform .32s cubic-bezier(.32,.72,.24,1)'
+
+        prioritiBackdrop.style.opacity = '1'
+        prioritiSheet.style.transform  = 'translateY(0)'
+
+        // подстраховка — если браузер проигнорит transition
+        setTimeout(() => {
+            prioritiBackdrop.style.opacity = ''
+            prioritiSheet.style.transform  = ''
+            prioritiBackdrop.classList.add('show')   // если есть CSS .show
+            prioritiSheet.classList.add('open')      // на случай если CSS привязан к .open
+        }, 340)
+    })
 }
+
 function closePrioriti(){
-    if(!prioritiSheet) return
-    prioritiSheet.classList.remove('open')
+    if(!prioritiSheet || !_prioritiOpen) return
+    _prioritiOpen = false
+
+    // Анимация закрытия
+    prioritiBackdrop.style.opacity = '0'
+    prioritiSheet.style.transform  = 'translateY(100%)'
+
+    // После анимации — прячем полностью
     setTimeout(() => {
-        prioritiSheet.classList.add('hidden')
         prioritiBackdrop.classList.add('hidden')
-    }, 320)
+        prioritiSheet.classList.add('hidden')
+
+        // Сброс inline-стилей, чтобы следующее открытие стартовало чисто
+        prioritiBackdrop.style.opacity = ''
+        prioritiBackdrop.style.transition = ''
+        prioritiSheet.style.transform = ''
+        prioritiSheet.style.transition = ''
+
+        prioritiBackdrop.classList.remove('show')
+        prioritiSheet.classList.remove('open')
+    }, 340)
 }
+
+// Закрытие — где угодно
 prioritiBackdrop?.addEventListener('click', closePrioriti)
 document.addEventListener('click', e => {
     if(e.target === prioritiBackdrop) closePrioriti()
 }, true)
+
+// Esc (для десктопа)
+document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && _prioritiOpen) closePrioriti()
+})
+
+
 prioritiBackdrop.addEventListener('click', closePrioriti)
 $('storr-gifts-btn')?.addEventListener('click', () => { closePrioriti(); alert('Магазин подарков и клигов — скоро') })
 $('storr-chvad-btn')?.addEventListener('click', () => { closePrioriti(); alert('Подписка listatread chvad — скоро') })
@@ -4808,7 +4860,7 @@ function enterVideoFS(src, postId){
     const p = vid.play()
     if(p && p.catch) p.catch(() => { vid.muted = true; vid.play().then(() => { vid.muted = false }).catch(()=>{}) })
     fs.dataset.pid = postId || ''
-    fs.style.zIndex = '2147483000'
+
     fs.classList.remove('hidden'); void fs.offsetWidth
     requestAnimationFrame(() => fs.classList.add('show'))
 }
@@ -6088,6 +6140,12 @@ async function openShareSheet(ctx){
     const modal = getShareModal(); if(!modal) return
     modal.classList.remove('hidden')
 
+    const sheetEl = document.getElementById('share-sheet')
+    if (sheetEl) {
+        sheetEl.scrollTop = 0
+        sheetEl.style.transform = '' // на случай если остался translateY от анимации
+    }
+
     document.getElementById('share-video-banner').classList.add('hidden')
     document.getElementById('share-track-banner').classList.add('hidden')
     document.getElementById('share-profile-banner').classList.add('hidden')
@@ -6175,19 +6233,35 @@ async function renderShareFriends(){
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         if(!user){ box.innerHTML = '<p class="empty small">Войдите</p>'; return }
-        const { data:fol } = await supabase.from('follows')
-            .select('profiles:following_id ( id, username, full_name, avatar_url )')
-            .eq('follower_id', user.id).limit(30)
-        const people = (fol || []).map(f => f.profiles).filter(Boolean)
-        if(!people.length){ box.innerHTML = '<p class="empty small">Нет подписок</p>'; return }
+
+        // подписки + подписчики
+        const [{ data:following }, { data:followers }] = await Promise.all([
+            supabase.from('follows')
+                .select('profiles:following_id ( id, username, full_name, avatar_url )')
+                .eq('follower_id', user.id).limit(30),
+            supabase.from('follows')
+                .select('profiles:follower_id ( id, username, full_name, avatar_url )')
+                .eq('following_id', user.id).limit(30)
+        ])
+        const map = new Map()
+        ;(following || []).forEach(f => { if(f.profiles) map.set(f.profiles.id, f.profiles) })
+        ;(followers || []).forEach(f => { if(f.profiles) map.set(f.profiles.id, f.profiles) })
+        const people = [...map.values()]
+
+        if(!people.length){
+            box.innerHTML = '<p class="empty small" style="padding:14px 8px;color:var(--text-tertiary);font-size:12px">Нет подписок и подписчиков</p>'
+            return
+        }
+
         box.innerHTML = people.map(p => {
             const name = p.full_name || p.username || 'user'
-            const av = p.avatar_url ? `<img src="${p.avatar_url}">` : name.charAt(0).toUpperCase()
-            return `<button class="share-friend" data-uid="${p.id}">
+            const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
+            return `<button type="button" class="share-friend" data-uid="${p.id}">
                 <span class="share-friend-ava">${av}</span>
                 <span class="share-friend-name">${escapeHtml(name)}</span>
             </button>`
         }).join('')
+
         box.querySelectorAll('.share-friend').forEach(b => b.addEventListener('click', () => {
             const uid = b.dataset.uid
             if(_shareCtx.selectedFriends.has(uid)) _shareCtx.selectedFriends.delete(uid)
