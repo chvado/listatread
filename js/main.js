@@ -807,18 +807,28 @@ $('login-form').addEventListener('submit', async e => {
 /* ============================================================
    STORR
 ============================================================ */
-const prioritiSheet = $('prioriti-sheet'), prioritiBackdrop = $('prioriti-backdrop')
+const prioritiSheet    = $('prioriti-sheet')
+const prioritiBackdrop = $('prioriti-backdrop')
+
 function openPrioriti(){
+    if(!prioritiSheet) return
     prioritiBackdrop.classList.remove('hidden')
     prioritiSheet.classList.remove('hidden')
     void prioritiSheet.offsetHeight
     requestAnimationFrame(() => prioritiSheet.classList.add('open'))
 }
 function closePrioriti(){
-    prioritiSheet.classList.remove('open');
-    prioritiSheet.classList.add('hidden');
-    prioritiBackdrop.classList.add('hidden');
+    if(!prioritiSheet) return
+    prioritiSheet.classList.remove('open')
+    setTimeout(() => {
+        prioritiSheet.classList.add('hidden')
+        prioritiBackdrop.classList.add('hidden')
+    }, 320)
 }
+prioritiBackdrop?.addEventListener('click', closePrioriti)
+document.addEventListener('click', e => {
+    if(e.target === prioritiBackdrop) closePrioriti()
+}, true)
 prioritiBackdrop.addEventListener('click', closePrioriti)
 $('storr-gifts-btn')?.addEventListener('click', () => { closePrioriti(); alert('Магазин подарков и клигов — скоро') })
 $('storr-chvad-btn')?.addEventListener('click', () => { closePrioriti(); alert('Подписка listatread chvad — скоро') })
@@ -2574,7 +2584,46 @@ async function renderProfileActions(targetId, myId, iBlocked){
     const following = !!isSub
 
     const wrap = document.createElement('div'); wrap.className = 'profile-actions-other'
+// ── Кнопка ЧАТ ──
+    const chatBtn = document.createElement('button')
+    chatBtn.className = 'btn-icon-round btn-chat-round'
+    chatBtn.title = 'Написать сообщение'
+    chatBtn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`
+    chatBtn.addEventListener('click', async () => {
+        chatBtn.disabled = true
+        try {
+            const { data:{ user } } = await supabase.auth.getUser()
+            if(!user){ showToast('error', 'Войдите в аккаунт'); return }
 
+            // админ / сам админ / взаимные подписки — можно писать
+            const { data:prof } = await supabase.from('profiles')
+                .select('is_admin').eq('id', targetId).maybeSingle()
+            const peerIsAdmin = !!prof?.is_admin
+            let canWrite = ADMIN_STATE.isAdmin || peerIsAdmin
+
+            if(!canWrite){
+                const [{ data:meFollows }, { data:peerFollows }] = await Promise.all([
+                    supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', targetId).maybeSingle(),
+                    supabase.from('follows').select('id').eq('follower_id', targetId).eq('following_id', user.id).maybeSingle()
+                ])
+                canWrite = !!(meFollows || peerFollows)
+            }
+
+            if(!canWrite){
+                showToast('error', 'Чтобы начать чат — подпишитесь на пользователя', { duration: 4000 })
+                return
+            }
+
+            // Открываем direct
+            const { openDirectChat } = await import('./direct.js')
+            openDirectChat(targetId)
+        } catch(e){
+            console.warn('[chat btn]', e)
+            showToast('error', 'Не удалось открыть чат')
+        } finally {
+            chatBtn.disabled = false
+        }
+    })
     const followBtn = document.createElement('button')
     followBtn.className = 'btn-follow ' + (following ? 'following' : '')
     followBtn.textContent = following ? 'Отписаться' : 'Подписаться'
@@ -2610,6 +2659,7 @@ async function renderProfileActions(targetId, myId, iBlocked){
     giftBtn.innerHTML = ICONS.gift
     giftBtn.addEventListener('click', () => openPrioriti())
 
+    wrap.appendChild(chatBtn)
     wrap.appendChild(followBtn)
     wrap.appendChild(giftBtn)
     box.appendChild(wrap)
@@ -4758,6 +4808,7 @@ function enterVideoFS(src, postId){
     const p = vid.play()
     if(p && p.catch) p.catch(() => { vid.muted = true; vid.play().then(() => { vid.muted = false }).catch(()=>{}) })
     fs.dataset.pid = postId || ''
+    fs.style.zIndex = '2147483000'
     fs.classList.remove('hidden'); void fs.offsetWidth
     requestAnimationFrame(() => fs.classList.add('show'))
 }
@@ -4806,23 +4857,19 @@ document.getElementById('video-fs-more')?.addEventListener('click', async () => 
 ;(function initSwipe(){
     function attach(el, closeFn, baseX){
         if(!el) return
-        const handle = el.querySelector('.actionsheet-handle, .prioriti-handle, .lang-sheet-handle, .code-modal-handle, .share-handle')
-        if(!handle) return
-        if(handle.dataset.unifiedDrag === '1') return
+        const handle = el.querySelector('.actionsheet-handle, .prioriti-handle, .lang-sheet-handle, .code-modal-handle, .share-handle, .report-handle')
+        if(!handle || handle.dataset.unifiedDrag === '1') return
         handle.dataset.unifiedDrag = '1'
 
         let startY = 0, curY = 0, drag = false, startTime = 0
         const base = baseX ? `translateX(${baseX})` : ''
 
-        const onStart = (e) => {
-            drag = true
-            startTime = Date.now()
-            startY = (e.touches?.[0] || e).clientY
-            curY = startY
-            el.classList.add('dragging')
+        const onStart = e => {
+            drag = true; startTime = Date.now()
+            startY = (e.touches?.[0] || e).clientY; curY = startY
             el.style.transition = 'none'
         }
-        const onMove = (e) => {
+        const onMove = e => {
             if(!drag) return
             if(e.cancelable) e.preventDefault()
             curY = (e.touches?.[0] || e).clientY
@@ -4832,39 +4879,54 @@ document.getElementById('video-fs-more')?.addEventListener('click', async () => 
         const onEnd = () => {
             if(!drag) return
             drag = false
-            el.classList.remove('dragging')
             const dy = curY - startY
             const height = el.offsetHeight || 1
             const ratio = dy / height
             const velocity = dy / (Date.now() - startTime)
-
             el.style.transition = ''
             el.style.transform = ''
-
-            if(ratio > 0.5 || velocity > 0.8){
-                closeFn()
-            }
+            if(ratio > 0.5 || velocity > 0.8){ closeFn(); }
         }
 
         handle.addEventListener('touchstart', onStart, { passive: true })
-        handle.addEventListener('touchmove', onMove, { passive: false })
-        handle.addEventListener('touchend', onEnd)
+        handle.addEventListener('touchmove',  onMove,  { passive: false })
+        handle.addEventListener('touchend',   onEnd)
         handle.addEventListener('touchcancel', onEnd)
-
         handle.addEventListener('mousedown', onStart)
         window.addEventListener('mousemove', e => { if(drag) onMove(e) })
-        window.addEventListener('mouseup', onEnd)
+        window.addEventListener('mouseup', () => { if(drag) onEnd() })
     }
 
+    // Обработчик «клик по пустому месту» для всех бэкдропов
+    const backdrops = [
+        ['actionsheet-backdrop',   closeActionSheet],
+        ['prioriti-backdrop',      closePrioriti],
+        ['share-backdrop',         closeShareSheet],
+        ['report-backdrop',        closeReportModal],
+        ['ban-backdrop',           () => document.getElementById('ban-modal')?.classList.add('hidden')],
+        ['qr-backdrop',            closeQrModal],
+        ['qr-scan-backdrop',       closeQrScanModal],
+        ['lang-backdrop',          closeLangModal],
+        ['region-backdrop',        closeRegionModal],
+        ['code-modal-backdrop',    () => document.getElementById('code-modal')?.classList.add('hidden')]
+    ]
+    backdrops.forEach(([id, fn]) => {
+        document.addEventListener('click', e => {
+            const b = e.target.closest('#' + id)
+            if(b) fn()
+        }, true)
+    })
+
+    // Свайп
     attach($('actionsheet'), closeActionSheet, '')
     attach($('prioriti-sheet'), closePrioriti, '-50%')
-    attach($('lang-modal')?.querySelector('.lang-sheet'), closeLangModal, '')
-    attach($('region-modal')?.querySelector('.lang-sheet'), closeRegionModal, '')
-    attach($('code-modal')?.querySelector('.code-modal-sheet'), () => $('code-modal')?.classList.add('hidden'), '')
-    attach($('qr-modal')?.querySelector('.qr-sheet'), closeQrModal, '')
-    attach($('qr-scan-modal')?.querySelector('.qr-sheet'), closeQrScanModal, '')
-    attach($('share-modal')?.querySelector('.share-sheet'), closeShareSheet, '')
-    attach(document.getElementById('report-modal')?.querySelector('.report-sheet'), closeReportModal, '')
+    attach(document.querySelector('#lang-modal .lang-sheet'), closeLangModal, '')
+    attach(document.querySelector('#region-modal .lang-sheet'), closeRegionModal, '')
+    attach(document.querySelector('#code-modal .code-modal-sheet'), () => document.getElementById('code-modal')?.classList.add('hidden'), '')
+    attach(document.querySelector('#qr-modal .qr-sheet'), closeQrModal, '')
+    attach(document.querySelector('#qr-scan-modal .qr-sheet'), closeQrScanModal, '')
+    attach(document.querySelector('#share-modal .share-sheet'), closeShareSheet, '')
+    attach(document.querySelector('#report-modal .report-sheet'), closeReportModal, '')
 })()
 
 /* ============================================================
@@ -6142,7 +6204,12 @@ async function renderShareFriends(){
 
 function renderShareSocials(){
     const box = document.getElementById('share-socials-row')
-    box.innerHTML = SHARE_CIRCLES.map(s => `<button class="share-social-circle" data-sk="${s.key}" style="background:${s.bg}">${s.icon}<span class="share-social-label">${s.label}</span></button>`).join('')
+    box.innerHTML = SHARE_CIRCLES.map(s => `
+    <button class="share-social-circle" data-sk="${s.key}" style="background:${s.bg}">
+        ${s.icon}
+        <span class="share-social-label">${s.label}</span>
+    </button>
+`).join('')
     box.querySelectorAll('.share-social-circle').forEach(btn => btn.addEventListener('click', () => {
         const k = btn.dataset.sk
         const url = _shareCtx.url || ''

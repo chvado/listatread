@@ -605,19 +605,35 @@ async function handleReportAction(reportId, action){
     }
 
     if(action === 'delete-post' && target?.postId){
-        await supabase.from('posts').delete().eq('id', target.postId)
-        await supabase.from('reports').update({ status:'resolved', resolved_at:new Date().toISOString(), resolved_by:user.id }).eq('id', reportId)
-        if(report.reporter_id){
-            await supabase.from('notifications').insert({
-                user_id: report.reporter_id,
-                type: 'report_resolved',
-                title: 'Мы приняли меры по вашей жалобе',
-                body: `Пост, на который вы пожаловались, был удалён.`,
-                meta: { status:'resolved' }
-            })
+        try {
+            const { error } = await supabase.from('posts').delete().eq('id', target.postId)
+            if(error) throw error
+
+            await supabase.from('reports').update({
+                status:'resolved',
+                resolved_at: new Date().toISOString(),
+                resolved_by: user.id
+            }).eq('id', reportId)
+
+            if(report.reporter_id){
+                await supabase.from('notifications').insert({
+                    user_id: report.reporter_id,
+                    type: 'report_resolved',
+                    title: 'Мы приняли меры по вашей жалобе',
+                    body: 'Пост, на который вы пожаловались, был удалён.',
+                    meta: { status:'resolved' }
+                })
+            }
+
+            // Убираем карточку из DOM сразу
+            document.querySelectorAll(`.feed-post[data-pid="${target.postId}"]`).forEach(el => el.remove())
+
+            if(typeof window.showToast === 'function') window.showToast('success', 'Пост удалён', { icon:'✓' })
+            await renderAdminReports()
+        } catch(e){
+            console.error('[delete-post]', e)
+            if(typeof window.showToast === 'function') window.showToast('error', 'Не удалось удалить: ' + (e.message || ''), { icon:'⚠️' })
         }
-        if(typeof window.showToast === 'function') window.showToast('success', 'Пост удалён', { icon:'✓' })
-        renderAdminReports()
         return
     }
 

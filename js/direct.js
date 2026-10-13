@@ -1399,14 +1399,14 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
 
     if(isSticker){
         return `<div class="dr-row ${mine ? 'mine' : ''}" data-mid="${m.id}" data-mine="${mine?1:0}">
-          <div class="dr-row-ava ${showAva ? '' : 'ghost'}">${av(avaSrc, avaName)}</div>
-          <div class="direct-bubble dr-sticker">
-            ${body}
-            <div class="direct-bubble-foot" style="color:${footColor}">
-              <span>${time}</span>${checkHtml}
-            </div>
-          </div>
-        </div>`
+      <div class="dr-row-ava ${showAva ? '' : 'ghost'}">${av(avaSrc, avaName)}</div>
+      <div class="direct-bubble dr-sticker">
+        ${body}
+        <div class="direct-bubble-foot" style="color:rgba(255,255,255,.75)">
+          <span>${time}</span>${checkHtml}
+        </div>
+      </div>
+    </div>`
     }
 
     return `<div class="dr-row ${mine ? 'mine' : ''}" data-mid="${m.id}" data-mine="${mine?1:0}">
