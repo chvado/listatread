@@ -39,6 +39,10 @@ const I = {
     sticker:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M14 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z"/><path d="M14 21v-4a3 3 0 0 1 3-3h4"/><circle cx="9" cy="10" r="0.9" fill="currentColor"/><circle cx="14" cy="10" r="0.9" fill="currentColor"/></svg>',
     send:   '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>',
     dots:   '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>',
+    playS:  '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+    pauseS: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>',
+    arrowUp:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>',
+    bookmark:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>',
     pin:    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 17v5M9 3h6l-1 8 4 3v2H6v-2l4-3z"/></svg>',
     plus:   '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     image:  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>',
@@ -521,7 +525,67 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
     `
     document.head.appendChild(st)
 })()
+const REACTIONS = ['❤️','👍','👎','🔥','😂','😮','😢','🙏','👏','🎉','🤔','😍','💯','😡','🤝']
+const shareOf = c => { const m = (c || '').match(/^\[share:(.+)\]$/); if(!m) return null; try { return JSON.parse(decodeURIComponent(m[1])) } catch { return null } }
+const contentLabel = c => c?.startsWith('[sticker:') ? 'Стикер' : c?.startsWith('[share:') ? 'Вложение' : (c || '')
+const sAva = (url, name) => url ? `<img src="${esc(url)}" alt="">` : esc((name || '?').charAt(0).toUpperCase())
 
+function renderShareCard(d){
+    const k = d.k
+    const go = `<button class="sh-go" data-sh-go aria-label="Перейти">${I.arrowUp}</button>`
+    const authorLine = `<div class="sh-line"><span>${esc(d.uname || 'user')}</span><div class="sh-ava">${sAva(d.uava, d.uname)}</div></div>`
+    const chLine = d.ch ? `<div class="sh-line"><span>${esc(d.ch)}</span><div class="sh-ava">${sAva(d.chava, d.ch)}</div></div>` : ''
+    const at = `data-k="${k}" data-pid="${esc(d.pid || '')}" data-src="${esc(d.src || '')}" data-uid="${esc(d.uid || '')}" data-title="${esc(d.title || '')}"`
+    if(k === 'video') return `<div class="sh-card sh-video" ${at}>
+        <video src="${esc(d.src)}#t=0.1" preload="metadata" muted playsinline></video><div class="sh-shade"></div>
+        <button class="sh-play" aria-label="Смотреть">${I.playS}</button></div>`
+    if(k === 'photo') return `<div class="sh-card sh-square" ${at}>
+        <div class="sh-bg" style="background-image:url('${esc(d.src)}')"></div><div class="sh-shade"></div>${go}
+        <div class="sh-info">${chLine}${authorLine}<div class="sh-desc">${esc((d.desc || '').slice(0, 30))}</div></div></div>`
+    if(k === 'track') return `<div class="sh-card sh-square" ${at}>
+        <div class="sh-bg" style="background-image:url('${esc(d.chava || '')}')"></div><div class="sh-shade"></div>
+        <button class="sh-save" data-sh-save aria-label="Сохранить">${I.bookmark}</button>
+        <button class="sh-pp" data-sh-pp data-src="${esc(d.src)}" aria-label="Пауза/играть">${I.playS}</button>
+        <div class="sh-info"><div class="sh-title">${esc(d.title || 'Трек')}</div>${authorLine}${chLine}<div class="sh-sub">прослушайте трек</div></div></div>`
+    if(k === 'profile') return `<div class="sh-card sh-profile" ${at}>${go}
+        <div class="sh-ava">${sAva(d.ava, d.name)}</div><div class="sh-pname">${esc(d.name || 'Пользователь')}</div>
+        <div class="sh-puser">@${esc(d.un || 'user')}</div></div>`
+    return `<div class="sh-card sh-text" ${at}>${go}
+        <div class="sh-head"><div class="sh-ava">${sAva(d.uava, d.uname)}</div><span>${esc(d.uname || 'user')}${d.ch ? ' · ' + esc(d.ch) : ''}</span></div>
+        <div class="sh-body">${esc((d.desc || '').slice(0, 60))}${(d.desc || '').length > 60 ? '…' : ''}</div></div>`
+}
+
+function bindShareCards(box){
+    const L = () => window.__lt
+    box.querySelectorAll('.sh-card').forEach(card => {
+        const k = card.dataset.k, pid = card.dataset.pid
+        card.addEventListener('click', async e => {
+            e.stopPropagation()
+            if(e.target.closest('[data-sh-save]')){ L()?.saveTrack(pid); return }
+            if(e.target.closest('[data-sh-pp]')){ L()?.playTrack(pid, card.dataset.src, card.dataset.title); return }
+            if(e.target.closest('[data-sh-go]')){
+                leaveChat()
+                if(k === 'profile') L()?.openProfile(card.dataset.uid); else L()?.openPost(pid)
+                return
+            }
+            if(k === 'video') L()?.openFs(card.dataset.src, pid)
+        })
+    })
+    syncShareTrackBtns()
+}
+function syncShareTrackBtns(){
+    const m = window.__lt?.music; if(!m) return
+    document.querySelectorAll('.sh-pp').forEach(b => { b.innerHTML = (m.src === b.dataset.src && m.isPlaying) ? I.pauseS : I.playS })
+}
+document.addEventListener('lt-player-state', syncShareTrackBtns)
+
+function leaveChat(){
+    const r = $('direct-room'); if(r) r.classList.add('hidden')
+    D.currentChat = null
+    if(D.refreshTimer){ clearInterval(D.refreshTimer); D.refreshTimer = null }
+    unsubscribeTyping()
+    document.body.classList.remove('in-direct')
+}
 /* ============================================================
    ЭКРАН ДИРЕКТА
 ============================================================ */
@@ -791,8 +855,7 @@ function renderChats(){
         if(last.media_type === 'video') preview = 'Видео'
         else if(last.media_type === 'audio') preview = 'Аудио'
         else if(last.media_type === 'image') preview = 'Фото'
-        else if(last.content?.startsWith('[sticker:')) preview = 'Стикер'
-        else preview = last.content || ''
+        else preview = contentLabel(last.content)
 
         const isMine = last.from_id === D.currentUser?.id
         const previewHtml = isMine ? `<b>Вы:</b> ${esc(preview)}` : esc(preview)
@@ -945,6 +1008,7 @@ function ensureSidebar(){
         const directScreen = $('screen-direct')
         if(directScreen) directScreen.classList.remove('active')
         const room = $('direct-room'); if(room) room.classList.add('hidden')
+        document.body.classList.remove('in-direct')
         D.currentChat = null
         if(D.refreshTimer){ clearInterval(D.refreshTimer); D.refreshTimer = null }
         await new Promise(r => setTimeout(r, 180))
@@ -1133,6 +1197,7 @@ function renderChatRoom(){
         document.getElementById('main-app').appendChild(room)
     }
     room.classList.remove('hidden')
+    document.body.classList.add('in-direct')
     room.style.setProperty('--bubble-size', size.fontSize)
     room.style.setProperty('--bubble-lh', size.lineHeight)
     room.style.setProperty('--bubble-pad', size.pad)
@@ -1214,6 +1279,7 @@ function renderChatRoom(){
 }
 
 function closeChatRoom(){
+    document.body.classList.remove('in-direct')
     const r = $('direct-room')
     if(r) r.classList.add('hidden')
     D.currentChat = null
@@ -1300,7 +1366,7 @@ async function loadMessages(silent = false){
     const box = $('direct-messages')
     if(!box) return
 
-    const sig = visible.map(m => m.id + (m.is_read ? '1' : '0')).join(',')
+    const sig = visible.map(m => m.id + (m.is_read ? '1' : '0') + JSON.stringify(m.reactions || {})).join(',')
     if(silent && sig === _lastMsgSig) return
     _lastMsgSig = sig
 
@@ -1331,7 +1397,11 @@ async function loadMessages(silent = false){
         html += renderMessage(m, visible[i-1], user.id, mp, peerProfile, theme)
     })
     box.innerHTML = html
-
+    bindShareCards(box)
+    box.querySelectorAll('[data-react]').forEach(ch => ch.addEventListener('click', e => {
+        e.stopPropagation()
+        toggleReaction(ch.closest('.dr-row').dataset.mid, ch.dataset.react)
+    }))
     box.querySelectorAll('.dr-row').forEach(row => attachMsgMenu(row))
     box.scrollTop = box.scrollHeight
 }
@@ -1359,6 +1429,8 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
     let isSticker = false
     const content = m.content || ''
     const stickerMatch = content.match(/^\[sticker:(.+?)\]$/)
+    const shareData = shareOf(content)
+    let isCard = false
 
     if(m.media_url){
         const clean = m.media_url.split('?')[0].toLowerCase()
@@ -1366,7 +1438,10 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
         else if(/\.(mp3|wav|m4a|ogg)$/.test(clean)) body = `<audio src="${m.media_url}" controls style="max-width:100%;margin-top:4px"></audio>`
         else body = `<img src="${m.media_url}" style="max-width:100%;border-radius:12px;margin-top:4px">`
     }
-    if(stickerMatch){
+    if(shareData){
+        isSticker = true; isCard = true
+        body = renderShareCard(shareData)
+    } else if(stickerMatch){
         isSticker = true
         body = `<img src="${esc(stickerMatch[1])}" alt="sticker">`
     } else if(content){
@@ -1397,14 +1472,24 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
 
     const bubbleStyle = `background:${mine ? theme.own : theme.peer};color:${mine ? theme.ownText : theme.peerText};`
 
+    const rx = m.reactions || {}
+    const rxCount = {}
+    Object.values(rx).forEach(e => rxCount[e] = (rxCount[e] || 0) + 1)
+    const myRx = rx[myId]
+    const reactsHtml = Object.keys(rxCount).length
+        ? `<div class="dr-reacts">${Object.entries(rxCount).map(([e, n]) =>
+            `<button class="dr-react-chip ${myRx === e ? 'mine' : ''}" data-react="${e}">${e}${n > 1 ? ' ' + n : ''}</button>`).join('')}</div>` : ''
+
     if(isSticker){
+        const stickFoot = theme.light ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.8)'
         return `<div class="dr-row ${mine ? 'mine' : ''}" data-mid="${m.id}" data-mine="${mine?1:0}">
       <div class="dr-row-ava ${showAva ? '' : 'ghost'}">${av(avaSrc, avaName)}</div>
       <div class="direct-bubble dr-sticker">
         ${body}
-        <div class="direct-bubble-foot" style="color:rgba(255,255,255,.75)">
+        <div class="direct-bubble-foot" style="color:${stickFoot}">
           <span>${time}</span>${checkHtml}
         </div>
+        ${reactsHtml}
       </div>
     </div>`
     }
@@ -1416,6 +1501,7 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
         <div class="direct-bubble-foot" style="color:${footColor}">
           <span>${time}</span>${checkHtml}
         </div>
+        ${reactsHtml}
       </div>
     </div>`
 }
@@ -1428,7 +1514,7 @@ function renderPinnedBar(pinned){
     if(!pinned.length){ bar.classList.add('hidden'); bar.innerHTML = ''; return }
 
     const last = pinned[pinned.length - 1]
-    const text = (last.content?.startsWith('[sticker:') ? 'Стикер' : (last.content || 'Медиа')).slice(0, 60)
+    const text = contentLabel(last.content).slice(0, 60) || 'Медиа'
     const countBadge = pinned.length > 1 ? `<span class="dr-pinned-count">${pinned.length}</span>` : ''
 
     bar.classList.remove('hidden')
@@ -1452,7 +1538,7 @@ function renderPinnedBar(pinned){
 }
 function openPinnedList(pinned){
     window.showActionSheet?.(`Закреплённые · ${pinned.length}`, pinned.map(m => ({
-        label: (m.content?.startsWith('[sticker:') ? 'Стикер' : (m.content || 'Медиа')).slice(0, 40) || 'Медиа',
+        label: contentLabel(m.content).slice(0, 40) || 'Медиа',
         icon: I.pin,
         onClick: () => scrollToMessage(m.id)
     })))
@@ -1486,29 +1572,42 @@ async function unpinMessage(msgId){
 /* ============================================================
    КОНТЕКСТ-МЕНЮ СООБЩЕНИЯ
 ============================================================ */
+async function toggleReaction(msgId, emoji){
+    const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+    const { data:msg } = await supabase.from('direct_messages').select('reactions').eq('id', msgId).maybeSingle()
+    const r = { ...(msg?.reactions || {}) }
+    if(r[user.id] === emoji) delete r[user.id]; else r[user.id] = emoji
+    await supabase.from('direct_messages').update({ reactions: r }).eq('id', msgId)
+    _lastMsgSig = ''; loadMessages()
+}
+function reactBurst(row, emoji){
+    const b = document.createElement('div'); b.className = 'dr-react-burst'; b.textContent = emoji
+    row.appendChild(b); setTimeout(() => b.remove(), 1000)
+}
+
 function attachMsgMenu(row){
-    let pressTimer = null
-    let longPressed = false
+    let pressTimer = null, longPressed = false, lastTap = 0
     const startPress = () => {
         longPressed = false
         row.classList.add('pressing')
-        pressTimer = setTimeout(() => {
-            longPressed = true
-            row.classList.remove('pressing')
-            showMsgMenu(row)
-        }, 420)
+        pressTimer = setTimeout(() => { longPressed = true; row.classList.remove('pressing'); showMsgMenu(row) }, 420)
     }
-    const cancelPress = () => {
-        if(pressTimer){ clearTimeout(pressTimer); pressTimer = null }
-        row.classList.remove('pressing')
-    }
+    const cancelPress = () => { if(pressTimer){ clearTimeout(pressTimer); pressTimer = null } row.classList.remove('pressing') }
+    const doubleTap = () => { reactBurst(row, '❤️'); toggleReaction(row.dataset.mid, '❤️') }
     row.addEventListener('touchstart', startPress, { passive:true })
-    row.addEventListener('touchend', e => { if(longPressed) e.preventDefault(); cancelPress() })
+    row.addEventListener('touchend', e => {
+        cancelPress()
+        if(longPressed){ e.preventDefault(); return }
+        if(e.target.closest('button,video,audio,.sh-card')) return
+        const now = Date.now()
+        if(now - lastTap < 300){ lastTap = 0; e.preventDefault(); doubleTap() } else lastTap = now
+    })
     row.addEventListener('touchmove', cancelPress, { passive:true })
     row.addEventListener('touchcancel', cancelPress)
     row.addEventListener('mousedown', e => { if(e.button !== 0) return; startPress() })
     row.addEventListener('mouseup', cancelPress)
     row.addEventListener('mouseleave', cancelPress)
+    row.addEventListener('dblclick', e => { if(!e.target.closest('button,video,audio,.sh-card')) doubleTap() })
     row.addEventListener('contextmenu', e => { e.preventDefault(); showMsgMenu(row) })
 }
 
@@ -1516,7 +1615,6 @@ function showMsgMenu(row){
     document.querySelectorAll('.dr-msg-menu').forEach(m => m.remove())
     const msgId = row.dataset.mid
     const isMine = row.dataset.mine === '1'
-
     const menu = document.createElement('div')
     menu.className = 'dr-msg-menu'
     const items = [
@@ -1526,32 +1624,28 @@ function showMsgMenu(row){
         { label:'Закрепить',  icon: I.pin,     onClick: () => togglePinMsg(msgId) },
         { label: isMine ? 'Удалить' : 'Удалить у себя', icon: I.trash, danger:true, onClick: () => deleteMsg(msgId, isMine, row) }
     ]
-    menu.innerHTML = items.map((it, i) => `
-      <button class="dr-msg-menu-item ${it.danger ? 'danger' : ''}" data-mi="${i}">
-        ${it.icon}<span>${it.label}</span>
-      </button>`).join('')
+    menu.innerHTML = `<div class="dr-react-bar">${REACTIONS.map(e => `<button data-emo="${e}">${e}</button>`).join('')}</div>` +
+        items.map((it, i) => `<button class="dr-msg-menu-item ${it.danger ? 'danger' : ''}" data-mi="${i}">${it.icon}<span>${it.label}</span></button>`).join('')
     document.body.appendChild(menu)
 
     const rect = row.getBoundingClientRect()
-    const mw = menu.offsetWidth || 200
-    const mh = menu.offsetHeight || 160
-    let left = Math.min(rect.left, window.innerWidth - mw - 10)
-    if(left < 10) left = 10
+    const mw = menu.offsetWidth || 260, mh = menu.offsetHeight || 300
+    let left = Math.min(Math.max(10, rect.left), window.innerWidth - mw - 10)
     let top = rect.top - mh - 8
-    if(top < 10) top = rect.bottom + 8
-    menu.style.left = left + 'px'
-    menu.style.top = top + 'px'
+    if(top < 10) top = Math.min(rect.bottom + 8, window.innerHeight - mh - 10)
+    menu.style.left = left + 'px'; menu.style.top = Math.max(10, top) + 'px'
 
+    menu.querySelectorAll('[data-emo]').forEach(b => b.addEventListener('click', e => {
+        e.stopPropagation(); menu.remove()
+        reactBurst(row, b.dataset.emo); toggleReaction(msgId, b.dataset.emo)
+    }))
     menu.querySelectorAll('.dr-msg-menu-item').forEach(btn => btn.addEventListener('click', e => {
         e.stopPropagation()
-        const it = items[+btn.dataset.mi]
-        menu.remove()
+        const it = items[+btn.dataset.mi]; menu.remove()
         if(it.onClick) setTimeout(it.onClick, 40)
     }))
     setTimeout(() => {
-        const close = ev => {
-            if(!menu.contains(ev.target)){ menu.remove(); document.removeEventListener('click', close) }
-        }
+        const close = ev => { if(!menu.contains(ev.target)){ menu.remove(); document.removeEventListener('click', close) } }
         document.addEventListener('click', close)
     }, 50)
     try { navigator.vibrate?.(15) } catch {}
@@ -1559,7 +1653,7 @@ function showMsgMenu(row){
 
 async function copyMsg(msgId){
     const { data:msg } = await supabase.from('direct_messages').select('content').eq('id', msgId).maybeSingle()
-    const text = (msg?.content || '').replace(/^\[sticker:.+\]$/, 'Стикер')
+    const text = contentLabel(msg?.content)
     if(text){
         try { await navigator.clipboard.writeText(text) } catch {}
         window.showToast?.('success','Скопировано', { icon: I.check })

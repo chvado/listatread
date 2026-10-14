@@ -9,7 +9,7 @@ function isUuid(s){
     return typeof s === 'string'
         && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }
-import { loadPosts } from './feed.js'
+import { loadPosts, markSeen, recordWatch, recordSignal, markNotInterested } from './feed.js'
 import { checkAdminStatus, ADMIN_STATE, showBlockedScreen, renderAdminReports, autoCloseOldReports } from './admin.js'
 import { openDirectTab, buildDirectScreen, openDirectChat } from './direct.js'
 import { initPush } from './push.js'
@@ -216,13 +216,19 @@ function setPageBg(forceDark){
     document.documentElement.classList.toggle('bg-light', !dark)
 
 }
+function setStatusBar(color, dark){
+    let m = document.querySelector('meta[name="theme-color"]')
+    if(!m){ m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m) }
+    m.setAttribute('content', color)
+    const s = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+    if(s) s.setAttribute('content', dark ? 'black-translucent' : 'default')
+}
 function applyTheme(theme){
     const t = theme === 'dark' ? 'dark' : 'light'
     document.documentElement.setAttribute('data-theme', t)
     try { localStorage.setItem(THEME_KEY, t) } catch {}
 
-    const meta = document.querySelector('meta[name="theme-color"]')
-    if(meta) meta.setAttribute('content', t === 'dark' ? '#000000' : '#ffffff')
+    setStatusBar(t === 'dark' ? '#000000' : '#ffffff', t === 'dark')
 
     const icon = document.getElementById('theme-toggle-icon')
     const text = document.getElementById('theme-toggle-text')
@@ -277,7 +283,22 @@ function adminBadge(isAdmin, size = ''){ return isAdmin ? `<span class="admin-ba
 function loadingBlock(text = ''){
     return `<div class="loading-block"><span class="loading-spinner-inline"></span>${text ? escapeHtml(text) : ''}</div>`
 }
-
+function cardMeta(card){
+    const type = card.classList.contains('feed-post-video') ? 'video'
+        : card.querySelector('.track-card') ? 'audio'
+            : card.querySelector('.feed-post-image') ? 'image' : 'text'
+    return {
+        postId: card.dataset.pid,
+        authorId: card.querySelector('.feed-post-avatar')?.dataset.uid,
+        channelId: card.dataset.channel || null,
+        type,
+        text: card.querySelector('.feed-post-content')?.textContent || ''
+    }
+}
+function learnFromPost(postId, weight){
+    const c = document.querySelector(`.feed-post[data-pid="${postId}"]`)
+    if(c) recordSignal(cardMeta(c), weight)
+}
 async function refreshFollowCache(){
     try {
         const { data:{ user } } = await supabase.auth.getUser()
@@ -662,6 +683,10 @@ function showScreen(name){
 
     /* Фон страницы под auth-экранами — чёрный */
     const darkNames = ['auth','karsq','reset'];
+    const isDarkScr = darkNames.includes(name)
+    document.documentElement.style.setProperty('--notch', isDarkScr ? '#0a0a0a' : '')
+    if(isDarkScr) setStatusBar('#0a0a0a', true)
+    else { const th = document.documentElement.getAttribute('data-theme'); setStatusBar(th === 'dark' ? '#000000' : '#ffffff', th === 'dark') }
     document.documentElement.style.background = darkNames.includes(name) ? '#0a0a0a' : '';
     document.body.style.background = darkNames.includes(name) ? '#0a0a0a' : '';
 
@@ -1395,7 +1420,14 @@ function teardownInfinite(){
     if(state.recObserver){ state.recObserver.disconnect(); state.recObserver = null }
     const s = document.getElementById('feed-sentinel'); if(s) s.remove()
 }
-
+function showFeedLoader(list){
+    if(document.getElementById('feed-more-loader') || !list.children.length) return
+    const el = document.createElement('div')
+    el.id = 'feed-more-loader'; el.className = 'feed-more-loader'
+    el.innerHTML = 'Идёт загрузка<span class="direct-title-dots"><i></i><i></i><i></i></span>'
+    list.after(el)
+}
+function hideFeedLoader(){ document.getElementById('feed-more-loader')?.remove() }
 function setupInfinite(list, userId){
     teardownInfinite()
     const sentinel = document.createElement('div')
@@ -1413,6 +1445,7 @@ async function appendRecommendedChunk(list, userId, size = 5){
     if(state.recLoading) return
     if(!list.isConnected) return
     state.recLoading = true
+    showFeedLoader(list)
     try {
         let next = []
 
@@ -1474,12 +1507,14 @@ async function appendRecommendedChunk(list, userId, size = 5){
         const allCards = [...list.querySelectorAll('.feed-post')]
         const newCards = allCards.slice(allCards.length - enriched.length)
         newCards.forEach(card => attachHandlersToCard(card, userId))
+        markSeen(enriched.map(p => p.id))
 
         setTimeout(initTrackObserver, 60)
     } catch(e){
         console.warn('[appendRecommendedChunk]', e.message)
     } finally {
         state.recLoading = false
+        hideFeedLoader()
     }
 }
 
@@ -1605,12 +1640,13 @@ async function showPostMoreMenu(btn, card, userId){
 
 function hidePostLocally(postId){
     document.querySelectorAll(`.feed-post[data-pid="${postId}"]`).forEach(c => {
+        markNotInterested(cardMeta(c))
         c.style.transition = 'opacity .3s, transform .3s'
         c.style.opacity = '0'; c.style.transform = 'scale(.96)'
         setTimeout(() => c.remove(), 320)
     })
 }
-function boostPostLocally(postId){ console.log('[boost]', postId) }
+function boostPostLocally(postId){ learnFromPost(postId, 3) }
 async function hideChannelLocally(channelId){
     try {
         const { data:{ user } } = await supabase.auth.getUser()
@@ -2080,6 +2116,7 @@ async function openCommentsSheet(postId){
         const inp = $('comment-sheet-input')
         const text = inp.value.trim(); if(!text) return
         await supabase.from('comments').insert({ user_id:user.id, post_id:postId, text })
+        learnFromPost(postId, 2)
         inp.value = ''
         document.querySelectorAll(`.feed-count[data-comment-count="${postId}"]`).forEach(el => {
             el.textContent = (parseInt(el.textContent) || 0) + 1
@@ -4341,6 +4378,7 @@ async function toggleLikeGlobal(postId){
         if(nowLiked){
             const { error } = await supabase.from('likes').insert({ user_id: user.id, post_id: postId })
             if(error) throw error
+            learnFromPost(postId, 3)
         } else {
             const { error } = await supabase.from('likes').delete().eq('user_id', user.id).eq('post_id', postId)
             if(error) throw error
@@ -4370,6 +4408,7 @@ async function toggleRepostGlobal(postId){
         if(nowReposted){
             const { error } = await supabase.from('reposts').insert({ user_id: user.id, post_id: postId })
             if(error) throw error
+            learnFromPost(postId, 4)
         } else {
             const { error } = await supabase.from('reposts').delete().eq('user_id', user.id).eq('post_id', postId)
             if(error) throw error
@@ -4388,6 +4427,23 @@ const music = {
     user: { name:'user', ava:null }, channel: { id:null, name:'—', ava:null },
     authorId: null, channelId: null,
     isPlaying: false, speed: 1, hasChvad: false
+}
+music.loading = false
+function setCardLoading(src, on){
+    document.querySelectorAll('.track-card').forEach(card => {
+        if(card.dataset.trackSrc !== src) return
+        const btn = card.querySelector('.track-play'); if(!btn) return
+        btn.classList.toggle('loading', on)
+        if(on){ btn.innerHTML = '<span class="btn-spinner btn-spinner-light"></span>'; btn.dataset.icon = '' }
+        else { btn.dataset.icon = ''; _lastIconState = null; updatePlayIcons() }
+    })
+}
+function setNowLabels(){
+    const html = music.loading
+        ? 'Загрузка<span class="direct-title-dots"><i></i><i></i><i></i></span>'
+        : (music.isPlaying ? 'Сейчас играет' : 'Приостановлено')
+    const a = document.querySelector('.mini-now'); if(a) a.innerHTML = html
+    const b = document.querySelector('.full-now'); if(b) b.innerHTML = html
 }
 const globalAudio = document.getElementById('global-audio')
 function fmtTime(s){ if(!isFinite(s) || s < 0) return '0:00'; const m = Math.floor(s/60), sec = Math.floor(s%60); return m + ':' + String(sec).padStart(2,'0') }
@@ -4420,25 +4476,19 @@ function setMarqueeText(el, text){
 }
 
 async function loadTrack(postId, src, title, autoPlay = true){
+    music.src = src; music.postId = postId; music.title = title || 'Аудио'
+    music.loading = true
     let user = { name:'user', ava:null }, channel = { id:null, name:'—', ava:null }, authorId = null, channelId = null
     try {
         const { data:post } = await supabase.from('posts').select('id, author_id, channel_id, profiles:author_id ( username, full_name, avatar_url, is_admin ), channels:channel_id ( id, name, avatar_url )').eq('id', postId).maybeSingle()
         if(post){
-            const p = post.profiles || {}
-            const ch = post.channels || {}
-            user.name = p.full_name || p.username || 'user'
-            user.ava = p.avatar_url || null
-            user.is_admin = p.is_admin
-            channel.id = ch.id || null
-            channel.name = ch.name || '—'
-            channel.ava = ch.avatar_url || null
-            authorId = post.author_id
-            channelId = post.channel_id
+            const p = post.profiles || {}, ch = post.channels || {}
+            user.name = p.full_name || p.username || 'user'; user.ava = p.avatar_url || null; user.is_admin = p.is_admin
+            channel.id = ch.id || null; channel.name = ch.name || '—'; channel.ava = ch.avatar_url || null
+            authorId = post.author_id; channelId = post.channel_id
         }
     } catch(e){ console.warn(e.message) }
-    music.postId = postId; music.src = src; music.title = title || 'Аудио'
-    music.user = user; music.channel = channel
-    music.authorId = authorId; music.channelId = channelId
+    music.user = user; music.channel = channel; music.authorId = authorId; music.channelId = channelId
     try {
         const { data:{ user:me } } = await supabase.auth.getUser()
         if(me){
@@ -4446,14 +4496,14 @@ async function loadTrack(postId, src, title, autoPlay = true){
             music.hasChvad = !!(prof?.chvad_active || prof?.subscription)
         }
     } catch {}
+    updateMiniPlayer(); updateFullPlayer()
+    refreshMiniPlayerVisibility()          // мини-плеер появился → кружок на кнопке пропадает
+    setCardLoading(src, false)
+    setNowLabels()
     globalAudio.src = src
     globalAudio.playbackRate = music.speed
     if(autoPlay) await playTrack()
-    updateMiniPlayer()
-    updateFullPlayer()
-    updateAllTrackCards()
-    loadSaveTrackState(postId)
-    syncFullPlayer()
+    updateAllTrackCards(); loadSaveTrackState(postId); syncFullPlayer()
 }
 async function playTrack(){ try { await globalAudio.play(); music.isPlaying = true; updatePlayIcons(); refreshMiniPlayerVisibility() } catch(e){ console.warn('play err', e.message) } }
 function pauseTrack(){ globalAudio.pause(); music.isPlaying = false; updatePlayIcons(); refreshMiniPlayerVisibility() }
@@ -4487,8 +4537,8 @@ function updatePlayIcons(){
     const fp = document.getElementById('full-player')
     if(mp) mp.classList.toggle('paused', !realPlaying)
     if(fp) fp.classList.toggle('paused', !realPlaying)
-    const nowEl = document.querySelector('.mini-now')
-    if(nowEl) nowEl.textContent = realPlaying ? 'Сейчас играет' : 'Приостановлено'
+    setNowLabels()
+    document.dispatchEvent(new Event('lt-player-state'))
 }
 function updateMiniPlayer(){
     setMarqueeText(document.getElementById('mini-title'), music.title)
@@ -4607,14 +4657,20 @@ globalAudio?.addEventListener('timeupdate', () => {
 globalAudio?.addEventListener('loadedmetadata', () => { const ftt = document.getElementById('full-time-total'); if(ftt) ftt.textContent = fmtTime(globalAudio.duration); updateAllTrackCards(); updatePlayIcons() })
 globalAudio?.addEventListener('pause', () => { updatePlayIcons() })
 globalAudio?.addEventListener('play', () => { updatePlayIcons() })
-
+globalAudio?.addEventListener('loadstart', () => { if(globalAudio.src){ music.loading = true; setNowLabels() } })
+globalAudio?.addEventListener('waiting',   () => { music.loading = true; setNowLabels() })
+;['playing','canplay','pause','error','ended'].forEach(ev =>
+    globalAudio?.addEventListener(ev, () => { music.loading = false; setNowLabels() }))
 document.addEventListener('click', async e => {
     const playBtn = e.target.closest('[data-action="toggle-play"]')
     if(playBtn){
         const card = playBtn.closest('.track-card'); if(!card) return
         const src = card.dataset.trackSrc, postId = card.dataset.trackPost, title = card.dataset.trackTitle || 'Аудио'
-        if(src === music.src) togglePlayTrack()
-        else await loadTrack(postId, src, title, true)
+        if(src === music.src && globalAudio.src) togglePlayTrack()
+        else {
+            setCardLoading(src, true)
+            try { await loadTrack(postId, src, title, true) } finally { setCardLoading(src, false) }
+        }
         return
     }
     const moreBtn = e.target.closest('[data-action="track-more"]')
@@ -4804,33 +4860,41 @@ async function loadSaveTrackState(postId){
    OBSERVER: автоплей видео
 ============================================================ */
 let feedVideoObserver = null
+function reportView(card, vid){
+    const ms = Date.now() - card._t0
+    recordWatch({ ...cardMeta(card), ms, dur: (vid && isFinite(vid.duration)) ? vid.duration * 1000 : 0 })
+}
 function initFeedVideoObserver(){
     if(feedVideoObserver) feedVideoObserver.disconnect()
     feedVideoObserver = new IntersectionObserver(entries => {
         entries.forEach(en => {
             const card = en.target
             const vid = card.querySelector('.post-bg-video')
-            if(!vid) return
-            const userActivated = card.dataset.videoActivated === '1'
+            const inHome = !!card.closest('#feed-list')
             if(en.intersectionRatio > 0.5){
-                if(!userActivated) vid.muted = true
-                vid.play().catch(()=>{})
-                card.classList.add('is-playing-auto')
-                checkVideoState(card)
+                if(!card._t0) card._t0 = Date.now()
+                if(vid){
+                    if(card.dataset.videoActivated !== '1') vid.muted = true
+                    vid.play().catch(()=>{})
+                    card.classList.add('is-playing-auto')
+                    checkVideoState(card)
+                }
             } else {
-                vid.pause()
-                card.classList.remove('is-playing-auto')
-                card.dataset.videoActivated = '0'
-                card.classList.remove('is-playing')
-                hideVideoPauseIcon(card)
-                const hint = card.querySelector('.feed-post-video-hint')
-                if(hint) hint.style.display = ''
-                vid.muted = true
-                try { vid.currentTime = 0 } catch {}
+                if(card._t0){ if(inHome) reportView(card, vid); card._t0 = 0 }
+                if(vid){
+                    vid.pause()
+                    card.classList.remove('is-playing-auto', 'is-playing')
+                    card.dataset.videoActivated = '0'
+                    hideVideoPauseIcon(card)
+                    const hint = card.querySelector('.feed-post-video-hint')
+                    if(hint) hint.style.display = ''
+                    vid.muted = true
+                    try { vid.currentTime = 0 } catch {}
+                }
             }
         })
     }, { threshold: [0, 0.5, 1] })
-    document.querySelectorAll('.feed-post.feed-post-video').forEach(c => feedVideoObserver.observe(c))
+    document.querySelectorAll('.feed-post').forEach(c => feedVideoObserver.observe(c))
 }
 function initTrackObserver(){
     preloadTrackDurations()
@@ -4843,6 +4907,42 @@ function initTrackObserver(){
 /* ============================================================
    FULLSCREEN VIDEO MODE
 ============================================================ */
+function buildFsUi(fs, pid){
+    fs.querySelector('.video-fs-ui')?.remove()
+    if(!pid) return
+    const ui = document.createElement('div')
+    ui.className = 'video-fs-ui'
+    ui.innerHTML = `
+      <div class="video-fs-actions">
+        <button class="feed-action fs-act" data-like="${pid}">${ICONS.heart}<span class="feed-count" data-like-count="${pid}">0</span></button>
+        <button class="feed-action fs-act" data-comment="${pid}">${ICONS.comment}<span class="feed-count" data-comment-count="${pid}">0</span></button>
+        <button class="feed-action fs-act" data-repost="${pid}">${ICONS.repost}<span class="feed-count" data-repost-count="${pid}">0</span></button>
+      </div>
+      <div class="video-fs-bottom">
+        <div class="video-fs-desc" id="video-fs-desc"></div>
+        <button class="video-fs-dots" id="video-fs-dots" aria-label="Действия">${ICONS.dots}</button>
+      </div>`
+    fs.appendChild(ui)
+    ui.querySelector('[data-like]').addEventListener('click', () => toggleLikeGlobal(pid))
+    ui.querySelector('[data-repost]').addEventListener('click', () => toggleRepostGlobal(pid))
+    ui.querySelector('[data-comment]').addEventListener('click', () => openCommentsSheet(pid))
+    ui.querySelector('#video-fs-dots').addEventListener('click', () => document.getElementById('video-fs-more')?.click())
+    ;(async () => {
+        const [meta, counts] = await Promise.all([fetchPostMeta(pid), fetchCounts([pid])])
+        const d = document.getElementById('video-fs-desc'); if(d) d.textContent = meta.content || meta.media_title || ''
+        const { data:{ user } } = await supabase.auth.getUser()
+        const [{ data:l }, { data:r }] = await Promise.all([
+            supabase.from('likes').select('post_id').eq('user_id', user.id).eq('post_id', pid),
+            supabase.from('reposts').select('post_id').eq('user_id', user.id).eq('post_id', pid)
+        ])
+        const c = counts[pid] || {}
+        ui.querySelector('[data-like-count]').textContent = c.likes || 0
+        ui.querySelector('[data-comment-count]').textContent = c.comments || 0
+        ui.querySelector('[data-repost-count]').textContent = c.reposts || 0
+        if(l?.length) syncPostLike(pid, true, 0)
+        if(r?.length) syncPostRepost(pid, true, 0)
+    })()
+}
 let videoFsPrevMusic = false
 function enterVideoFS(src, postId){
     const fs = document.getElementById('video-fs'), vid = document.getElementById('video-fs-el')
@@ -4851,18 +4951,18 @@ function enterVideoFS(src, postId){
     if(music.isPlaying) pauseTrack()
     document.getElementById('mini-player')?.classList.remove('show')
     document.querySelectorAll('.topbar').forEach(b => b.classList.add('topbar-hidden'))
-    document.body.style.overflow = 'hidden'
-    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'; document.documentElement.style.overflow = 'hidden'
     vid.pause(); vid.src = src
     vid.muted = false; vid.volume = 1; vid.loop = true
     try { vid.currentTime = 0 } catch {}
     const p = vid.play()
     if(p && p.catch) p.catch(() => { vid.muted = true; vid.play().then(() => { vid.muted = false }).catch(()=>{}) })
     fs.dataset.pid = postId || ''
-
+    buildFsUi(fs, postId)
     fs.classList.remove('hidden'); void fs.offsetWidth
     requestAnimationFrame(() => fs.classList.add('show'))
 }
+
 function exitVideoFS(){
     const fs = document.getElementById('video-fs'), vid = document.getElementById('video-fs-el')
     if(!fs || !vid) return
@@ -4984,63 +5084,36 @@ document.getElementById('video-fs-more')?.addEventListener('click', async () => 
    СВАЙП-TO-DISMISS MINI-PLAYER
 ============================================================ */
 ;(function initMiniPlayerSwipe(){
-    const mp = document.getElementById('mini-player')
-    if(!mp) return
+    const mp = document.getElementById('mini-player'); if(!mp) return
     let startY = 0, currentY = 0, dragging = false
-
     mp.addEventListener('touchstart', e => {
-        startY = e.touches[0].clientY
-        currentY = startY
-        dragging = true
-        mp.style.transition = 'none'
-    }, { passive: true })
-
+        startY = currentY = e.touches[0].clientY; dragging = true; mp.style.transition = 'none'
+    }, { passive:true })
     mp.addEventListener('touchmove', e => {
         if(!dragging) return
-        e.preventDefault()
-        e.stopPropagation()
         currentY = e.touches[0].clientY
-        const dy = Math.max(0, currentY - startY)
-        mp.style.transform = `translateX(-50%) translateY(${dy}px)`
-    }, { passive: false })
-
+        mp.style.transform = `translateY(${Math.max(0, currentY - startY)}px)`
+    }, { passive:true })
     function finish(close){
         dragging = false
         if(close){
             try { globalAudio.pause(); globalAudio.src = '' } catch {}
-            music.src = null
-            music.postId = null
-            music.isPlaying = false
-
-            mp.style.transition = 'opacity .25s ease, transform .25s ease'
-            mp.style.transform = 'translateX(-50%) translateY(160%)'
-            mp.classList.remove('show')
-
+            music.src = null; music.postId = null; music.isPlaying = false; music.loading = false
+            mp.style.transition = 'opacity .25s ease, transform .3s ease'
+            mp.style.transform = 'translateY(160%)'; mp.style.opacity = '0'
             setTimeout(() => {
-                mp.classList.add('hidden')
-                mp.style.transform = ''
-                mp.style.transition = ''
+                mp.classList.remove('show'); mp.classList.add('hidden')
+                mp.style.transform = ''; mp.style.transition = ''; mp.style.opacity = ''
                 updatePlayIcons()
             }, 300)
         } else {
-            mp.style.transition = 'transform .22s cubic-bezier(.4,0,.2,1)'
-            mp.style.transform = 'translateX(-50%) translateY(0)'
-            setTimeout(() => {
-                mp.style.transition = ''
-                mp.style.transform = ''
-            }, 240)
+            mp.style.transition = 'transform .25s cubic-bezier(.22,1,.36,1)'
+            mp.style.transform = 'translateY(0)'
+            setTimeout(() => { mp.style.transition = ''; mp.style.transform = '' }, 260)
         }
     }
-
-    mp.addEventListener('touchend', () => {
-        if(!dragging) return
-        finish((currentY - startY) > 80)
-    })
-
-    mp.addEventListener('touchcancel', () => {
-        if(!dragging) return
-        finish(false)
-    })
+    mp.addEventListener('touchend', () => { if(dragging) finish((currentY - startY) > 80) })
+    mp.addEventListener('touchcancel', () => { if(dragging) finish(false) })
 })()
 
 /* ============================================================
@@ -6116,10 +6189,27 @@ function applyRandomShareQr(){
 async function fetchPostMeta(postId){
     try {
         const { data } = await supabase.from('posts')
-            .select('id, content, media_title, author_id, profiles:author_id ( username, full_name, avatar_url ), channels:channel_id ( id, name, avatar_url )')
+            .select('id, content, media_url, media_title, author_id, profiles:author_id ( username, full_name, avatar_url ), channels:channel_id ( id, name, avatar_url )')
             .eq('id', postId).maybeSingle()
         return data || {}
     } catch { return {} }
+}
+async function buildSharePayload(ctx){
+    if(ctx.type === 'profile'){
+        const { data:p } = await supabase.from('profiles').select('id, username, full_name, avatar_url').eq('id', ctx.profileId).maybeSingle()
+        return { k:'profile', uid:p?.id, name:p?.full_name || p?.username || 'Пользователь', un:p?.username, ava:p?.avatar_url }
+    }
+    const m = await fetchPostMeta(ctx.postId)
+    const url = m.media_url || ctx.src || ''
+    const kind = (ctx.type === 'track' || isAudioUrl(url)) ? 'track' : isVideoUrl(url) ? 'video' : url ? 'photo' : 'post'
+    const p = m.profiles || {}, ch = m.channels || {}
+    return {
+        k:kind, pid:ctx.postId, src:url,
+        title:(m.media_title || ctx.title || '').slice(0, 80),
+        desc:(m.content || '').slice(0, 120),
+        uid:m.author_id, un:p.username, uname:p.full_name || p.username || 'user', uava:p.avatar_url || null,
+        ch:ch.name || '', chava:ch.avatar_url || null
+    }
 }
 
 function renderMiniMeta(prefix, meta){
@@ -6212,10 +6302,28 @@ async function openShareSheet(ctx){
     sendBtn.onclick = async () => {
         if(!_shareCtx.selectedFriends.size) return
         sendBtn.disabled = true; sendBtn.textContent = 'Отправка…'
-        await new Promise(r => setTimeout(r, 500))
-        sendBtn.textContent = 'Отправлено ✓'
-        showToast('success', 'Отправлено (заглушка)', { icon:'✓' })
-        setTimeout(() => { sendBtn.textContent = 'Отправить в директ'; sendBtn.disabled = true; _shareCtx.selectedFriends.clear(); renderShareFriends() }, 1400)
+        try {
+            const { data:{ user } } = await supabase.auth.getUser()
+            const payload = await buildSharePayload(_shareCtx)
+            const content = `[share:${encodeURIComponent(JSON.stringify(payload))}]`
+            const ids = [..._shareCtx.selectedFriends]
+            const { error } = await supabase.from('direct_messages').insert(ids.map(to => ({ from_id:user.id, to_id:to, content })))
+            if(error) throw error
+            try {
+                const { data:back } = await supabase.from('follows').select('follower_id').eq('following_id', user.id).in('follower_id', ids)
+                const backSet = new Set((back || []).map(x => x.follower_id))
+                const need = ids.filter(id => !backSet.has(id))
+                if(need.length) await supabase.from('chat_requests').upsert(
+                    need.map(to => ({ from_user:user.id, to_user:to, first_message:'Поделился(-ась) с вами', status:'pending' })),
+                    { onConflict:'from_user,to_user' })
+            } catch {}
+            sendBtn.textContent = 'Отправлено ✓'
+            showToast('success', 'Отправлено в чат', { icon:'✓' })
+            setTimeout(() => { _shareCtx.selectedFriends.clear(); sendBtn.textContent = 'Отправить в директ'; closeShareSheet() }, 800)
+        } catch(e){
+            showToast('error', 'Не удалось отправить: ' + (e.message || ''), { icon:'⚠️' })
+            sendBtn.disabled = false; sendBtn.textContent = 'Отправить в директ'
+        }
     }
 
     attachShareDrag()
@@ -6474,7 +6582,19 @@ document.addEventListener('click', (e) => {
         observer.observe(target, { attributes: true, attributeFilter: ['class'] });
     }
 })();
-
+window.__lt = {
+    music,
+    openFs: (src, pid) => enterVideoFS(src, pid),
+    openPost: id => openPostByRoute(id),
+    openProfile: id => openUserProfile(id),
+    playTrack: (pid, src, title) => (src === music.src && globalAudio.src) ? togglePlayTrack() : loadTrack(pid, src, title, true),
+    saveTrack: async pid => {
+        const { data:{ user } } = await supabase.auth.getUser()
+        const { data:ex } = await supabase.from('saved_tracks').select('id').eq('user_id', user.id).eq('post_id', pid).maybeSingle()
+        if(ex){ await supabase.from('saved_tracks').delete().eq('id', ex.id); showToast('info', 'Убрано из треков', { icon:'🔖' }) }
+        else { await supabase.from('saved_tracks').insert({ user_id:user.id, post_id:pid }); showToast('success', 'Сохранено в профиль', { icon:'🔖' }) }
+    }
+}
 boot()
 setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
