@@ -36,21 +36,7 @@
 
     <link rel="stylesheet" href="style.css?v=6">
     <link rel="stylesheet" href="/css/fixes.css?v=5">
-    <style>
-        /* EMERGENCY: force-hide всё, что не .active/.open/show */
-        .code-modal:not(.open):not(.show),
-        .lang-modal:not(.open):not(.show),
-        .qr-modal:not(.open):not(.show),
-        .share-modal:not(.open):not(.show),
-        .report-modal:not(.open):not(.show),
-        .ban-modal:not(.open):not(.show),
-        .prioriti-backdrop:not(.open):not(.show),
-        .admin-panel:not(.open):not(.show),
-        .sys-notif-view:not(.open):not(.show) {
-            display: none !important;
-            pointer-events: none !important;
-        }
-    </style>
+
 
 </head>
 <body>
@@ -314,12 +300,13 @@
                 <div class="live-now-row" id="live-now-row"></div>
             </div>
             <div class="feed-tabs">
-                <button class="feed-tab active" data-tab="recommended">Рекомендации</button>
-                <button class="feed-tab" data-tab="lista">lista</button>
-                <button class="feed-tab" data-tab="subs">Подписки</button>
-                <button class="feed-tab" data-tab="my">Мои каналы</button>
+                <button class="feed-tab active" data-tab="recommended">For you</button>
+                <button class="feed-tab" data-tab="lista">Tredless</button>
+                <button class="feed-tab" data-tab="subs">Deeptred's</button>
+                <button class="feed-tab" data-tab="my">Friendly</button>
+                <button class="feed-tab" data-tab="my">Focus ></button>
             </div>
-            <div class="feed-list" id="feed-list"><p class="empty">Загрузка</p></div>
+            <div class="feed-list" id="feed-list"><p class="empty">Соединение с сервером ...</p></div>
         </section>
 
         <section id="screen-music" class="app-screen">
@@ -333,7 +320,7 @@
                 <div class="chan-hero-stage" id="chan-hero-stage"><span class="chan-fly chan-fly-star">★</span><span class="chan-fly chan-fly-live">LIVE</span><span class="chan-fly chan-fly-chat">💬</span><span class="chan-fly chan-fly-people">👥</span><span class="chan-fly chan-fly-stat">📊</span>
                     <div class="chan-icon"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg></div>
                 </div>
-                <h1 class="chan-title">listatread channel</h1><p class="chan-desc">В listatread лента и каналы работают как единое целое благодаря умной адаптации контента, любой тред автора мгновенно могут найди в бесконечной ленте рекомендаций, тем самым собирая аудиторию, собирая единомышленников, а также выходите в listalive, глобальный чат, собирайте подарки от поклонников, общайтесь в удобном чате и кастомизируйте свой профиль как хотите!</p>
+                <h1 class="chan-title">listatread channel's</h1><p class="chan-desc">В listatread лента и каналы работают как единое целое благодаря умной адаптации контента, любой тред автора мгновенно могут найди в бесконечной ленте рекомендаций, тем самым собирая аудиторию, собирая единомышленников, а также выходите в listalive, глобальный чат, собирайте подарки от поклонников, общайтесь в удобном чате и кастомизируйте свой профиль как хотите!</p>
             </div>
             <div class="chan-chvad">
                 <div class="chan-chvad-ad-badge">Реклама · Системная</div>
@@ -342,7 +329,7 @@
                 <button class="btn-primary" id="chvad-more">Подробнее</button>
             </div>
             <h3 class="section-title">Вы состоите</h3><div id="chan-mine-list" class="chan-list"><p class="empty small">Загрузка...</p></div>
-            <h3 class="section-title">Вам может понравиться</h3><div id="chan-recommend-list" class="chan-list"><p class="empty small">Загрузка...</p></div>
+            <h3 class="section-title">Вам может понравиться · На основе просмотра</h3><div id="chan-recommend-list" class="chan-list"><p class="empty small">Загрузка...</p></div>
             <button class="chan-add-btn" id="chan-add-btn"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
         </section>
 
@@ -411,9 +398,9 @@
                 <div class="settings-panel active" data-panel="general">
                     <div class="settings-avatar-block"><label class="settings-avatar-label" for="set-avatar"><div class="profile-avatar-lg" id="set-avatar-preview">ℓ</div><input type="file" id="set-avatar" accept="image/*" hidden><div class="settings-avatar-hint">Нажмите чтобы изменить</div></label></div>
                     <label class="settings-label">Имя</label><input type="text" id="set-name" placeholder="Ваше имя">
-                    <label class="settings-label">Никнейм</label><div class="input-prefix"><span>@</span><input type="text" id="set-username" placeholder="username" maxlength="20"></div>
-                    <label class="settings-label">Описание</label><textarea id="set-bio" placeholder="О себе" maxlength="150" rows="3"></textarea>
-                    <label class="settings-label">Email</label><input type="email" id="set-email" disabled>
+                    <label class="settings-label">Никнейм · можно менять раз в неделю</label><div class="input-prefix"><span>@</span><input type="text" id="set-username" placeholder="username" maxlength="20"></div>
+                    <label class="settings-label">О себе</label><textarea id="set-bio" placeholder="О себе" maxlength="150" rows="3"></textarea>
+                    <label class="settings-label">Email к аккаунту</label><input type="email" id="set-email" disabled>
 
                     <label class="settings-label">Тема</label>
                     <button type="button" class="theme-toggle" id="theme-toggle">
@@ -572,7 +559,7 @@
         <button class="prioriti-card-row" id="storr-gifts-btn"><div class="prioriti-card-row-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg></div><div class="prioriti-card-row-text"><div class="prioriti-card-row-title">Магазин подарков и клигов</div><div class="prioriti-card-row-sub">Выберите подарок для друзей</div></div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
         <button class="prioriti-card-row prioriti-chvad" id="storr-chvad-btn"><div class="prioriti-card-row-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></div><div class="prioriti-card-row-text"><div class="prioriti-card-row-title">listatread chvad</div><div class="prioriti-card-row-sub">Премиум-подписка</div></div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
     </div>
-    <p class="prioriti-terms">Покупая, вы соглашаетесь с <a href="#">условиями пользования</a></p>
+    <p class="prioriti-terms">Продолжая, вы соглашаетесь с <a href="#">условиями пользования</a></p>
 </aside>
 
 <!-- ACTIONSHEET -->
