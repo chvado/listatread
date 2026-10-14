@@ -228,7 +228,7 @@ input[type="text"],input[type="email"],input[type="password"],input[type="search
 .loading-block::after{height:64px;width:78%;opacity:.8}
 /* в горизонтальных контейнерах */
 .stories-row .loading-block{flex-direction:row;align-items:center;gap:12px;height:76px;padding:0}
-.stories-row .loading-block::before{width:64px;height:64px;border-radius:50%;box-shadow:76px 0 0 var(--sk-a),152px 0 0 var(--sk-a),228px 0 0 var(--sk-a)}
+.stories-row .loading-block::before{width:64px;height:64px;border-radius:50%;box-shadow:76px 0 0 var(--sk-a),152px 0 0 var(--sk-a),228px 0 0 var(--sk-a),304px 0 0 var(--sk-a)}
 .stories-row .loading-block::after{display:none}
 .live-now-row .loading-block{flex-direction:row;height:135px}
 .live-now-row .loading-block::before{width:240px;height:135px;border-radius:var(--radius-lg)}
@@ -637,7 +637,7 @@ html[data-theme="dark"] .live-code-btn{background:var(--glass)}
 .feed-post.feed-post-video .feed-post-header{padding:16px 16px 0}
 .feed-post.feed-post-video .feed-post-content{padding:0 16px;margin-top:auto;margin-bottom:10px}
 .feed-post.feed-post-video .feed-post-footer{padding:12px 16px 14px;border-top:1px solid rgba(255,255,255,.15);background:linear-gradient(0deg,rgba(0,0,0,.55),rgba(0,0,0,0))}
-.feed-post.feed-post-video :is(.feed-post-name,.feed-post-time,.feed-post-content,.feed-action,.feed-more,.feed-channel-name,.feed-count,.post-meta-row,.post-date,.post-marquee-track,.mq-sound-name,.profile-post-source-line .chat-name){color:#fff}
+.feed-post.feed-post-video :is(.feed-post-name,.feed-post-time,.feed-post-content,.feed-action,.feed-more,.feed-channel-name,.feed-count,.post-meta-row,.post-date,.post-marquee-track,.mq-sound-name,.mq-loading,.profile-post-source-line .chat-name){color:#fff}
 .feed-post.feed-post-video .feed-channel-badge{background:rgba(255,255,255,.18);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .feed-post.feed-post-video .mq-sound-ava{background:rgba(255,255,255,.25)}
 .feed-post-video-hint{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);z-index:3;color:#fff;font-size:13px;font-weight:600;padding:8px 14px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);border-radius:100px;white-space:nowrap;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);pointer-events:none;transition:opacity .3s ease,transform .3s ease}
