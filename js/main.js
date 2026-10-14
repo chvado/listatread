@@ -3,7 +3,7 @@
    PART 1 / 3 — до uploadAvatar()
 ============================================================ */
 import './offline.js'
-import { mountFeedBg } from './offline.js'   // ← добавь это
+
 import { supabase } from './supabase.js'
 function isUuid(s){
     return typeof s === 'string'
