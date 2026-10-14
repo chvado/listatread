@@ -1,11 +1,10 @@
 /* ============================================================
-   listatread — main.js (v15, unified sheets, фиолетовые галочки, жалобы)
+   listatread — main.js (v14, с роутером, фиолетовые галочки, жалобы)
    PART 1 / 3 — до uploadAvatar()
 ============================================================ */
 import './offline.js'
-import { mountFeedBg } from './offline.js'
+import { mountFeedBg } from './offline.js'   // ← добавь это
 import { supabase } from './supabase.js'
-
 function isUuid(s){
     return typeof s === 'string'
         && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -14,154 +13,15 @@ import { loadPosts } from './feed.js'
 import { checkAdminStatus, ADMIN_STATE, showBlockedScreen, renderAdminReports, autoCloseOldReports } from './admin.js'
 import { openDirectTab, buildDirectScreen, openDirectChat } from './direct.js'
 import { initPush } from './push.js'
-
+/* Защита от падения на отсутствующих элементах */
 window.addEventListener('error', (e) => {
     if (e.message && e.message.includes('is not an object')){
         console.warn('[safe-guard] ignored:', e.message)
         e.preventDefault()
     }
 }, true)
-
+/* 🔥 РЕГИОН ПО УМОЛЧАНИЮ — Россия (временно) */
 window.__ltRegRegion = 'ru';
-
-/* ============================================================
-   УТИЛИТЫ
-============================================================ */
-const $ = id => document.getElementById(id)
-function withTimeout(p, ms, l){ return Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('Timeout: ' + l)), ms))]) }
-function escapeHtml(t){ const d = document.createElement('div'); d.textContent = t ?? ''; return d.innerHTML }
-function computeDisplayStatus(p){ return p?.status || 'default' }
-function isVideoUrl(u){ return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u||'') }
-function isAudioUrl(u){ return /\.(mp3|wav|ogg|m4a|aac|flac|opus)(\?|$)/i.test(u||'') }
-function isImageUrl(u){ return u && !isVideoUrl(u) && !isAudioUrl(u) }
-function adminBadge(isAdmin, size = ''){ return isAdmin ? `<span class="admin-badge ${size}" title="Администратор">🦝</span>` : '' }
-function loadingBlock(text = ''){ return `<div class="loading-block"><span class="loading-spinner-inline"></span>${text ? escapeHtml(text) : ''}</div>` }
-
-/* ============================================================
-   ЕДИНАЯ СИСТЕМА ШИТОВ (openSheet / closeSheet / closeAllSheets)
-   ------------------------------------------------------------
-   - Все шиты открываются через openSheet(id)
-   - Все закрываются через closeSheet(id)
-   - Любой свайп-вниз по handle у шита закрывает его
-   - Клик по любому backdrop-элементу закрывает связанный шит
-============================================================ */
-const SHEET_IDS = new Set([
-    'actionsheet', 'prioriti-sheet', 'code-modal',
-    'lang-modal', 'region-modal', 'qr-modal', 'qr-scan-modal',
-    'share-modal', 'report-modal', 'ban-modal'
-])
-
-// backdrop id -> sheet id
-const BACKDROP_TO_SHEET = {
-    'actionsheet-backdrop' : 'actionsheet',
-    'prioriti-backdrop'    : 'prioriti-sheet',
-    'code-modal-backdrop'  : 'code-modal',
-    'lang-backdrop'        : 'lang-modal',
-    'region-backdrop'      : 'region-modal',
-    'qr-backdrop'          : 'qr-modal',
-    'qr-scan-backdrop'     : 'qr-scan-modal',
-    'share-backdrop'       : 'share-modal',
-    'report-backdrop'      : 'report-modal',
-    'ban-backdrop'         : 'ban-modal'
-}
-
-const _closeTimers = new Map()
-
-function isSheetOpen(id){
-    const el = $(id)
-    return !!el && !el.classList.contains('hidden')
-}
-
-function openSheet(id){
-    const el = $(id)
-    if(!el || !SHEET_IDS.has(id)) return
-    if(_closeTimers.has(id)){ clearTimeout(_closeTimers.get(id)); _closeTimers.delete(id) }
-    el.classList.remove('hidden', 'closing')
-    // Принудительный reflow, чтобы CSS-анимация sheetUp стартовала заново
-    void el.offsetHeight
-    el.dataset.sheetOpen = '1'
-}
-
-function closeSheet(id){
-    const el = $(id)
-    if(!el || !SHEET_IDS.has(id) || el.classList.contains('hidden')) return
-    el.dataset.sheetOpen = ''
-    el.classList.add('closing')
-    const t = setTimeout(() => {
-        el.classList.add('hidden')
-        el.classList.remove('closing')
-        _closeTimers.delete(id)
-    }, 320)
-    _closeTimers.set(id, t)
-}
-
-function closeAllSheets(){
-    SHEET_IDS.forEach(id => { if(isSheetOpen(id)) closeSheet(id) })
-}
-
-// Единый обработчик клика по любому backdrop
-document.addEventListener('click', e => {
-    const bd = e.target.closest(
-        '.actionsheet-backdrop,.prioriti-backdrop,.code-modal-backdrop,.lang-backdrop,.qr-backdrop,.share-backdrop,.report-backdrop,.ban-backdrop'
-    )
-    if(!bd) return
-    const sheetId = BACKDROP_TO_SHEET[bd.id]
-    if(sheetId) closeSheet(sheetId)
-}, true)
-
-// Единый свайп-вниз по handle для всех шитов
-;(function initUnifiedSheetSwipe(){
-    const HANDLE_SELECTOR = '.actionsheet-handle, .prioriti-handle, .lang-sheet-handle, .code-modal-handle, .share-handle, .report-handle'
-    function attach(sheetId){
-        const sheet = $(sheetId)
-        if(!sheet) return
-        const handle = sheet.querySelector(HANDLE_SELECTOR)
-        if(!handle || handle.dataset.swipeBound === '1') return
-        handle.dataset.swipeBound = '1'
-
-        let startY = 0, curY = 0, dragging = false, startTime = 0
-        const reset = () => { sheet.style.transform = ''; sheet.style.transition = '' }
-
-        const onStart = e => {
-            if(isSheetOpen('actionsheet') && sheetId !== 'actionsheet') return
-            dragging = true; startTime = Date.now()
-            startY = (e.touches?.[0] || e).clientY; curY = startY
-            sheet.style.transition = 'none'
-        }
-        const onMove = e => {
-            if(!dragging) return
-            if(e.cancelable) e.preventDefault()
-            curY = (e.touches?.[0] || e).clientY
-            const dy = Math.max(0, curY - startY)
-            sheet.style.transform = `translateY(${dy}px)`
-        }
-        const onEnd = () => {
-            if(!dragging) return
-            dragging = false
-            const dy = curY - startY
-            const h = sheet.offsetHeight || 1
-            const ratio = dy / h
-            const velocity = dy / (Date.now() - startTime)
-            reset()
-            if(ratio > 0.4 || velocity > 0.7) closeSheet(sheetId)
-        }
-
-        handle.addEventListener('touchstart', onStart, { passive: true })
-        handle.addEventListener('touchmove',  onMove,  { passive: false })
-        handle.addEventListener('touchend',   onEnd)
-        handle.addEventListener('touchcancel', onEnd)
-        handle.addEventListener('mousedown', onStart)
-        window.addEventListener('mousemove', e => { if(dragging) onMove(e) })
-        window.addEventListener('mouseup', () => { if(dragging) onEnd() })
-    }
-
-    // Вешаем на все шиты, у которых есть handle
-    const tryAttach = () => SHEET_IDS.forEach(attach)
-    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryAttach)
-    else tryAttach()
-    setTimeout(tryAttach, 500)
-})()
-
 /* ============================================================
    SVG-ИКОНКИ
 ============================================================ */
@@ -354,6 +214,7 @@ function setPageBg(forceDark){
     const dark = forceDark === true || (forceDark !== false && theme === 'dark')
     document.documentElement.classList.toggle('bg-dark', dark)
     document.documentElement.classList.toggle('bg-light', !dark)
+
 }
 function applyTheme(theme){
     const t = theme === 'dark' ? 'dark' : 'light'
@@ -374,6 +235,8 @@ function applyTheme(theme){
     )
 
     state.data.theme = t
+
+    // ← ДОБАВЛЕНО: синхронизируем классы bg-* на <html>
     setPageBg(t === 'dark')
 }
 function getTheme(){ try { return localStorage.getItem(THEME_KEY) || 'light' } catch { return 'light' } }
@@ -384,9 +247,13 @@ document.addEventListener('click', async e => {
         const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
         const newTheme = cur === 'dark' ? 'light' : 'dark'
         applyTheme(newTheme)
+
+        // 💾 Сохраняем в БД
         try {
             const { data:{ user } } = await supabase.auth.getUser()
-            if(user) await supabase.from('profiles').update({ theme: newTheme }).eq('id', user.id)
+            if(user){
+                await supabase.from('profiles').update({ theme: newTheme }).eq('id', user.id)
+            }
         } catch(err){ console.warn('[theme save]', err.message) }
     }
     const choice = e.target.closest('#reg-theme-picker .auth-theme-choice')
@@ -394,6 +261,242 @@ document.addEventListener('click', async e => {
 })
 
 initTheme()
+
+/* ============================================================
+   УТИЛИТЫ
+============================================================ */
+const $ = id => document.getElementById(id)
+function withTimeout(p, ms, l){ return Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('Timeout: ' + l)), ms))]) }
+function escapeHtml(t){ const d = document.createElement('div'); d.textContent = t ?? ''; return d.innerHTML }
+function computeDisplayStatus(p){ return p?.status || 'default' }
+function isVideoUrl(u){ return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u||'') }
+function isAudioUrl(u){ return /\.(mp3|wav|ogg|m4a|aac|flac|opus)(\?|$)/i.test(u||'') }
+function isImageUrl(u){ return u && !isVideoUrl(u) && !isAudioUrl(u) }
+function adminBadge(isAdmin, size = ''){ return isAdmin ? `<span class="admin-badge ${size}" title="Администратор">🦝</span>` : '' }
+
+function loadingBlock(text = ''){
+    return `<div class="loading-block"><span class="loading-spinner-inline"></span>${text ? escapeHtml(text) : ''}</div>`
+}
+
+async function refreshFollowCache(){
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user) return
+        const [{ data:f }, { data:s }] = await Promise.all([
+            supabase.from('follows').select('following_id').eq('follower_id', user.id),
+            supabase.from('subscriptions').select('channel_id').eq('follower_id', user.id)
+        ])
+        state.myFollows = new Set((f||[]).map(x => x.following_id))
+        state.myChannelSubs = new Set((s||[]).map(x => x.channel_id))
+    } catch {}
+}
+
+function renderMedia(url, cls = 'feed-post-image', meta = {}){
+    if(!url) return ''
+    const clean = url.split('?')[0].toLowerCase()
+    if(/\.(mp4|webm|mov|m4v)$/.test(clean)){
+        return `<video class="${cls}" src="${url}" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius-md);margin-top:10px;display:block;max-height:420px;"></video>`
+    }
+    if(/\.(mp3|wav|ogg|m4a|aac|flac|opus)$/.test(clean)){
+        const title = meta.title || meta.media_title || 'Аудио'
+        return `<div class="track-card" data-track-src="${url}" data-track-post="${meta.postId || ''}" data-track-title="${escapeHtml(title)}">
+      <button class="track-play" data-action="toggle-play" aria-label="Воспроизвести">${SVG.play}</button>
+      <div class="track-info">
+        <div class="track-title">${escapeHtml(title)}</div>
+        <div class="track-meta">
+          <span class="track-user">@${escapeHtml(meta.username || 'user')}</span>
+          <span class="track-time" data-track-time="0:00 / 0:00">0:00 / 0:00</span>
+        </div>
+      </div>
+      <div class="track-actions">
+        <button class="track-more" data-action="track-more" aria-label="Действия">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+        </button>
+      </div>
+      <div class="track-progress"><div class="track-progress-fill"></div></div>
+    </div>`
+    }
+    return `<img class="${cls}" src="${url}" alt="">`
+}
+
+async function fetchCounts(postIds){
+    const out = {}
+    postIds.forEach(id => out[id] = { likes:0, comments:0, reposts:0 })
+    if(!postIds.length) return out
+    try {
+        const [{ data:likes }, { data:comments }, { data:reposts }] = await Promise.all([
+                supabase.from('likes').select('post_id').in('post_id', postIds),
+                supabase.from('comments').select('post_id').in('post_id', postIds),
+                supabase.from('reposts').select('post_id').in('post_id', postIds)
+            ])
+        ;(likes || []).forEach(l => { if(out[l.post_id]) out[l.post_id].likes++ })
+        ;(comments || []).forEach(c => { if(out[c.post_id]) out[c.post_id].comments++ })
+        ;(reposts || []).forEach(r => { if(out[r.post_id]) out[r.post_id].reposts++ })
+    } catch(e){ console.warn('[counts]', e.message) }
+    return out
+}
+
+/* ============================================================
+   ROUTER
+============================================================ */
+const Router = {
+    _pending: null,
+
+    init(){
+        let raw = null;
+        try {
+            raw = sessionStorage.getItem('__redirect_path__');
+            if (raw) sessionStorage.removeItem('__redirect_path__');
+        } catch {}
+        if (!raw) raw = location.pathname + location.search + location.hash;
+        const parsed = this.parse(raw);
+        if (parsed){ parsed.raw = raw; this._pending = parsed; }
+    },
+
+    parse(raw){
+        if (!raw || raw === '/' || raw.startsWith('/index.html')) return null;
+        let url;
+        try { url = new URL(raw, location.origin); }
+        catch { url = new URL(location.origin + raw); }
+        const path = url.pathname;
+        const qs   = url.searchParams;
+
+        if (qs.get('u'))       return { type:'profile', id: qs.get('u') };
+        if (qs.get('profile')) return { type:'profile', id: qs.get('profile') };
+        if (qs.get('post'))    return { type:'post',    id: qs.get('post'), track: qs.get('track') === '1' };
+        if (qs.get('c'))       return { type:'channel', id: qs.get('c') };
+        if (qs.get('live'))    return { type:'live',    id: qs.get('live') };
+
+        let m;
+        if ((m = path.match(/^\/@([A-Za-z0-9_.]+)$/))) return { type:'profile', username: m[1] };
+        if ((m = path.match(/^\/(?:c|channel)\/([A-Za-z0-9_-]+)$/i))) return { type:'channel', code: m[1] };
+        if ((m = path.match(/^\/(?:live)\/([A-Za-z0-9_-]+)$/i))) return { type:'live', code: m[1] };
+        if ((m = path.match(/^\/(?:p|post)\/([A-Za-z0-9-]+)$/))) return { type:'post', id: m[1] };
+        if ((m = path.match(/^\/([A-Z0-9]{5})$/i))) return { type:'code', code: m[1].toUpperCase() };
+
+        return null;
+    },
+
+    async resolve(){
+        const r = this._pending; this._pending = null;
+        if (!r) return false;
+
+        try {
+            if (r.type === 'profile'){
+                let id = r.id;
+                if (!id && r.username){
+                    const { data } = await supabase.from('profiles')
+                        .select('id').eq('username', r.username.toLowerCase()).maybeSingle();
+                    if (data) id = data.id;
+                }
+                if (id){ openUserProfile(id); this.replace(r.raw || urlFor('profile', r.username || id)); return true; }
+            }
+
+            if (r.type === 'post'){
+                const ok = await openPostByRoute(r.id, { track: r.track });
+                if (ok){ this.replace(r.raw || urlFor('post', r.id)); return true; }
+            }
+
+            if (r.type === 'channel'){
+                let id = r.id;
+                if (!id && r.code){
+                    const { data } = await supabase.from('channels')
+                        .select('id').eq('join_code', r.code.toUpperCase()).maybeSingle();
+                    if (data) id = data.id;
+                    else {
+                        const { data: byId } = await supabase.from('channels')
+                            .select('id').eq('id', r.code).maybeSingle();
+                        if (byId) id = byId.id;
+                    }
+                }
+                if (id){ await openChannel(id); this.replace(r.raw || urlFor('channel', id)); return true; }
+            }
+
+            if (r.type === 'live'){
+                let id = r.id;
+                if (!id && r.code){
+                    const { data } = await supabase.from('lives')
+                        .select('id').eq('join_code', r.code.toUpperCase())
+                        .eq('is_active', true).maybeSingle();
+                    if (data) id = data.id;
+                    else {
+                        const { data: byId } = await supabase.from('lives')
+                            .select('id').eq('id', r.code).maybeSingle();
+                        if (byId) id = byId.id;
+                    }
+                }
+                if (id){ await openLiveRoom(id); this.replace(r.raw || urlFor('live', id)); return true; }
+            }
+
+            if (r.type === 'code'){
+                const { data: ch } = await supabase.from('channels')
+                    .select('id').eq('join_code', r.code).maybeSingle();
+                if (ch){ await openChannel(ch.id); this.replace(r.raw); return true; }
+                const { data: live } = await supabase.from('lives')
+                    .select('id').eq('join_code', r.code).eq('is_active', true).maybeSingle();
+                if (live){ await openLiveRoom(live.id); this.replace(r.raw); return true; }
+            }
+        } catch(e){ console.warn('[router]', e.message) }
+
+        showToast('error', 'Ссылка не найдена или устарела', { icon:'⚠️' });
+        this.replace('/');
+        return false;
+    },
+
+    push(path){
+        try { history.pushState({}, '', path) }
+        catch (e){ console.warn('[router.push]', e.message, '→', path) }
+    },
+    replace(path){
+        try { history.replaceState({}, '', path) }
+        catch (e){ console.warn('[router.replace]', e.message, '→', path) }
+    }
+};
+
+function urlFor(type, id){
+    switch(type){
+        case 'profile': return '/@' + id;
+        case 'post':    return '/p/' + id;
+        case 'channel': return '/c/' + id;
+        case 'live':    return '/live/' + id;
+    }
+    return '/';
+}
+
+async function openPostByRoute(postId, opts = {}){
+    const scrollToCard = () => {
+        const card = document.querySelector(`.feed-post[data-pid="${postId}"]`);
+        if (!card) return false;
+        card.scrollIntoView({ behavior:'smooth', block:'center' });
+        const prev = card.style.boxShadow;
+        card.style.transition = 'box-shadow .4s';
+        card.style.boxShadow = '0 0 0 3px var(--blue), 0 8px 32px rgba(10,132,255,.35)';
+        setTimeout(() => { card.style.boxShadow = prev }, 2200);
+        if (opts.track){
+            const playBtn = card.querySelector('[data-action="toggle-play"]');
+            playBtn?.click();
+        }
+        return true;
+    };
+
+    if (scrollToCard()) return true;
+
+    const { data: post } = await supabase.from('posts')
+        .select('id, channel_id, author_id').eq('id', postId).maybeSingle();
+    if (!post){ showToast('error', 'Пост не найден', { icon:'⚠️' }); return false; }
+
+    if (post.channel_id){
+        await openChannel(post.channel_id);
+        await new Promise(r => setTimeout(r, 600));
+        return scrollToCard();
+    } else {
+        state.chatContext = 'global'; state.chatTitle = 'Global';
+        switchScreen('inbox');
+        openLiveChat('global', 'Global');
+        await new Promise(r => setTimeout(r, 800));
+        return scrollToCard();
+    }
+}
 
 /* ============================================================
    TOAST
@@ -409,7 +512,7 @@ function showToast(type, msg, opts = {}){
     if(opts.duration !== 0) setTimeout(close, opts.duration || (type === 'error' ? 4000 : 3000))
     return { close, el:t }
 }
-
+/* Слайд-уведомления о новых сообщениях */
 function showSlideNotif({ name, avatar, text, peerId }){
     const now = Date.now()
     if(now - state.__lastSlideAt < 800) return
@@ -444,27 +547,37 @@ function showSlideNotif({ name, avatar, text, peerId }){
     }, 5000)
 }
 
+/* Realtime — новые сообщения в direct_messages */
 try {
     supabase.channel('direct:realtime')
         .on('postgres_changes', { event:'INSERT', schema:'public', table:'direct_messages' }, async payload => {
             const m = payload.new
             const { data:{ user } } = await supabase.auth.getUser()
             if(!user || m.to_id !== user.id) return
+
+            // Если это текущий открытый чат — просто обновим
             const room = document.getElementById('direct-room')
             if(room && !room.classList.contains('hidden')){
-                // в открытом чате loadMessages обновится сам
+                // Обновит loadMessages сам, но не будем слать уведомление
             } else {
+                // Слайд
                 const { data:p } = await supabase.from('profiles')
                     .select('username, full_name, avatar_url').eq('id', m.from_id).maybeSingle()
                 const name = p?.full_name || p?.username || 'user'
-                showSlideNotif({ name, avatar: p?.avatar_url, text: (m.content || '📎 Медиа').slice(0, 80), peerId: m.from_id })
+                showSlideNotif({
+                    name, avatar: p?.avatar_url, text: (m.content || '📎 Медиа').slice(0, 80), peerId: m.from_id
+                })
+            }
+            // Обновляем бейджи в директе, если открыт
+            const screen = document.getElementById('screen-direct')
+            if(screen?.classList.contains('active')){
+                // Перерисуем через 300ms
             }
         })
         .subscribe()
 } catch(e){ console.warn('[direct realtime]', e.message) }
-
 /* ============================================================
-   CODE MODAL (унифицированный)
+   CODE MODAL
 ============================================================ */
 function openEnterMenu(){
     showActionSheet('Войти', [
@@ -488,16 +601,14 @@ function openCodeModalFor(mode){
     if(subEl) subEl.textContent = subMap[mode] || '5 символов'
     const submitBtn = $('code-modal-submit')
     if(submitBtn) submitBtn.textContent = btnMap[mode] || 'Продолжить'
-
-    openSheet('code-modal')
-
+    modal.classList.remove('hidden')
     input.value = ''
     input.maxLength = mode === 'profile' ? 30 : 5
     input.style.fontSize = mode === 'profile' ? '22px' : '36px'
     input.style.letterSpacing = mode === 'profile' ? '2px' : '12px'
     input.placeholder = mode === 'profile' ? '@username или ID' : ''
-    setTimeout(() => input.focus(), 120)
-
+    setTimeout(() => input.focus(), 100)
+    const close = () => modal.classList.add('hidden')
     input.oninput = () => {
         if(mode === 'profile') input.value = input.value.replace(/[^A-Za-z0-9_.@]/g, '')
         else input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5)
@@ -506,7 +617,7 @@ function openCodeModalFor(mode){
         const code = input.value.trim()
         if(mode !== 'profile' && code.length < 5){ showToast('error', 'Неверный код', { icon:'⚠️' }); return }
         if(!code){ showToast('error', 'Введите код', { icon:'⚠️' }); return }
-        closeSheet('code-modal')
+        close()
         const loadToast = showToast('loading', 'Проверяем...', { dismissible:false, duration:0 })
         try {
             if(mode === 'profile'){
@@ -530,7 +641,8 @@ function openCodeModalFor(mode){
         } catch(e){ loadToast.close(); showToast('error', 'Неверный код', { icon:'⚠️' }) }
     }
     submitBtn.onclick = submit
-    $('code-modal-cancel').onclick = () => closeSheet('code-modal')
+    $('code-modal-cancel').onclick = close
+    $('code-modal-backdrop').onclick = close
     input.onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); submit() } }
 }
 
@@ -548,6 +660,7 @@ function showScreen(name){
     Object.values(screens).forEach(s => s?.classList.add('hidden'))
     mainApp.classList.add('hidden')
 
+    /* Фон страницы под auth-экранами — чёрный */
     const darkNames = ['auth','karsq','reset'];
     document.documentElement.style.background = darkNames.includes(name) ? '#0a0a0a' : '';
     document.body.style.background = darkNames.includes(name) ? '#0a0a0a' : '';
@@ -563,6 +676,7 @@ function showScreen(name){
         setPageBg(false)
     } else if(name === 'auth' || name === 'karsq' || name === 'reset'){
         setPageBg(true)
+        // Строим фон с едущими постами (один раз)
         const feedBg = document.getElementById('auth-feed-bg')
         if(feedBg && !feedBg.dataset.built){
             feedBg.dataset.built = '1'
@@ -658,7 +772,6 @@ $('sidebar-logout')?.addEventListener('click', async () => {
     await supabase.auth.signOut()
     closeSidebar(); showScreen('auth'); $('login-form').reset(); $('login-error').textContent = ''
 })
-
 $('login-form').addEventListener('submit', async e => {
     e.preventDefault()
     e.stopPropagation()
@@ -673,7 +786,7 @@ $('login-form').addEventListener('submit', async e => {
     btn.innerHTML = '<span class="btn-spinner"></span> Проверяем...'
 
     try {
-        const { error } = await withTimeout(
+        const { data, error } = await withTimeout(
             supabase.auth.signInWithPassword({ email, password }),
             15000, 'signIn'
         )
@@ -689,22 +802,93 @@ $('login-form').addEventListener('submit', async e => {
         btn.textContent = 'Войти'
     }
 })
-
 /* ============================================================
-   STORR — теперь через openSheet
+   STORR
 ============================================================ */
-function openPrioriti(){ openSheet('prioriti-sheet') }
-function closePrioriti(){ closeSheet('prioriti-sheet') }
+const prioritiSheet    = $('prioriti-sheet')
+const prioritiBackdrop = $('prioriti-backdrop')
 
+let _prioritiOpen = false
+
+function openPrioriti(){
+    if(!prioritiSheet || _prioritiOpen) return
+    _prioritiOpen = true
+
+    // 1. Показываем backdrop и sheet БЕЗ анимации
+    prioritiBackdrop.style.transition = 'none'
+    prioritiBackdrop.style.opacity = '0'
+    prioritiBackdrop.classList.remove('hidden')
+
+    prioritiSheet.style.transition = 'none'
+    prioritiSheet.style.transform  = 'translateY(100%)'
+    prioritiSheet.classList.remove('hidden')
+
+    // 2. Форсим reflow, чтобы браузер «увидел» стартовое состояние
+    void prioritiSheet.offsetHeight
+
+    // 3. Включаем анимацию и запускаем
+    requestAnimationFrame(() => {
+        prioritiBackdrop.style.transition = 'opacity .25s ease'
+        prioritiSheet.style.transition    = 'transform .32s cubic-bezier(.32,.72,.24,1)'
+
+        prioritiBackdrop.style.opacity = '1'
+        prioritiSheet.style.transform  = 'translateY(0)'
+
+        // подстраховка — если браузер проигнорит transition
+        setTimeout(() => {
+            prioritiBackdrop.style.opacity = ''
+            prioritiSheet.style.transform  = ''
+            prioritiBackdrop.classList.add('show')   // если есть CSS .show
+            prioritiSheet.classList.add('open')      // на случай если CSS привязан к .open
+        }, 340)
+    })
+}
+
+function closePrioriti(){
+    if(!prioritiSheet || !_prioritiOpen) return
+    _prioritiOpen = false
+
+    // Анимация закрытия
+    prioritiBackdrop.style.opacity = '0'
+    prioritiSheet.style.transform  = 'translateY(100%)'
+
+    // После анимации — прячем полностью
+    setTimeout(() => {
+        prioritiBackdrop.classList.add('hidden')
+        prioritiSheet.classList.add('hidden')
+
+        // Сброс inline-стилей, чтобы следующее открытие стартовало чисто
+        prioritiBackdrop.style.opacity = ''
+        prioritiBackdrop.style.transition = ''
+        prioritiSheet.style.transform = ''
+        prioritiSheet.style.transition = ''
+
+        prioritiBackdrop.classList.remove('show')
+        prioritiSheet.classList.remove('open')
+    }, 340)
+}
+
+// Закрытие — где угодно
+prioritiBackdrop?.addEventListener('click', closePrioriti)
+document.addEventListener('click', e => {
+    if(e.target === prioritiBackdrop) closePrioriti()
+}, true)
+
+// Esc (для десктопа)
+document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && _prioritiOpen) closePrioriti()
+})
+
+
+prioritiBackdrop.addEventListener('click', closePrioriti)
 $('storr-gifts-btn')?.addEventListener('click', () => { closePrioriti(); alert('Магазин подарков и клигов — скоро') })
 $('storr-chvad-btn')?.addEventListener('click', () => { closePrioriti(); alert('Подписка listatread chvad — скоро') })
 
 /* ============================================================
-   ACTIONSHEET — универсальный
+   ACTIONSHEET
 ============================================================ */
-const actionsheet = $('actionsheet'),
-    actionsheetTitle = $('actionsheet-title'),
-    actionsheetList = $('actionsheet-list')
+const actionsheet = $('actionsheet'), actionsheetBackdrop = $('actionsheet-backdrop'),
+    actionsheetTitle = $('actionsheet-title'), actionsheetList = $('actionsheet-list')
 
 const ICONS = {
     trash:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/></svg>',
@@ -734,22 +918,27 @@ const ICONS = {
 
 function showActionSheet(title, items){
     actionsheetTitle.textContent = title
-    actionsheetList.innerHTML = items.map((it, i) =>
-        `<button class="actionsheet-item ${it.danger ? 'danger' : ''}" data-idx="${i}">${it.icon || ''}<span>${it.label}</span></button>`
-    ).join('')
+    actionsheetList.innerHTML = items.map((it, i) => `<button class="actionsheet-item ${it.danger ? 'danger' : ''}" data-idx="${i}">${it.icon || ''}<span>${it.label}</span></button>`).join('')
     actionsheetList.querySelectorAll('.actionsheet-item').forEach(btn => {
         btn.addEventListener('click', () => {
-            const it = items[+btn.dataset.idx]
-            closeSheet('actionsheet')
-            if(it.onClick) setTimeout(it.onClick, 120)
+            const it = items[+btn.dataset.idx]; closeActionSheet()
+            if(it.onClick) setTimeout(it.onClick, 100)
         })
     })
-    openSheet('actionsheet')
+    actionsheetBackdrop.classList.remove('hidden')
+    actionsheet.classList.remove('hidden')
+    void actionsheet.offsetHeight
+    requestAnimationFrame(() => actionsheet.classList.add('open'))
 }
 window.showActionSheet = showActionSheet
 window.showToast = showToast
-
-$('actionsheet-cancel').addEventListener('click', () => closeSheet('actionsheet'))
+function closeActionSheet(){
+    actionsheet.classList.remove('open');
+    actionsheet.classList.add('hidden');
+    actionsheetBackdrop.classList.add('hidden');
+}
+actionsheetBackdrop.addEventListener('click', closeActionSheet)
+$('actionsheet-cancel').addEventListener('click', closeActionSheet)
 
 /* ============================================================
    PWD TOGGLE
@@ -764,8 +953,10 @@ document.querySelectorAll('.pwd-toggle, .auth-pwd-toggle').forEach(btn => {
 })
 
 /* ============================================================
-   AUTH — безопасные обработчики
-============================================================ */
+   AUTH — безопасные обработчики (optional chaining)
+   ============================================================ */
+
+
 $('karsq-back')?.addEventListener('click', () => showScreen('auth'))
 $('karsq-continue')?.addEventListener('click', () => {
     if(!$('karsq-email').value.trim()){ $('karsq-error').textContent = 'Введите почту'; return }
@@ -789,8 +980,13 @@ $('reset-lt-btn')?.addEventListener('click', () => {
     $('reset-step-1').classList.add('hidden'); $('reset-step-2').classList.remove('hidden')
 })
 
+
+// register-landing-screen — отключён, оставлен на всякий случай
 $('reg-landing-back')?.addEventListener('click', () => showScreen('auth'))
 
+
+
+/* --- Новые кнопки авторизации --- */
 $('vk-login-btn')?.addEventListener('click', async () => {
     try {
         const { error } = await supabase.auth.signInWithOAuth({
@@ -823,9 +1019,16 @@ document.querySelectorAll('.auth-topnav-link').forEach(btn => {
     })
 })
 
+
+
+/* Desktop-навигация сверху */
+
+
 /* ============================================================
-   REGISTRATION
+   REGISTRATION — обновлённая версия под новый HTML
 ============================================================ */
+
+
 function clearRegForm(){
     const setVal = (id, v) => { const el = $(id); if (el) el.value = v; };
     setVal('reg-email', '');
@@ -857,9 +1060,13 @@ function clearRegForm(){
     applyTheme('light');
 }
 
-function updateStep(){ /* no-op */ }
+/* Заглушки — старые функции, используются ниже в коде */
+function updateStep(){ /* no-op — вся логика шагов теперь в auth-блоке */ }
 function validateStep(){ return true; }
 
+/* ---- Безопасные обработчики (только для существующих элементов) ---- */
+
+/* Аватар */
 $('reg-avatar')?.addEventListener('change', e => {
     const f = e.target.files?.[0]; if (!f) return;
     state.data.avatarFile = f;
@@ -869,10 +1076,12 @@ $('reg-avatar')?.addEventListener('change', e => {
     if (ph){ ph.hidden = true; }
 });
 
+/* Кнопка Назад (стрелка в топбаре register-экрана) */
 $('reg-back-arrow')?.addEventListener('click', () => {
     if (typeof window.__ltRegGoBack === 'function') {
         window.__ltRegGoBack();
     } else {
+        /* Фолбэк — возврат на auth */
         const reg = $('register-screen');
         const auth = $('auth-screen');
         if (reg) reg.classList.add('hidden');
@@ -880,6 +1089,10 @@ $('reg-back-arrow')?.addEventListener('click', () => {
     }
 });
 
+/* Кнопка "Завершить" на шаге 5 не обрабатывается здесь —
+   её ловит общий обработчик в конце main.js */
+
+/* ---- Проверки пароля — оставляем как утилиту, но никуда не вешаем ---- */
 function checkPasswordRules(p){
     return {
         length:  p.length >= 8,
@@ -893,8 +1106,10 @@ function checkPasswordRules(p){
 }
 function isPasswordStrong(p){ return Object.values(checkPasswordRules(p)).every(v => v); }
 
+/* ---- Соцсети — рендер отключён, поля убраны из HTML ---- */
 function renderSocialInputs(){ /* no-op */ }
 
+/* ---- Запуск очистки при старте ---- */
 clearRegForm();
 
 /* ============================================================
@@ -947,11 +1162,11 @@ async function completeRegistration(){
 }
 
 /* ============================================================
-   LANG / REGION (унифицированные)
+   LANG / REGION
 ============================================================ */
 let currentLang = localStorage.getItem('lang') || 'ru'
-const langList = $('lang-list')
-const regionList = $('region-list')
+const langModal = $('lang-modal'), langList = $('lang-list')
+const regionModal = $('region-modal'), regionList = $('region-list')
 
 function renderLangList(){
     langList.innerHTML = LANGUAGES.map(l => `<button class="lang-item ${l.code === currentLang ? 'active' : ''}" data-code="${l.code}"><span class="lang-item-flag">${l.flag}</span><span>${l.name}</span>${l.code === currentLang ? '<span class="lang-item-check">✓</span>' : ''}</button>`).join('')
@@ -959,12 +1174,13 @@ function renderLangList(){
         currentLang = b.dataset.code; localStorage.setItem('lang', currentLang)
         $('current-lang-flag').textContent = LANGUAGES.find(x => x.code === currentLang)?.flag || '🇬🇧'
         $('current-lang-name').textContent = LANGUAGES.find(x => x.code === currentLang)?.name || 'English'
-        renderLangList(); closeSheet('lang-modal')
+        renderLangList(); closeLangModal()
     }))
 }
-function openLangModal(){ openSheet('lang-modal') }
-function closeLangModal(){ closeSheet('lang-modal') }
+function openLangModal(){ langModal.classList.remove('hidden') }
+function closeLangModal(){ langModal.classList.add('hidden') }
 $('lang-selector').addEventListener('click', openLangModal)
+$('lang-backdrop').addEventListener('click', closeLangModal)
 
 function renderRegionList(){
     if(!regionList) return
@@ -978,20 +1194,26 @@ function renderRegionList(){
     regionList.querySelectorAll('.lang-item').forEach(b => b.addEventListener('click', () => {
         const c = COUNTRIES.find(x => x.code === b.dataset.code); if(!c) return
         state.data.region = c.code
+        // Обновляем и старую кнопку (если есть), и новую
         const rf = $('region-flag'); if(rf) rf.textContent = c.flag
         const rn = $('region-name'); if(rn) rn.textContent = c.name
         const nrf = $('reg-region-flag'); if(nrf) nrf.textContent = c.flag
         const nrn = $('reg-region-name'); if(nrn) nrn.textContent = c.name
         window.__ltRegRegion = c.code
-        closeSheet('region-modal')
+        closeRegionModal()
     }))
 }
 function openRegionModal(){
+    if(!regionModal){ console.warn('[region] modal not found'); return }
     renderRegionList()
-    openSheet('region-modal')
+    regionModal.classList.remove('hidden')
 }
-function closeRegionModal(){ closeSheet('region-modal') }
+function closeRegionModal(){
+    regionModal?.classList.add('hidden')
+}
+// Кнопка региона в новой форме регистрации — защищённый вызов
 $('reg-region-btn')?.addEventListener('click', openRegionModal)
+$('region-backdrop')?.addEventListener('click', closeRegionModal)
 renderLangList()
 
 /* ============================================================
@@ -1167,7 +1389,7 @@ async function renderHomeFeed(){
 }
 
 /* ============================================================
-   БЕСКОНЕЧНАЯ ЛЕНТА
+   БЕСКОНЕЧНАЯ ЛЕНТА РЕКОМЕНДАЦИЙ
 ============================================================ */
 function teardownInfinite(){
     if(state.recObserver){ state.recObserver.disconnect(); state.recObserver = null }
@@ -1193,6 +1415,7 @@ async function appendRecommendedChunk(list, userId, size = 5){
     state.recLoading = true
     try {
         let next = []
+
         while(next.length < size && state.recCursor < state.recBuffer.length){
             const p = state.recBuffer[state.recCursor++]
             if(!state.recShownIds.has(p.id)){
@@ -1496,7 +1719,9 @@ function attachVideoProgress(card){
     const setFromEvent = (clientX) => {
         const rect = bar.getBoundingClientRect()
         const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-        if(vid.duration && isFinite(vid.duration)) vid.currentTime = pct * vid.duration
+        if(vid.duration && isFinite(vid.duration)){
+            vid.currentTime = pct * vid.duration
+        }
     }
     bar.addEventListener('pointerdown', e => { e.stopPropagation(); dragging = true; setFromEvent(e.clientX); bar.setPointerCapture(e.pointerId) })
     bar.addEventListener('pointermove', e => { if(dragging){ e.stopPropagation(); setFromEvent(e.clientX) } })
@@ -1506,17 +1731,32 @@ function attachVideoProgress(card){
 function attachVideoLoading(card){
     const vid = card.querySelector('.post-bg-video')
     if(!vid) return
+
     const MIN_BUFFER = 0.3
+
     const update = () => {
         if(!vid.duration || !isFinite(vid.duration)) {
-            card.classList.add('loading'); card.dataset.videoReady = '0'; return
+            card.classList.add('loading')
+            card.dataset.videoReady = '0'
+            return
         }
         let ratio = 0
-        if(vid.buffered.length) ratio = vid.buffered.end(vid.buffered.length - 1) / vid.duration
+        if(vid.buffered.length){
+            ratio = vid.buffered.end(vid.buffered.length - 1) / vid.duration
+        }
         ratio = Math.min(1, Math.max(0, ratio))
-        if(ratio >= MIN_BUFFER){ card.classList.remove('loading'); card.dataset.videoReady = '1'; card.dataset.videoBuffer = ratio.toFixed(2) }
-        else { card.classList.add('loading'); card.dataset.videoReady = '0'; card.dataset.videoBuffer = ratio.toFixed(2) }
+
+        if(ratio >= MIN_BUFFER){
+            card.classList.remove('loading')
+            card.dataset.videoReady = '1'
+            card.dataset.videoBuffer = ratio.toFixed(2)
+        } else {
+            card.classList.add('loading')
+            card.dataset.videoReady = '0'
+            card.dataset.videoBuffer = ratio.toFixed(2)
+        }
     }
+
     vid.addEventListener('loadstart',        update)
     vid.addEventListener('loadedmetadata',   update)
     vid.addEventListener('loadeddata',       update)
@@ -1526,6 +1766,7 @@ function attachVideoLoading(card){
     vid.addEventListener('waiting',          update)
     vid.addEventListener('playing',          update)
     vid.addEventListener('timeupdate',       update)
+
     update()
 }
 
@@ -1609,205 +1850,6 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
   </article>`
 }
 
-function renderMedia(url, cls = 'feed-post-image', meta = {}){
-    if(!url) return ''
-    const clean = url.split('?')[0].toLowerCase()
-    if(/\.(mp4|webm|mov|m4v)$/.test(clean)){
-        return `<video class="${cls}" src="${url}" controls playsinline preload="metadata" style="width:100%;border-radius:var(--radius-md);margin-top:10px;display:block;max-height:420px;"></video>`
-    }
-    if(/\.(mp3|wav|ogg|m4a|aac|flac|opus)$/.test(clean)){
-        const title = meta.title || meta.media_title || 'Аудио'
-        return `<div class="track-card" data-track-src="${url}" data-track-post="${meta.postId || ''}" data-track-title="${escapeHtml(title)}">
-      <button class="track-play" data-action="toggle-play" aria-label="Воспроизвести">${SVG.play}</button>
-      <div class="track-info">
-        <div class="track-title">${escapeHtml(title)}</div>
-        <div class="track-meta">
-          <span class="track-user">@${escapeHtml(meta.username || 'user')}</span>
-          <span class="track-time" data-track-time="0:00 / 0:00">0:00 / 0:00</span>
-        </div>
-      </div>
-      <div class="track-actions">
-        <button class="track-more" data-action="track-more" aria-label="Действия">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
-        </button>
-      </div>
-      <div class="track-progress"><div class="track-progress-fill"></div></div>
-    </div>`
-    }
-    return `<img class="${cls}" src="${url}" alt="">`
-}
-
-async function fetchCounts(postIds){
-    const out = {}
-    postIds.forEach(id => out[id] = { likes:0, comments:0, reposts:0 })
-    if(!postIds.length) return out
-    try {
-        const [{ data:likes }, { data:comments }, { data:reposts }] = await Promise.all([
-                supabase.from('likes').select('post_id').in('post_id', postIds),
-                supabase.from('comments').select('post_id').in('post_id', postIds),
-                supabase.from('reposts').select('post_id').in('post_id', postIds)
-            ])
-        ;(likes || []).forEach(l => { if(out[l.post_id]) out[l.post_id].likes++ })
-        ;(comments || []).forEach(c => { if(out[c.post_id]) out[c.post_id].comments++ })
-        ;(reposts || []).forEach(r => { if(out[r.post_id]) out[r.post_id].reposts++ })
-    } catch(e){ console.warn('[counts]', e.message) }
-    return out
-}
-
-/* ============================================================
-   ROUTER
-============================================================ */
-const Router = {
-    _pending: null,
-    init(){
-        let raw = null;
-        try {
-            raw = sessionStorage.getItem('__redirect_path__');
-            if (raw) sessionStorage.removeItem('__redirect_path__');
-        } catch {}
-        if (!raw) raw = location.pathname + location.search + location.hash;
-        const parsed = this.parse(raw);
-        if (parsed){ parsed.raw = raw; this._pending = parsed; }
-    },
-    parse(raw){
-        if (!raw || raw === '/' || raw.startsWith('/index.html')) return null;
-        let url;
-        try { url = new URL(raw, location.origin); }
-        catch { url = new URL(location.origin + raw); }
-        const path = url.pathname;
-        const qs   = url.searchParams;
-
-        if (qs.get('u'))       return { type:'profile', id: qs.get('u') };
-        if (qs.get('profile')) return { type:'profile', id: qs.get('profile') };
-        if (qs.get('post'))    return { type:'post',    id: qs.get('post'), track: qs.get('track') === '1' };
-        if (qs.get('c'))       return { type:'channel', id: qs.get('c') };
-        if (qs.get('live'))    return { type:'live',    id: qs.get('live') };
-
-        let m;
-        if ((m = path.match(/^\/@([A-Za-z0-9_.]+)$/))) return { type:'profile', username: m[1] };
-        if ((m = path.match(/^\/(?:c|channel)\/([A-Za-z0-9_-]+)$/i))) return { type:'channel', code: m[1] };
-        if ((m = path.match(/^\/(?:live)\/([A-Za-z0-9_-]+)$/i))) return { type:'live', code: m[1] };
-        if ((m = path.match(/^\/(?:p|post)\/([A-Za-z0-9-]+)$/))) return { type:'post', id: m[1] };
-        if ((m = path.match(/^\/([A-Z0-9]{5})$/i))) return { type:'code', code: m[1].toUpperCase() };
-        return null;
-    },
-    async resolve(){
-        const r = this._pending; this._pending = null;
-        if (!r) return false;
-        try {
-            if (r.type === 'profile'){
-                let id = r.id;
-                if (!id && r.username){
-                    const { data } = await supabase.from('profiles')
-                        .select('id').eq('username', r.username.toLowerCase()).maybeSingle();
-                    if (data) id = data.id;
-                }
-                if (id){ openUserProfile(id); this.replace(r.raw || urlFor('profile', r.username || id)); return true; }
-            }
-            if (r.type === 'post'){
-                const ok = await openPostByRoute(r.id, { track: r.track });
-                if (ok){ this.replace(r.raw || urlFor('post', r.id)); return true; }
-            }
-            if (r.type === 'channel'){
-                let id = r.id;
-                if (!id && r.code){
-                    const { data } = await supabase.from('channels')
-                        .select('id').eq('join_code', r.code.toUpperCase()).maybeSingle();
-                    if (data) id = data.id;
-                    else {
-                        const { data: byId } = await supabase.from('channels')
-                            .select('id').eq('id', r.code).maybeSingle();
-                        if (byId) id = byId.id;
-                    }
-                }
-                if (id){ await openChannel(id); this.replace(r.raw || urlFor('channel', id)); return true; }
-            }
-            if (r.type === 'live'){
-                let id = r.id;
-                if (!id && r.code){
-                    const { data } = await supabase.from('lives')
-                        .select('id').eq('join_code', r.code.toUpperCase())
-                        .eq('is_active', true).maybeSingle();
-                    if (data) id = data.id;
-                    else {
-                        const { data: byId } = await supabase.from('lives')
-                            .select('id').eq('id', r.code).maybeSingle();
-                        if (byId) id = byId.id;
-                    }
-                }
-                if (id){ await openLiveRoom(id); this.replace(r.raw || urlFor('live', id)); return true; }
-            }
-            if (r.type === 'code'){
-                const { data: ch } = await supabase.from('channels')
-                    .select('id').eq('join_code', r.code).maybeSingle();
-                if (ch){ await openChannel(ch.id); this.replace(r.raw); return true; }
-                const { data: live } = await supabase.from('lives')
-                    .select('id').eq('join_code', r.code).eq('is_active', true).maybeSingle();
-                if (live){ await openLiveRoom(live.id); this.replace(r.raw); return true; }
-            }
-        } catch(e){ console.warn('[router]', e.message) }
-        showToast('error', 'Ссылка не найдена или устарела', { icon:'⚠️' });
-        this.replace('/');
-        return false;
-    },
-    push(path){
-        try { history.pushState({}, '', path) }
-        catch (e){ console.warn('[router.push]', e.message, '→', path) }
-    },
-    replace(path){
-        try { history.replaceState({}, '', path) }
-        catch (e){ console.warn('[router.replace]', e.message, '→', path) }
-    }
-};
-
-function urlFor(type, id){
-    switch(type){
-        case 'profile': return '/@' + id;
-        case 'post':    return '/p/' + id;
-        case 'channel': return '/c/' + id;
-        case 'live':    return '/live/' + id;
-    }
-    return '/';
-}
-
-async function openPostByRoute(postId, opts = {}){
-    const scrollToCard = () => {
-        const card = document.querySelector(`.feed-post[data-pid="${postId}"]`);
-        if (!card) return false;
-        card.scrollIntoView({ behavior:'smooth', block:'center' });
-        const prev = card.style.boxShadow;
-        card.style.transition = 'box-shadow .4s';
-        card.style.boxShadow = '0 0 0 3px var(--blue), 0 8px 32px rgba(10,132,255,.35)';
-        setTimeout(() => { card.style.boxShadow = prev }, 2200);
-        if (opts.track){
-            const playBtn = card.querySelector('[data-action="toggle-play"]');
-            playBtn?.click();
-        }
-        return true;
-    };
-
-    if (scrollToCard()) return true;
-
-    const { data: post } = await supabase.from('posts')
-        .select('id, channel_id, author_id').eq('id', postId).maybeSingle();
-    if (!post){ showToast('error', 'Пост не найден', { icon:'⚠️' }); return false; }
-
-    if (post.channel_id){
-        await openChannel(post.channel_id);
-        await new Promise(r => setTimeout(r, 600));
-        return scrollToCard();
-    } else {
-        state.chatContext = 'global'; state.chatTitle = 'Global';
-        switchScreen('inbox');
-        openLiveChat('global', 'Global');
-        await new Promise(r => setTimeout(r, 800));
-        return scrollToCard();
-    }
-}
-
-/* ============================================================
-   POLL
-============================================================ */
 function renderPoll(poll, postId){
     if(!poll) return ''
     const myVote = poll.voters?.[state.currentUser?.id]
@@ -1840,6 +1882,7 @@ function getPollRevealInfo(poll, userId){
     const total = (poll.votes || []).reduce((a,b) => a + (b||0), 0)
     return { myVote, total, revealed: myVote !== undefined, isQuiz: poll.mode === 'quiz' }
 }
+
 function buildPollInnerHtml(poll, postId, userId){
     const { myVote, total, revealed, isQuiz } = getPollRevealInfo(poll, userId)
     return `
@@ -1863,6 +1906,7 @@ function buildPollInnerHtml(poll, postId, userId){
         <div class="poll-view-meta">${total} голос${total === 1 ? '' : 'ов'}</div>
     `
 }
+
 function updatePollInDom(postId, newPoll, userId){
     document.querySelectorAll(`.poll-view[data-poll-post="${postId}"]`).forEach(el => {
         el.innerHTML = buildPollInnerHtml(newPoll, postId, userId)
@@ -1882,6 +1926,7 @@ function mediaLabel(post){
     if(post.media_url) return 'оригинальное фото -'
     return 'пост был выложен -'
 }
+
 function buildMetaRow(time, contextLabel, post){
     const p = post.profiles || {}
     const username = (p.username || 'user').replace(/^@/, '')
@@ -1911,6 +1956,7 @@ function buildMetaRow(time, contextLabel, post){
         </div>
     `
 }
+
 function initPostMarquees(root = document){
     root.querySelectorAll('.post-marquee-wrap').forEach(wrap => {
         if(wrap.dataset.mqInit === '1') return
@@ -1932,17 +1978,24 @@ function initPostMarquees(root = document){
         })
     })
 }
+
 async function handleFeedSubBtn(btn, myId){
     const chId = btn.dataset.chid
     if(!chId) return
+
     const wasSub = btn.classList.contains('subscribed')
     const nowSub = !wasSub
+
     applySubState(chId, nowSub)
     if(nowSub) state.myChannelSubs.add(chId)
     else state.myChannelSubs.delete(chId)
+
     try {
-        if(nowSub) await supabase.from('subscriptions').insert({ follower_id: myId, channel_id: chId })
-        else await supabase.from('subscriptions').delete().eq('follower_id', myId).eq('channel_id', chId)
+        if(nowSub){
+            await supabase.from('subscriptions').insert({ follower_id: myId, channel_id: chId })
+        } else {
+            await supabase.from('subscriptions').delete().eq('follower_id', myId).eq('channel_id', chId)
+        }
         showToast('success', nowSub ? 'Вы подписаны' : 'Отписка', { icon: nowSub ? '✓' : '👋' })
     } catch(e){
         applySubState(chId, wasSub)
@@ -1951,6 +2004,7 @@ async function handleFeedSubBtn(btn, myId){
         showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' })
     }
 }
+
 function applySubState(chId, sub){
     if(!chId) return
     document.querySelectorAll(`.feed-sub-btn[data-chid="${chId}"]`).forEach(b => {
@@ -1970,6 +2024,7 @@ function applySubState(chId, sub){
         }
     }
 }
+
 async function attachFeedActions(list, myId){
     list.querySelectorAll('.feed-sub-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); handleFeedSubBtn(btn, myId) }))
     list.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
@@ -1999,6 +2054,7 @@ async function attachFeedActions(list, myId){
         await showPostMoreMenu(btn, card, myId)
     }))
 }
+
 async function openCommentsSheet(postId){
     const { data:{ user } } = await supabase.auth.getUser()
     const { data:comments } = await supabase.from('comments')
@@ -2019,7 +2075,7 @@ async function openCommentsSheet(postId){
       <button class="ch-comment-send" id="comment-sheet-send">${ICONS.send}</button>
     </div>
   `
-    openSheet('actionsheet')
+    actionsheet.classList.add('open'); actionsheetBackdrop.classList.remove('hidden')
     $('comment-sheet-send')?.addEventListener('click', async () => {
         const inp = $('comment-sheet-input')
         const text = inp.value.trim(); if(!text) return
@@ -2579,6 +2635,7 @@ async function renderProfileActions(targetId, myId, iBlocked){
     const following = !!isSub
 
     const wrap = document.createElement('div'); wrap.className = 'profile-actions-other'
+// ── Кнопка ЧАТ ──
     const chatBtn = document.createElement('button')
     chatBtn.className = 'btn-icon-round btn-chat-round'
     chatBtn.title = 'Написать сообщение'
@@ -2589,6 +2646,7 @@ async function renderProfileActions(targetId, myId, iBlocked){
             const { data:{ user } } = await supabase.auth.getUser()
             if(!user){ showToast('error', 'Войдите в аккаунт'); return }
 
+            // админ / сам админ / взаимные подписки — можно писать
             const { data:prof } = await supabase.from('profiles')
                 .select('is_admin').eq('id', targetId).maybeSingle()
             const peerIsAdmin = !!prof?.is_admin
@@ -2606,6 +2664,8 @@ async function renderProfileActions(targetId, myId, iBlocked){
                 showToast('error', 'Чтобы начать чат — подпишитесь на пользователя', { duration: 4000 })
                 return
             }
+
+            // Открываем direct
             const { openDirectChat } = await import('./direct.js')
             openDirectChat(targetId)
         } catch(e){
@@ -2901,6 +2961,7 @@ async function renderProfileTracks(userId){
 /* ============================================================
    PART 3 / 3 — openUserProfile() → конец файла
 ============================================================ */
+
 function openUserProfile(userId){
     if (!userId || userId === 'false' || userId === false || userId === 'null' || userId === 'undefined'){
         console.warn('[openUserProfile] skipped invalid userId:', userId)
@@ -2913,10 +2974,13 @@ function openUserProfile(userId){
                 .select('id')
                 .or(`username.eq.${userId.toLowerCase()},public_id.eq.${userId.toUpperCase()}`)
                 .maybeSingle();
-            if (data?.id) openUserProfile(data.id);
-            else showToast('error', 'Профиль не найден', { icon:'⚠️' });
+            if (data?.id) {
+                openUserProfile(data.id);
+            } else {
+                showToast('error', 'Профиль не найден', { icon:'⚠️' });
+            }
         })();
-        return
+        return;
     }
     state.currentProfileViewId = userId
     state.viewingOwnProfile = false
@@ -2993,20 +3057,27 @@ async function openQrModal(){
     socBox.querySelectorAll('.qr-social-btn').forEach(btn => btn.addEventListener('click', () => {
         const s = SHARE_SOCIALS.find(x => x.key === btn.dataset.sk); if(!s) return
         if(s.key === 'copy'){ navigator.clipboard?.writeText(shareUrl); showToast('success', 'Ссылка скопирована', { icon:'✓' }); return }
-        if(s.key === 'scan'){ closeSheet('qr-modal'); openQrScanModal(); return }
+        if(s.key === 'scan'){ closeQrModal(); openQrScanModal(); return }
         if(s.url) window.open(s.url(shareUrl), '_blank')
     }))
     $('qr-copy-id').onclick = () => { navigator.clipboard?.writeText(pid); showToast('success', 'ID скопирован', { icon:'✓' }) }
-    $('qr-cancel').onclick = () => closeSheet('qr-modal')
-    $('qr-scan-btn').onclick = () => { closeSheet('qr-modal'); openQrScanModal() }
+    $('qr-cancel').onclick = closeQrModal
+    $('qr-backdrop').onclick = closeQrModal
+    $('qr-scan-btn').onclick = () => { closeQrModal(); openQrScanModal() }
     const frame = $('qr-frame'); if(frame) frame.onclick = applyRandomQrGradient
     applyRandomQrGradient()
-    openSheet('qr-modal')
+    const modal = $('qr-modal'); modal.classList.remove('hidden'); void modal.offsetWidth
+    requestAnimationFrame(() => modal.classList.add('open'))
 }
-function closeQrModal(){ closeSheet('qr-modal') }
-
+function closeQrModal(){
+    const modal = $('qr-modal'); if(!modal) return
+    modal.classList.remove('open')
+    setTimeout(() => { if(!modal.classList.contains('open')) modal.classList.add('hidden') }, 380)
+}
 async function openQrScanModal(){
-    openSheet('qr-scan-modal')
+    const modal = $('qr-scan-modal')
+    modal.classList.remove('hidden'); void modal.offsetWidth
+    requestAnimationFrame(() => modal.classList.add('open'))
     $('qr-scan-input').value = ''
     let stream = null, detector = null, rafId = null
     const video = $('qr-video'), hint = $('qr-scan-hint')
@@ -3040,11 +3111,12 @@ async function openQrScanModal(){
             if(p1) targetId = p1.id
             else { const { data:p2 } = await supabase.from('profiles').select('id').eq('username', clean.toLowerCase()).maybeSingle(); if(p2) targetId = p2.id }
         }
-        closeSheet('qr-scan-modal')
+        closeQrScanModal()
         if(targetId) openUserProfile(targetId)
         else showToast('error', 'Профиль не найден', { icon:'⚠️' })
     }
-    $('qr-scan-cancel').onclick = () => { stopScanner(); closeSheet('qr-scan-modal') }
+    $('qr-scan-cancel').onclick = () => { stopScanner(); closeQrScanModal() }
+    $('qr-scan-backdrop').onclick = () => { stopScanner(); closeQrScanModal() }
     $('qr-scan-open').onclick = async () => {
         const v = $('qr-scan-input').value.trim(); if(!v) return
         stopScanner()
@@ -3053,12 +3125,16 @@ async function openQrScanModal(){
         const { data:p1 } = await supabase.from('profiles').select('id').eq('public_id', clean.toUpperCase()).maybeSingle()
         if(p1) targetId = p1.id
         else { const { data:p2 } = await supabase.from('profiles').select('id').eq('username', clean.toLowerCase()).maybeSingle(); if(p2) targetId = p2.id }
-        closeSheet('qr-scan-modal')
+        closeQrScanModal()
         if(targetId) openUserProfile(targetId)
         else showToast('error', 'Профиль не найден', { icon:'⚠️' })
     }
 }
-function closeQrScanModal(){ closeSheet('qr-scan-modal') }
+function closeQrScanModal(){
+    const modal = $('qr-scan-modal'); if(!modal) return
+    modal.classList.remove('open')
+    setTimeout(() => { if(!modal.classList.contains('open')) modal.classList.add('hidden') }, 380)
+}
 
 /* ============================================================
    SETTINGS
@@ -3115,6 +3191,7 @@ $('save-general')?.addEventListener('click', async () => {
         const { data:prof } = await supabase.from('profiles')
             .select('username, username_changed_at').eq('id', user.id).maybeSingle()
 
+        // Проверка смены юзернейма
         if(newUsername && prof?.username !== newUsername){
             if(prof?.username_changed_at){
                 const last = new Date(prof.username_changed_at).getTime()
@@ -3135,7 +3212,9 @@ $('save-general')?.addEventListener('click', async () => {
             bio: $('set-bio').value.trim(),
             theme: document.documentElement.getAttribute('data-theme') || 'light'
         }
-        if(newUsername && prof?.username !== newUsername) update.username_changed_at = new Date().toISOString()
+        if(newUsername && prof?.username !== newUsername){
+            update.username_changed_at = new Date().toISOString()
+        }
 
         const { error } = await supabase.from('profiles').update(update).eq('id', user.id)
         if(error) throw error
@@ -3236,14 +3315,20 @@ async function renderChannels(){
 async function handleChannelRecSub(chId, el){
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user) return
+
     const isSub = state.myChannelSubs.has(chId)
     const nowSub = !isSub
+
     applySubState(chId, nowSub)
     if(nowSub) state.myChannelSubs.add(chId)
     else state.myChannelSubs.delete(chId)
+
     try {
-        if(nowSub) await supabase.from('subscriptions').insert({ follower_id: user.id, channel_id: chId })
-        else await supabase.from('subscriptions').delete().eq('follower_id', user.id).eq('channel_id', chId)
+        if(nowSub){
+            await supabase.from('subscriptions').insert({ follower_id: user.id, channel_id: chId })
+        } else {
+            await supabase.from('subscriptions').delete().eq('follower_id', user.id).eq('channel_id', chId)
+        }
         showToast('success', nowSub ? 'Подписка оформлена' : 'Отписка', { icon: nowSub ? '✓' : '👋' })
     } catch(e){
         applySubState(chId, isSub)
@@ -3263,17 +3348,20 @@ const ccState = {
     data: { name:'', description:'', avatarFile:null, avatarUrl:null, channelType:'public', joinCode:'' },
     subsList: [], followersList: [], showAllSubs: false, showAllFollowers: false
 }
+
 const CC_TYPES = {
     public: { label:'Публичный канал', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>', desc:'Канал виден всем и может появляться в рекомендациях, listatread awards и публикациях пользователей.' },
     private: { label:'Частный канал', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>', desc:'В канал можно вступить только по коду. Частные каналы не появляются в рекомендациях, профилях и listatread awards.' },
     community: { label:'Общественный канал', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/><circle cx="17" cy="9" r="2.5"/><path d="M14.5 14.5c2.5 0 4.5 2 4.5 4.5"/></svg>', desc:'В вашем канале все участники могут создавать посты. Вы также можете удалять, редактировать посты и настраивать группу лично.' }
 }
+
 async function getChannelLimitFor(userId){
     try {
         const { data:prof } = await supabase.from('profiles').select('chvad_active, subscription').eq('id', userId).maybeSingle()
         return (prof?.chvad_active || prof?.subscription) ? 5 : 2
     } catch { return 2 }
 }
+
 function openCreateChannel(){
     ccState.step = 1
     ccState.mode = 'create'
@@ -3285,6 +3373,7 @@ function openCreateChannel(){
     ccState.showAllFollowers = false
     renderCreateChannelScreen()
 }
+
 async function openEditChannel(channelId){
     const { data:{ user } } = await supabase.auth.getUser()
     const { data:ch } = await supabase.from('channels').select('*').eq('id', channelId).maybeSingle()
@@ -3297,6 +3386,7 @@ async function openEditChannel(channelId){
     ccState.followersList = []
     renderCreateChannelScreen()
 }
+
 function renderCreateChannelScreen(){
     let screen = $('create-channel-screen')
     if(!screen){
@@ -3324,8 +3414,10 @@ function renderCreateChannelScreen(){
             if(e.target.closest('#cc-friends-more-follows')){ ccState.showAllFollowers = true; renderCcFriends(); return }
         })
     }
+
     const isEdit = ccState.mode === 'edit'
     const title = isEdit ? 'Изменить канал' : 'Создание канала'
+
     screen.innerHTML = `
         <div class="reg-topbar">
             <button class="reg-back-btn" id="cc-back">‹</button>
@@ -3385,6 +3477,7 @@ function renderCreateChannelScreen(){
         </div>
         <p id="cc-error" class="error"></p>
     `
+
     if(ccState.step === 1){
         $('cc-name').addEventListener('input', e => { ccState.data.name = e.target.value })
         $('cc-desc').addEventListener('input', e => { ccState.data.description = e.target.value })
@@ -3400,20 +3493,25 @@ function renderCreateChannelScreen(){
             })
         }
     }
-    if(ccState.step === 3){ loadCcFriends() }
+    if(ccState.step === 3){
+        loadCcFriends()
+    }
     requestAnimationFrame(() => screen.classList.add('show'))
 }
+
 function closeCreateChannel(){
     const screen = $('create-channel-screen'); if(!screen) return
     screen.classList.remove('show')
     setTimeout(() => { if(!screen.classList.contains('show')) screen.remove() }, 340)
 }
+
 function generateJoinCode(){
     const c = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
     let s = ''
     for(let i = 0; i < 5; i++) s += c[Math.floor(Math.random() * c.length)]
     return s
 }
+
 async function loadCcFriends(){
     const box = $('cc-friends'); if(!box) return
     box.innerHTML = loadingBlock()
@@ -3426,6 +3524,7 @@ async function loadCcFriends(){
     ccState.followersList = (follows || []).map(x => x.profiles).filter(Boolean)
     renderCcFriends()
 }
+
 function renderCcFriends(){
     const box = $('cc-friends'); if(!box) return
     const renderList = (items, showAll, moreId, label) => {
@@ -3456,9 +3555,11 @@ function renderCcFriends(){
         renderList(ccState.subsList, ccState.showAllSubs, 'cc-friends-more-subs', 'Подписки') +
         renderList(ccState.followersList, ccState.showAllFollowers, 'cc-friends-more-follows', 'Подписчики')
 }
+
 async function ccNext(){
     const err = $('cc-error'); err.textContent = ''
     const isEdit = ccState.mode === 'edit'
+
     if(ccState.step === 1){
         const name = ($('cc-name').value || '').trim()
         const desc = ($('cc-desc').value || '').trim()
@@ -3470,16 +3571,19 @@ async function ccNext(){
         renderCreateChannelScreen()
         return
     }
+
     if(ccState.step === 2){
         ccState.step = 3
         renderCreateChannelScreen()
         return
     }
+
     const btn = $('cc-next')
     btn.disabled = true
     btn.textContent = isEdit ? 'Сохраняем...' : 'Создаём...'
     try {
         const { data:{ user } } = await supabase.auth.getUser()
+
         if(!isEdit){
             const { count } = await supabase.from('channels').select('*', { count:'exact', head:true }).eq('owner_id', user.id)
             const limit = await getChannelLimitFor(user.id)
@@ -3490,6 +3594,7 @@ async function ccNext(){
                 return
             }
         }
+
         let avatarUrl = ccState.data.avatarUrl
         if(ccState.data.avatarFile){
             const f = ccState.data.avatarFile
@@ -3501,6 +3606,7 @@ async function ccNext(){
                 avatarUrl = pub.publicUrl
             }
         }
+
         const channelType = ccState.data.channelType
         const canMembersPost = channelType === 'community'
         const isPublic = channelType === 'public'
@@ -3520,10 +3626,12 @@ async function ccNext(){
             if(error) throw error
             channelId = ch.id
         }
+
         const checked = Array.from(document.querySelectorAll('.cc-friend-checkbox:checked')).map(c => c.value)
         if(checked.length && channelId){
             await supabase.from('channel_invites').insert(checked.map(uid => ({ channel_id: channelId, from_user_id: user.id, to_user_id: uid })))
         }
+
         closeCreateChannel()
         if(state.screen === 'channels') renderChannels()
         setTimeout(() => openChannel(channelId), 200)
@@ -3664,21 +3772,12 @@ async function openChannel(channelId){
         $('ch-star-btn')?.addEventListener('click', () => openPrioriti())
         $('ch-add-people').addEventListener('click', () => openInviteMenu(ch, user.id))
         screen.querySelectorAll('.active-live-card[data-live]').forEach(el => el.addEventListener('click', () => openLiveRoom(el.dataset.live)))
-
-        // 🛠 ВКЛАДКИ КАНАЛА — исправлено:
-        // запоминаем channelId и canPost в замыкании, отменяем прошлые рендеры,
-        // не даём гонке перезаписать контент
-        let _tabToken = 0
-        screen.querySelectorAll('.ch-page-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                if(tab.classList.contains('active')) return
-                screen.querySelectorAll('.ch-page-tab').forEach(t => t.classList.remove('active'))
-                tab.classList.add('active')
-                const token = ++_tabToken
-                loadChContent(channelId, tab.dataset.chtab, canPost, token)
-            })
-        })
-        loadChContent(channelId, 'posts', canPost, ++_tabToken)
+        screen.querySelectorAll('.ch-page-tab').forEach(tab => tab.addEventListener('click', () => {
+            screen.querySelectorAll('.ch-page-tab').forEach(t => t.classList.remove('active'))
+            tab.classList.add('active')
+            loadChContent(channelId, tab.dataset.chtab, canPost)
+        }))
+        loadChContent(channelId, 'posts', canPost)
     } catch(e){ screen.innerHTML = `<p class="empty">Ошибка: ${e.message}</p>` }
 }
 
@@ -3769,31 +3868,19 @@ async function openInviteMenu(ch, myId){
     actionsheetList.querySelectorAll('.invite-list-item').forEach(btn => btn.addEventListener('click', async () => { try { await supabase.from('channel_invites').insert({ channel_id:ch.id, from_user_id:myId, to_user_id:btn.dataset.uid }); btn.style.opacity = '0.4'; btn.disabled = true } catch {} }))
 }
 
-// 🛠 loadChContent — токен для отмены гонки вкладок, не перезаписывает composer
-async function loadChContent(channelId, tab, canPost = false, token = 0){
-    const box = $('ch-content'); if(!box) return
-    const myToken = token
-
+async function loadChContent(channelId, tab, canPost = false){
+    const box = $('ch-content'); box.innerHTML = loadingBlock()
     if(tab === 'live'){
-        box.innerHTML = loadingBlock()
         const { data:lives } = await supabase.from('lives').select('id, title, type, is_active, created_at').eq('channel_id', channelId).order('created_at', { ascending:false }).limit(20)
-        if(myToken && myToken !== (box.dataset.tabToken|0)) return
-        box.dataset.tabToken = myToken
         if(!lives || !lives.length){ box.innerHTML = '<p class="empty small">Пока нет live</p>'; return }
         box.innerHTML = lives.map(l => `<div class="active-live-card" data-live="${l.id}" style="margin-bottom:10px"><div class="active-live-pill">${l.is_active ? 'LIVE NOW' : 'ЗАВЕРШЁН'}</div><div class="active-live-row"><div class="active-live-info"><div class="active-live-title">${escapeHtml(l.title || 'Трансляция')}</div><div class="active-live-sub">${l.type === 'rave' ? 'Rave' : 'Live chat'} · ${new Date(l.created_at).toLocaleString('ru-RU', { day:'numeric', month:'short' })}</div></div></div></div>`).join('')
         box.querySelectorAll('.active-live-card[data-live]').forEach(el => el.addEventListener('click', () => openLiveRoom(el.dataset.live)))
         return
     }
-
     if(tab === 'gifts'){
-        box.dataset.tabToken = myToken
         box.innerHTML = `<div class="prioriti-empty" style="margin-top:20px"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg><p>Подарков пока нет</p></div>`
         return
     }
-
-    // posts
-    box.dataset.tabToken = myToken
-
     if(canPost){
         box.innerHTML = `
       <div class="ch-new-post">
@@ -3815,8 +3902,7 @@ async function loadChContent(channelId, tab, canPost = false, token = 0){
     `
         setupChannelComposer(channelId, canPost)
     } else box.innerHTML = '<div id="ch-posts-list"></div>'
-
-    await loadChannelPosts(channelId, canPost, myToken)
+    loadChannelPosts(channelId, canPost)
 }
 
 function setupChannelComposer(channelId, canPost){
@@ -3940,12 +4026,10 @@ function setupChannelComposer(channelId, canPost){
     })
 }
 
-async function loadChannelPosts(channelId, canPost, token = 0){
+async function loadChannelPosts(channelId, canPost){
     const list = $('ch-posts-list'); if(!list) return
     list.innerHTML = loadingBlock()
     const { data } = await supabase.from('posts').select(`id, content, media_url, media_title, created_at, author_id, channel_id, show_in_profile, poll, profiles:author_id ( id, username, full_name, avatar_url, status, is_admin ), channels:channel_id ( id, name, avatar_url )`).eq('channel_id', channelId).order('created_at', { ascending:false }).limit(30)
-    // проверка отмены
-    if(token && token !== (($('ch-content')?.dataset.tabToken)|0)) return
     if(!data || !data.length){ list.innerHTML = '<p class="empty small">Пока нет постов</p>'; return }
     const { data:{ user } } = await supabase.auth.getUser()
     state.currentUser = user
@@ -3975,6 +4059,7 @@ document.addEventListener('click', async e => {
 
     const postId = opt.dataset.pollPid
     const idx = +opt.dataset.pollVote
+
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user) return
 
@@ -3984,12 +4069,14 @@ document.addEventListener('click', async e => {
     const poll = JSON.parse(JSON.stringify(post.poll))
     poll.votes  = poll.votes  || []
     poll.voters = poll.voters || {}
+
     const prev = poll.voters[user.id]
 
     if(poll.mode === 'quiz' && prev !== undefined){
         showToast('info', 'Ответ уже дан', { icon:'ℹ️' })
         return
     }
+
     if(prev === idx && poll.mode !== 'quiz'){
         poll.votes[prev] = Math.max(0, (poll.votes[prev] || 0) - 1)
         delete poll.voters[user.id]
@@ -4006,7 +4093,12 @@ document.addEventListener('click', async e => {
             p_post_id: postId,
             p_option_index: idx
         })
-        if(error) throw error
+        if(error){
+            console.error('[vote_poll] ' + JSON.stringify({
+                message: error.message, details: error.details, hint: error.hint, code: error.code
+            }, null, 2))
+            throw error
+        }
         if(freshPoll) updatePollInDom(postId, freshPoll, user.id)
     } catch(err){
         console.warn('[vote]', err.message)
@@ -4367,8 +4459,10 @@ async function playTrack(){ try { await globalAudio.play(); music.isPlaying = tr
 function pauseTrack(){ globalAudio.pause(); music.isPlaying = false; updatePlayIcons(); refreshMiniPlayerVisibility() }
 function togglePlayTrack(){ if(music.isPlaying) pauseTrack(); else playTrack() }
 
+
 let _lastIconState = null
 function updatePlayIcons(){
+    // Простое надёжное условие: не пауза, есть src, не закончился
     const realPlaying = !!globalAudio.src && !globalAudio.paused && !globalAudio.ended
     music.isPlaying = realPlaying
 
@@ -4431,16 +4525,22 @@ document.getElementById('full-channel-follow')?.addEventListener('click', async 
     if(!music.channel?.id) return
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user) return
+
     const chId = music.channel.id
     const btn = document.getElementById('full-channel-follow')
     const wasSub = btn.classList.contains('subscribed')
     const nowSub = !wasSub
+
     applySubState(chId, nowSub)
     if(nowSub) state.myChannelSubs.add(chId)
     else state.myChannelSubs.delete(chId)
+
     try {
-        if(nowSub) await supabase.from('subscriptions').insert({ follower_id: user.id, channel_id: chId })
-        else await supabase.from('subscriptions').delete().eq('follower_id', user.id).eq('channel_id', chId)
+        if(nowSub){
+            await supabase.from('subscriptions').insert({ follower_id: user.id, channel_id: chId })
+        } else {
+            await supabase.from('subscriptions').delete().eq('follower_id', user.id).eq('channel_id', chId)
+        }
         showToast('success', nowSub ? 'Подписка оформлена' : 'Отписка', { icon:'✓' })
     } catch(e){
         applySubState(chId, wasSub)
@@ -4449,6 +4549,7 @@ document.getElementById('full-channel-follow')?.addEventListener('click', async 
         showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' })
     }
 })
+
 function updateAllTrackCards(){
     document.querySelectorAll('.track-card').forEach(card => {
         const src = card.dataset.trackSrc
@@ -4490,6 +4591,7 @@ globalAudio?.addEventListener('timeupdate', () => {
     const now = performance.now()
     if (now - _lastTimeUpdate < 200) return
     _lastTimeUpdate = now
+
     const cur = globalAudio.currentTime, dur = globalAudio.duration || 0, pct = dur ? (cur / dur * 100) : 0
     const mpf = document.getElementById('mini-progress-fill')
     const fpf = document.getElementById('full-progress-fill')
@@ -4499,6 +4601,7 @@ globalAudio?.addEventListener('timeupdate', () => {
     if(fpf) fpf.style.width = pct + '%'
     if(ftc) ftc.textContent = fmtTime(cur)
     if(ftt) ftt.textContent = fmtTime(dur)
+
     updateAllTrackCards()
 })
 globalAudio?.addEventListener('loadedmetadata', () => { const ftt = document.getElementById('full-time-total'); if(ftt) ftt.textContent = fmtTime(globalAudio.duration); updateAllTrackCards(); updatePlayIcons() })
@@ -4582,6 +4685,7 @@ document.getElementById('full-repeat')?.addEventListener('click', e => {
     btn.classList.toggle('active', musicRepeat)
     showToast('info', musicRepeat ? 'Повтор включён' : 'Повтор выключен', { icon:'🔁' })
 })
+
 function startSleepTimer(ms){
     clearSleepTimer()
     sleepUntilTs = Date.now() + ms
@@ -4598,17 +4702,25 @@ function clearSleepTimer(){
     if(sleepTimerId){ clearTimeout(sleepTimerId); sleepTimerId = null }
     sleepUntilTs = null
 }
+
 document.getElementById('full-save')?.addEventListener('click', () => { if(music.postId) toggleSaveTrack(music.postId) })
 document.getElementById('full-share')?.addEventListener('click', () => {
     if(!music.postId) return
-    openShareSheet({ type: 'track', postId: music.postId, title: music.title, src: music.src })
+    openShareSheet({
+        type: 'track',
+        postId: music.postId,
+        title: music.title,
+        src: music.src
+    })
 })
+
 globalAudio?.addEventListener('ended', () => {
     if(musicRepeat){ try { globalAudio.currentTime = 0; playTrack() } catch {} return }
     if(musicQueueOn){ playNextFromFeed(); return }
     music.isPlaying = false
     updatePlayIcons(); refreshMiniPlayerVisibility()
 })
+
 async function playNextFromFeed(){
     try {
         const cards = [...document.querySelectorAll('.track-card')]
@@ -4621,6 +4733,7 @@ async function playNextFromFeed(){
         await loadTrack(postId, src, title, true)
     } catch(e){ console.warn('[queue]', e.message) }
 }
+
 document.getElementById('full-more')?.addEventListener('click', async () => {
     const items = [
         { label:'Скорость 0.5x', onClick: () => { globalAudio.playbackRate = 0.5; music.speed = 0.5 } },
@@ -4660,6 +4773,7 @@ async function toggleSaveTrack(postId){
     if(!btn) return
     const wasSaved = btn.classList.contains('active')
     const nowSaved = !wasSaved
+
     btn.classList.toggle('active', nowSaved)
     btn.style.transition = 'transform .18s cubic-bezier(.34,1.56,.64,1)'
     btn.style.transform = 'scale(1.18)'
@@ -4667,8 +4781,10 @@ async function toggleSaveTrack(postId){
     showToast(nowSaved ? 'success' : 'info',
         nowSaved ? 'Сохранено в профиль' : 'Убрано из треков',
         { icon:'🔖' })
+
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user){ btn.classList.toggle('active', wasSaved); return }
+
     try {
         if(nowSaved) await supabase.from('saved_tracks').insert({ user_id: user.id, post_id: postId })
         else await supabase.from('saved_tracks').delete().eq('user_id', user.id).eq('post_id', postId)
@@ -4743,6 +4859,7 @@ function enterVideoFS(src, postId){
     const p = vid.play()
     if(p && p.catch) p.catch(() => { vid.muted = true; vid.play().then(() => { vid.muted = false }).catch(()=>{}) })
     fs.dataset.pid = postId || ''
+
     fs.classList.remove('hidden'); void fs.offsetWidth
     requestAnimationFrame(() => fs.classList.add('show'))
 }
@@ -4786,7 +4903,85 @@ document.getElementById('video-fs-more')?.addEventListener('click', async () => 
 })()
 
 /* ============================================================
-   СВАЙП MINI-PLAYER
+   СВАЙП ВНИЗ ДЛЯ МОДАЛОК / ШИТОВ
+============================================================ */
+;(function initSwipe(){
+    function attach(el, closeFn, baseX){
+        if(!el) return
+        const handle = el.querySelector('.actionsheet-handle, .prioriti-handle, .lang-sheet-handle, .code-modal-handle, .share-handle, .report-handle')
+        if(!handle || handle.dataset.unifiedDrag === '1') return
+        handle.dataset.unifiedDrag = '1'
+
+        let startY = 0, curY = 0, drag = false, startTime = 0
+        const base = baseX ? `translateX(${baseX})` : ''
+
+        const onStart = e => {
+            drag = true; startTime = Date.now()
+            startY = (e.touches?.[0] || e).clientY; curY = startY
+            el.style.transition = 'none'
+        }
+        const onMove = e => {
+            if(!drag) return
+            if(e.cancelable) e.preventDefault()
+            curY = (e.touches?.[0] || e).clientY
+            const dy = Math.max(0, curY - startY)
+            el.style.transform = `${base} translateY(${dy}px)`
+        }
+        const onEnd = () => {
+            if(!drag) return
+            drag = false
+            const dy = curY - startY
+            const height = el.offsetHeight || 1
+            const ratio = dy / height
+            const velocity = dy / (Date.now() - startTime)
+            el.style.transition = ''
+            el.style.transform = ''
+            if(ratio > 0.5 || velocity > 0.8){ closeFn(); }
+        }
+
+        handle.addEventListener('touchstart', onStart, { passive: true })
+        handle.addEventListener('touchmove',  onMove,  { passive: false })
+        handle.addEventListener('touchend',   onEnd)
+        handle.addEventListener('touchcancel', onEnd)
+        handle.addEventListener('mousedown', onStart)
+        window.addEventListener('mousemove', e => { if(drag) onMove(e) })
+        window.addEventListener('mouseup', () => { if(drag) onEnd() })
+    }
+
+    // Обработчик «клик по пустому месту» для всех бэкдропов
+    const backdrops = [
+        ['actionsheet-backdrop',   closeActionSheet],
+        ['prioriti-backdrop',      closePrioriti],
+        ['share-backdrop',         closeShareSheet],
+        ['report-backdrop',        closeReportModal],
+        ['ban-backdrop',           () => document.getElementById('ban-modal')?.classList.add('hidden')],
+        ['qr-backdrop',            closeQrModal],
+        ['qr-scan-backdrop',       closeQrScanModal],
+        ['lang-backdrop',          closeLangModal],
+        ['region-backdrop',        closeRegionModal],
+        ['code-modal-backdrop',    () => document.getElementById('code-modal')?.classList.add('hidden')]
+    ]
+    backdrops.forEach(([id, fn]) => {
+        document.addEventListener('click', e => {
+            const b = e.target.closest('#' + id)
+            if(b) fn()
+        }, true)
+    })
+
+    // Свайп
+    attach($('actionsheet'), closeActionSheet, '')
+    attach($('prioriti-sheet'), closePrioriti, '-50%')
+    attach(document.querySelector('#lang-modal .lang-sheet'), closeLangModal, '')
+    attach(document.querySelector('#region-modal .lang-sheet'), closeRegionModal, '')
+    attach(document.querySelector('#code-modal .code-modal-sheet'), () => document.getElementById('code-modal')?.classList.add('hidden'), '')
+    attach(document.querySelector('#qr-modal .qr-sheet'), closeQrModal, '')
+    attach(document.querySelector('#qr-scan-modal .qr-sheet'), closeQrScanModal, '')
+    attach(document.querySelector('#share-modal .share-sheet'), closeShareSheet, '')
+    attach(document.querySelector('#report-modal .report-sheet'), closeReportModal, '')
+})()
+
+/* ============================================================
+   СВАЙП-TO-DISMISS MINI-PLAYER
 ============================================================ */
 ;(function initMiniPlayerSwipe(){
     const mp = document.getElementById('mini-player')
@@ -4816,9 +5011,11 @@ document.getElementById('video-fs-more')?.addEventListener('click', async () => 
             music.src = null
             music.postId = null
             music.isPlaying = false
+
             mp.style.transition = 'opacity .25s ease, transform .25s ease'
             mp.style.transform = 'translateX(-50%) translateY(160%)'
             mp.classList.remove('show')
+
             setTimeout(() => {
                 mp.classList.add('hidden')
                 mp.style.transform = ''
@@ -4834,8 +5031,16 @@ document.getElementById('video-fs-more')?.addEventListener('click', async () => 
             }, 240)
         }
     }
-    mp.addEventListener('touchend', () => { if(!dragging) return; finish((currentY - startY) > 80) })
-    mp.addEventListener('touchcancel', () => { if(!dragging) return; finish(false) })
+
+    mp.addEventListener('touchend', () => {
+        if(!dragging) return
+        finish((currentY - startY) > 80)
+    })
+
+    mp.addEventListener('touchcancel', () => {
+        if(!dragging) return
+        finish(false)
+    })
 })()
 
 /* ============================================================
@@ -4910,14 +5115,15 @@ function getReportModal(){
             </div>
         `
         document.body.appendChild(el)
-        document.getElementById('report-cancel').addEventListener('click', () => closeSheet('report-modal'))
+        document.getElementById('report-backdrop').addEventListener('click', closeReportModal)
+        document.getElementById('report-cancel').addEventListener('click', closeReportModal)
         document.getElementById('report-submit').addEventListener('click', submitReport)
     }
     return el
 }
 function openReportModal(ctx){
     _reportCtx = { ..._reportCtx, ...ctx }
-    getReportModal()
+    const modal = getReportModal()
     const reasons = document.getElementById('report-reasons')
     const comment = document.getElementById('report-comment')
     const submit = document.getElementById('report-submit')
@@ -4951,11 +5157,15 @@ function openReportModal(ctx){
     })
     comment.value = ''
     submit.disabled = true
-    getReportModal()._selected = () => selected
-    openSheet('report-modal')
+    modal.classList.remove('hidden')
+    requestAnimationFrame(() => { document.getElementById('report-sheet').style.transform = 'translateY(0)' })
+    modal._selected = () => selected
 }
-function closeReportModal(){ closeSheet('report-modal') }
-
+function closeReportModal(){
+    const modal = document.getElementById('report-modal'); if(!modal) return
+    document.getElementById('report-sheet').style.transform = 'translateY(100%)'
+    setTimeout(() => modal.classList.add('hidden'), 280)
+}
 async function submitReport(){
     const modal = document.getElementById('report-modal')
     const selected = modal?._selected?.()
@@ -4977,7 +5187,7 @@ async function submitReport(){
             comment: comment || null,
             status: 'pending'
         })
-        closeSheet('report-modal')
+        closeReportModal()
         showGreyReportPush()
     } catch(e){
         console.error('[report]', e)
@@ -5002,283 +5212,6 @@ window.openReportModal = openReportModal
 window.showGreyReportPush = showGreyReportPush
 
 /* ============================================================
-   SHARE SHEET
-============================================================ */
-let _shareCtx = { type:null, postId:null, channelId:null, authorId:null, src:null, title:null, url:null, profileId:null, selectedFriends:new Set() }
-
-function getShareModal(){ return document.getElementById('share-modal') }
-
-function applyRandomShareQr(){
-    const el = document.getElementById('share-qr-banner'); if(!el) return
-    const g = FULL_GRADIENTS[Math.floor(Math.random() * FULL_GRADIENTS.length)]
-    el.style.background = `linear-gradient(135deg,${g[0]},${g[1]},${g[2]})`
-    el.classList.add('animated')
-}
-async function fetchPostMeta(postId){
-    try {
-        const { data } = await supabase.from('posts')
-            .select('id, content, media_title, author_id, profiles:author_id ( username, full_name, avatar_url ), channels:channel_id ( id, name, avatar_url )')
-            .eq('id', postId).maybeSingle()
-        return data || {}
-    } catch { return {} }
-}
-function renderMiniMeta(prefix, meta){
-    const p = meta.profiles || {}, ch = meta.channels || {}
-    const uAva = document.getElementById(`${prefix}-user-ava`)
-    const uName = document.getElementById(`${prefix}-user-name`)
-    const chAva = document.getElementById(`${prefix}-ch-ava`)
-    const chName = document.getElementById(`${prefix}-ch-name`)
-    if(uAva) uAva.innerHTML = p.avatar_url ? `<img src="${p.avatar_url}">` : (p.full_name || p.username || 'U').charAt(0).toUpperCase()
-    if(uName) uName.textContent = '@' + (p.username || 'user')
-    if(chAva) chAva.innerHTML = ch.avatar_url ? `<img src="${ch.avatar_url}">` : (ch.name || 'K').charAt(0).toUpperCase()
-    if(chName) chName.textContent = ch.name || '—'
-}
-async function openShareSheet(ctx){
-    _shareCtx = { ..._shareCtx, ...ctx, selectedFriends:new Set() }
-    const modal = getShareModal(); if(!modal) return
-
-    const sheetEl = document.getElementById('share-sheet')
-    if (sheetEl) sheetEl.scrollTop = 0
-
-    document.getElementById('share-video-banner').classList.add('hidden')
-    document.getElementById('share-track-banner').classList.add('hidden')
-    document.getElementById('share-profile-banner').classList.add('hidden')
-
-    if(ctx.type === 'post')    _shareCtx.url = `${location.origin}${urlFor('post', ctx.postId)}`
-    if(ctx.type === 'track')   _shareCtx.url = `${location.origin}${urlFor('post', ctx.postId)}?track=1`
-    if(ctx.type === 'profile'){
-        try {
-            const { data:prof } = await supabase.from('profiles').select('username').eq('id', ctx.profileId).maybeSingle()
-            _shareCtx.url = `${location.origin}${urlFor('profile', prof?.username || ctx.profileId)}`
-        } catch {
-            _shareCtx.url = `${location.origin}/?u=${ctx.profileId}`
-        }
-    }
-
-    if(ctx.type === 'post' && ctx.src && isVideoUrl(ctx.src)){
-        document.getElementById('share-video-banner').classList.remove('hidden')
-        const vid = document.getElementById('share-video-el')
-        vid.src = ctx.src; try { vid.currentTime = 0; vid.play().catch(()=>{}) } catch {}
-        document.getElementById('share-video-title').textContent = ctx.title || ctx.content || 'Видео'
-        const meta = await fetchPostMeta(ctx.postId)
-        renderMiniMeta('share-video', meta)
-    }
-
-    if(ctx.type === 'track'){
-        document.getElementById('share-track-banner').classList.remove('hidden')
-        document.getElementById('share-track-title').textContent = ctx.title || 'Трек'
-        const meta = await fetchPostMeta(ctx.postId)
-        renderMiniMeta('share-track', meta)
-        const bg = document.getElementById('share-track-bg')
-        bg.style.backgroundImage = meta.channels?.avatar_url ? `url('${meta.channels.avatar_url}')` : 'linear-gradient(135deg,#ff9f0a,#ff375f)'
-    }
-
-    if(ctx.type === 'profile'){
-        document.getElementById('share-profile-banner').classList.remove('hidden')
-        const { data:profile } = await supabase.from('profiles').select('*').eq('id', ctx.profileId).maybeSingle()
-        const fname = profile?.full_name || 'Пользователь'
-        const av = document.getElementById('share-profile-ava')
-        if(profile?.avatar_url) av.innerHTML = `<img src="${profile.avatar_url}" alt="">`
-        else av.textContent = fname.charAt(0).toUpperCase()
-        document.getElementById('share-profile-name').textContent = fname
-        document.getElementById('share-profile-username').textContent = '@' + (profile?.username || 'user')
-    }
-
-    renderShareFriends()
-
-    const qrImg = document.getElementById('share-qr-img')
-    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=${encodeURIComponent(_shareCtx.url)}`
-    applyRandomShareQr()
-    document.getElementById('share-qr-banner').onclick = () => {
-        if(ctx.type === 'track' && music.postId){ closeSheet('share-modal'); openFullPlayer() }
-        else if(ctx.type === 'post'){ closeSheet('share-modal'); if(ctx.src) enterVideoFS(ctx.src, ctx.postId) }
-        else if(ctx.type === 'profile'){ closeSheet('share-modal'); openUserProfile(ctx.profileId) }
-    }
-
-    renderShareSocials()
-
-    const sendBtn = document.getElementById('share-send-direct')
-    sendBtn.disabled = true
-    sendBtn.textContent = 'Отправить в директ'
-    sendBtn.onclick = async () => {
-        if(!_shareCtx.selectedFriends.size) return
-        sendBtn.disabled = true; sendBtn.textContent = 'Отправка…'
-        await new Promise(r => setTimeout(r, 500))
-        sendBtn.textContent = 'Отправлено ✓'
-        showToast('success', 'Отправлено (заглушка)', { icon:'✓' })
-        setTimeout(() => { sendBtn.textContent = 'Отправить в директ'; sendBtn.disabled = true; _shareCtx.selectedFriends.clear(); renderShareFriends() }, 1400)
-    }
-
-    openSheet('share-modal')
-}
-async function renderShareFriends(){
-    const box = document.getElementById('share-friends-row'); if(!box) return
-    box.innerHTML = '<div class="loading-block"><span class="loading-spinner-inline"></span></div>'
-    try {
-        const { data:{ user } } = await supabase.auth.getUser()
-        if(!user){ box.innerHTML = '<p class="empty small">Войдите</p>'; return }
-        const [{ data:following }, { data:followers }] = await Promise.all([
-            supabase.from('follows')
-                .select('profiles:following_id ( id, username, full_name, avatar_url )')
-                .eq('follower_id', user.id).limit(30),
-            supabase.from('follows')
-                .select('profiles:follower_id ( id, username, full_name, avatar_url )')
-                .eq('following_id', user.id).limit(30)
-        ])
-        const map = new Map()
-        ;(following || []).forEach(f => { if(f.profiles) map.set(f.profiles.id, f.profiles) })
-        ;(followers || []).forEach(f => { if(f.profiles) map.set(f.profiles.id, f.profiles) })
-        const people = [...map.values()]
-        if(!people.length){
-            box.innerHTML = '<p class="empty small" style="padding:14px 8px;color:var(--text-tertiary);font-size:12px">Нет подписок и подписчиков</p>'
-            return
-        }
-        box.innerHTML = people.map(p => {
-            const name = p.full_name || p.username || 'user'
-            const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
-            return `<button type="button" class="share-friend" data-uid="${p.id}">
-                <span class="share-friend-ava">${av}</span>
-                <span class="share-friend-name">${escapeHtml(name)}</span>
-            </button>`
-        }).join('')
-        box.querySelectorAll('.share-friend').forEach(b => b.addEventListener('click', () => {
-            const uid = b.dataset.uid
-            if(_shareCtx.selectedFriends.has(uid)) _shareCtx.selectedFriends.delete(uid)
-            else _shareCtx.selectedFriends.add(uid)
-            b.classList.toggle('selected', _shareCtx.selectedFriends.has(uid))
-            const sendBtn = document.getElementById('share-send-direct')
-            sendBtn.disabled = _shareCtx.selectedFriends.size === 0
-            sendBtn.textContent = _shareCtx.selectedFriends.size
-                ? `Отправить в директ (${_shareCtx.selectedFriends.size})`
-                : 'Отправить в директ'
-        }))
-    } catch(e){ box.innerHTML = '<p class="empty small">Ошибка</p>' }
-}
-function renderShareSocials(){
-    const box = document.getElementById('share-socials-row')
-    box.innerHTML = SHARE_CIRCLES.map(s => `
-    <button class="share-social-circle" data-sk="${s.key}" style="background:${s.bg}">
-        ${s.icon}
-        <span class="share-social-label">${s.label}</span>
-    </button>
-`).join('')
-    box.querySelectorAll('.share-social-circle').forEach(btn => btn.addEventListener('click', () => {
-        const k = btn.dataset.sk
-        const url = _shareCtx.url || ''
-        const u = encodeURIComponent(url)
-        if(k === 'copy'){ navigator.clipboard?.writeText(url); showToast('success','Ссылка скопирована',{icon:'✓'}); return }
-        if(k === 'scan'){ closeSheet('share-modal'); openQrScanModal(); return }
-        if(k === 'more'){
-            if(navigator.share) navigator.share({ url }).catch(()=>{})
-            else { navigator.clipboard?.writeText(url); showToast('info','Ссылка скопирована',{icon:'✓'}) }
-            return
-        }
-        const links = {
-            telegram:  `https://t.me/share/url?url=${u}`,
-            whatsapp:  `https://wa.me/?text=${u}`,
-            facebook:  `https://www.facebook.com/sharer/sharer.php?u=${u}`,
-            discord:   url,
-            instagram: url,
-            insta_story: url,
-            viber:     `viber://forward?text=${u}`,
-            wa_status: `https://wa.me/?text=${u}`
-        }
-        if(links[k]) window.open(links[k], '_blank')
-    }))
-}
-function closeShareSheet(){ closeSheet('share-modal') }
-
-document.getElementById('share-cancel')?.addEventListener('click', () => closeSheet('share-modal'))
-
-document.getElementById('share-track-download')?.addEventListener('click', async () => {
-    const banner = document.getElementById('share-track-banner')
-    if(!banner) return
-    try {
-        const rect = banner.getBoundingClientRect()
-        const canvas = document.createElement('canvas')
-        canvas.width = rect.width * 2; canvas.height = rect.height * 2
-        const ctx = canvas.getContext('2d')
-        ctx.scale(2,2)
-        const bg = document.getElementById('share-track-bg')
-        const bgUrl = bg?.style.backgroundImage?.match(/url\(['"]?(.*?)['"]?\)/)?.[1]
-        if(bgUrl){
-            const img = new Image(); img.crossOrigin = 'anonymous'; img.src = bgUrl
-            await new Promise(r => { img.onload = r; img.onerror = r })
-            ctx.filter = 'blur(20px) saturate(1.4)'
-            ctx.drawImage(img, -20, -20, rect.width + 40, rect.height + 40)
-            ctx.filter = 'none'
-        } else {
-            const grd = ctx.createLinearGradient(0, 0, rect.width, rect.height)
-            grd.addColorStop(0,'#ff9f0a'); grd.addColorStop(1,'#ff375f')
-            ctx.fillStyle = grd; ctx.fillRect(0,0,rect.width,rect.height)
-        }
-        const ov = ctx.createLinearGradient(0, 0, 0, rect.height)
-        ov.addColorStop(0,'rgba(0,0,0,.05)'); ov.addColorStop(1,'rgba(0,0,0,.75)')
-        ctx.fillStyle = ov; ctx.fillRect(0,0,rect.width,rect.height)
-        ctx.fillStyle = '#fff'
-        ctx.font = 'bold 26px -apple-system, sans-serif'
-        const logoSize = 44, logoX = 14, logoY = 14
-        ctx.save()
-        ctx.beginPath()
-        ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI*2)
-        ctx.fillStyle = '#000'
-        ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4
-        ctx.fill()
-        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0
-        ctx.fillStyle = '#fff'
-        ctx.font = `400 ${Math.round(logoSize * 0.72)}px -apple-system, BlinkMacSystemFont, 'Times New Roman', serif`
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText('ℓ', logoX + logoSize/2, logoY + logoSize/2 + 2)
-        ctx.restore()
-        ctx.textAlign = 'start'; ctx.textBaseline = 'top'
-        const title = document.getElementById('share-track-title').textContent
-        ctx.fillText(title.slice(0, 24), 24, rect.height - 80)
-        ctx.font = '13px -apple-system, sans-serif'
-        ctx.fillText('прослушайте трек · listatread', 24, rect.height - 50)
-        const url = canvas.toDataURL('image/png')
-        const a = document.createElement('a'); a.href = url; a.download = 'listatread-track.png'
-        document.body.appendChild(a); a.click(); a.remove()
-        showToast('success', 'Баннер сохранён', { icon:'✓' })
-    } catch(e){ showToast('error', 'Не удалось сохранить: ' + e.message) }
-})
-
-/* ============================================================
-   СТРАХОВКА — регистрация и язык через делегирование
-============================================================ */
-document.addEventListener('click', (e) => {
-    const reg = e.target.closest('#go-register-btn');
-    if (reg){
-        e.preventDefault(); e.stopPropagation();
-        const auth = document.getElementById('auth-screen');
-        if (auth){
-            auth.classList.remove('hidden');
-            auth.classList.add('is-register');
-            document.getElementById('register-landing-screen')?.classList.add('hidden');
-            const logo = auth.querySelector('.auth-logo-circle');
-            if (logo){ logo.style.animation = 'none'; void logo.offsetWidth; logo.style.animation = 'logoPulse .6s cubic-bezier(.34,1.56,.64,1)'; }
-            setTimeout(() => { document.getElementById('reg-email')?.focus({ preventScroll: true }); }, 400);
-        }
-        return;
-    }
-    const lang = e.target.closest('#lang-selector');
-    if (lang){ e.preventDefault(); e.stopPropagation(); const lm = document.getElementById('lang-modal'); if (lm) lm.classList.remove('hidden'); return; }
-}, true);
-
-;(function killKarsqLanding(){
-    const kill = () => {
-        const el = document.getElementById('register-landing-screen');
-        if (el){ el.classList.add('hidden'); el.style.display = 'none'; }
-    };
-    kill();
-    const observer = new MutationObserver(() => {
-        const el = document.getElementById('register-landing-screen');
-        if (el && !el.classList.contains('hidden')){ el.classList.add('hidden'); el.style.display = 'none'; }
-    });
-    const target = document.getElementById('register-landing-screen');
-    if (target) observer.observe(target, { attributes: true, attributeFilter: ['class'] });
-})();
-
-/* ============================================================
    ENTER APP / BOOT / REALTIME
 ============================================================ */
 async function heartbeat(){ try { const { data:{ user } } = await supabase.auth.getUser(); if(!user) return; await supabase.from('profiles').update({ last_seen:new Date().toISOString() }).eq('id', user.id) } catch {} }
@@ -5288,6 +5221,7 @@ async function checkMainChannelSubscription(){
         state.hasMainChannelSub = (count || 0) > 0
     } catch { state.hasMainChannelSub = false }
 }
+
 async function ensureQjnSub(userId){
     try {
         if(!userId) return
@@ -5299,20 +5233,31 @@ async function ensureQjnSub(userId){
         await refreshFollowCache()
     } catch(e){ console.warn('[QJN3G]', e.message) }
 }
+
 async function enterApp(){
     await checkAdminStatus()
-    if(ADMIN_STATE.isBanned){ showScreen('main'); mainApp.classList.add('hidden'); showBlockedScreen(); return }
+
+    if(ADMIN_STATE.isBanned){
+        showScreen('main')
+        mainApp.classList.add('hidden')
+        showBlockedScreen()
+        return
+    }
+
     showScreen('main')
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         if(user){
-            const { data:prof } = await supabase.from('profiles').select('region, status, status_emoji, theme').eq('id', user.id).maybeSingle()
+            const { data:prof } = await supabase.from('profiles')
+                .select('region, status, status_emoji, theme')
+                .eq('id', user.id).maybeSingle()
             if(prof?.region) state.data.region = prof.region
             if(prof?.status_emoji || prof?.status) state.data.status = prof.status_emoji || prof.status
             if(prof?.theme) applyTheme(prof.theme)
             else applyTheme(getTheme())
         }
     } catch {}
+
     await checkMainChannelSubscription()
     await refreshFollowCache()
     switchScreen('home')
@@ -5320,18 +5265,29 @@ async function enterApp(){
     renderEventsScreen(); renderLiveFeed()
     maybeSendDailyNotification()
     heartbeat()
+
+    // Подписка на QJN3G
     try { const { data:{ user } } = await supabase.auth.getUser(); if(user) await ensureQjnSub(user.id) } catch {}
+    // Автозакрытие старых жалоб
     try { autoCloseOldReports() } catch {}
+
     setTimeout(() => { try { initPush() } catch(e){ console.warn('[push]', e.message) } }, 3000)
     await Router.resolve()
 }
 
 window.addEventListener('popstate', async () => {
-    document.querySelectorAll('#channel-screen, #live-room-screen').forEach(el => el.classList.add('hidden'))
+    document.querySelectorAll('#channel-screen, #live-room-screen')
+        .forEach(el => el.classList.add('hidden'))
     ;['share-modal', 'search-overlay', 'qr-modal', 'qr-scan-modal', 'actionsheet', 'prioriti-sheet', 'code-modal', 'lang-modal', 'region-modal', 'report-modal']
         .forEach(id => document.getElementById(id)?.classList.add('hidden'))
+
     const target = Router.parse(location.pathname + location.search + location.hash)
-    if (!target){ state.currentProfileViewId = null; state.viewingOwnProfile = true; switchScreen('home'); return; }
+    if (!target){
+        state.currentProfileViewId = null;
+        state.viewingOwnProfile = true;
+        switchScreen('home');
+        return;
+    }
     Router._pending = target;
     Router._pending.raw = location.pathname + location.search + location.hash;
     await Router.resolve();
@@ -5339,6 +5295,7 @@ window.addEventListener('popstate', async () => {
 
 async function boot(){
     Router.init()
+
     initTheme()
     setPageBg()
     const start = Date.now()
@@ -5394,7 +5351,7 @@ document.getElementById('home-chats-btn')?.addEventListener('click', () => {
 })()
 
 /* ============================================================
-   ПОИСК
+   СИСТЕМА ПОИСКА
 ============================================================ */
 let _searchPool = null
 let _searchScreenEl = null
@@ -5413,6 +5370,7 @@ function pushSearchHistory(q){
     arr.unshift(q)
     try { localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(arr.slice(0, SEARCH_HISTORY_MAX))) } catch {}
 }
+
 async function loadSearchPool(){
     if(_searchPool) return _searchPool
     const [profs, chans, posts] = await Promise.all([
@@ -5431,6 +5389,7 @@ async function loadSearchPool(){
     _searchPool = [...set].filter(Boolean)
     return _searchPool
 }
+
 function getSearchOverlay(){
     if(_searchScreenEl) return _searchScreenEl
     const el = document.createElement('div')
@@ -5499,12 +5458,14 @@ function getSearchOverlay(){
     _searchScreenEl = el
     return el
 }
+
 function closeSearchOverlay(){
     const el = _searchScreenEl; if(!el) return
     el.classList.remove('open')
     setTimeout(() => { if(!el.classList.contains('open')) el.classList.add('hidden') }, 300)
     document.body.style.overflow = ''
 }
+
 function openSearchOverlay(mode){
     _searchMode = mode
     _searchFilter = 'all'
@@ -5528,6 +5489,7 @@ function openSearchOverlay(mode){
     loadSearchPool().then(() => showHistorySuggestions())
     setTimeout(() => el.querySelector('#search-input').focus(), 120)
 }
+
 function renderSearchFilters(mode){
     const el = _searchScreenEl; if(!el) return
     let bar = el.querySelector('#search-filters')
@@ -5556,6 +5518,7 @@ function renderSearchFilters(mode){
         })
     })
 }
+
 function renderSuggestions(items){
     const box = _searchScreenEl.querySelector('#search-suggestions')
     if(!items.length){ box.classList.add('hidden'); return }
@@ -5574,6 +5537,7 @@ function renderSuggestions(items){
         performSearch(q, _searchMode)
     }))
 }
+
 function updateSuggestions(q){
     if(!_searchPool){ showHistorySuggestions(); return }
     const low = q.toLowerCase()
@@ -5601,6 +5565,7 @@ function updateSuggestions(q){
         performSearch(qq, _searchMode)
     }))
 }
+
 function showHistorySuggestions(){
     const hist = getSearchHistory()
     const box = _searchScreenEl.querySelector('#search-suggestions')
@@ -5622,6 +5587,7 @@ function showHistorySuggestions(){
         performSearch(q, _searchMode)
     }))
 }
+
 function openPostSearch(){ openSearchOverlay('posts') }
 function openFindPeople(){ openSearchOverlay('people') }
 function openFindTrack(){ openSearchOverlay('tracks') }
@@ -5658,9 +5624,11 @@ async function performSearch(query, mode){
         results.innerHTML = `<p class="search-empty">Ошибка поиска</p>`
     }
 }
+
 function renderEmpty(box, q){
     box.innerHTML = `<div class="search-empty"><div class="search-empty-icon">🔎</div>Нет результатов по запросу «${escapeHtml(q)}»</div>`
 }
+
 const POST_SELECT = 'id, content, media_url, media_title, created_at, author_id, channel_id, poll, profiles:author_id ( username, full_name, avatar_url, status, is_admin ), channels:channel_id ( id, name, avatar_url )'
 
 async function searchPeopleByTerm(query, filter = 'all'){
@@ -5673,6 +5641,7 @@ async function searchPeopleByTerm(query, filter = 'all'){
     if(error){ console.warn('[searchPeople]', error.message); return [] }
     return data || []
 }
+
 async function searchTracksByTerm(query){
     const term = `%${query.replace(/[%_]/g, '')}%`
     const [byTitle, byContent] = await Promise.all([
@@ -5684,9 +5653,11 @@ async function searchTracksByTerm(query){
     ;(byContent.data || []).forEach(p => map.set(p.id, p))
     return [...map.values()].filter(p => isAudioUrl(p.media_url)).slice(0, 60)
 }
+
 async function searchAllByTerm(query, filter = 'all'){
     const term = `%${query.replace(/[%_]/g, '')}%`
     const out = { people: [], channels: [], posts: [] }
+
     const wantPeople   = filter === 'all' || filter === 'people'
     const wantChannels = filter === 'all' || filter === 'channels'
     const wantPosts    = filter === 'all' || filter === 'posts' || filter === 'video' || filter === 'photo' || filter === 'tracks'
@@ -5719,6 +5690,7 @@ async function searchAllByTerm(query, filter = 'all'){
 
     return out
 }
+
 function renderPeopleResults(box, people){
     box.innerHTML = people.map(p => {
         const name = p.full_name || p.username || 'user'
@@ -5737,6 +5709,7 @@ function renderPeopleResults(box, people){
         closeSearchOverlay(); setTimeout(() => openUserProfile(el.dataset.uid), 250)
     }))
 }
+
 function renderChannelsResults(box, channels){
     return channels.map(c => {
         const name = c.name || 'Канал'
@@ -5750,9 +5723,11 @@ function renderChannelsResults(box, channels){
         </div>`
     }).join('')
 }
+
 async function renderAllResults(box, bundle, query){
     box.innerHTML = ''
     let html = ''
+
     if(bundle.people.length){
         html += `<div class="search-section-title">Люди</div>`
         html += bundle.people.slice(0, 5).map(p => {
@@ -5775,18 +5750,22 @@ async function renderAllResults(box, bundle, query){
         html += `<div class="search-section-title">Посты</div>`
         html += `<div id="search-posts-container"></div>`
     }
+
     box.innerHTML = html
+
     box.querySelectorAll('.search-person[data-uid]').forEach(el => el.addEventListener('click', () => {
         closeSearchOverlay(); setTimeout(() => openUserProfile(el.dataset.uid), 250)
     }))
     box.querySelectorAll('.search-channel-row[data-ch]').forEach(el => el.addEventListener('click', () => {
         closeSearchOverlay(); setTimeout(() => openChannel(el.dataset.ch), 250)
     }))
+
     if(bundle.posts.length){
         const container = box.querySelector('#search-posts-container')
         await renderPostsResults(container, bundle.posts, 'результат поиска')
     }
 }
+
 async function renderPostsResults(box, data, ctx){
     const ids = data.map(p => p.id)
     const { data:{ user } } = await supabase.auth.getUser()
@@ -5832,6 +5811,7 @@ const chSetState = {
     channelId: null, tab: 'general', channel: null, members: [], canModerate: false, isOwner: false,
     newAvatarFile: null, newType: null
 }
+
 async function openChannelSettings(channelId, initialTab = 'general'){
     const { data:{ user } } = await supabase.auth.getUser()
     const { data:ch } = await supabase.from('channels').select('*').eq('id', channelId).maybeSingle()
@@ -5843,6 +5823,7 @@ async function openChannelSettings(channelId, initialTab = 'general'){
     chSetState.canModerate = true
     renderChannelSettings()
 }
+
 function renderChannelSettings(){
     let screen = $('channel-settings-screen')
     if(!screen){
@@ -5855,10 +5836,12 @@ function renderChannelSettings(){
             if(tabBtn){ chSetState.tab = tabBtn.dataset.stab; renderChannelSettings(); return }
         })
     }
+
     const ch = chSetState.channel
     const tab = chSetState.tab
     const currentType = ch.channel_type === 'bycode' ? 'private' : (ch.channel_type || 'public')
     const typeLabel = currentType === 'private' ? 'Частный' : (currentType === 'community' ? 'Общественный' : 'Публичный')
+
     screen.innerHTML = `
         <div class="reg-topbar">
             <button class="reg-back-btn" id="chs-back">‹</button>
@@ -5918,7 +5901,9 @@ function renderChannelSettings(){
             </button>
         </div>
     `
+
     requestAnimationFrame(() => screen.classList.add('show'))
+
     if(tab === 'general'){
         loadChannelMembers()
         $('chs-avatar')?.addEventListener('change', e => {
@@ -5939,11 +5924,13 @@ function renderChannelSettings(){
         })
     }
 }
+
 function closeChannelSettings(){
     const screen = $('channel-settings-screen'); if(!screen) return
     screen.classList.remove('show')
     setTimeout(() => { if(!screen.classList.contains('show')) screen.remove() }, 340)
 }
+
 async function saveChannelPrivacy(){
     const chId = chSetState.channelId
     const getToggle = (key, dflt=false) => {
@@ -5952,6 +5939,7 @@ async function saveChannelPrivacy(){
     }
     const membersPost = getToggle('members_post')
     const isPublicVis = getToggle('recommend', true) || getToggle('profile', true) || getToggle('awards', true)
+
     try {
         await supabase.from('channels').update({
             can_members_post: membersPost,
@@ -5961,6 +5949,7 @@ async function saveChannelPrivacy(){
         showToast('success', 'Настройки сохранены', { icon:'✓' })
     } catch(e){ showToast('error', 'Ошибка: ' + e.message) }
 }
+
 async function saveChannelGeneral(){
     const btn = $('chs-save-general')
     btn.disabled = true; btn.textContent = 'Сохранение...'
@@ -5968,11 +5957,13 @@ async function saveChannelGeneral(){
         const { data:{ user } } = await supabase.auth.getUser()
         const name = ($('chs-name').value || '').trim()
         const desc = ($('chs-desc').value || '').trim()
+
         if(name.length < 3){
             showToast('error', 'Название минимум 3 символа', { icon:'⚠️' })
             btn.disabled = false; btn.textContent = 'Сохранить изменения'
             return
         }
+
         let avatarUrl = chSetState.channel.avatar_url
         if(chSetState.newAvatarFile){
             const f = chSetState.newAvatarFile
@@ -5984,10 +5975,12 @@ async function saveChannelGeneral(){
                 avatarUrl = pub.publicUrl
             }
         }
+
         const { error } = await supabase.from('channels').update({
             name, description: desc, avatar_url: avatarUrl
         }).eq('id', chSetState.channelId)
         if(error) throw error
+
         chSetState.channel = { ...chSetState.channel, name, description: desc, avatar_url: avatarUrl }
         chSetState.newAvatarFile = null
         chSetState.newType = null
@@ -5998,15 +5991,22 @@ async function saveChannelGeneral(){
         btn.disabled = false; btn.textContent = 'Сохранить изменения'
     }
 }
+
+/* ============================================================
+   УЧАСТНИКИ КАНАЛА
+============================================================ */
 async function loadChannelMembers(){
     const box = $('chs-members-list'); if(!box) return
     box.innerHTML = loadingBlock()
+
     const chId = chSetState.channelId
+
     const { data:ch } = await supabase
         .from('channels')
         .select('owner_id, profiles:owner_id ( id, username, full_name, avatar_url, is_admin )')
         .eq('id', chId)
         .maybeSingle()
+
     let members = []
     {
         const { data, error } = await supabase
@@ -6023,10 +6023,12 @@ async function loadChannelMembers(){
             members = (data2 || []).map(s => ({ ...(s.profiles || {}), _role: 'member' })).filter(m => m.id)
         }
     }
+
     const owner = ch?.profiles || {}
     const admins = members.filter(m => m._role === 'admin')
     const regularMembers = members.filter(m => m._role !== 'admin')
     chSetState.members = members
+
     const total = 1 + members.length
     const render = (p, role, actions='') => {
         const name = p.full_name || p.username || 'user'
@@ -6040,8 +6042,10 @@ async function loadChannelMembers(){
             <div class="ch-member-actions">${actions}</div>
         </div>`
     }
+
     let html = `<div class="cc-invite-title ch-members-title-left"><span><span id="ch-members-total">${total}</span> участников</span></div>`
     html += render(owner, 'owner')
+
     admins.forEach(m => {
         html += render(m, 'admin', `
             <button type="button" class="ch-member-btn demote" data-demote="${m.id}">Снять</button>
@@ -6056,6 +6060,7 @@ async function loadChannelMembers(){
     })
     box.innerHTML = html
 }
+
 async function handlePromoteMember(userId){
     const chId = chSetState.channelId
     if(!chId || !userId) return
@@ -6064,6 +6069,7 @@ async function handlePromoteMember(userId){
     showToast('success', 'Назначен админом', { icon:'⭐' })
     loadChannelMembers()
 }
+
 async function handleDemoteMember(userId){
     const chId = chSetState.channelId
     if(!chId || !userId) return
@@ -6072,6 +6078,7 @@ async function handleDemoteMember(userId){
     showToast('success', 'Снят с админов', { icon:'✓' })
     loadChannelMembers()
 }
+
 async function handleKickMember(userId){
     const chId = chSetState.channelId
     if(!chId || !userId) return
@@ -6081,67 +6088,518 @@ async function handleKickMember(userId){
     showToast('success', 'Участник удалён', { icon:'✓' })
     loadChannelMembers()
 }
+
 document.addEventListener('click', e => {
     const kickBtn    = e.target.closest('[data-kick]')
     const promoteBtn = e.target.closest('[data-promote]')
     const demoteBtn  = e.target.closest('[data-demote]')
+
     if(kickBtn){ e.preventDefault(); e.stopPropagation(); handleKickMember(kickBtn.dataset.kick); return }
     if(promoteBtn){ e.preventDefault(); e.stopPropagation(); handlePromoteMember(promoteBtn.dataset.promote); return }
     if(demoteBtn){ e.preventDefault(); e.stopPropagation(); handleDemoteMember(demoteBtn.dataset.demote); return }
 })
 
 /* ============================================================
-   РЕГИСТРАЦИЯ — 6 шагов прямо в #auth-screen
+   SHARE SHEET
+============================================================ */
+let _shareCtx = { type:null, postId:null, channelId:null, authorId:null, src:null, title:null, url:null, profileId:null, selectedFriends:new Set() }
+
+function getShareModal(){ return document.getElementById('share-modal') }
+
+function applyRandomShareQr(){
+    const el = document.getElementById('share-qr-banner'); if(!el) return
+    const g = FULL_GRADIENTS[Math.floor(Math.random() * FULL_GRADIENTS.length)]
+    el.style.background = `linear-gradient(135deg,${g[0]},${g[1]},${g[2]})`
+    el.classList.add('animated')
+}
+
+async function fetchPostMeta(postId){
+    try {
+        const { data } = await supabase.from('posts')
+            .select('id, content, media_title, author_id, profiles:author_id ( username, full_name, avatar_url ), channels:channel_id ( id, name, avatar_url )')
+            .eq('id', postId).maybeSingle()
+        return data || {}
+    } catch { return {} }
+}
+
+function renderMiniMeta(prefix, meta){
+    const p = meta.profiles || {}, ch = meta.channels || {}
+    const uAva = document.getElementById(`${prefix}-user-ava`)
+    const uName = document.getElementById(`${prefix}-user-name`)
+    const chAva = document.getElementById(`${prefix}-ch-ava`)
+    const chName = document.getElementById(`${prefix}-ch-name`)
+    if(uAva) uAva.innerHTML = p.avatar_url ? `<img src="${p.avatar_url}">` : (p.full_name || p.username || 'U').charAt(0).toUpperCase()
+    if(uName) uName.textContent = '@' + (p.username || 'user')
+    if(chAva) chAva.innerHTML = ch.avatar_url ? `<img src="${ch.avatar_url}">` : (ch.name || 'K').charAt(0).toUpperCase()
+    if(chName) chName.textContent = ch.name || '—'
+}
+
+async function openShareSheet(ctx){
+    _shareCtx = { ..._shareCtx, ...ctx, selectedFriends:new Set() }
+    const modal = getShareModal(); if(!modal) return
+    modal.classList.remove('hidden')
+
+    const sheetEl = document.getElementById('share-sheet')
+    if (sheetEl) {
+        sheetEl.scrollTop = 0
+        sheetEl.style.transform = '' // на случай если остался translateY от анимации
+    }
+
+    document.getElementById('share-video-banner').classList.add('hidden')
+    document.getElementById('share-track-banner').classList.add('hidden')
+    document.getElementById('share-profile-banner').classList.add('hidden')
+
+    if(ctx.type === 'post')    _shareCtx.url = `${location.origin}${urlFor('post', ctx.postId)}`
+    if(ctx.type === 'track')   _shareCtx.url = `${location.origin}${urlFor('post', ctx.postId)}?track=1`
+    if(ctx.type === 'profile'){
+        try {
+            const { data:prof } = await supabase.from('profiles').select('username').eq('id', ctx.profileId).maybeSingle()
+            _shareCtx.url = `${location.origin}${urlFor('profile', prof?.username || ctx.profileId)}`
+        } catch {
+            _shareCtx.url = `${location.origin}/?u=${ctx.profileId}`
+        }
+    }
+
+    if(ctx.type === 'post' && ctx.src && isVideoUrl(ctx.src)){
+        document.getElementById('share-video-banner').classList.remove('hidden')
+        const vid = document.getElementById('share-video-el')
+        vid.src = ctx.src; try { vid.currentTime = 0; vid.play().catch(()=>{}) } catch {}
+        document.getElementById('share-video-title').textContent = ctx.title || ctx.content || 'Видео'
+        const meta = await fetchPostMeta(ctx.postId)
+        renderMiniMeta('share-video', meta)
+    }
+
+    if(ctx.type === 'track'){
+        document.getElementById('share-track-banner').classList.remove('hidden')
+        document.getElementById('share-track-title').textContent = ctx.title || 'Трек'
+        const meta = await fetchPostMeta(ctx.postId)
+        renderMiniMeta('share-track', meta)
+        const bg = document.getElementById('share-track-bg')
+        bg.style.backgroundImage = meta.channels?.avatar_url ? `url('${meta.channels.avatar_url}')` : 'linear-gradient(135deg,#ff9f0a,#ff375f)'
+    }
+
+    if(ctx.type === 'profile'){
+        document.getElementById('share-profile-banner').classList.remove('hidden')
+        const { data:profile } = await supabase.from('profiles').select('*').eq('id', ctx.profileId).maybeSingle()
+        const fname = profile?.full_name || 'Пользователь'
+        const av = document.getElementById('share-profile-ava')
+        if(profile?.avatar_url) av.innerHTML = `<img src="${profile.avatar_url}" alt="">`
+        else av.textContent = fname.charAt(0).toUpperCase()
+        document.getElementById('share-profile-name').textContent = fname
+        document.getElementById('share-profile-username').textContent = '@' + (profile?.username || 'user')
+    }
+
+    renderShareFriends()
+
+    const qrImg = document.getElementById('share-qr-img')
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=${encodeURIComponent(_shareCtx.url)}`
+    applyRandomShareQr()
+    document.getElementById('share-qr-banner').onclick = () => {
+        if(ctx.type === 'track' && music.postId){
+            closeShareSheet(); openFullPlayer()
+        } else if(ctx.type === 'post'){
+            closeShareSheet(); if(ctx.src) enterVideoFS(ctx.src, ctx.postId)
+        } else if(ctx.type === 'profile'){
+            closeShareSheet(); openUserProfile(ctx.profileId)
+        }
+    }
+
+    renderShareSocials()
+
+    const sendBtn = document.getElementById('share-send-direct')
+    sendBtn.disabled = true
+    sendBtn.textContent = 'Отправить в директ'
+    sendBtn.onclick = async () => {
+        if(!_shareCtx.selectedFriends.size) return
+        sendBtn.disabled = true; sendBtn.textContent = 'Отправка…'
+        await new Promise(r => setTimeout(r, 500))
+        sendBtn.textContent = 'Отправлено ✓'
+        showToast('success', 'Отправлено (заглушка)', { icon:'✓' })
+        setTimeout(() => { sendBtn.textContent = 'Отправить в директ'; sendBtn.disabled = true; _shareCtx.selectedFriends.clear(); renderShareFriends() }, 1400)
+    }
+
+    attachShareDrag()
+
+    void document.getElementById('share-sheet').offsetHeight
+    requestAnimationFrame(() => {
+        document.getElementById('share-sheet').style.transform = 'translateY(0)'
+    })
+}
+
+async function renderShareFriends(){
+    const box = document.getElementById('share-friends-row'); if(!box) return
+    box.innerHTML = '<div class="loading-block"><span class="loading-spinner-inline"></span></div>'
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user){ box.innerHTML = '<p class="empty small">Войдите</p>'; return }
+
+        // подписки + подписчики
+        const [{ data:following }, { data:followers }] = await Promise.all([
+            supabase.from('follows')
+                .select('profiles:following_id ( id, username, full_name, avatar_url )')
+                .eq('follower_id', user.id).limit(30),
+            supabase.from('follows')
+                .select('profiles:follower_id ( id, username, full_name, avatar_url )')
+                .eq('following_id', user.id).limit(30)
+        ])
+        const map = new Map()
+        ;(following || []).forEach(f => { if(f.profiles) map.set(f.profiles.id, f.profiles) })
+        ;(followers || []).forEach(f => { if(f.profiles) map.set(f.profiles.id, f.profiles) })
+        const people = [...map.values()]
+
+        if(!people.length){
+            box.innerHTML = '<p class="empty small" style="padding:14px 8px;color:var(--text-tertiary);font-size:12px">Нет подписок и подписчиков</p>'
+            return
+        }
+
+        box.innerHTML = people.map(p => {
+            const name = p.full_name || p.username || 'user'
+            const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
+            return `<button type="button" class="share-friend" data-uid="${p.id}">
+                <span class="share-friend-ava">${av}</span>
+                <span class="share-friend-name">${escapeHtml(name)}</span>
+            </button>`
+        }).join('')
+
+        box.querySelectorAll('.share-friend').forEach(b => b.addEventListener('click', () => {
+            const uid = b.dataset.uid
+            if(_shareCtx.selectedFriends.has(uid)) _shareCtx.selectedFriends.delete(uid)
+            else _shareCtx.selectedFriends.add(uid)
+            b.classList.toggle('selected', _shareCtx.selectedFriends.has(uid))
+            const sendBtn = document.getElementById('share-send-direct')
+            sendBtn.disabled = _shareCtx.selectedFriends.size === 0
+            sendBtn.textContent = _shareCtx.selectedFriends.size
+                ? `Отправить в директ (${_shareCtx.selectedFriends.size})`
+                : 'Отправить в директ'
+        }))
+    } catch(e){ box.innerHTML = '<p class="empty small">Ошибка</p>' }
+}
+
+function renderShareSocials(){
+    const box = document.getElementById('share-socials-row')
+    box.innerHTML = SHARE_CIRCLES.map(s => `
+    <button class="share-social-circle" data-sk="${s.key}" style="background:${s.bg}">
+        ${s.icon}
+        <span class="share-social-label">${s.label}</span>
+    </button>
+`).join('')
+    box.querySelectorAll('.share-social-circle').forEach(btn => btn.addEventListener('click', () => {
+        const k = btn.dataset.sk
+        const url = _shareCtx.url || ''
+        const u = encodeURIComponent(url)
+        if(k === 'copy'){ navigator.clipboard?.writeText(url); showToast('success','Ссылка скопирована',{icon:'✓'}); return }
+        if(k === 'scan'){ closeShareSheet(); openQrScanModal(); return }
+        if(k === 'more'){
+            if(navigator.share) navigator.share({ url }).catch(()=>{})
+            else { navigator.clipboard?.writeText(url); showToast('info','Ссылка скопирована',{icon:'✓'}) }
+            return
+        }
+        const links = {
+            telegram:  `https://t.me/share/url?url=${u}`,
+            whatsapp:  `https://wa.me/?text=${u}`,
+            facebook:  `https://www.facebook.com/sharer/sharer.php?u=${u}`,
+            discord:   url,
+            instagram: url,
+            insta_story: url,
+            viber:     `viber://forward?text=${u}`,
+            wa_status: `https://wa.me/?text=${u}`
+        }
+        if(links[k]) window.open(links[k], '_blank')
+    }))
+}
+
+function closeShareSheet(){
+    const modal = getShareModal(); if(!modal) return
+    const sheet = document.getElementById('share-sheet')
+    sheet.style.transform = 'translateY(100%)'
+    setTimeout(() => {
+        modal.classList.add('hidden')
+        sheet.style.transform = ''
+        const vid = document.getElementById('share-video-el'); if(vid){ try { vid.pause(); vid.src = '' } catch {} }
+    }, 280)
+}
+
+function attachShareDrag(){
+    const sheet = document.getElementById('share-sheet')
+    const handle = document.getElementById('share-handle')
+    if(!sheet || !handle || handle.dataset.bound === '1') return
+    handle.dataset.bound = '1'
+    let startY = 0, curY = 0, drag = false, startTime = 0
+    const onStart = e => {
+        drag = true; startTime = Date.now()
+        startY = (e.touches?.[0] || e).clientY; curY = startY
+        sheet.classList.add('dragging')
+    }
+    const onMove = e => {
+        if(!drag) return
+        if(e.cancelable) e.preventDefault()
+        curY = (e.touches?.[0] || e).clientY
+        const dy = Math.max(0, curY - startY)
+        sheet.style.transform = `translateY(${dy}px)`
+    }
+    const onEnd = () => {
+        if(!drag) return
+        drag = false
+        sheet.classList.remove('dragging')
+        const dy = curY - startY
+        const height = sheet.offsetHeight || 1
+        const ratio = dy / height
+        const velocity = dy / (Date.now() - startTime)
+        if(ratio > 0.5 || velocity > 0.8){
+            closeShareSheet()
+        } else {
+            sheet.style.transform = 'translateY(0)'
+        }
+    }
+    handle.addEventListener('touchstart', onStart, { passive:true })
+    handle.addEventListener('touchmove', onMove, { passive:false })
+    handle.addEventListener('touchend', onEnd)
+    handle.addEventListener('mousedown', onStart)
+    window.addEventListener('mousemove', e => { if(drag) onMove(e) })
+    window.addEventListener('mouseup', () => { if(drag) onEnd() })
+}
+
+document.getElementById('share-cancel')?.addEventListener('click', closeShareSheet)
+document.getElementById('share-backdrop')?.addEventListener('click', closeShareSheet)
+
+document.getElementById('share-track-download')?.addEventListener('click', async () => {
+    const banner = document.getElementById('share-track-banner')
+    if(!banner) return
+    try {
+        const rect = banner.getBoundingClientRect()
+        const canvas = document.createElement('canvas')
+        canvas.width = rect.width * 2; canvas.height = rect.height * 2
+        const ctx = canvas.getContext('2d')
+        ctx.scale(2,2)
+        const bg = document.getElementById('share-track-bg')
+        const bgUrl = bg?.style.backgroundImage?.match(/url\(['"]?(.*?)['"]?\)/)?.[1]
+        if(bgUrl){
+            const img = new Image(); img.crossOrigin = 'anonymous'; img.src = bgUrl
+            await new Promise(r => { img.onload = r; img.onerror = r })
+            ctx.filter = 'blur(20px) saturate(1.4)'
+            ctx.drawImage(img, -20, -20, rect.width + 40, rect.height + 40)
+            ctx.filter = 'none'
+        } else {
+            const grd = ctx.createLinearGradient(0, 0, rect.width, rect.height)
+            grd.addColorStop(0,'#ff9f0a'); grd.addColorStop(1,'#ff375f')
+            ctx.fillStyle = grd; ctx.fillRect(0,0,rect.width,rect.height)
+        }
+        const ov = ctx.createLinearGradient(0, 0, 0, rect.height)
+        ov.addColorStop(0,'rgba(0,0,0,.05)'); ov.addColorStop(1,'rgba(0,0,0,.75)')
+        ctx.fillStyle = ov; ctx.fillRect(0,0,rect.width,rect.height)
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 26px -apple-system, sans-serif'
+        const logoSize = 44, logoX = 14, logoY = 14
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI*2)
+        ctx.fillStyle = '#000'
+        ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4
+        ctx.fill()
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0
+        ctx.fillStyle = '#fff'
+        ctx.font = `400 ${Math.round(logoSize * 0.72)}px -apple-system, BlinkMacSystemFont, 'Times New Roman', serif`
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText('ℓ', logoX + logoSize/2, logoY + logoSize/2 + 2)
+        ctx.restore()
+        ctx.textAlign = 'start'; ctx.textBaseline = 'top'
+        const title = document.getElementById('share-track-title').textContent
+        ctx.fillText(title.slice(0, 24), 24, rect.height - 80)
+        ctx.font = '13px -apple-system, sans-serif'
+        ctx.fillText('прослушайте трек · listatread', 24, rect.height - 50)
+        const url = canvas.toDataURL('image/png')
+        const a = document.createElement('a'); a.href = url; a.download = 'listatread-track.png'
+        document.body.appendChild(a); a.click(); a.remove()
+        showToast('success', 'Баннер сохранён', { icon:'✓' })
+    } catch(e){ showToast('error', 'Не удалось сохранить: ' + e.message) }
+})
+/* ============================================================
+   СТРАХОВКА — регистрация и язык через делегирование
+============================================================ */
+document.addEventListener('click', (e) => {
+    // Регистрация — просто включаем режим, БЕЗ karsq-экрана
+    const reg = e.target.closest('#go-register-btn');
+    if (reg){
+        e.preventDefault();
+        e.stopPropagation();
+
+        const auth = document.getElementById('auth-screen');
+        if (auth){
+            auth.classList.remove('hidden');
+            auth.classList.add('is-register');
+            // Убираем на всякий случай karsq-экран
+            document.getElementById('register-landing-screen')?.classList.add('hidden');
+            const logo = auth.querySelector('.auth-logo-circle');
+            if (logo){
+                logo.style.animation = 'none';
+                void logo.offsetWidth;
+                logo.style.animation = 'logoPulse .6s cubic-bezier(.34,1.56,.64,1)';
+            }
+            setTimeout(() => {
+                document.getElementById('reg-email')?.focus({ preventScroll: true });
+            }, 400);
+        }
+        return;
+    }
+    // Выбор языка
+    const lang = e.target.closest('#lang-selector');
+    if (lang){
+        e.preventDefault();
+        e.stopPropagation();
+        const lm = document.getElementById('lang-modal');
+        if (lm) lm.classList.remove('hidden');
+        return;
+    }
+}, true);
+/* --- Скрыть karsq-экран навсегда — он не используется --- */
+;(function killKarsqLanding(){
+    const kill = () => {
+        const el = document.getElementById('register-landing-screen');
+        if (el){
+            el.classList.add('hidden');
+            el.style.display = 'none';
+        }
+    };
+    kill();
+    // Наблюдаем за классом — если кто-то её снова покажет, скрываем
+    const observer = new MutationObserver(() => {
+        const el = document.getElementById('register-landing-screen');
+        if (el && !el.classList.contains('hidden')){
+            el.classList.add('hidden');
+            el.style.display = 'none';
+        }
+    });
+    const target = document.getElementById('register-landing-screen');
+    if (target){
+        observer.observe(target, { attributes: true, attributeFilter: ['class'] });
+    }
+})();
+
+boot()
+setInterval(heartbeat, 30 * 1000)
+document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
+window.addEventListener('focus', () => { heartbeat(); updatePlayIcons() })
+
+try {
+    const ch = supabase.channel('public:realtime_v14')
+        .on('postgres_changes', { event:'*', schema:'public', table:'posts' }, () => {
+            if(state.screen === 'livechat') renderLiveFeed(true)
+            if(state.screen === 'profile' && state.profileTab === 'posts') renderMyPosts(state.currentProfileViewId)
+        })
+        .on('postgres_changes', { event:'INSERT', schema:'public', table:'follows' }, () => { if(state.screen === 'inbox') renderInboxPanel(); renderStories() })
+        .on('postgres_changes', { event:'INSERT', schema:'public', table:'channel_invites' }, () => { if(state.screen === 'inbox') renderInboxPanel() })
+        .on('postgres_changes', { event:'*', schema:'public', table:'lives' }, () => { if(state.screen === 'home') renderLiveNow(); if(state.screen === 'inbox') renderEventsScreen() })
+    ch.subscribe((s, err) => { if(err) console.warn('[realtime]', err.message) })
+} catch(e){ console.warn('[realtime] disabled:', e.message) }
+
+/* ============================================================
+   ЭКСПОРТ ФУНКЦИЙ НА WINDOW — для inline-фолбэка в HTML
+============================================================ */
+window.__ltShowScreen = showScreen;
+window.__ltOpenLangModal = openLangModal;
+window.__ltOpenRegisterLanding = function(){
+    const auth = document.getElementById('auth-screen');
+    if(auth){
+        auth.classList.remove('hidden');
+        auth.classList.add('is-register');
+        /* лёгкий импульс логотипа */
+        const logo = auth.querySelector('.auth-logo-circle');
+        if(logo){
+            logo.style.animation = 'none';
+            void logo.offsetWidth;
+            logo.style.animation = 'logoPulse .6s cubic-bezier(.34,1.56,.64,1)';
+        }
+        /* автофокус на email */
+        setTimeout(() => {
+            const emailInput = document.getElementById('reg-email');
+            if(emailInput) emailInput.focus({ preventScroll: true });
+        }, 400);
+    }
+};
+
+
+/* ============================================================
+   РЕГИСТРАЦИЯ — 6 шагов прямо в #auth-screen (тёмный стиль)
 ============================================================ */
 ;(function(){
     'use strict';
-    const $id = id => document.getElementById(id);
+
+    const $ = id => document.getElementById(id);
     const qsa = sel => document.querySelectorAll(sel);
 
-    const authScreen = $id('auth-screen');
-    const goRegisterBtn = $id('go-register-btn');
-    const goBackBtn = $id('go-back-btn');
-    const goContinueBtn = $id('go-continue-btn');
-    const regEmailInput = $id('reg-email');
-    const regConsent = $id('reg-consent');
+    const authScreen = $('auth-screen');
+    const goRegisterBtn = $('go-register-btn');
+    const goBackBtn = $('go-back-btn');
+    const goContinueBtn = $('go-continue-btn');
+    const regEmailInput = $('reg-email');
+    const regConsent = $('reg-consent');
 
     if (!authScreen) return;
+
+    /* ---------- СОСТОЯНИЕ ---------- */
     let currentStep = 1;
     const TOTAL_STEPS = 6;
 
+    /* ---------- СБРОС ФОРМЫ ---------- */
     function resetReg(){
         currentStep = 1;
-        const setVal = (id, v) => { const el = $id(id); if (el) el.value = v; };
-        setVal('reg-email', ''); setVal('reg-name', ''); setVal('reg-username', '');
-        setVal('reg-bio', ''); setVal('reg-avatar', '');
-        const consent = $id('reg-consent'); if (consent) consent.checked = false;
+
+        const setVal = (id, v) => { const el = $(id); if (el) el.value = v; };
+        setVal('reg-email', '');
+        setVal('reg-name', '');
+        setVal('reg-username', '');
+        setVal('reg-bio', '');
+        setVal('reg-avatar', '');
+
+        const consent = $('reg-consent'); if (consent) consent.checked = false;
+
+        // Код
         qsa('.auth-code-box').forEach(b => { b.value = ''; b.classList.remove('filled'); });
-        const prev = $id('reg-avatar-preview');
+
+        // Аватар
+        const prev = $('reg-avatar-preview');
         if (prev){ prev.innerHTML = '+'; prev.classList.remove('has-img'); }
-        const rf = $id('reg-region-flag'); if (rf) rf.textContent = '◯';
-        const rn = $id('reg-region-name'); if (rn) rn.textContent = 'Выберите регион';
+
+        // Регион
+        const rf = $('reg-region-flag'); if (rf) rf.textContent = '◯';
+        const rn = $('reg-region-name'); if (rn) rn.textContent = 'Выберите регион';
         window.__ltRegRegion = null;
-        const picker = $id('reg-theme-picker');
+
+        // Тема
+        const picker = $('reg-theme-picker');
         if (picker){
             picker.querySelectorAll('.auth-theme-choice').forEach(b => {
                 b.classList.toggle('active', b.dataset.theme === 'light');
             });
         }
+
+        // Дата
         ['reg-birth-day','reg-birth-month','reg-birth-year'].forEach(id => {
-            const el = $id(id); if (el) el.value = '';
+            const el = $(id); if (el) el.value = '';
         });
-        const err = $id('auth-error'); if (err) err.textContent = '';
+
+        // Ошибки
+        const err = $('auth-error'); if (err) err.textContent = '';
+
+        // Стейдж
         qsa('.reg-stage').forEach(s => s.classList.toggle('active', s.dataset.regstage === '1'));
+
+        // Кнопка
         updateContinueBtn();
         updateBackBtn();
     }
+
+    /* ---------- ПЕРЕКЛЮЧЕНИЕ ШАГОВ ---------- */
     function goToStep(n){
         currentStep = Math.max(1, Math.min(TOTAL_STEPS, n));
+
+        // 🔥 АВТО-РЕГИОН: Россия, без выбора
         if (currentStep === 3){
             window.__ltRegRegion = 'ru';
-            const nrf = $id('reg-region-flag'); if (nrf) nrf.textContent = '🇷🇺';
-            const nrn = $id('reg-region-name'); if (nrn) nrn.textContent = 'Россия';
+            const nrf = $('reg-region-flag'); if (nrf) nrf.textContent = '🇷🇺';
+            const nrn = $('reg-region-name'); if (nrn) nrn.textContent = 'Россия';
         }
+
         qsa('.reg-stage').forEach(s => {
             const num = +s.dataset.regstage;
             s.classList.toggle('active', num === currentStep);
@@ -6151,32 +6609,48 @@ document.addEventListener('click', e => {
                 s.style.animation = '';
             }
         });
+
         if (currentStep === 1) setTimeout(() => regEmailInput?.focus({ preventScroll: true }), 120);
         if (currentStep === 2){
-            $id('reg-code-email') && ($id('reg-code-email').textContent = regEmailInput?.value || 'email');
+            $('reg-code-email') && ($('reg-code-email').textContent = regEmailInput?.value || 'email');
             setTimeout(() => document.querySelector('.auth-code-box')?.focus(), 150);
         }
-        if (currentStep === 3) setTimeout(() => $id('reg-name')?.focus({ preventScroll: true }), 120);
+        if (currentStep === 3) setTimeout(() => $('reg-name')?.focus({ preventScroll: true }), 120);
         if (currentStep === 4) initDatePicker();
-        if (currentStep === 5) setTimeout(() => $id('reg-username')?.focus({ preventScroll: true }), 120);
+        if (currentStep === 5) setTimeout(() => $('reg-username')?.focus({ preventScroll: true }), 120);
+
         updateContinueBtn();
         updateBackBtn();
-        const err = $id('auth-error'); if (err) err.textContent = '';
+
+        const err = $('auth-error'); if (err) err.textContent = '';
     }
+
+    /* ---------- ТЕКСТ КНОПОК ---------- */
     function updateContinueBtn(){
         if (!goContinueBtn) return;
         const label = goContinueBtn.querySelector('.btn-label');
         if (!label) return;
-        const labels = {1:'Продолжить >',2:'Подтвердить',3:'Продолжить',4:'Продолжить',5:'Продолжить',6:'Создать аккаунт'};
+        const labels = {
+            1: 'Продолжить >',
+            2: 'Подтвердить',
+            3: 'Продолжить',
+            4: 'Продолжить',
+            5: 'Продолжить',
+            6: 'Создать аккаунт'
+        };
         label.textContent = labels[currentStep] || 'Продолжить';
     }
     function updateBackBtn(){
         if (!goBackBtn) return;
         goBackBtn.textContent = currentStep === 1 ? '← назад к входу' : '← назад';
     }
+
+    /* ---------- РЕЖИМЫ ---------- */
     function enterRegisterMode(){
         authScreen.classList.remove('hidden');
         authScreen.classList.add('is-register');
+
+        // 🔥 ВАЖНО: убираем все инлайн-стили, которые могли поставить другие скрипты
         authScreen.querySelectorAll('.auth-register-only, .auth-view-register').forEach(el => {
             el.style.removeProperty('display');
             el.style.removeProperty('max-height');
@@ -6185,37 +6659,53 @@ document.addEventListener('click', e => {
             el.style.removeProperty('pointer-events');
             el.style.removeProperty('visibility');
         });
+
         document.getElementById('register-landing-screen')?.classList.add('hidden');
         document.getElementById('register-screen')?.classList.add('hidden');
         resetReg();
     }
     function exitRegisterMode(){
         authScreen.classList.remove('is-register');
-        const err = $id('auth-error'); if (err) err.textContent = '';
+        const err = $('auth-error'); if (err) err.textContent = '';
     }
-    goRegisterBtn?.addEventListener('click', e => { e.preventDefault(); e.stopImmediatePropagation(); enterRegisterMode(); }, true);
+
+    /* ---------- КЛИКИ ---------- */
+    goRegisterBtn?.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        enterRegisterMode();
+    }, true);
+
     goBackBtn?.addEventListener('click', e => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
         if (currentStep > 1) goToStep(currentStep - 1);
         else exitRegisterMode();
     });
+
+    /* ---------- ДАТА ---------- */
     function initDatePicker(){
-        const daySel = $id('reg-birth-day');
-        const monSel = $id('reg-birth-month');
-        const yrSel = $id('reg-birth-year');
+        const daySel = $('reg-birth-day');
+        const monSel = $('reg-birth-month');
+        const yrSel = $('reg-birth-year');
         if (!daySel || daySel.dataset.filled === '1') return;
         daySel.dataset.filled = '1';
+
         let dHtml = '<option value="">День</option>';
         for (let i = 1; i <= 31; i++) dHtml += `<option value="${i}">${i}</option>`;
         daySel.innerHTML = dHtml;
+
         const months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
         let mHtml = '<option value="">Месяц</option>';
         months.forEach((m, i) => { mHtml += `<option value="${i+1}">${m}</option>`; });
         monSel.innerHTML = mHtml;
+
         let yHtml = '<option value="">Год</option>';
         for (let y = 2014; y >= 1950; y--) yHtml += `<option value="${y}">${y}</option>`;
         yrSel.innerHTML = yHtml;
     }
+
+    /* ---------- КОД ИЗ ПИСЬМА ---------- */
     const boxes = [...qsa('.auth-code-box')];
     boxes.forEach((box, idx) => {
         box.addEventListener('input', () => {
@@ -6234,43 +6724,69 @@ document.addEventListener('click', e => {
             (next >= 0 ? boxes[next] : boxes[boxes.length - 1]).focus();
         });
     });
-    $id('reg-region-btn')?.addEventListener('click', () => {
-        const modal = $id('region-modal');
-        const list = $id('region-list');
+
+    /* ---------- РЕГИОН (использует существующую модалку #region-modal) ---------- */
+    $('reg-region-btn')?.addEventListener('click', () => {
+        const modal = $('region-modal');
+        const list = $('region-list');
         if (!modal || !list) return;
+        // Заполняем список стран (если пуст)
         if (!list.children.length){
+            const COUNTRIES = [
+                { code:'ru', flag:'🇷🇺', name:'Россия' }, { code:'us', flag:'🇺🇸', name:'США' },
+                { code:'gb', flag:'🇬🇧', name:'Великобритания' }, { code:'de', flag:'🇩🇪', name:'Германия' },
+                { code:'fr', flag:'🇫🇷', name:'Франция' }, { code:'it', flag:'🇮🇹', name:'Италия' },
+                { code:'es', flag:'🇪🇸', name:'Испания' }, { code:'pt', flag:'🇵🇹', name:'Португалия' },
+                { code:'nl', flag:'🇳🇱', name:'Нидерланды' }, { code:'pl', flag:'🇵🇱', name:'Польша' },
+                { code:'tr', flag:'🇹🇷', name:'Турция' }, { code:'ua', flag:'🇺🇦', name:'Украина' },
+                { code:'by', flag:'🇧🇾', name:'Беларусь' }, { code:'kz', flag:'🇰🇿', name:'Казахстан' },
+                { code:'ge', flag:'🇬🇪', name:'Грузия' }, { code:'am', flag:'🇦🇲', name:'Армения' },
+                { code:'az', flag:'🇦🇿', name:'Азербайджан' }, { code:'il', flag:'🇮🇱', name:'Израиль' },
+                { code:'ae', flag:'🇦🇪', name:'ОАЭ' }, { code:'in', flag:'🇮🇳', name:'Индия' },
+                { code:'cn', flag:'🇨🇳', name:'Китай' }, { code:'jp', flag:'🇯🇵', name:'Япония' },
+                { code:'kr', flag:'🇰🇷', name:'Южная Корея' }, { code:'au', flag:'🇦🇺', name:'Австралия' },
+                { code:'ca', flag:'🇨🇦', name:'Канада' }, { code:'br', flag:'🇧🇷', name:'Бразилия' },
+                { code:'mx', flag:'🇲🇽', name:'Мексика' }
+            ];
             list.innerHTML = COUNTRIES.map(c =>
                 `<button class="lang-item" data-code="${c.code}"><span class="lang-item-flag">${c.flag}</span><span>${c.name}</span></button>`
             ).join('');
         }
+        // Обработчик выбора
         list.querySelectorAll('.lang-item').forEach(b => {
             b.onclick = () => {
                 const flag = b.querySelector('.lang-item-flag')?.textContent || '◯';
                 const name = b.querySelector('span:nth-child(2)')?.textContent || '';
-                $id('reg-region-flag').textContent = flag;
-                $id('reg-region-name').textContent = name;
+                $('reg-region-flag').textContent = flag;
+                $('reg-region-name').textContent = name;
                 window.__ltRegRegion = b.dataset.code;
-                closeSheet('region-modal');
+                modal.classList.add('hidden');
             };
         });
-        openSheet('region-modal');
+        modal.classList.remove('hidden');
     });
-    $id('reg-avatar')?.addEventListener('change', e => {
+
+    /* ---------- АВАТАР ---------- */
+    $('reg-avatar')?.addEventListener('change', e => {
         const f = e.target.files?.[0]; if (!f) return;
-        const prev = $id('reg-avatar-preview');
+        const prev = $('reg-avatar-preview');
         if (!prev) return;
         prev.innerHTML = `<img src="${URL.createObjectURL(f)}" alt="">`;
         prev.classList.add('has-img');
     });
-    $id('reg-theme-picker')?.addEventListener('click', e => {
+
+    /* ---------- ТЕМА ---------- */
+    $('reg-theme-picker')?.addEventListener('click', e => {
         const btn = e.target.closest('.auth-theme-choice');
         if (!btn) return;
-        $id('reg-theme-picker').querySelectorAll('.auth-theme-choice').forEach(b =>
+        $('reg-theme-picker').querySelectorAll('.auth-theme-choice').forEach(b =>
             b.classList.toggle('active', b === btn)
         );
     });
+
+    /* ---------- ВАЛИДАЦИЯ ---------- */
     function showErr(msg){
-        let el = $id('auth-error');
+        let el = $('auth-error');
         if (!el){
             el = document.createElement('div');
             el.id = 'auth-error';
@@ -6282,6 +6798,7 @@ document.addEventListener('click', e => {
         clearTimeout(el._t);
         el._t = setTimeout(() => { el.textContent = ''; }, 3200);
     }
+
     function validateStep(){
         if (currentStep === 1){
             const email = regEmailInput.value.trim();
@@ -6294,28 +6811,40 @@ document.addEventListener('click', e => {
             if (!all) return showErr('Введите все 5 цифр'), false;
         }
         if (currentStep === 3){
-            const name = $id('reg-name').value.trim();
+            const name = $('reg-name').value.trim();
             if (name.length < 2) return showErr('Введите имя'), false;
-            const pwd = $id('reg-password')?.value || '';
-            if (pwd.length < 8 || pwd.length > 30) return showErr('Пароль: от 8 до 30 символов'), false;
-            if (!/^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]+$/.test(pwd)) return showErr('Пароль: только латиница, цифры и спецсимволы'), false;
-            if (!/[A-Za-z]/.test(pwd)) return showErr('Пароль: должна быть хотя бы одна буква'), false;
-            if (!/[0-9]/.test(pwd)) return showErr('Пароль: должна быть хотя бы одна цифра'), false;
+
+            const pwd = $('reg-password')?.value || '';
+            if (pwd.length < 8 || pwd.length > 30) {
+                return showErr('Пароль: от 8 до 30 символов'), false;
+            }
+            if (!/^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]+$/.test(pwd)) {
+                return showErr('Пароль: только латиница, цифры и спецсимволы'), false;
+            }
+            if (!/[A-Za-z]/.test(pwd)) {
+                return showErr('Пароль: должна быть хотя бы одна буква'), false;
+            }
+            if (!/[0-9]/.test(pwd)) {
+                return showErr('Пароль: должна быть хотя бы одна цифра'), false;
+            }
             window.__ltRegPassword = pwd;
+            // ✅ проверка региона убрана — он ставится автоматически
         }
         if (currentStep === 4){
-            const d = $id('reg-birth-day').value;
-            const m = $id('reg-birth-month').value;
-            const y = $id('reg-birth-year').value;
+            const d = $('reg-birth-day').value;
+            const m = $('reg-birth-month').value;
+            const y = $('reg-birth-year').value;
             if (!d || !m || !y) return showErr('Выберите дату рождения'), false;
         }
         if (currentStep === 5){
-            const u = $id('reg-username').value.trim().toLowerCase().replace(/[^a-z0-9_.]/g, '');
-            $id('reg-username').value = u;
+            const u = $('reg-username').value.trim().toLowerCase().replace(/[^a-z0-9_.]/g, '');
+            $('reg-username').value = u;
             if (u.length < 3) return showErr('Никнейм минимум 3 символа'), false;
         }
         return true;
     }
+
+    /* ---------- ПРОДОЛЖИТЬ ---------- */
     function setLoading(on){
         const lbl = goContinueBtn.querySelector('.btn-label');
         const ldr = goContinueBtn.querySelector('.btn-loader');
@@ -6323,49 +6852,93 @@ document.addEventListener('click', e => {
         if (on){ lbl.classList.add('hidden'); ldr.classList.remove('hidden'); goContinueBtn.disabled = true; }
         else { lbl.classList.remove('hidden'); ldr.classList.add('hidden'); goContinueBtn.disabled = false; }
     }
+    /* ---------- РЕАЛЬНАЯ РЕГИСТРАЦИЯ ---------- */
+    /* ---------- РЕАЛЬНАЯ РЕГИСТРАЦИЯ ---------- */
     async function registerUser(){
         setLoading(true);
         try {
             const mod = await import('/js/supabase.js');
             const supabase = mod.supabase;
+
             const email = regEmailInput.value.trim();
             const password = window.__ltRegPassword;
-            if (!email || !password) throw new Error('Email или пароль не заполнены');
-            const fullName = $id('reg-name')?.value.trim() || '';
-            const username = ($id('reg-username')?.value || '').trim().toLowerCase().replace(/[^a-z0-9_.]/g, '');
-            const bio      = $id('reg-bio')?.value.trim() || '';
+
+            if (!email || !password){
+                throw new Error('Email или пароль не заполнены');
+            }
+
+            // Собираем данные
+            const fullName = $('reg-name')?.value.trim() || '';
+            const username = ($('reg-username')?.value || '').trim().toLowerCase().replace(/[^a-z0-9_.]/g, '');
+            const bio      = $('reg-bio')?.value.trim() || '';
             const region   = window.__ltRegRegion || null;
             const theme    = document.querySelector('#reg-theme-picker .auth-theme-choice.active')?.dataset.theme || 'light';
-            const bd = $id('reg-birth-day')?.value;
-            const bm = $id('reg-birth-month')?.value;
-            const by = $id('reg-birth-year')?.value;
-            const birthday = (bd && bm && by) ? `${by}-${String(bm).padStart(2,'0')}-${String(bd).padStart(2,'0')}` : null;
+
+            const bd = $('reg-birth-day')?.value;
+            const bm = $('reg-birth-month')?.value;
+            const by = $('reg-birth-year')?.value;
+            const birthday = (bd && bm && by)
+                ? `${by}-${String(bm).padStart(2,'0')}-${String(bd).padStart(2,'0')}`
+                : null;
+
+            // Файл аватара — берём ЗАРАНЕЕ, до reload
             const avatarFile = document.getElementById('reg-avatar')?.files?.[0] || null;
+
+            // signUp
             const { data, error } = await supabase.auth.signUp({
-                email, password,
-                options: { data: { full_name: fullName, username: username || null, bio: bio || null, region, birthday, theme } }
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: fullName,
+                        username: username || null,
+                        bio: bio || null,
+                        region,
+                        birthday,
+                        theme
+                    }
+                }
             });
+
             if (error) throw error;
+
+            // Если сессии нет — логинимся вручную
             if (!data.session){
                 const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
                 if (signInErr) throw signInErr;
             }
+
+            // Получаем ID пользователя
             const { data: { user: newUser } } = await supabase.auth.getUser();
             const userId = newUser?.id || data.user?.id;
+
             if (userId){
+                // ─── 1. Загружаем аватар в storage ───
                 if (avatarFile){
                     try {
                         const ext = avatarFile.name.split('.').pop() || 'jpg';
                         const path = `${userId}/avatar-${Date.now()}.${ext}`;
-                        const up = await supabase.storage.from('avatars').upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
+                        const up = await supabase.storage
+                            .from('avatars')
+                            .upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
+
                         if (!up.error){
                             const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
                             if (pub?.publicUrl){
-                                await supabase.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', userId);
+                                await supabase.from('profiles')
+                                    .update({ avatar_url: pub.publicUrl })
+                                    .eq('id', userId);
                             }
+                        } else {
+                            console.warn('[reg] avatar upload error:', up.error.message);
                         }
-                    } catch (e){ console.warn('[reg] avatar exception:', e.message); }
+                    } catch (e){
+                        console.warn('[reg] avatar exception:', e.message);
+                    }
                 }
+
+                // ─── 2. Обновляем bio и остальные поля в profiles ───
+                // (на случай если триггер в БД не переносит их из user_metadata)
                 try {
                     await supabase.from('profiles').update({
                         full_name: fullName || null,
@@ -6375,13 +6948,19 @@ document.addEventListener('click', e => {
                         birthday: birthday || null,
                         theme: theme || 'light'
                     }).eq('id', userId);
-                } catch (e){ console.warn('[reg] profile update error:', e.message); }
+                } catch (e){
+                    console.warn('[reg] profile update error:', e.message);
+                }
             }
+
+            // Loading + reload
             document.getElementById('auth-screen')?.classList.add('hidden');
             document.getElementById('loading-screen')?.classList.remove('hidden');
             const lt = document.getElementById('loading-text');
             if (lt) lt.textContent = 'Почти готово...';
+
             setTimeout(() => location.reload(), 1400);
+
         } catch (err){
             console.error('[register]', err);
             setLoading(false);
@@ -6392,61 +6971,47 @@ document.addEventListener('click', e => {
         }
     }
     goContinueBtn?.addEventListener('click', async e => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
+
         if (!validateStep()) return;
+
         setLoading(true);
         await new Promise(r => setTimeout(r, 450));
         setLoading(false);
+
         if (currentStep < TOTAL_STEPS){
             goToStep(currentStep + 1);
         } else {
+            // Финальный шаг — реальная регистрация
             await registerUser();
         }
     }, true);
+
+    /* ---------- ЭКСПОРТ ДЛЯ СТАРЫХ ФОЛБЭКОВ ---------- */
     window.__ltOpenRegisterLanding = enterRegisterMode;
+
+    // На старте — режим входа
     if (!authScreen.classList.contains('is-register')){
         qsa('.reg-stage').forEach(s => s.classList.toggle('active', s.dataset.regstage === '1'));
     }
 })();
 
-/* ============================================================
-   BOOT + REALTIME
-============================================================ */
-boot()
-setInterval(heartbeat, 30 * 1000)
-document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
-window.addEventListener('focus', () => { heartbeat(); updatePlayIcons() })
+;(function forceLoginMode(){
+    function reset(){
+        const auth = document.getElementById('auth-screen');
+        if (!auth) return;
+        // НЕ трогаем, если пользователь сейчас в режиме регистрации
+        if (auth.classList.contains('is-register')) return;
 
-try {
-    const ch = supabase.channel('public:realtime_v15')
-        .on('postgres_changes', { event:'*', schema:'public', table:'posts' }, () => {
-            if(state.screen === 'livechat') renderLiveFeed(true)
-            if(state.screen === 'profile' && state.profileTab === 'posts') renderMyPosts(state.currentProfileViewId)
-        })
-        .on('postgres_changes', { event:'INSERT', schema:'public', table:'follows' }, () => { if(state.screen === 'inbox') renderInboxPanel(); renderStories() })
-        .on('postgres_changes', { event:'INSERT', schema:'public', table:'channel_invites' }, () => { if(state.screen === 'inbox') renderInboxPanel() })
-        .on('postgres_changes', { event:'*', schema:'public', table:'lives' }, () => { if(state.screen === 'home') renderLiveNow(); if(state.screen === 'inbox') renderEventsScreen() })
-    ch.subscribe((s, err) => { if(err) console.warn('[realtime]', err.message) })
-} catch(e){ console.warn('[realtime] disabled:', e.message) }
-
-/* ============================================================
-   ЭКСПОРТ ФУНКЦИЙ НА WINDOW
-============================================================ */
-window.__ltShowScreen = showScreen;
-window.__ltOpenLangModal = openLangModal;
-window.__ltOpenRegisterLanding = function(){
-    const auth = document.getElementById('auth-screen');
-    if(auth){
-        auth.classList.remove('hidden');
-        auth.classList.add('is-register');
-        const logo = auth.querySelector('.auth-logo-circle');
-        if(logo){ logo.style.animation = 'none'; void logo.offsetWidth; logo.style.animation = 'logoPulse .6s cubic-bezier(.34,1.56,.64,1)'; }
-        setTimeout(() => { const emailInput = document.getElementById('reg-email'); if(emailInput) emailInput.focus({ preventScroll: true }); }, 400);
+        auth.querySelectorAll('.auth-register-only, .auth-view-register').forEach(el => {
+            el.style.removeProperty('display');
+            el.style.removeProperty('max-height');
+            el.style.removeProperty('opacity');
+            el.style.removeProperty('overflow');
+            el.style.removeProperty('pointer-events');
+        });
     }
-};
-
-/* Экспорт публичных функций для direct.js */
-window.__ltCloseAllSheets = closeAllSheets
-window.__ltOpenSheet     = openSheet
-window.__ltCloseSheet    = closeSheet
-window.__ltIsSheetOpen   = isSheetOpen
+    reset();
+    setTimeout(reset, 300);
+})();
