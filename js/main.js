@@ -1951,7 +1951,7 @@ function buildMetaRow(time, contextLabel, post){
                     <div class="post-marquee-track">${content}</div>
                     <div class="post-marquee-track" aria-hidden="true">${content}</div>
                 </div>
-                <span class="mq-loading">загрузка...</span>
+                <span class="mq-loading"> loading...</span>
             </div>
         </div>
     `
