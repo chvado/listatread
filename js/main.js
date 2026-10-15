@@ -9,7 +9,7 @@ function isUuid(s){
     return typeof s === 'string'
         && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }
-import { loadPosts, markSeen, recordWatch, recordSignal, markNotInterested } from './feed.js'
+import { loadPosts, markSeen, recordWatch, recordSignal, markNotInterested, invalidateFeedCache } from './feed.js'
 import { checkAdminStatus, ADMIN_STATE, showBlockedScreen, renderAdminReports, autoCloseOldReports } from './admin.js'
 import { openDirectTab, buildDirectScreen, openDirectChat } from './direct.js'
 import { initPush } from './push.js'
@@ -727,7 +727,12 @@ function switchScreen(name){
         else { state.viewingOwnProfile = true; loadProfile() }
     }
     if(name === 'settings') loadSettings()
-    if(name === 'home'){ renderLiveNow(); renderStories(); renderHomeFeed() }
+    if(name === 'home'){
+        renderLiveNow()
+        renderStories()
+        // лента кешируется сама — форс только если таб сменился
+        renderHomeFeed(false)
+    }
     if(name === 'channels') renderChannels()
     if(name !== 'livechat' && livechatRefreshTimer){ clearInterval(livechatRefreshTimer); livechatRefreshTimer = null }
     setTimeout(() => { updatePlayIcons(); syncFullPlayer(); }, 50)
@@ -1339,8 +1344,12 @@ async function renderLiveNow(){
 /* ============================================================
    HOME FEED
 ============================================================ */
-async function renderHomeFeed(){
+async function renderHomeFeed(force = false){
     const list = $('feed-list'); if(!list) return
+    if(!force && list.dataset.renderedFor === state.feedTab && list.children.length && list.dataset.renderedAt){
+        const age = Date.now() - (+list.dataset.renderedAt)
+        if(age < 15 * 60 * 1000) return  // 15 минут — живём
+    }
     teardownInfinite()
     list.innerHTML = loadingBlock()
     try {
@@ -1361,6 +1370,8 @@ async function renderHomeFeed(){
             }
             state.recBuffer = posts
             list.innerHTML = ''
+            list.dataset.renderedFor = 'recommended'
+            list.dataset.renderedAt = String(Date.now())
             setupInfinite(list, user?.id)
             await appendRecommendedChunk(list, user?.id, 5)
             return
@@ -1410,6 +1421,8 @@ async function renderHomeFeed(){
     } catch(e){
         console.warn('[renderHomeFeed]', e.message)
         list.innerHTML = '<p class="empty">Пока нет публикаций</p>'
+        list.dataset.renderedFor = tab
+        list.dataset.renderedAt = String(Date.now())
     }
 }
 
@@ -1531,6 +1544,13 @@ function attachHandlersToCard(card, userId){
 
     card.querySelectorAll('.feed-sub-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); handleFeedSubBtn(btn, userId) }))
     card.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
+    card.querySelectorAll('.feed-post-image').forEach(img => {
+        img.style.cursor = 'zoom-in'
+        img.addEventListener('click', e => {
+            e.stopPropagation()
+            openPhotoViewer(img.src, card.dataset.pid)
+        })
+    })
     card.querySelectorAll('.feed-channel-badge[data-chbadge]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openChannel(b.dataset.chbadge) }))
     card.querySelectorAll('.feed-action[data-like]').forEach(btn => btn.addEventListener('click', async e => { e.stopPropagation(); await toggleLikeGlobal(btn.dataset.like) }))
     card.querySelectorAll('.feed-action[data-comment]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openCommentsSheet(btn.dataset.comment) }))
@@ -1671,7 +1691,9 @@ document.querySelectorAll('.feed-tab').forEach(tab => {
         document.querySelectorAll('.feed-tab').forEach(x => x.classList.remove('active'))
         tab.classList.add('active')
         state.feedTab = newTab
-        renderHomeFeed()
+        const list = $('feed-list')
+        if(list){ list.dataset.renderedFor = ''; list.dataset.renderedAt = '' }
+        renderHomeFeed(true)
     })
 })
 
@@ -1690,33 +1712,8 @@ function attachVideoCardClick(card){
     card.dataset.videoClickBound = '1'
 
     card.addEventListener('click', e => {
-        if(e.target.closest('.feed-action, .feed-more, .feed-channel-badge, .feed-post-avatar, .profile-post-more, .feed-sub-btn, .post-video-progress, .poll-view')) return
-        const vid = card.querySelector('.post-bg-video')
-        if(!vid) return
-
-        const hint = card.querySelector('.feed-post-video-hint')
-        if(hint) hint.style.display = 'none'
-
-        const activated = card.dataset.videoActivated === '1'
-        if(!activated){
-            card.dataset.videoActivated = '1'
-            card.classList.add('is-playing')
-            vid.pause()
-            try { vid.currentTime = 0 } catch {}
-            vid.muted = false
-            vid.volume = 1
-            const p = vid.play()
-            if(p && p.catch) p.catch(() => { vid.muted = true; vid.play().catch(()=>{}) })
-            hideVideoPauseIcon(card)
-        } else {
-            if(vid.paused){
-                vid.play().catch(()=>{})
-                hideVideoPauseIcon(card)
-            } else {
-                vid.pause()
-                showVideoPauseIcon(card)
-            }
-        }
+        if(e.target.closest('.feed-action, .feed-more, .feed-channel-badge, .feed-post-avatar, .profile-post-more, .feed-sub-btn, .post-video-progress, .poll-view, .track-card')) return
+        openVideoFeed(card)
     })
 }
 function showVideoPauseIcon(card){
@@ -2073,6 +2070,15 @@ async function attachFeedActions(list, myId){
     })
 
     list.querySelectorAll('.feed-action[data-like]').forEach(btn => btn.addEventListener('click', async e => { e.stopPropagation(); await toggleLikeGlobal(btn.dataset.like) }))
+    list.querySelectorAll('.feed-post-image').forEach(img => {
+        if(img.dataset.pvBound === '1') return
+        img.dataset.pvBound = '1'
+        img.style.cursor = 'zoom-in'
+        img.addEventListener('click', e => {
+            e.stopPropagation()
+            openPhotoViewer(img.src, img.closest('.feed-post')?.dataset.pid)
+        })
+    })
     list.querySelectorAll('.feed-action[data-comment]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openCommentsSheet(btn.dataset.comment) }))
     list.querySelectorAll('.feed-action[data-repost]').forEach(btn => btn.addEventListener('click', async e => { e.stopPropagation(); await toggleRepostGlobal(btn.dataset.repost) }))
     list.querySelectorAll('.feed-action[data-share]').forEach(btn => btn.addEventListener('click', e => {
@@ -2124,7 +2130,38 @@ async function openCommentsSheet(postId){
         openCommentsSheet(postId)
     })
 }
-
+/* ============================================================
+   PHOTO VIEWER — клик по фото раскрывает его
+============================================================ */
+function openPhotoViewer(src, postId){
+    if(!src) return
+    let el = document.getElementById('photo-viewer')
+    if(!el){
+        el = document.createElement('div')
+        el.id = 'photo-viewer'
+        el.className = 'photo-viewer'
+        el.innerHTML = `
+          <button class="pv-close" aria-label="Закрыть">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+          <img class="pv-img" alt="">
+        `
+        document.body.appendChild(el)
+        el.addEventListener('click', e => {
+            if(e.target === el || e.target.closest('.pv-close')) closePhotoViewer()
+        })
+        document.addEventListener('keydown', e => { if(e.key === 'Escape') closePhotoViewer() })
+    }
+    el.querySelector('.pv-img').src = src
+    el.classList.remove('hidden')
+    requestAnimationFrame(() => el.classList.add('show'))
+}
+function closePhotoViewer(){
+    const el = document.getElementById('photo-viewer')
+    if(!el) return
+    el.classList.remove('show')
+    setTimeout(() => el.classList.add('hidden'), 260)
+}
 /* ============================================================
    EVENTS
 ============================================================ */
@@ -2429,7 +2466,10 @@ async function renderLiveFeed(silent = false){
             const videoSrc = btn.closest('.feed-post-video')?.dataset.videoSrc
             const card = btn.closest('.feed-post')
             const items = []
-            if(videoSrc) items.push({ label:'Полноэкранный режим', icon:ICONS.fullscreen, onClick: () => enterVideoFS(videoSrc, pid) })
+            if(videoSrc) items.push({ label:'Смотреть полностью', icon:ICONS.fullscreen, onClick: () => {
+                    const c = document.querySelector(`.feed-post.feed-post-video[data-pid="${pid}"]`)
+                    if(c) openVideoFeed(c); else enterVideoFS(videoSrc, pid)
+                } })
             items.push({ label:'Поделиться', icon:ICONS.share, onClick: () => openShareSheet({ type:'post', postId:pid, src:videoSrc, title: card?.querySelector('.feed-post-content')?.textContent || '' }) })
             if(isMine) items.push({ label:'Удалить', icon:ICONS.trash, danger:true, onClick: async () => { if(!confirm('Удалить?')) return; await supabase.from('posts').delete().eq('id', pid); renderLiveFeed() } })
             else {
@@ -3700,6 +3740,7 @@ async function openChannel(channelId){
         const { data:{ user } } = await supabase.auth.getUser()
         await refreshFollowCache()
         const { data:ch } = await supabase.from('channels').select('*').eq('id', channelId).maybeSingle()
+        state.chatTitle = ch.name || 'Канал'  // для VFM
         if(!ch){ screen.innerHTML = '<p class="empty">Канал не найден</p>'; return }
         const isOwner = ch.owner_id === user.id
         const { data:subRow } = await supabase.from('subscriptions').select('id').eq('follower_id', user.id).eq('channel_id', channelId).maybeSingle()
@@ -4387,6 +4428,7 @@ async function toggleLikeGlobal(postId){
         syncPostLike(postId, wasLiked, wasLiked ? +1 : -1)
         showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' })
     }
+    invalidateFeedCache()
 }
 
 async function toggleRepostGlobal(postId){
@@ -4417,6 +4459,7 @@ async function toggleRepostGlobal(postId){
         syncPostRepost(postId, wasReposted, wasReposted ? +1 : -1)
         showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' })
     }
+    invalidateFeedCache()
 }
 
 /* ============================================================
@@ -4905,102 +4948,474 @@ function initTrackObserver(){
 }
 
 /* ============================================================
-   FULLSCREEN VIDEO MODE
+   VIDEO FEED MODE (VFM) — плавный полноэкранный просмотр
+   - плавный zoom из карточки в фуллскрин
+   - вертикальный свайп как в тиктоке
+   - бесконечная подгрузка из главной ленты
+   - выход → возврат к ПЕРВОЙ нажатой карточке
 ============================================================ */
-function buildFsUi(fs, pid){
-    fs.querySelector('.video-fs-ui')?.remove()
-    if(!pid) return
-    const ui = document.createElement('div')
-    ui.className = 'video-fs-ui'
-    ui.innerHTML = `
-      <div class="video-fs-actions">
-        <button class="feed-action fs-act" data-like="${pid}">${ICONS.heart}<span class="feed-count" data-like-count="${pid}">0</span></button>
-        <button class="feed-action fs-act" data-comment="${pid}">${ICONS.comment}<span class="feed-count" data-comment-count="${pid}">0</span></button>
-        <button class="feed-action fs-act" data-repost="${pid}">${ICONS.repost}<span class="feed-count" data-repost-count="${pid}">0</span></button>
-      </div>
-      <div class="video-fs-bottom">
-        <div class="video-fs-desc" id="video-fs-desc"></div>
-        <button class="video-fs-dots" id="video-fs-dots" aria-label="Действия">${ICONS.dots}</button>
-      </div>`
-    fs.appendChild(ui)
-    ui.querySelector('[data-like]').addEventListener('click', () => toggleLikeGlobal(pid))
-    ui.querySelector('[data-repost]').addEventListener('click', () => toggleRepostGlobal(pid))
-    ui.querySelector('[data-comment]').addEventListener('click', () => openCommentsSheet(pid))
-    ui.querySelector('#video-fs-dots').addEventListener('click', () => document.getElementById('video-fs-more')?.click())
-    ;(async () => {
-        const [meta, counts] = await Promise.all([fetchPostMeta(pid), fetchCounts([pid])])
-        const d = document.getElementById('video-fs-desc'); if(d) d.textContent = meta.content || meta.media_title || ''
-        const { data:{ user } } = await supabase.auth.getUser()
-        const [{ data:l }, { data:r }] = await Promise.all([
-            supabase.from('likes').select('post_id').eq('user_id', user.id).eq('post_id', pid),
-            supabase.from('reposts').select('post_id').eq('user_id', user.id).eq('post_id', pid)
-        ])
-        const c = counts[pid] || {}
-        ui.querySelector('[data-like-count]').textContent = c.likes || 0
-        ui.querySelector('[data-comment-count]').textContent = c.comments || 0
-        ui.querySelector('[data-repost-count]').textContent = c.reposts || 0
-        if(l?.length) syncPostLike(pid, true, 0)
-        if(r?.length) syncPostRepost(pid, true, 0)
-    })()
-}
-let videoFsPrevMusic = false
-function enterVideoFS(src, postId){
-    const fs = document.getElementById('video-fs'), vid = document.getElementById('video-fs-el')
-    if(!fs || !vid || !src) return
-    videoFsPrevMusic = music.isPlaying
-    if(music.isPlaying) pauseTrack()
-    document.getElementById('mini-player')?.classList.remove('show')
-    document.querySelectorAll('.topbar').forEach(b => b.classList.add('topbar-hidden'))
-    document.body.style.overflow = 'hidden'; document.documentElement.style.overflow = 'hidden'
-    vid.pause(); vid.src = src
-    vid.muted = false; vid.volume = 1; vid.loop = true
-    try { vid.currentTime = 0 } catch {}
-    const p = vid.play()
-    if(p && p.catch) p.catch(() => { vid.muted = true; vid.play().then(() => { vid.muted = false }).catch(()=>{}) })
-    fs.dataset.pid = postId || ''
-    buildFsUi(fs, postId)
-    fs.classList.remove('hidden'); void fs.offsetWidth
-    requestAnimationFrame(() => fs.classList.add('show'))
+const VFM = {
+    active: false,
+    list: [],              // [{ id, src, card }]
+    index: 0,
+    source: 'home',        // home | profile | channel | live | direct
+    label: 'Рекомендации',
+    originId: null,
+    originCard: null,
+    el: null,
+    video: null,
+    loadingMore: false,
+    endedShown: false,
+    _drag: null,
 }
 
-function exitVideoFS(){
-    const fs = document.getElementById('video-fs'), vid = document.getElementById('video-fs-el')
-    if(!fs || !vid) return
-    vid.pause(); vid.removeAttribute('src'); vid.load()
-    fs.classList.remove('show')
-    setTimeout(() => { if(!fs.classList.contains('show')) fs.classList.add('hidden') }, 320)
-    document.body.style.overflow = ''
-    document.documentElement.style.overflow = ''
-    document.querySelectorAll('.topbar').forEach(b => b.classList.remove('topbar-hidden'))
-    if(videoFsPrevMusic) playTrack()
-    videoFsPrevMusic = false
-}
-document.getElementById('video-fs-back')?.addEventListener('click', exitVideoFS)
-document.getElementById('video-fs-more')?.addEventListener('click', async () => {
-    const fs = document.getElementById('video-fs'), pid = fs?.dataset.pid
-    const items = [
-        { label:'Скорость 0.5x', onClick: () => document.getElementById('video-fs-el').playbackRate = 0.5 },
-        { label:'Скорость 1x',   onClick: () => document.getElementById('video-fs-el').playbackRate = 1 },
-        { label:'Скорость 1.5x', onClick: () => document.getElementById('video-fs-el').playbackRate = 1.5 },
-        { label:'Скорость 2x',   onClick: () => document.getElementById('video-fs-el').playbackRate = 2 }
-    ]
-    if(pid){
-        items.push({ label:'Поделиться', icon:ICONS.share, onClick: () => openShareSheet({ type:'post', postId:pid, src: document.getElementById('video-fs-el').src }) })
-        const { data:{ user } } = await supabase.auth.getUser()
-        const { data:post } = await supabase.from('posts').select('author_id, channel_id').eq('id', pid).maybeSingle()
-        const isMine = post?.author_id === user.id
-        if(isMine) items.push({ label:'Удалить', icon:ICONS.trash, danger:true, onClick: async () => { if(!confirm('Удалить пост?')) return; await supabase.from('posts').delete().eq('id', pid); exitVideoFS(); if(state.screen === 'home') renderHomeFeed() } })
-        if(!isMine) items.push({ label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => openReportModal({ targetType:'video', targetId: pid, media: document.getElementById('video-fs-el').src }) })
+function vfmFeedLabel(){
+    const tabs = {
+        recommended:'Рекомендации', lista:'Tredless', subs:"Deeptread's", my:'Friendly', video:'Видео'
     }
-    showActionSheet('Действия', items)
-})
-;(function initVideoFsSwipe(){
-    const fs = document.getElementById('video-fs'); if(!fs) return
-    let sy = 0, cy = 0, drag = false
-    fs.addEventListener('touchstart', e => { sy = e.touches[0].clientY; cy = sy; drag = true; fs.style.transition = 'none' }, { passive: true })
-    fs.addEventListener('touchmove', e => { if(!drag) return; cy = e.touches[0].clientY; const dy = Math.max(0, cy - sy); fs.style.transform = `translateY(${dy}px)` }, { passive: true })
-    fs.addEventListener('touchend', () => { if(!drag) return; drag = false; fs.style.transition = ''; const dy = cy - sy; fs.style.transform = ''; if(dy > 80) exitVideoFS() })
-})()
+    switch(VFM.source){
+        case 'home':    return tabs[state.feedTab] || 'Рекомендации'
+        case 'profile': {
+            const map = { posts:'Посты', reposts:'Репосты', liked:'Понравилось', tracks:'Треки', channels:'Каналы' }
+            const t = map[state.profileTab] || 'Посты'
+            const who = state.viewingOwnProfile ? 'Вы' : ('@' + (state.currentProfile?.username || 'user'))
+            return `${who} · ${t}`
+        }
+        case 'channel': return 'Канал · ' + (document.getElementById('ch-ig-name')?.textContent || '')
+        case 'live':    return 'Live · ' + (state.chatTitle || 'Global')
+        case 'direct':  return 'Чат с ' + (window.__ltChatTitle || state.chatTitle || 'собеседником')
+        default:        return 'Лента'
+    }
+}
+
+function vfmCollectFrom(card){
+    const box = card.closest('#feed-list, #live-feed, #ch-posts-list, #profile-content, #direct-messages')
+        || document.querySelector('#feed-list')
+    if(!box) return null
+    const cards = [...box.querySelectorAll('.feed-post.feed-post-video[data-video-src]')]
+    return cards.map(c => ({ id: c.dataset.pid, src: c.dataset.videoSrc, card: c }))
+}
+
+function vfmBuildOverlay(){
+    if(VFM.el) return VFM.el
+    const el = document.createElement('div')
+    el.id = 'vfm'
+    el.className = 'vfm'
+    el.innerHTML = `
+      <video class="vfm-video" playsinline preload="metadata"></video>
+      <div class="vfm-overlay"></div>
+
+      <div class="vfm-topbar">
+        <button class="vfm-back" id="vfm-back" aria-label="Назад">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <div class="vfm-crumb">
+          <span class="vfm-crumb-pre">Вы смотрите ленту</span>
+          <span class="vfm-crumb-dot">·</span>
+          <span class="vfm-crumb-name" id="vfm-crumb-name">Рекомендации</span>
+        </div>
+      </div>
+
+      <div class="vfm-info">
+        <div class="vfm-ava" id="vfm-ava">?</div>
+        <div class="vfm-meta">
+          <div class="vfm-name" id="vfm-name">user</div>
+          <div class="vfm-marquee" id="vfm-marquee"></div>
+        </div>
+        <button class="vfm-sub" id="vfm-sub" type="button">+</button>
+      </div>
+
+      <div class="vfm-actions" id="vfm-actions">
+        <button class="vfm-action" data-vfm="like" aria-label="Нравится">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span data-vfm-count="like">0</span>
+        </button>
+        <button class="vfm-action" data-vfm="comment" aria-label="Комментарии">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span data-vfm-count="comment">0</span>
+        </button>
+        <button class="vfm-action" data-vfm="repost" aria-label="Репост">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          <span data-vfm-count="repost">0</span>
+        </button>
+        <button class="vfm-action" data-vfm="share" aria-label="Поделиться">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        </button>
+      </div>
+
+      <div class="vfm-bottom">
+        <div class="vfm-desc" id="vfm-desc"></div>
+      </div>
+
+      <div class="vfm-progress" id="vfm-progress"><div class="vfm-progress-fill" id="vfm-progress-fill"></div></div>
+    `
+    document.body.appendChild(el)
+
+    VFM.el = el
+    VFM.video = el.querySelector('.vfm-video')
+
+    // Кнопки
+    el.querySelector('#vfm-back').addEventListener('click', () => closeVideoFeed())
+    el.querySelector('#vfm-sub').addEventListener('click', async e => {
+        e.stopPropagation()
+        const item = VFM.list[VFM.index]; if(!item) return
+        const btn = item.card.querySelector('.feed-sub-btn')
+        if(btn){ btn.click(); setTimeout(syncVfmMeta, 200) }
+    })
+
+    el.querySelectorAll('[data-vfm]').forEach(b => b.addEventListener('click', async e => {
+        e.stopPropagation()
+        const item = VFM.list[VFM.index]; if(!item) return
+        const k = b.dataset.vfm
+        const pid = item.id
+        if(k === 'like'){ await toggleLikeGlobal(pid); syncVfmMeta() }
+        if(k === 'comment') openCommentsSheet(pid)
+        if(k === 'repost'){ await toggleRepostGlobal(pid); syncVfmMeta() }
+        if(k === 'share'){
+            openShareSheet({ type:'post', postId: pid, src: item.src, title: item.card.querySelector('.feed-post-content')?.textContent || '' })
+        }
+    }))
+
+    // Прогресс-бар с перемоткой
+    const bar = el.querySelector('#vfm-progress')
+    const fill = el.querySelector('#vfm-progress-fill')
+    const setSeek = clientX => {
+        const r = bar.getBoundingClientRect()
+        const pct = Math.max(0, Math.min(1, (clientX - r.left) / r.width))
+        if(VFM.video.duration && isFinite(VFM.video.duration)) VFM.video.currentTime = pct * VFM.video.duration
+    }
+    let dragging = false
+    bar.addEventListener('pointerdown', e => { e.stopPropagation(); dragging = true; bar.classList.add('dragging'); setSeek(e.clientX); bar.setPointerCapture(e.pointerId) })
+    bar.addEventListener('pointermove', e => { if(dragging){ e.stopPropagation(); setSeek(e.clientX) } })
+    bar.addEventListener('pointerup', e => { e.stopPropagation(); dragging = false; bar.classList.remove('dragging') })
+
+    VFM.video.addEventListener('timeupdate', () => {
+        if(!VFM.video.duration) return
+        fill.style.width = (VFM.video.currentTime / VFM.video.duration * 100) + '%'
+    })
+    VFM.video.addEventListener('ended', () => vfmNext())
+    VFM.video.addEventListener('click', e => { e.stopPropagation(); if(VFM.video.paused) VFM.video.play().catch(()=>{}) ; else VFM.video.pause() })
+
+    // Свайпы
+    initVfmSwipe(el)
+    return el
+}
+
+function initVfmSwipe(el){
+    let sy = 0, cy = 0, active = false, moved = false
+    el.addEventListener('touchstart', e => {
+        if(e.target.closest('.vfm-topbar, .vfm-actions, .vfm-progress, .vfm-sub')) return
+        sy = cy = e.touches[0].clientY; active = true; moved = false
+        el.style.transition = 'none'
+    }, { passive: true })
+    el.addEventListener('touchmove', e => {
+        if(!active) return
+        cy = e.touches[0].clientY
+        const dy = cy - sy
+        if(Math.abs(dy) > 8) moved = true
+        // сдвигаем ровно на dy без анимации
+        el.querySelector('.vfm-stage-shift')?.remove()
+        el.style.transform = `translate3d(0, ${dy * 0.55}px, 0)`
+    }, { passive: true })
+    el.addEventListener('touchend', () => {
+        if(!active) return
+        active = false
+        const dy = cy - sy
+        el.style.transition = ''
+        el.style.transform = ''
+        if(!moved) return
+        if(dy < -70) vfmNext()
+        else if(dy > 70){
+            if(VFM.index === 0) closeVideoFeed()
+            else vfmPrev()
+        }
+    })
+    // Десктоп-колесо
+    el.addEventListener('wheel', e => {
+        if(Math.abs(e.deltaY) < 40) return
+        e.preventDefault()
+        if(e.deltaY > 0) vfmNext(); else vfmPrev()
+    }, { passive: false })
+}
+
+function vfmSourceFromCard(card){
+    if(card.closest('#feed-list')) return 'home'
+    if(card.closest('#live-feed')) return 'live'
+    if(card.closest('#ch-posts-list')) return 'channel'
+    if(card.closest('#profile-content')) return 'profile'
+    if(card.closest('#direct-messages, .direct-room, .sh-card')) return 'direct'
+    return 'home'
+}
+
+async function openVideoFeed(card, sourceHint){
+    if(!card) return
+    const list = vfmCollectFrom(card)
+    if(!list || !list.length) return
+    const idx = list.findIndex(x => x.card === card)
+    if(idx < 0) return
+
+    VFM.list = list
+    VFM.index = idx
+    VFM.source = sourceHint || vfmSourceFromCard(card)
+    VFM.label = vfmFeedLabel()
+    VFM.originId = list[idx].id
+    VFM.originCard = card
+    VFM.endedShown = false
+    VFM.loadingMore = false
+
+    document.querySelectorAll('.post-bg-video').forEach(v => { try { v.pause() } catch {} })
+    document.body.classList.add('vfm-active')
+    document.body.style.overflow = 'hidden'
+
+    const el = vfmBuildOverlay()
+
+    // Плавный вход из карточки
+    const rect = card.getBoundingClientRect()
+    const elRect = el.getBoundingClientRect()
+    const dx = rect.left - elRect.left
+    const dy = rect.top - elRect.top
+    const sx = rect.width / elRect.width
+    const sy = rect.height / elRect.height
+
+    el.style.transition = 'none'
+    el.style.transformOrigin = 'top left'
+    el.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${sx}, ${sy})`
+    el.style.borderRadius = '22px'
+    el.style.opacity = '0.4'
+    el.querySelectorAll('.vfm-topbar, .vfm-info, .vfm-actions, .vfm-bottom, .vfm-progress').forEach(n => n.style.opacity = '0')
+
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+
+    el.style.transition = 'transform .55s cubic-bezier(.22,1,.36,1), opacity .3s ease, border-radius .55s ease'
+    el.style.transform = ''
+    el.style.borderRadius = ''
+    el.style.opacity = '1'
+    el.querySelectorAll('.vfm-topbar, .vfm-info, .vfm-actions, .vfm-bottom, .vfm-progress').forEach(n => {
+        n.style.transition = 'opacity .35s ease .15s'
+        n.style.opacity = '1'
+    })
+
+    VFM.active = true
+    renderVfmSlide()
+}
+
+function renderVfmSlide(){
+    const item = VFM.list[VFM.index]
+    if(!item){ closeVideoFeed(); return }
+
+    const el = VFM.el
+    const v = VFM.video
+
+    // видео
+    try { v.pause() } catch {}
+    v.src = item.src
+    v.muted = false
+    v.loop = false
+    v.currentTime = 0
+    v.play().catch(() => { v.muted = true; v.play().catch(()=>{}) })
+
+    // заголовок
+    el.querySelector('#vfm-crumb-name').textContent = vfmFeedLabel()
+
+    // мета
+    syncVfmMeta()
+
+    // прогресс
+    el.querySelector('#vfm-progress-fill').style.width = '0%'
+
+    // скрыть/показать кнопку «конец ленты»
+    el.querySelector('.vfm-end')?.remove()
+    VFM.endedShown = false
+}
+
+function syncVfmMeta(){
+    const item = VFM.list[VFM.index]; if(!item || !VFM.el) return
+    const card = item.card
+    const el = VFM.el
+
+    // аватар + имя
+    const avaEl = card.querySelector('.feed-post-avatar')
+    const nameEl = card.querySelector('.feed-post-name')
+    const marqueeEl = card.querySelector('.post-marquee-wrap')
+    const subBtn = card.querySelector('.feed-sub-btn')
+
+    el.querySelector('#vfm-ava').innerHTML = avaEl ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'') : '?'
+    el.querySelector('#vfm-name').innerHTML = nameEl ? nameEl.innerHTML : 'user'
+    el.querySelector('#vfm-marquee').innerHTML = marqueeEl ? marqueeEl.innerHTML : ''
+
+    const subBtnEl = el.querySelector('#vfm-sub')
+    if(subBtn && !subBtn.classList.contains('hidden') && subBtn.style.display !== 'none'){
+        subBtnEl.style.display = ''
+        const sub = subBtn.classList.contains('subscribed')
+        subBtnEl.classList.toggle('subscribed', sub)
+        subBtnEl.textContent = sub ? '✓' : '+'
+    } else {
+        subBtnEl.style.display = 'none'
+    }
+
+    // описание
+    el.querySelector('#vfm-desc').textContent = card.querySelector('.feed-post-content')?.textContent || ''
+
+    // действия
+    const likeBtn = card.querySelector('.feed-action[data-like]')
+    const repBtn = card.querySelector('.feed-action[data-repost]')
+    const counts = {
+        like:    card.querySelector('[data-like-count]')?.textContent || '0',
+        comment: card.querySelector('[data-comment-count]')?.textContent || '0',
+        repost:  card.querySelector('[data-repost-count]')?.textContent || '0',
+    }
+    el.querySelector('[data-vfm-count="like"]').textContent = counts.like
+    el.querySelector('[data-vfm-count="comment"]').textContent = counts.comment
+    el.querySelector('[data-vfm-count="repost"]').textContent = counts.repost
+
+    el.querySelector('[data-vfm="like"]').classList.toggle('liked', !!likeBtn?.classList.contains('liked'))
+    el.querySelector('[data-vfm="repost"]').classList.toggle('reposted', !!repBtn?.classList.contains('reposted'))
+
+    // обновляем marquee-анимацию
+    initPostMarquees(el)
+}
+
+async function vfmLoadMore(){
+    if(VFM.loadingMore) return false
+    if(VFM.source !== 'home') return false
+    const list = document.getElementById('feed-list')
+    if(!list) return false
+    VFM.loadingMore = true
+    try {
+        const before = list.querySelectorAll('.feed-post.feed-post-video').length
+        await appendRecommendedChunk(list, state.currentUser?.id, 8)
+        const after = [...list.querySelectorAll('.feed-post.feed-post-video')]
+        const fresh = after.slice(before)
+        fresh.forEach(c => VFM.list.push({ id: c.dataset.pid, src: c.dataset.videoSrc, card: c }))
+        return fresh.length > 0
+    } finally { VFM.loadingMore = false }
+}
+
+async function vfmNext(){
+    if(!VFM.active) return
+    if(VFM.index < VFM.list.length - 1){
+        VFM.index++
+        renderVfmSlide()
+        return
+    }
+    // конец — пробуем подгрузить из главной
+    if(VFM.source === 'home'){
+        const ok = await vfmLoadMore()
+        if(ok && VFM.index < VFM.list.length - 1){ VFM.index++; renderVfmSlide(); return }
+    }
+    showVfmEnd()
+}
+
+function vfmPrev(){
+    if(!VFM.active) return
+    if(VFM.index === 0){ closeVideoFeed(); return }
+    VFM.index--
+    renderVfmSlide()
+}
+
+function showVfmEnd(){
+    if(VFM.endedShown) return
+    VFM.endedShown = true
+    const el = VFM.el
+    const end = document.createElement('div')
+    end.className = 'vfm-end'
+    end.innerHTML = `
+      <div style="font-size:48px">🎬</div>
+      <div style="font-size:19px;font-weight:800">Вы посмотрели всю ленту</div>
+      <div style="font-size:13px;opacity:.7;max-width:260px;line-height:1.5">Вернитесь наверх или загляните в другую ленту</div>
+      <button class="btn-primary" id="vfm-end-back" style="margin-top:10px;padding:12px 22px">Вернуться</button>
+    `
+    el.appendChild(end)
+    end.querySelector('#vfm-end-back').addEventListener('click', () => closeVideoFeed())
+}
+
+async function closeVideoFeed(){
+    if(!VFM.active) return
+    VFM.active = false
+
+    const el = VFM.el
+    const origin = VFM.originCard
+
+    // Останавливаем видео
+    try { VFM.video.pause(); VFM.video.removeAttribute('src'); VFM.video.load() } catch {}
+
+    // Плавно уводим оверлеи
+    el.querySelectorAll('.vfm-topbar, .vfm-info, .vfm-actions, .vfm-bottom, .vfm-progress').forEach(n => {
+        n.style.transition = 'opacity .18s ease'
+        n.style.opacity = '0'
+    })
+
+    // Возврат к ПЕРВОЙ нажатой карточке
+    let target = origin
+    if(!target || !target.isConnected){
+        target = document.querySelector(`.feed-post[data-pid="${VFM.originId}"]`)
+    }
+
+    if(target && target.isConnected){
+        target.scrollIntoView({ behavior: 'auto', block: 'center' })
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+        const rect = target.getBoundingClientRect()
+        const elRect = el.getBoundingClientRect()
+        const dx = rect.left - elRect.left
+        const dy = rect.top - elRect.top
+        const sx = rect.width / elRect.width
+        const sy = rect.height / elRect.height
+
+        el.style.transition = 'transform .5s cubic-bezier(.22,1,.36,1), opacity .3s ease, border-radius .5s ease'
+        el.style.transformOrigin = 'top left'
+        el.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${sx}, ${sy})`
+        el.style.borderRadius = '22px'
+        el.style.opacity = '0'
+    } else {
+        el.style.transition = 'opacity .25s ease'
+        el.style.opacity = '0'
+    }
+
+    await new Promise(r => setTimeout(r, 520))
+
+    el.remove()
+    VFM.el = null
+    VFM.video = null
+    VFM.list = []
+    VFM.index = 0
+    VFM.originCard = null
+
+    document.body.classList.remove('vfm-active')
+    document.body.style.overflow = ''
+    document.dispatchEvent(new Event('vfm:closed'))
+    // обновляем иконки в ленте
+    updatePlayIcons()
+}
+
+/* Совместимость со старыми вызовами enterVideoFS / exitVideoFS */
+function enterVideoFS(src, postId){
+    // 1) ищем настоящую карточку в любом из возможных контейнеров
+    let card = null
+    if(postId){
+        card = document.querySelector(`.feed-post.feed-post-video[data-pid="${postId}"]`)
+    }
+    if(!card && src){
+        card = [...document.querySelectorAll('.feed-post.feed-post-video')]
+            .find(c => c.dataset.videoSrc === src) || null
+    }
+    if(card){ openVideoFeed(card); return }
+
+    // 2) fallback: собираем одиночный список из одного слайда
+    const box = document.getElementById('feed-list') || document.body
+    const fake = document.createElement('article')
+    fake.className = 'feed-post feed-post-video'
+    fake.dataset.pid = postId || ''
+    fake.dataset.videoSrc = src || ''
+    fake.style.position = 'absolute'
+    fake.style.visibility = 'hidden'
+    fake.style.pointerEvents = 'none'
+    box.appendChild(fake)
+    openVideoFeed(fake)
+    // при закрытии VFM фейковую карточку удаляем
+    const cleanup = () => { try { fake.remove() } catch {} }
+    document.addEventListener('vfm:closed', cleanup, { once: true })
+}
+function exitVideoFS(){ closeVideoFeed() }
 
 /* ============================================================
    СВАЙП ВНИЗ ДЛЯ МОДАЛОК / ШИТОВ
@@ -5334,6 +5749,7 @@ async function enterApp(){
     await checkMainChannelSubscription()
     await refreshFollowCache()
     switchScreen('home')
+    window.__ltSetChatTitle = (t) => { state.chatTitle = t }
     renderLiveNow(); renderStories(); loadProfile(); loadStatus();
     renderEventsScreen(); renderLiveFeed()
     maybeSendDailyNotification()
@@ -6582,6 +6998,7 @@ document.addEventListener('click', (e) => {
         observer.observe(target, { attributes: true, attributeFilter: ['class'] });
     }
 })();
+window.__ltSetChatTitle = (t) => { state.chatTitle = t }
 window.__lt = {
     music,
     openFs: (src, pid) => enterVideoFS(src, pid),

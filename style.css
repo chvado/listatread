@@ -1803,6 +1803,225 @@ body.in-direct .mini-player{z-index:170;bottom:auto;top:calc(var(--safe-top) + 7
 .dr-msg-menu{min-width:260px}
 .dr-react-burst{position:absolute;left:50%;top:30%;font-size:44px;pointer-events:none;z-index:5;animation:heartFly 1s ease-out forwards}
 /* ============================================================
+   VIDEO FEED MODE (VFM) — полноэкранный тикток-просмотр
+============================================================ */
+body.vfm-active .bottom-nav{ z-index: 8700 }
+body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
+
+.vfm{
+    position: fixed; inset: 0;
+    z-index: 8600;
+    background: #000;
+    overflow: hidden;
+    will-change: transform, opacity, border-radius;
+    color: #fff;
+}
+.vfm-video{
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    background: #000;
+    z-index: 0;
+    cursor: pointer;
+}
+.vfm-overlay{
+    position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: linear-gradient(180deg,
+    rgba(0,0,0,.55) 0%, transparent 22%,
+    transparent 62%, rgba(0,0,0,.78) 100%);
+}
+
+.vfm-topbar{
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: calc(var(--safe-top) + 10px) 14px 30px;
+    display: flex; align-items: center; gap: 10px;
+    z-index: 3;
+    background: linear-gradient(180deg, rgba(0,0,0,.6), transparent);
+}
+.vfm-back{
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.42); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    cursor: pointer; flex-shrink: 0;
+}
+.vfm-back:active{ scale: .93 }
+.vfm-crumb{
+    display: flex; align-items: center; gap: 5px;
+    font-size: 13px; font-weight: 600;
+    color: rgba(255,255,255,.92);
+    text-shadow: 0 1px 4px rgba(0,0,0,.55);
+    min-width: 0;
+}
+.vfm-crumb-pre{ opacity: .65; font-weight: 500; white-space: nowrap }
+.vfm-crumb-name{
+    font-weight: 800;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 55vw;
+}
+
+.vfm-info{
+    position: absolute;
+    top: calc(var(--safe-top) + 68px);
+    left: 14px; right: 70px;
+    display: flex; align-items: center; gap: 10px;
+    z-index: 3;
+}
+.vfm-ava{
+    width: 44px; height: 44px; border-radius: 50%;
+    flex-shrink: 0; overflow: hidden; position: relative;
+    background: linear-gradient(135deg,#ffd60a,#ff375f);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 800;
+    box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+.vfm-ava img{ width: 100%; height: 100%; object-fit: cover }
+.vfm-meta{ flex: 1; min-width: 0 }
+.vfm-name{
+    font-size: 15px; font-weight: 800;
+    display: flex; align-items: center; gap: 4px;
+    text-shadow: 0 1px 4px rgba(0,0,0,.55);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vfm-marquee{
+    margin-top: 3px; height: 15px; overflow: hidden;
+    font-size: 12px; color: rgba(255,255,255,.78);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+}
+.vfm-marquee .post-marquee-track{ color: rgba(255,255,255,.78) }
+.vfm-marquee .mq-sound-name{ color: rgba(255,255,255,.78) }
+.vfm-sub{
+    padding: 7px 14px; border-radius: 100px; border: none;
+    background: var(--red-pink); color: #fff;
+    font-weight: 800; font-size: 13px; flex-shrink: 0;
+    box-shadow: 0 4px 16px rgba(255,55,95,.45);
+    cursor: pointer;
+}
+.vfm-sub.subscribed{ background: rgba(255,255,255,.18) }
+
+.vfm-actions{
+    position: absolute; right: 12px;
+    bottom: calc(var(--nav-height) + var(--safe-bottom) + 130px);
+    display: flex; flex-direction: column; gap: 14px;
+    align-items: center; z-index: 3;
+}
+.vfm-action{
+    width: 50px; height: 50px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(0,0,0,.42); color: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    font-size: 10.5px; font-weight: 700;
+    gap: 1px; cursor: pointer;
+    transition: scale .15s var(--ease-out), background .18s;
+}
+.vfm-action:active{ scale: .9 }
+.vfm-action svg{ width: 22px; height: 22px }
+.vfm-action.liked{ color: var(--red-pink) }
+.vfm-action.reposted{ color: var(--green) }
+
+.vfm-bottom{
+    position: absolute; left: 0; right: 0;
+    bottom: calc(var(--nav-height) + var(--safe-bottom));
+    padding: 12px 16px 22px;
+    z-index: 3;
+    display: flex; flex-direction: column; gap: 10px;
+    background: linear-gradient(0deg, rgba(0,0,0,.7), transparent);
+}
+.vfm-desc{
+    font-size: 14px; line-height: 1.45; color: rgba(255,255,255,.95);
+    max-height: 5.2em; overflow: hidden;
+    text-shadow: 0 1px 6px rgba(0,0,0,.55);
+    white-space: pre-wrap; word-break: break-word;
+}
+
+.vfm-progress{
+    position: absolute; left: 0; right: 0;
+    bottom: calc(var(--nav-height) + var(--safe-bottom));
+    height: 3px; background: rgba(255,255,255,.18);
+    z-index: 4; cursor: pointer;
+    transition: height .18s ease;
+}
+.vfm-progress.dragging, .vfm-progress:hover{ height: 7px }
+.vfm-progress-fill{
+    height: 100%; width: 0;
+    background: #fff;
+    transition: width .08s linear;
+}
+
+.vfm-end{
+    position: absolute; inset: 0; z-index: 5;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 32px; text-align: center;
+    background: rgba(0,0,0,.78);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    animation: fadeIn .3s var(--ease);
+}
+
+/* Lightbox для фото */
+.photo-viewer{
+    position: fixed; inset: 0; z-index: 9500;
+    background: rgba(0,0,0,.94);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity .26s ease;
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.photo-viewer.show{ opacity: 1; pointer-events: auto }
+.photo-viewer.hidden{ display: none }
+.pv-img{
+    max-width: 96vw; max-height: 88vh;
+    border-radius: 18px; object-fit: contain;
+    box-shadow: 0 24px 60px rgba(0,0,0,.6);
+}
+.pv-close{
+    position: absolute;
+    top: calc(var(--safe-top) + 14px); right: 16px;
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.5); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+}
+
+/* ====== Округления шаров в директ-пузырях ====== */
+.direct-bubble img,
+.direct-bubble video{
+    border-radius: 14px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+.direct-bubble audio{
+    border-radius: 12px;
+    background: var(--surface-2);
+    padding: 6px;
+    width: 100%;
+    max-width: 100%;
+}
+.dr-row.mine .direct-bubble audio{
+    background: rgba(0,0,0,.14);
+}
+
+/* ====== Шар-карточка в чате: объём + скругления ====== */
+.sh-card{
+    border-radius: 22px;
+    box-shadow: 0 14px 36px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.12);
+    overflow: hidden;
+    transform: translateZ(0);
+}
+.sh-card.sh-profile,
+.sh-card.sh-text{
+    box-shadow: 0 8px 22px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.5);
+    border-radius: 20px;
+}
+.sh-bg{ border-radius: 22px }
+.sh-go, .sh-pp, .sh-save, .sh-play{
+    box-shadow: 0 4px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.18);
+}
+.sh-ava{ box-shadow: 0 2px 8px rgba(0,0,0,.35) }
+.sh-profile .sh-ava{ box-shadow: 0 6px 18px rgba(0,0,0,.14) }
+/* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
 @media (max-width:767px){

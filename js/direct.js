@@ -1,9 +1,10 @@
 /* ============================================================
-   listatread — direct.js (v4, Telegram-style, final)
+   listatread — direct.js (v5, Telegram-style, финальная)
    — Одна/двойная галочка, онлайн-статус, typing
    — Скелетоны + «Соединение…» в шапке
    — Свой sidebar, темы, стикеры, эмодзи
    — Режим редактирования, pin, контекст-меню
+   — Связь с VFM через window.__ltSetChatTitle
 ============================================================ */
 import { supabase } from './supabase.js'
 
@@ -71,7 +72,6 @@ const CHAT_THEMES = [
     { id:'t13', name:'Классика',  light:true,  bg:'#f2f2f7', own:'#0a84ff', ownText:'#fff', peer:'#ffffff', peerText:'#000' },
     { id:'t14', name:'Терракота', light:true,  bg:'#fef2ee', own:'#ea580c', ownText:'#fff', peer:'#ffffff', peerText:'#1f2937' },
     { id:'t15', name:'Изумруд',   light:false, bg:'#052e2b', own:'#059669', ownText:'#fff', peer:'#0a3d38', peerText:'#fff' },
-
 ]
 const MSG_SIZES = [
     { id:'sm', label:'Мелкий',  fontSize:'13px', lineHeight:'1.35', pad:'7px 10px' },
@@ -110,7 +110,7 @@ function getTheme(){ return CHAT_THEMES.find(t => t.id === (D.chatThemeId || 't1
 function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || MSG_SIZES[1] }
 
 /* ============================================================
-   Инжектируемые оверрайды CSS (для фиксов поверх root.txt)
+   Инжектируемые оверрайды CSS
 ============================================================ */
 ;(function injectCSS(){
     if(document.getElementById('direct-v4-overrides')) return
@@ -124,57 +124,39 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
             pointer-events: auto !important;
         }
         #screen-direct .topbar{
-            position: fixed !important;
-            top: 0;
-            left: 50%;
+            position: fixed !important; top: 0; left: 50%;
             transform: translateX(-50%);
-            width: 100%;
-            max-width: 420px;
+            width: 100%; max-width: 420px;
             padding: calc(env(safe-area-inset-top,0) + 14px) 16px 12px;
             box-sizing: border-box;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between;
             background: rgba(255,255,255,.88);
             backdrop-filter: saturate(180%) blur(20px);
             -webkit-backdrop-filter: saturate(180%) blur(20px);
-            z-index: 100;
-            margin: 0;
+            z-index: 100; margin: 0;
         }
         html[data-theme="dark"] #screen-direct .topbar{ background: rgba(0,0,0,.72) }
         #screen-direct .topbar-title{
-            flex: 1; min-width: 0;
-            text-align: center;
+            flex: 1; min-width: 0; text-align: center;
             font-size: 16px; font-weight: 600; color: var(--text);
             display: flex; align-items: center; justify-content: center;
             gap: 2px; padding: 0 8px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .direct-topbar-right{
-            display: flex; align-items: center; gap: 2px;
-            min-width: 40px; justify-content: flex-end;
-        }
-        .direct-trash-btn{
-            background: transparent; border: none; color: var(--red);
-            cursor: pointer; padding: 8px; display: flex; align-items: center;
-        }
+        .direct-topbar-right{ display:flex; align-items:center; gap:2px; min-width:40px; justify-content:flex-end }
+        .direct-trash-btn{ background:transparent; border:none; color:var(--red); cursor:pointer; padding:8px; display:flex; align-items:center }
         .direct-title-dots{ display:inline-flex; gap:3px; margin-left:4px; vertical-align:middle }
         .direct-title-dots i{
-            width:4px; height:4px; border-radius:50%;
-            background: currentColor; display:inline-block;
-            animation: dbounce 1.2s ease-in-out infinite;
+            width:4px; height:4px; border-radius:50%; background: currentColor;
+            display:inline-block; animation: dbounce 1.2s ease-in-out infinite;
         }
         .direct-title-dots i:nth-child(2){ animation-delay:.15s }
         .direct-title-dots i:nth-child(3){ animation-delay:.3s }
-        @keyframes dbounce{
-            0%,80%,100%{ transform: translateY(0); opacity:.4 }
-            40%{ transform: translateY(-6px); opacity:1 }
-        }
+        @keyframes dbounce{ 0%,80%,100%{ transform:translateY(0); opacity:.4 } 40%{ transform:translateY(-6px); opacity:1 } }
         #screen-direct #direct-body{ padding-top: 68px }
-        /* Кнопка «Добавить новый чат» — своя копия класса, на случай если .new-chat-btn переопределят */
+
         #screen-direct .new-chat-btn{
-            margin: 8px 12px 4px;
-            padding: 14px 16px;
+            margin: 8px 12px 4px; padding: 14px 16px;
             display: flex; align-items: center; gap: 12px;
             background: var(--surface-2); border: none; border-radius: 16px;
             font-family: inherit; font-size: 15px; font-weight: 700;
@@ -185,14 +167,12 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
         #screen-direct .new-chat-btn .nc-icon{
             width: 36px; height: 36px; border-radius: 50%;
             background: var(--blue); color: #fff;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
-        #screen-direct .new-chat-btn .nc-texts{
-            display:flex; flex-direction:column; gap:2px; text-align:left; flex:1;
-        }
+        #screen-direct .new-chat-btn .nc-texts{ display:flex; flex-direction:column; gap:2px; text-align:left; flex:1 }
         #screen-direct .new-chat-btn .nc-title{ font-size:15px; font-weight:700 }
         #screen-direct .new-chat-btn .nc-sub{ font-size:12px; font-weight:500; color:var(--text-secondary) }
+
         /* Скелетоны */
         @keyframes dskel { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
         .dr-skel{ display:flex; gap:12px; align-items:center; padding:12px; border-radius:16px }
@@ -207,8 +187,8 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
             background:linear-gradient(90deg, rgba(120,120,128,.12) 25%, rgba(120,120,128,.22) 50%, rgba(120,120,128,.12) 75%);
             background-size:200% 100%; animation:dskel 1.4s linear infinite;
         }
-        .dr-skel-line.short{width:40%}
-        .dr-skel-line.mid{width:70%}
+        .dr-skel-line.short{width:40%} .dr-skel-line.mid{width:70%}
+
         /* Сайдбар директа */
         .ds-backdrop{
             position:fixed; inset:0; background:rgba(0,0,0,.4);
@@ -222,8 +202,7 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
             z-index:251; transform:translateX(-100%);
             transition:transform .32s cubic-bezier(.32,.72,.24,1);
             display:flex; flex-direction:column;
-            box-shadow:4px 0 32px rgba(0,0,0,.18);
-            will-change:transform;
+            box-shadow:4px 0 32px rgba(0,0,0,.18); will-change:transform;
         }
         .ds-sidebar.open{ transform:translateX(0) }
         .ds-header{
@@ -245,13 +224,11 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
         .ds-scroll{ flex:1; overflow-y:auto; padding:8px 0 24px }
         .ds-section{ padding:4px 0 }
         .ds-section-title{
-            padding:12px 20px 6px;
-            font-size:11px; font-weight:700; letter-spacing:.08em;
-            text-transform:uppercase; color:var(--text-tertiary);
+            padding:12px 20px 6px; font-size:11px; font-weight:700;
+            letter-spacing:.08em; text-transform:uppercase; color:var(--text-tertiary);
         }
         .ds-item{
-            display:flex; align-items:center; gap:14px;
-            padding:12px 20px;
+            display:flex; align-items:center; gap:14px; padding:12px 20px;
             background:transparent; border:none; width:100%;
             font-family:inherit; font-size:15px; font-weight:500;
             color:var(--text); cursor:pointer; text-align:left;
@@ -264,6 +241,7 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
             color:var(--text-secondary); flex-shrink:0;
         }
         .ds-item-chev{ margin-left:auto; color:var(--text-tertiary); font-size:14px; opacity:.6 }
+
         /* Пикеры/шиты для тем */
         .dr-sheet-backdrop{
             position:fixed; inset:0; background:rgba(0,0,0,.5);
@@ -322,6 +300,7 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
         }
         .dr-size-btn.active{ border-color:var(--blue); background:rgba(10,132,255,.08); color:var(--blue) }
         .dr-size-btn small{ display:block; opacity:.65; font-size:11px; margin-top:2px }
+
         /* Панель эмодзи/стикеров */
         .dr-panel{
             max-height:0; overflow:hidden; background:var(--bg);
@@ -371,6 +350,7 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
             margin-top:14px; padding:10px 18px; background:var(--blue); color:#fff;
             border:none; border-radius:12px; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;
         }
+
         /* Компоузер */
         .dr-composer{
             display:flex; gap:6px; align-items:flex-end;
@@ -411,6 +391,7 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
             flex-shrink:0; transition:transform .15s, background .15s;
         }
         .dr-send-btn:active{ transform:scale(.93) }
+
         /* Пузыри */
         .direct-bubble{
             padding: var(--bubble-pad, 8px 12px);
@@ -418,8 +399,7 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
             font-size: var(--bubble-size, 14px);
             line-height: var(--bubble-lh, 1.45);
             word-break: break-word;
-            position: relative;
-            max-width: 100%;
+            position: relative; max-width: 100%;
             box-shadow: 0 1px 2px rgba(0,0,0,.06);
             border-top-left-radius: 6px;
         }
@@ -432,6 +412,77 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
         .direct-bubble-foot .dr-check.read{ color:#5fdfff }
         .dr-sticker{ background:transparent !important; box-shadow:none !important; padding:0 !important; border-radius:0 !important }
         .dr-sticker img{ width:140px; height:140px; object-fit:contain; display:block; filter:drop-shadow(0 4px 12px rgba(0,0,0,.15)) }
+
+        /* ================= ОКРУГЛЕНИЯ + ОБЪЁМ МЕДИА В ЧАТЕ ================= */
+        .direct-bubble > img,
+        .direct-bubble > video,
+        .direct-bubble img.sh-media,
+        .direct-bubble video.sh-media{
+            display:block;
+            width:100%;
+            max-width:340px;
+            border-radius:16px !important;
+            box-shadow:
+                0 8px 22px rgba(0,0,0,.18),
+                0 2px 6px rgba(0,0,0,.10),
+                inset 0 1px 0 rgba(255,255,255,.08);
+            overflow:hidden;
+            transform: translateZ(0);
+            background:#0d0d0d;
+        }
+        .dr-row.mine .direct-bubble > img,
+        .dr-row.mine .direct-bubble > video{
+            box-shadow:
+                0 8px 22px rgba(0,0,0,.28),
+                0 2px 6px rgba(0,0,0,.14),
+                inset 0 1px 0 rgba(255,255,255,.18);
+        }
+        .direct-bubble > audio{
+            display:block;
+            width:100%;
+            max-width:100%;
+            border-radius:14px !important;
+            background: var(--surface-2);
+            padding: 6px;
+            box-shadow: 0 6px 16px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.06);
+        }
+        .dr-row.mine .direct-bubble > audio{
+            background: rgba(0,0,0,.14);
+            box-shadow: 0 6px 16px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.12);
+        }
+
+        /* Карточки-шары (share) в чате */
+        .sh-card{
+            border-radius: 22px !important;
+            overflow: hidden !important;
+            box-shadow:
+                0 14px 36px rgba(0,0,0,.28),
+                0 4px 10px rgba(0,0,0,.15),
+                inset 0 1px 0 rgba(255,255,255,.14) !important;
+            transform: translateZ(0);
+        }
+        .sh-card.sh-profile,
+        .sh-card.sh-text{
+            border-radius: 20px !important;
+            box-shadow:
+                0 8px 22px rgba(0,0,0,.16),
+                0 2px 6px rgba(0,0,0,.08),
+                inset 0 1px 0 rgba(255,255,255,.5) !important;
+        }
+        .sh-card .sh-bg{ border-radius: 22px !important }
+        .sh-card video,
+        .sh-card img.sh-card-media{ border-radius: 22px !important; display:block }
+        .sh-go, .sh-pp, .sh-save, .sh-play{
+            box-shadow:
+                0 6px 18px rgba(0,0,0,.4),
+                inset 0 1px 0 rgba(255,255,255,.2) !important;
+        }
+        .sh-ava{
+            box-shadow: 0 2px 8px rgba(0,0,0,.35);
+            border-radius: 50%;
+        }
+        .sh-profile .sh-ava{ box-shadow: 0 6px 18px rgba(0,0,0,.14) }
+
         /* Профиль в чате (оверрайд) */
         .dr-profile-overlay{
             position:fixed; inset:0; z-index:200; background:var(--bg);
@@ -459,6 +510,7 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
         }
         .dr-prof-name{ font-size:24px; font-weight:800 }
         .dr-prof-username{ font-size:14px; opacity:.9; margin-top:2px }
+
         /* Пины */
         .dr-pinned-bar{
             display:flex; align-items:center; gap:10px; padding:8px 14px;
@@ -490,6 +542,7 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
             background:var(--pin-color, var(--blue)); color:#fff;
             font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; flex-shrink:0;
         }
+
         /* Контекст-меню сообщения */
         .dr-msg-menu{
             position:fixed; z-index:1500; background:var(--bg);
@@ -509,15 +562,41 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
         .dr-msg-menu-item:hover{ background:var(--surface-2) }
         .dr-msg-menu-item.danger{ color:var(--red) }
         .dr-msg-menu-item svg{ flex-shrink:0; opacity:.9 }
+
+        /* Реакции */
+        .dr-row{position:relative}
+        .dr-reacts{display:flex; flex-wrap:wrap; gap:4px; margin-top:5px}
+        .dr-react-chip{
+            display:inline-flex; align-items:center; gap:3px;
+            padding:2px 7px; border-radius:100px; font-size:12px;
+            background:rgba(120,120,128,.25); border:1px solid transparent; color:inherit;
+            cursor:pointer;
+        }
+        .dr-react-chip.mine{ border-color:var(--blue); background:rgba(10,132,255,.22) }
+        .dr-react-bar{
+            display:grid; grid-template-columns:repeat(5,1fr); gap:2px;
+            padding:8px 8px 6px; border-bottom:1px solid var(--border);
+        }
+        .dr-react-bar button{ font-size:24px; background:transparent; border:none; border-radius:12px; padding:6px 0; cursor:pointer }
+        .dr-react-bar button:hover{ background:var(--surface-2) }
+        .dr-react-burst{
+            position:absolute; left:50%; top:30%; font-size:44px;
+            pointer-events:none; z-index:5;
+            animation: drBurst 1s ease-out forwards;
+        }
+        @keyframes drBurst{
+            0% { opacity:0; transform: translate(-50%, 0) scale(.5) }
+            20% { opacity:1; transform: translate(-50%, -20px) scale(1.2) }
+            100% { opacity:0; transform: translate(-50%, -120px) scale(.9) }
+        }
+
         /* Дополнительно: dr-row анимации */
         @keyframes drMsgIn{ from{ opacity:0; transform: translateY(8px) scale(.96) } to{ opacity:1; transform: translateY(0) scale(1) } }
         @keyframes drMsgInMine{ from{ opacity:0; transform: translateY(8px) translateX(16px) scale(.96) } to{ opacity:1; transform: translateY(0) translateX(0) scale(1) } }
         .dr-row{ animation: drMsgIn .3s cubic-bezier(.34,1.4,.64,1) both }
         .dr-row.mine{ animation: drMsgInMine .3s cubic-bezier(.34,1.4,.64,1) both }
         .dr-row.pressing .direct-bubble{ transform: scale(.96); transition: transform .12s var(--ease) }
-        .dr-row.highlight .direct-bubble{
-            animation: drHighlight 1.8s var(--ease);
-        }
+        .dr-row.highlight .direct-bubble{ animation: drHighlight 1.8s var(--ease) }
         @keyframes drHighlight{
             0%,100% { box-shadow: 0 1px 2px rgba(0,0,0,.06) }
             20%,80% { box-shadow: 0 0 0 3px var(--blue), 0 4px 16px rgba(10,132,255,.35) }
@@ -525,6 +604,7 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
     `
     document.head.appendChild(st)
 })()
+
 const REACTIONS = ['❤️','👍','👎','🔥','😂','😮','😢','🙏','👏','🎉','🤔','😍','💯','😡','🤝']
 const shareOf = c => { const m = (c || '').match(/^\[share:(.+)\]$/); if(!m) return null; try { return JSON.parse(decodeURIComponent(m[1])) } catch { return null } }
 const contentLabel = c => c?.startsWith('[sticker:') ? 'Стикер' : c?.startsWith('[share:') ? 'Вложение' : (c || '')
@@ -535,7 +615,7 @@ function renderShareCard(d){
     const go = `<button class="sh-go" data-sh-go aria-label="Перейти">${I.arrowUp}</button>`
     const authorLine = `<div class="sh-line"><span>${esc(d.uname || 'user')}</span><div class="sh-ava">${sAva(d.uava, d.uname)}</div></div>`
     const chLine = d.ch ? `<div class="sh-line"><span>${esc(d.ch)}</span><div class="sh-ava">${sAva(d.chava, d.ch)}</div></div>` : ''
-    const at = `data-k="${k}" data-pid="${esc(d.pid || '')}" data-src="${esc(d.src || '')}" data-uid="${esc(d.uid || '')}" data-title="${esc(d.title || '')}"`
+    const at = `data-k="${k}" data-pid="${esc(d.pid || '')}" data-src="${esc(d.src || '')}" data-uid="${esc(d.uid || '')}" data-title="${esc(d.title || '')}" data-src-source="direct"`
     if(k === 'video') return `<div class="sh-card sh-video" ${at}>
         <video src="${esc(d.src)}#t=0.1" preload="metadata" muted playsinline></video><div class="sh-shade"></div>
         <button class="sh-play" aria-label="Смотреть">${I.playS}</button></div>`
@@ -585,7 +665,10 @@ function leaveChat(){
     if(D.refreshTimer){ clearInterval(D.refreshTimer); D.refreshTimer = null }
     unsubscribeTyping()
     document.body.classList.remove('in-direct')
+    // сброс заголовка VFM
+    try { window.__ltSetChatTitle?.('') } catch {}
 }
+
 /* ============================================================
    ЭКРАН ДИРЕКТА
 ============================================================ */
@@ -865,7 +948,6 @@ function renderChats(){
         const selected = D.selectedChats.has(c.peerId)
         const pinned = !!pref.pinned
 
-        // Еле заметная заливка для закреплённых (цвет берётся из --pin-color в настройках оформления)
         const pinnedStyle = pinned
             ? `style="background: color-mix(in srgb, ${pinColor} 14%, transparent)"`
             : ''
@@ -1004,7 +1086,6 @@ function ensureSidebar(){
     sb.querySelectorAll('[data-ds]').forEach(btn => btn.addEventListener('click', async () => {
         const k = btn.dataset.ds
         closeDirectSidebar()
-        // Закрываем директ перед переходом
         const directScreen = $('screen-direct')
         if(directScreen) directScreen.classList.remove('active')
         const room = $('direct-room'); if(room) room.classList.add('hidden')
@@ -1153,6 +1234,10 @@ export async function openDirectChat(peerId, peerProfile = null){
         peerProfile = { ...peerProfile, ...(data||{}) }
     }
 
+    // ── Синхронизация с VFM ──
+    const peerName = peerProfile?.full_name || peerProfile?.username || 'user'
+    try { window.__ltSetChatTitle?.(peerName) } catch {}
+
     const peerIsAdmin = !!peerProfile.is_admin
     let canWrite = D.isAdmin || peerIsAdmin
     if(!canWrite){
@@ -1290,6 +1375,7 @@ function closeChatRoom(){
         if($('screen-direct')?.classList.contains('active') && !D.currentChat) loadDirectChats(true)
     }, 5000)
     loadDirectChats()
+    try { window.__ltSetChatTitle?.('') } catch {}
 }
 
 async function sendCurrentMessage(){
@@ -1434,9 +1520,9 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
 
     if(m.media_url){
         const clean = m.media_url.split('?')[0].toLowerCase()
-        if(/\.(mp4|webm|mov)$/.test(clean)) body = `<video src="${m.media_url}" controls playsinline style="max-width:100%;border-radius:12px;margin-top:4px"></video>`
-        else if(/\.(mp3|wav|m4a|ogg)$/.test(clean)) body = `<audio src="${m.media_url}" controls style="max-width:100%;margin-top:4px"></audio>`
-        else body = `<img src="${m.media_url}" style="max-width:100%;border-radius:12px;margin-top:4px">`
+        if(/\.(mp4|webm|mov)$/.test(clean)) body = `<video src="${m.media_url}" controls playsinline style="max-width:100%;"></video>`
+        else if(/\.(mp3|wav|m4a|ogg)$/.test(clean)) body = `<audio src="${m.media_url}" controls></audio>`
+        else body = `<img src="${m.media_url}" style="max-width:100%;">`
     }
     if(shareData){
         isSticker = true; isCard = true
@@ -1462,10 +1548,6 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
     const avaSrc = mine ? myProf?.avatar_url : peerProf?.avatar_url
     const avaName = mine ? (myProf?.full_name || myProf?.username || 'me') : (peerProf?.full_name || peerProf?.username || 'user')
 
-    // Цвет времени и пустой галочки:
-    // - свои пузыри всегда цветные (синие) → светло-серый
-    // - чужие в светлой теме (белый пузырь) → тёмно-серый
-    // - чужие в тёмной теме (тёмный пузырь) → светло-серый
     const footColor = mine
         ? 'rgba(255,255,255,.75)'
         : (theme.light ? 'rgba(0,0,0,.4)' : 'rgba(255,255,255,.55)')
@@ -1716,7 +1798,7 @@ function renderPanelBody(){
 }
 
 /* ============================================================
-   СТИКЕРЫ — с сохранением в БД
+   СТИКЕРЫ
 ============================================================ */
 D.ownPacks = []
 D.savedPacks = []

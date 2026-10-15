@@ -4,7 +4,8 @@ import { supabase } from './supabase.js'
 const DAY = 864e5
 const K_PROF = 'lt_rec_profile_v2'
 const K_SEEN = 'lt_rec_seen_v2'
-const SERVER_TTL = 10 * 60 * 1000
+const SERVER_TTL = 30 * 60 * 1000          // 30 минут — редкие перезапросы
+const FEED_CACHE_TTL = 5 * 60 * 1000       // 5 минут — лента живёт
 const STOP = new Set(('это как что так для или при про его она они были быть есть нет еще ещё уже тоже очень только после перед между чтобы тебя меня мне вас вам себя этот этой этих all the and for you with that this have from').split(' '))
 
 const ls = {
@@ -13,6 +14,15 @@ const ls = {
 }
 
 let _user = null, _prof = null, _seen = null, _server = null, _serverAt = 0, _saveT = null
+
+/* ============================================================
+   КЕШ ЛЕНТЫ — чтобы не дёргать сервер каждый заход
+============================================================ */
+let _feedCache = { userId: null, at: 0, posts: null }
+
+export function invalidateFeedCache(){
+    _feedCache = { userId: null, at: 0, posts: null }
+}
 
 /* ============================================================
    ЛОКАЛЬНЫЙ ПРОФИЛЬ ИНТЕРЕСОВ (a=авторы, c=каналы, t=типы, w=слова)
@@ -155,26 +165,34 @@ async function fetchCandidates(srv){
     const run = p => p.then(r => r.data || []).catch(() => [])
     const weekAgo = new Date(Date.now() - 7 * DAY).toISOString()
     const jobs = [
-        run(base().order('created_at', { ascending: false }).limit(250)),
-        run(base().lt('created_at', weekAgo).order('created_at', { ascending: false }).limit(100))
+        run(base().order('created_at', { ascending: false }).limit(180)),
+        run(base().lt('created_at', weekAgo).order('created_at', { ascending: false }).limit(80))
     ]
-    if(subs.length) jobs.push(run(base().in('channel_id', subs).order('created_at', { ascending: false }).limit(150)))
-    if(fol.length)  jobs.push(run(base().in('author_id', fol).order('created_at', { ascending: false }).limit(100)))
-    if(favCh.length) jobs.push(run(base().in('channel_id', favCh).order('created_at', { ascending: false }).limit(100)))
+    if(subs.length) jobs.push(run(base().in('channel_id', subs).order('created_at', { ascending: false }).limit(120)))
+    if(fol.length)  jobs.push(run(base().in('author_id', fol).order('created_at', { ascending: false }).limit(80)))
+    if(favCh.length) jobs.push(run(base().in('channel_id', favCh).order('created_at', { ascending: false }).limit(80)))
     const lists = await Promise.all(jobs)
     const map = new Map()
     lists.flat().forEach(p => { if(p.channel_id && !map.has(p.id)) map.set(p.id, p) })
     return [...map.values()]
 }
 
+/* ============================================================
+   СТАТИСТИКА — быстрый батч по 200 id, 3 параллельных запроса
+============================================================ */
 async function fetchStats(ids){
     const stats = {}; ids.forEach(id => stats[id] = { likes: 0, comments: 0, reposts: 0 })
-    const chunks = []; for(let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100))
+    if(!ids.length) return stats
+    const chunks = []; for(let i = 0; i < ids.length; i += 200) chunks.push(ids.slice(i, i + 200))
     const jobs = []
-    chunks.forEach(ch => ['likes', 'comments', 'reposts'].forEach(t =>
-        jobs.push(supabase.from(t).select('post_id').in('post_id', ch)
-            .then(r => (r.data || []).forEach(x => { if(stats[x.post_id]) stats[x.post_id][t]++ }))
-            .catch(() => {}))))
+    chunks.forEach(ch => {
+        jobs.push(supabase.from('likes').select('post_id').in('post_id', ch)
+            .then(r => (r.data || []).forEach(x => { if(stats[x.post_id]) stats[x.post_id].likes++ })).catch(() => {}))
+        jobs.push(supabase.from('comments').select('post_id').in('post_id', ch)
+            .then(r => (r.data || []).forEach(x => { if(stats[x.post_id]) stats[x.post_id].comments++ })).catch(() => {}))
+        jobs.push(supabase.from('reposts').select('post_id').in('post_id', ch)
+            .then(r => (r.data || []).forEach(x => { if(stats[x.post_id]) stats[x.post_id].reposts++ })).catch(() => {}))
+    })
     await Promise.all(jobs)
     return stats
 }
@@ -264,6 +282,11 @@ function assemble(items, cold){
    ГЛАВНАЯ ФУНКЦИЯ
 ============================================================ */
 export async function loadPosts(userId){
+    // кеш — если свежая и тот же пользователь, отдаём без запросов
+    if(_feedCache.userId === userId && (Date.now() - _feedCache.at) < FEED_CACHE_TTL && _feedCache.posts){
+        return _feedCache.posts
+    }
+
     ensure(userId || 'anon')
     const emptySrv = { a: {}, c: {}, t: {}, w: {}, followed: new Set(), subs: new Set(), n: 0 }
     const [srv, ex] = await Promise.all([
@@ -272,7 +295,7 @@ export async function loadPosts(userId){
     ])
     let cands = await fetchCandidates(srv)
     cands = cands.filter(p => !ex.channels.has(p.channel_id) && !ex.authors.has(p.author_id) && !(_seen[p.id] < 0))
-    if(!cands.length) return []
+    if(!cands.length){ _feedCache = { userId, at: Date.now(), posts: [] }; return [] }
 
     const stats = await fetchStats(cands.map(p => p.id))
     const vels = cands.map(p => {
@@ -291,7 +314,9 @@ export async function loadPosts(userId){
         return { ...p, _score: r.score, _vel: r.vel, _aff: r.aff, _age: r.age }
     })
     const signalMass = Object.values(_prof.a).reduce((s, v) => s + Math.abs(v), 0) + srv.n
-    return assemble(scored, signalMass < 6)
+    const result = assemble(scored, signalMass < 6)
+    _feedCache = { userId, at: Date.now(), posts: result }
+    return result
 }
 
 /* ============================================================
@@ -303,5 +328,6 @@ export async function createPost(content){
     const { data, error } = await supabase.from('posts').insert({ content, author_id: user.id }).select().single()
     if(error) throw error
     invalidateProfileCache()
+    invalidateFeedCache()
     return data
 }
