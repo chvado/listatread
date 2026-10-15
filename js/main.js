@@ -3100,9 +3100,84 @@ const GRADIENTS = [
     ['#5e5ce6','#0a84ff','#30d158'],['#ff453a','#ff9f0a','#ffd60a'],['#26a5e4','#5e5ce6','#bf5af2'],['#a56a3a','#ff9f0a','#ffd60a']
 ]
 const FULL_GRADIENTS = [
-    ['#ff9f0a','#ff375f','#bf5af2'],['#30d158','#0a84ff','#bf5af2'],['#0a84ff','#bf5af2','#ff375f'],['#ff375f','#ffd60a','#30d158'],
-    ['#5e5ce6','#0a84ff','#30d158'],['#ff453a','#ff9f0a','#ffd60a'],['#26a5e4','#5e5ce6','#bf5af2'],['#a56a3a','#ff9f0a','#ffd60a'],
-    ['#30d158','#ffd60a','#ff9f0a'],['#bf5af2','#ff375f','#0a84ff']
+    // === Оригинальные ===
+    ['#ff9f0a','#ff375f','#bf5af2'],
+    ['#30d158','#0a84ff','#bf5af2'],
+    ['#0a84ff','#bf5af2','#ff375f'],
+    ['#ff375f','#ffd60a','#30d158'],
+    ['#5e5ce6','#0a84ff','#30d158'],
+    ['#ff453a','#ff9f0a','#ffd60a'],
+    ['#26a5e4','#5e5ce6','#bf5af2'],
+    ['#a56a3a','#ff9f0a','#ffd60a'],
+    ['#30d158','#ffd60a','#ff9f0a'],
+    ['#bf5af2','#ff375f','#0a84ff'],
+
+    // === Неон / synthwave ===
+    ['#ff00cc','#333399','#00e5ff'],
+    ['#ff2d95','#7f00ff','#00d4ff'],
+    ['#ff0099','#493240','#f5f7fa'],
+    ['#8a2be2','#ff1493','#00ffff'],
+    ['#ff006e','#8338ec','#3a86ff'],
+    ['#f700ff','#00d9ff','#7f00ff'],
+
+    // === Закат / тёплые ===
+    ['#ff512f','#f09819','#ffd60a'],
+    ['#ff5f6d','#ffc371','#ffd60a'],
+    ['#fc4a1a','#f7b733','#ffd60a'],
+    ['#e96443','#904e95','#ff9f0a'],
+    ['#f83600','#f9d423','#ff375f'],
+    ['#ff6a00','#ee0979','#bf5af2'],
+
+    // === Пастель / нежные ===
+    ['#a1c4fd','#c2e9fb','#d4a1fd'],
+    ['#ffecd2','#fcb69f','#ff9a9e'],
+    ['#a8edea','#fed6e3','#bde4ff'],
+    ['#fbc2eb','#a6c1ee','#c2e9fb'],
+    ['#f6d365','#fda085','#fbc2eb'],
+
+    // === Холодные / киберпанк ===
+    ['#00c6ff','#0072ff','#5e5ce6'],
+    ['#00f260','#0575e6','#0a84ff'],
+    ['#43cea2','#185a9d','#26a5e4'],
+    ['#1fa2ff','#12d8fa','#a6ffcb'],
+    ['#00b4db','#0083b0','#0a84ff'],
+
+    // === Природа / зелёные ===
+    ['#134e5e','#71b280','#30d158'],
+    ['#56ab2f','#a8e063','#ffd60a'],
+    ['#11998e','#38ef7d','#bf5af2'],
+    ['#00b09b','#96c93d','#0a84ff'],
+
+    // === Огонь ===
+    ['#f12711','#f5af19','#ffd60a'],
+    ['#cb2d3e','#ef473a','#ff453a'],
+    ['#870000','#190a05','#ff375f'],
+    ['#ff512f','#dd2476','#bf5af2'],
+
+    // === Космос / фиолетовые ===
+    ['#2b1055','#7597de','#bf5af2'],
+    ['#41295a','#2f0743','#ff375f'],
+    ['#4a00e0','#8e2de2','#26a5e4'],
+    ['#20002c','#cbb4d4','#bf5af2'],
+    ['#360033','#0b8793','#5e5ce6'],
+
+    // === Яркие моно ===
+    ['#00ff87','#60efff','#0a84ff'],
+    ['#ff0099','#ff6b35','#ffd60a'],
+    ['#08ffc8','#00a3ff','#6a00ff'],
+    ['#ff8a00','#e52e71','#0a84ff'],
+
+    // === Тёмные с акцентом ===
+    ['#0f0c29','#302b63','#24243e'],
+    ['#000428','#004e92','#26a5e4'],
+    ['#1a2a6c','#b21f1f','#fdbb2d'],
+    ['#232526','#414345','#ff375f'],
+
+    // === listatread фирменные ===
+    ['#ff375f','#bf5af2','#0a84ff'],
+    ['#ffd60a','#ff9f0a','#ff375f'],
+    ['#30d158','#ffd60a','#ff9f0a'],
+    ['#0a84ff','#5e5ce6','#bf5af2'],
 ]
 function applyRandomQrGradient(){
     const g = GRADIENTS[Math.floor(Math.random() * GRADIENTS.length)]
@@ -4739,7 +4814,17 @@ document.getElementById('mini-open')?.addEventListener('click', e => { if(e.targ
 function applyRandomFullBg(){
     const bg = document.getElementById('full-bg'); if(!bg) return
     const g = FULL_GRADIENTS[Math.floor(Math.random() * FULL_GRADIENTS.length)]
-    bg.style.background = `radial-gradient(circle at 20% 20%, ${g[0]} 0%, transparent 45%), radial-gradient(circle at 80% 30%, ${g[1]} 0%, transparent 45%), radial-gradient(circle at 50% 85%, ${g[2]} 0%, transparent 55%)`
+    const x1 = 10 + Math.random() * 20   // 10–30%
+    const y1 = 10 + Math.random() * 20
+    const x2 = 70 + Math.random() * 20   // 70–90%
+    const y2 = 20 + Math.random() * 20
+    const x3 = 30 + Math.random() * 40   // 30–70%
+    const y3 = 75 + Math.random() * 20
+    bg.style.background = `
+        radial-gradient(circle at ${x1}% ${y1}%, ${g[0]} 0%, transparent 45%),
+        radial-gradient(circle at ${x2}% ${y2}%, ${g[1]} 0%, transparent 45%),
+        radial-gradient(circle at ${x3}% ${y3}%, ${g[2]} 0%, transparent 55%)
+    `
 }
 function openFullPlayer(){
     const fp = document.getElementById('full-player'); if(!fp) return
