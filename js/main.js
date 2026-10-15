@@ -4948,52 +4948,45 @@ function initTrackObserver(){
 }
 
 /* ============================================================
-   VIDEO FEED MODE (VFM) — плавный полноэкранный просмотр
-   - плавный zoom из карточки в фуллскрин
-   - вертикальный свайп как в тиктоке
-   - бесконечная подгрузка из главной ленты
-   - выход → возврат к ПЕРВОЙ нажатой карточке
+   VIDEO FEED MODE (VFM) — treadvisor
 ============================================================ */
 const VFM = {
-    active: false,
-    list: [],              // [{ id, src, card }]
-    index: 0,
-    source: 'home',        // home | profile | channel | live | direct
-    label: 'Рекомендации',
-    originId: null,
-    originCard: null,
-    el: null,
-    video: null,
-    loadingMore: false,
-    endedShown: false,
-    _drag: null,
+    active:false,
+    list:[],
+    index:0,
+    source:'home',
+    label:'Рекомендации',
+    originId:null,
+    originCard:null,
+    el:null,
+    video:null,
+    loadingMore:false,
+    endedShown:false,
+    autoplay:false,          // по умолчанию автоперелистывание ВЫКЛ
+    cleanScreen:false,
+    _drag:null,
 }
 
 function vfmFeedLabel(){
-    const tabs = {
-        recommended:'Рекомендации', lista:'Tredless', subs:"Deeptread's", my:'Friendly', video:'Видео'
-    }
     switch(VFM.source){
-        case 'home':    return tabs[state.feedTab] || 'Рекомендации'
-        case 'profile': {
-            const map = { posts:'Посты', reposts:'Репосты', liked:'Понравилось', tracks:'Треки', channels:'Каналы' }
-            const t = map[state.profileTab] || 'Посты'
-            const who = state.viewingOwnProfile ? 'Вы' : ('@' + (state.currentProfile?.username || 'user'))
-            return `${who} · ${t}`
-        }
-        case 'channel': return 'Канал · ' + (document.getElementById('ch-ig-name')?.textContent || '')
-        case 'live':    return 'Live · ' + (state.chatTitle || 'Global')
-        case 'direct':  return 'Чат с ' + (window.__ltChatTitle || state.chatTitle || 'собеседником')
-        default:        return 'Лента'
+        case 'home':    return 'Рекомендации';
+        case 'profile': return 'Профиль';
+        case 'channel': return 'Канал';
+        case 'live':    return 'Live';
+        case 'direct':  return 'Сообщения';
+        case 'single':  return 'Видео';
+        default:        return 'Лента';
     }
 }
 
 function vfmCollectFrom(card){
-    const box = card.closest('#feed-list, #live-feed, #ch-posts-list, #profile-content, #direct-messages')
-        || document.querySelector('#feed-list')
-    if(!box) return null
-    const cards = [...box.querySelectorAll('.feed-post.feed-post-video[data-video-src]')]
-    return cards.map(c => ({ id: c.dataset.pid, src: c.dataset.videoSrc, card: c }))
+    if(card.dataset.vfmSingle === '1'){
+        return [{ id: card.dataset.pid, src: card.dataset.videoSrc, card }];
+    }
+    const box = card.closest('#feed-list, #live-feed, #ch-posts-list, #profile-content, #direct-messages');
+    if(!box) return [{ id: card.dataset.pid, src: card.dataset.videoSrc, card }];
+    const cards = [...box.querySelectorAll('.feed-post.feed-post-video[data-video-src]')];
+    return cards.map(c => ({ id: c.dataset.pid, src: c.dataset.videoSrc, card: c }));
 }
 
 function vfmBuildOverlay(){
@@ -5009,11 +5002,10 @@ function vfmBuildOverlay(){
         <button class="vfm-back" id="vfm-back" aria-label="Назад">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
         </button>
-        <div class="vfm-crumb">
-          <span class="vfm-crumb-pre">Вы смотрите ленту</span>
-          <span class="vfm-crumb-dot">·</span>
-          <span class="vfm-crumb-name" id="vfm-crumb-name">Рекомендации</span>
-        </div>
+        <div class="vfm-brand">treadvisor</div>
+        <button class="vfm-more" id="vfm-more" aria-label="Действия">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+        </button>
       </div>
 
       <div class="vfm-info">
@@ -5022,45 +5014,62 @@ function vfmBuildOverlay(){
           <div class="vfm-name" id="vfm-name">user</div>
           <div class="vfm-marquee" id="vfm-marquee"></div>
         </div>
-        <button class="vfm-sub" id="vfm-sub" type="button">+</button>
-      </div>
-
-      <div class="vfm-actions" id="vfm-actions">
-        <button class="vfm-action" data-vfm="like" aria-label="Нравится">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          <span data-vfm-count="like">0</span>
-        </button>
-        <button class="vfm-action" data-vfm="comment" aria-label="Комментарии">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span data-vfm-count="comment">0</span>
-        </button>
-        <button class="vfm-action" data-vfm="repost" aria-label="Репост">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-          <span data-vfm-count="repost">0</span>
-        </button>
-        <button class="vfm-action" data-vfm="share" aria-label="Поделиться">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        <button class="vfm-sub" id="vfm-sub" type="button">
+          <span class="vfm-sub-text">Подписаться</span>
+          <span class="vfm-sub-plus">+</span>
         </button>
       </div>
 
       <div class="vfm-bottom">
-        <div class="vfm-desc" id="vfm-desc"></div>
+        <div class="vfm-actions-inline" id="vfm-actions">
+          <button class="vfm-act" data-vfm="like" aria-label="Нравится">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span class="vfm-act-count" data-vfm-count="like">0</span>
+          </button>
+          <button class="vfm-act" data-vfm="comment" aria-label="Комментарии">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="vfm-act-count" data-vfm-count="comment">0</span>
+          </button>
+          <button class="vfm-act" data-vfm="repost" aria-label="Репост">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            <span class="vfm-act-count" data-vfm-count="repost">0</span>
+          </button>
+          <button class="vfm-act" data-vfm="share" aria-label="Поделиться">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+          </button>
+        </div>
+
+        <div class="vfm-desc-row">
+          <div class="vfm-desc-wrap">
+            <div class="vfm-desc" id="vfm-desc"></div>
+            <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
+          </div>
+          <div class="vfm-sound-disc" id="vfm-sound-disc" title="Звук">
+            <div class="vfm-sound-disc-inner" id="vfm-sound-ava">♪</div>
+            <div class="vfm-sound-dot"></div>
+          </div>
+        </div>
       </div>
 
       <div class="vfm-progress" id="vfm-progress"><div class="vfm-progress-fill" id="vfm-progress-fill"></div></div>
+
+      <div class="vfm-pause-overlay" id="vfm-pause-overlay">
+        <svg viewBox="0 0 24 24" width="60" height="60" fill="#fff"><rect x="6" y="4" width="4" height="16" rx="1.6"/><rect x="14" y="4" width="4" height="16" rx="1.6"/></svg>
+      </div>
     `
     document.body.appendChild(el)
-
     VFM.el = el
     VFM.video = el.querySelector('.vfm-video')
 
-    // Кнопки
     el.querySelector('#vfm-back').addEventListener('click', () => closeVideoFeed())
+
+    el.querySelector('#vfm-more').addEventListener('click', () => openVfmMoreMenu())
+
     el.querySelector('#vfm-sub').addEventListener('click', async e => {
         e.stopPropagation()
-        const item = VFM.list[VFM.index]; if(!item) return
+        const item = VFM.list[VFM.index]; if(!item || !item.card) return
         const btn = item.card.querySelector('.feed-sub-btn')
-        if(btn){ btn.click(); setTimeout(syncVfmMeta, 200) }
+        if(btn){ btn.click(); setTimeout(syncVfmMeta, 220) }
     })
 
     el.querySelectorAll('[data-vfm]').forEach(b => b.addEventListener('click', async e => {
@@ -5072,11 +5081,12 @@ function vfmBuildOverlay(){
         if(k === 'comment') openCommentsSheet(pid)
         if(k === 'repost'){ await toggleRepostGlobal(pid); syncVfmMeta() }
         if(k === 'share'){
-            openShareSheet({ type:'post', postId: pid, src: item.src, title: item.card.querySelector('.feed-post-content')?.textContent || '' })
+            const content = item.card?.querySelector('.feed-post-content')?.textContent || ''
+            openShareSheet({ type:'post', postId: pid, src: item.src, title: content })
         }
     }))
 
-    // Прогресс-бар с перемоткой
+    // прогресс-бар
     const bar = el.querySelector('#vfm-progress')
     const fill = el.querySelector('#vfm-progress-fill')
     const setSeek = clientX => {
@@ -5087,24 +5097,146 @@ function vfmBuildOverlay(){
     let dragging = false
     bar.addEventListener('pointerdown', e => { e.stopPropagation(); dragging = true; bar.classList.add('dragging'); setSeek(e.clientX); bar.setPointerCapture(e.pointerId) })
     bar.addEventListener('pointermove', e => { if(dragging){ e.stopPropagation(); setSeek(e.clientX) } })
-    bar.addEventListener('pointerup', e => { e.stopPropagation(); dragging = false; bar.classList.remove('dragging') })
+    bar.addEventListener('pointerup',   e => { e.stopPropagation(); dragging = false; bar.classList.remove('dragging') })
 
     VFM.video.addEventListener('timeupdate', () => {
         if(!VFM.video.duration) return
         fill.style.width = (VFM.video.currentTime / VFM.video.duration * 100) + '%'
     })
-    VFM.video.addEventListener('ended', () => vfmNext())
-    VFM.video.addEventListener('click', e => { e.stopPropagation(); if(VFM.video.paused) VFM.video.play().catch(()=>{}) ; else VFM.video.pause() })
 
-    // Свайпы
+    // клик по видео: пауза / play + анимированный оверлей
+    const pauseOverlay = el.querySelector('#vfm-pause-overlay')
+    const showPauseOverlay = () => { pauseOverlay.classList.add('show') }
+    const hidePauseOverlay = () => { pauseOverlay.classList.remove('show') }
+
+    VFM.video.addEventListener('click', e => {
+        e.stopPropagation()
+        if(VFM.video.paused){
+            VFM.video.play().catch(()=>{})
+            hidePauseOverlay()
+        } else {
+            VFM.video.pause()
+            showPauseOverlay()
+        }
+    })
+
+    VFM.video.addEventListener('play',  () => hidePauseOverlay())
+    VFM.video.addEventListener('pause', () => { if(!VFM.video.ended && !VFM.cleanScreen) showPauseOverlay() })
+
+    // завершение видео
+    VFM.video.addEventListener('ended', () => {
+        if(VFM.autoplay){ vfmNext(); return }
+        // без автопролистывания — крутим с начала
+        try { VFM.video.currentTime = 0; VFM.video.play().catch(()=>{}) } catch {}
+    })
+
+    // звуковой диск — пока заглушка
+    el.querySelector('#vfm-sound-disc').addEventListener('click', e => {
+        e.stopPropagation()
+        // TODO: отдельный экран звука
+    })
+
     initVfmSwipe(el)
     return el
+}
+
+function openVfmMoreMenu(){
+    const item = VFM.list[VFM.index]; if(!item) return
+    const card = item.card
+    const pid = item.id
+    const authorId = card?.querySelector('.feed-post-avatar')?.dataset.uid || null
+    const authorUname = card?.querySelector('.feed-post-name')?.textContent?.trim()?.split(/\s+/)[0] || 'user'
+    const isMine = !!(state.currentUser && authorId === state.currentUser.id)
+    const isAdmin = ADMIN_STATE.isAdmin
+
+    const items = []
+
+    if(card){
+        items.push({ label:'Неинтересно', icon:ICONS.thumbDown, onClick: () => { hidePostLocally(pid); closeVideoFeed() } })
+        items.push({ label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => {
+                const media = item.src
+                const text = card.querySelector('.feed-post-content')?.textContent || ''
+                openReportModal({
+                    targetType: 'video',
+                    targetId: pid,
+                    authorId,
+                    author: { username: authorUname, full_name: authorUname },
+                    media, text
+                })
+            } })
+    }
+
+    items.push({
+        label: VFM.cleanScreen ? 'Выйти из чистого экрана' : 'Чистый экран',
+        icon: ICONS.eyeOff || ICONS.heart,
+        onClick: () => toggleCleanScreen()
+    })
+    items.push({
+        label: 'Автоперелистывание: ' + (VFM.autoplay ? 'Вкл' : 'Выкл'),
+        icon: ICONS.repost,
+        onClick: () => {
+            VFM.autoplay = !VFM.autoplay
+            showToast('info', VFM.autoplay ? 'Автоперелистывание включено' : 'Автоперелистывание выключено', { icon:'🎬' })
+        }
+    })
+    items.push({ label:'Скорость 0.5×', onClick: () => { VFM.video.playbackRate = .5 } })
+    items.push({ label:'Скорость 1×',   onClick: () => { VFM.video.playbackRate = 1 } })
+    items.push({ label:'Скорость 1.5×', onClick: () => { VFM.video.playbackRate = 1.5 } })
+    items.push({ label:'Скорость 2×',   onClick: () => { VFM.video.playbackRate = 2 } })
+
+    if(item.card){
+        items.push({ label:'Полноэкранный режим', icon:ICONS.fullscreen, onClick: () => { /* уже fullscreen */ } })
+        items.push({ label:'Поделиться', icon:ICONS.share, onClick: () => {
+                const content = card.querySelector('.feed-post-content')?.textContent || ''
+                openShareSheet({ type:'post', postId: pid, src: item.src, title: content })
+            } })
+    }
+
+    if(isMine || isAdmin){
+        items.push({
+            label: isAdmin && !isMine ? 'Удалить (админ)' : 'Удалить',
+            icon: ICONS.trash, danger:true,
+            onClick: async () => {
+                if(!confirm('Удалить видео?')) return
+                await supabase.from('posts').delete().eq('id', pid)
+                showToast('success','Удалено', { icon:'✓' })
+                // убрать из списка VFM
+                VFM.list.splice(VFM.index, 1)
+                if(!VFM.list.length){ closeVideoFeed(); return }
+                if(VFM.index >= VFM.list.length) VFM.index = VFM.list.length - 1
+                renderVfmSlide()
+            }
+        })
+    }
+
+    showActionSheet('treadvisor', items)
+}
+
+function toggleCleanScreen(){
+    VFM.cleanScreen = !VFM.cleanScreen
+    const el = VFM.el; if(!el) return
+    const nodes = el.querySelectorAll('.vfm-topbar, .vfm-info, .vfm-bottom, .vfm-progress, .vfm-pause-overlay')
+    nodes.forEach(n => {
+        n.style.transition = 'opacity .3s ease'
+        n.style.opacity = VFM.cleanScreen ? '0' : '1'
+        n.style.pointerEvents = VFM.cleanScreen ? 'none' : ''
+    })
+    showToast('info', VFM.cleanScreen ? 'Чистый экран' : 'Обычный режим', { icon:'🎬' })
+    // выходим из чистого экрана по тапу
+    if(VFM.cleanScreen){
+        const exit = e => {
+            e.stopPropagation()
+            toggleCleanScreen()
+            el.removeEventListener('click', exit)
+        }
+        setTimeout(() => el.addEventListener('click', exit), 100)
+    }
 }
 
 function initVfmSwipe(el){
     let sy = 0, cy = 0, active = false, moved = false
     el.addEventListener('touchstart', e => {
-        if(e.target.closest('.vfm-topbar, .vfm-actions, .vfm-progress, .vfm-sub')) return
+        if(e.target.closest('.vfm-topbar, .vfm-actions, .vfm-progress, .vfm-sub, .vfm-sound-disc')) return
         sy = cy = e.touches[0].clientY; active = true; moved = false
         el.style.transition = 'none'
     }, { passive: true })
@@ -5113,8 +5245,6 @@ function initVfmSwipe(el){
         cy = e.touches[0].clientY
         const dy = cy - sy
         if(Math.abs(dy) > 8) moved = true
-        // сдвигаем ровно на dy без анимации
-        el.querySelector('.vfm-stage-shift')?.remove()
         el.style.transform = `translate3d(0, ${dy * 0.55}px, 0)`
     }, { passive: true })
     el.addEventListener('touchend', () => {
@@ -5130,7 +5260,6 @@ function initVfmSwipe(el){
             else vfmPrev()
         }
     })
-    // Десктоп-колесо
     el.addEventListener('wheel', e => {
         if(Math.abs(e.deltaY) < 40) return
         e.preventDefault()
@@ -5139,12 +5268,13 @@ function initVfmSwipe(el){
 }
 
 function vfmSourceFromCard(card){
-    if(card.closest('#feed-list')) return 'home'
-    if(card.closest('#live-feed')) return 'live'
+    if(card.dataset.vfmSingle === '1') return 'single'
+    if(card.closest('#feed-list'))   return 'home'
+    if(card.closest('#live-feed'))   return 'live'
     if(card.closest('#ch-posts-list')) return 'channel'
     if(card.closest('#profile-content')) return 'profile'
     if(card.closest('#direct-messages, .direct-room, .sh-card')) return 'direct'
-    return 'home'
+    return 'single'
 }
 
 async function openVideoFeed(card, sourceHint){
@@ -5162,6 +5292,7 @@ async function openVideoFeed(card, sourceHint){
     VFM.originCard = card
     VFM.endedShown = false
     VFM.loadingMore = false
+    VFM.cleanScreen = false
 
     document.querySelectorAll('.post-bg-video').forEach(v => { try { v.pause() } catch {} })
     document.body.classList.add('vfm-active')
@@ -5169,7 +5300,7 @@ async function openVideoFeed(card, sourceHint){
 
     const el = vfmBuildOverlay()
 
-    // Плавный вход из карточки
+    // плавный вход
     const rect = card.getBoundingClientRect()
     const elRect = el.getBoundingClientRect()
     const dx = rect.left - elRect.left
@@ -5182,7 +5313,7 @@ async function openVideoFeed(card, sourceHint){
     el.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${sx}, ${sy})`
     el.style.borderRadius = '22px'
     el.style.opacity = '0.4'
-    el.querySelectorAll('.vfm-topbar, .vfm-info, .vfm-actions, .vfm-bottom, .vfm-progress').forEach(n => n.style.opacity = '0')
+    el.querySelectorAll('.vfm-topbar, .vfm-info, .vfm-bottom, .vfm-progress').forEach(n => n.style.opacity = '0')
 
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
 
@@ -5190,7 +5321,7 @@ async function openVideoFeed(card, sourceHint){
     el.style.transform = ''
     el.style.borderRadius = ''
     el.style.opacity = '1'
-    el.querySelectorAll('.vfm-topbar, .vfm-info, .vfm-actions, .vfm-bottom, .vfm-progress').forEach(n => {
+    el.querySelectorAll('.vfm-topbar, .vfm-info, .vfm-bottom, .vfm-progress').forEach(n => {
         n.style.transition = 'opacity .35s ease .15s'
         n.style.opacity = '1'
     })
@@ -5206,7 +5337,6 @@ function renderVfmSlide(){
     const el = VFM.el
     const v = VFM.video
 
-    // видео
     try { v.pause() } catch {}
     v.src = item.src
     v.muted = false
@@ -5214,16 +5344,13 @@ function renderVfmSlide(){
     v.currentTime = 0
     v.play().catch(() => { v.muted = true; v.play().catch(()=>{}) })
 
-    // заголовок
-    el.querySelector('#vfm-crumb-name').textContent = vfmFeedLabel()
-
-    // мета
-    syncVfmMeta()
-
-    // прогресс
+    // сброс оверлея паузы
+    el.querySelector('#vfm-pause-overlay')?.classList.remove('show')
     el.querySelector('#vfm-progress-fill').style.width = '0%'
 
-    // скрыть/показать кнопку «конец ленты»
+    syncVfmMeta()
+
+    // убрать «конец ленты»
     el.querySelector('.vfm-end')?.remove()
     VFM.endedShown = false
 }
@@ -5233,32 +5360,72 @@ function syncVfmMeta(){
     const card = item.card
     const el = VFM.el
 
-    // аватар + имя
-    const avaEl = card.querySelector('.feed-post-avatar')
-    const nameEl = card.querySelector('.feed-post-name')
-    const marqueeEl = card.querySelector('.post-marquee-wrap')
-    const subBtn = card.querySelector('.feed-sub-btn')
-
-    el.querySelector('#vfm-ava').innerHTML = avaEl ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'') : '?'
-    el.querySelector('#vfm-name').innerHTML = nameEl ? nameEl.innerHTML : 'user'
-    el.querySelector('#vfm-marquee').innerHTML = marqueeEl ? marqueeEl.innerHTML : ''
-
-    const subBtnEl = el.querySelector('#vfm-sub')
-    if(subBtn && !subBtn.classList.contains('hidden') && subBtn.style.display !== 'none'){
-        subBtnEl.style.display = ''
-        const sub = subBtn.classList.contains('subscribed')
-        subBtnEl.classList.toggle('subscribed', sub)
-        subBtnEl.textContent = sub ? '✓' : '+'
-    } else {
-        subBtnEl.style.display = 'none'
+    // если карточки нет (single) — просто выходим
+    if(!card){
+        el.querySelector('#vfm-ava').textContent = '?'
+        el.querySelector('#vfm-name').textContent = 'user'
+        el.querySelector('#vfm-marquee').innerHTML = ''
+        el.querySelector('#vfm-sub').style.display = 'none'
+        return
     }
 
-    // описание
-    el.querySelector('#vfm-desc').textContent = card.querySelector('.feed-post-content')?.textContent || ''
+    const avaEl   = card.querySelector('.feed-post-avatar')
+    const nameEl  = card.querySelector('.feed-post-name')
+    const mqEl    = card.querySelector('.post-marquee-wrap')
+    const subBtn  = card.querySelector('.feed-sub-btn')
 
-    // действия
-    const likeBtn = card.querySelector('.feed-action[data-like]')
-    const repBtn = card.querySelector('.feed-action[data-repost]')
+    // аватар
+    el.querySelector('#vfm-ava').innerHTML =
+        avaEl ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'') : '?'
+
+    // имя
+    el.querySelector('#vfm-name').innerHTML = nameEl ? nameEl.innerHTML : 'user'
+
+    // БЕГУЩАЯ СТРОКА — фикс: сбрасываем инициализацию, чтобы анимация работала каждый раз
+    const mq = el.querySelector('#vfm-marquee')
+    if(mq){
+        mq.innerHTML = mqEl ? mqEl.innerHTML : ''
+        mq.removeAttribute('data-mqInit')
+        const inner = mq.querySelector('.post-marquee-inner')
+        if(inner) inner.classList.remove('scrolling')
+        const tracks = mq.querySelectorAll('.post-marquee-track')
+        tracks.forEach(t => { t.style.display = '' })
+    }
+
+    // кнопка подписки
+    const subEl = el.querySelector('#vfm-sub')
+    if(subBtn && subBtn.style.display !== 'none' && !subBtn.classList.contains('hidden')){
+        subEl.style.display = ''
+        const sub = subBtn.classList.contains('subscribed')
+        subEl.classList.toggle('subscribed', sub)
+        el.querySelector('.vfm-sub-text').textContent = sub ? 'Отписаться' : 'Подписаться'
+        el.querySelector('.vfm-sub-plus').style.display = sub ? 'none' : ''
+    } else {
+        subEl.style.display = 'none'
+    }
+
+    // описание + «ещё»
+    const descEl = el.querySelector('#vfm-desc')
+    const moreBtn = el.querySelector('#vfm-desc-more')
+    const text = card.querySelector('.feed-post-content')?.textContent || ''
+    descEl.textContent = text
+    descEl.classList.remove('expanded')
+    moreBtn.classList.add('hidden')
+    moreBtn.onclick = e => {
+        e.stopPropagation()
+        descEl.classList.add('expanded')
+        moreBtn.classList.add('hidden')
+    }
+    // проверяем переполнение
+    requestAnimationFrame(() => {
+        if(descEl.scrollHeight > descEl.clientHeight + 4){
+            moreBtn.classList.remove('hidden')
+        }
+    })
+
+    // счётчики кнопок
+    const likeBtn  = card.querySelector('.feed-action[data-like]')
+    const repBtn   = card.querySelector('.feed-action[data-repost]')
     const counts = {
         like:    card.querySelector('[data-like-count]')?.textContent || '0',
         comment: card.querySelector('[data-comment-count]')?.textContent || '0',
@@ -5267,11 +5434,22 @@ function syncVfmMeta(){
     el.querySelector('[data-vfm-count="like"]').textContent = counts.like
     el.querySelector('[data-vfm-count="comment"]').textContent = counts.comment
     el.querySelector('[data-vfm-count="repost"]').textContent = counts.repost
-
     el.querySelector('[data-vfm="like"]').classList.toggle('liked', !!likeBtn?.classList.contains('liked'))
     el.querySelector('[data-vfm="repost"]').classList.toggle('reposted', !!repBtn?.classList.contains('reposted'))
 
-    // обновляем marquee-анимацию
+    // диск звука — ставим аватар автора
+    const discAva = el.querySelector('#vfm-sound-ava')
+    if(discAva){
+        const img = avaEl?.querySelector('img')
+        if(img && img.src){
+            discAva.innerHTML = `<img src="${img.src}" alt="">`
+        } else {
+            const name = nameEl?.textContent?.trim() || 'U'
+            discAva.innerHTML = `<span>${name.charAt(0).toUpperCase()}</span>`
+        }
+    }
+
+    // переинициализируем бегущую строку
     initPostMarquees(el)
 }
 
@@ -5298,11 +5476,11 @@ async function vfmNext(){
         renderVfmSlide()
         return
     }
-    // конец — пробуем подгрузить из главной
     if(VFM.source === 'home'){
         const ok = await vfmLoadMore()
         if(ok && VFM.index < VFM.list.length - 1){ VFM.index++; renderVfmSlide(); return }
     }
+    // источник не home, либо видео закончились — только конец
     showVfmEnd()
 }
 
@@ -5321,8 +5499,8 @@ function showVfmEnd(){
     end.className = 'vfm-end'
     end.innerHTML = `
       <div style="font-size:48px">🎬</div>
-      <div style="font-size:19px;font-weight:800">Вы посмотрели всю ленту</div>
-      <div style="font-size:13px;opacity:.7;max-width:260px;line-height:1.5">Вернитесь наверх или загляните в другую ленту</div>
+      <div style="font-size:19px;font-weight:800">Вы посмотрели все видео</div>
+      <div style="font-size:13px;opacity:.7;max-width:260px;line-height:1.5">Вернитесь назад или откройте другую ленту</div>
       <button class="btn-primary" id="vfm-end-back" style="margin-top:10px;padding:12px 22px">Вернуться</button>
     `
     el.appendChild(end)
@@ -5336,16 +5514,13 @@ async function closeVideoFeed(){
     const el = VFM.el
     const origin = VFM.originCard
 
-    // Останавливаем видео
     try { VFM.video.pause(); VFM.video.removeAttribute('src'); VFM.video.load() } catch {}
 
-    // Плавно уводим оверлеи
-    el.querySelectorAll('.vfm-topbar, .vfm-info, .vfm-actions, .vfm-bottom, .vfm-progress').forEach(n => {
+    el.querySelectorAll('.vfm-topbar, .vfm-info, .vfm-bottom, .vfm-progress, .vfm-pause-overlay').forEach(n => {
         n.style.transition = 'opacity .18s ease'
         n.style.opacity = '0'
     })
 
-    // Возврат к ПЕРВОЙ нажатой карточке
     let target = origin
     if(!target || !target.isConnected){
         target = document.querySelector(`.feed-post[data-pid="${VFM.originId}"]`)
@@ -5379,39 +5554,36 @@ async function closeVideoFeed(){
     VFM.list = []
     VFM.index = 0
     VFM.originCard = null
+    VFM.cleanScreen = false
 
     document.body.classList.remove('vfm-active')
     document.body.style.overflow = ''
     document.dispatchEvent(new Event('vfm:closed'))
-    // обновляем иконки в ленте
     updatePlayIcons()
 }
 
-/* Совместимость со старыми вызовами enterVideoFS / exitVideoFS */
+/* Совместимость со старыми вызовами */
 function enterVideoFS(src, postId){
-    // 1) ищем настоящую карточку в любом из возможных контейнеров
     let card = null
-    if(postId){
-        card = document.querySelector(`.feed-post.feed-post-video[data-pid="${postId}"]`)
-    }
+    if(postId) card = document.querySelector(`.feed-post.feed-post-video[data-pid="${postId}"]`)
     if(!card && src){
         card = [...document.querySelectorAll('.feed-post.feed-post-video')]
             .find(c => c.dataset.videoSrc === src) || null
     }
     if(card){ openVideoFeed(card); return }
 
-    // 2) fallback: собираем одиночный список из одного слайда
+    // одиночный фолбэк — БЕЗ рекомендаций
     const box = document.getElementById('feed-list') || document.body
     const fake = document.createElement('article')
     fake.className = 'feed-post feed-post-video'
     fake.dataset.pid = postId || ''
     fake.dataset.videoSrc = src || ''
+    fake.dataset.vfmSingle = '1'
     fake.style.position = 'absolute'
     fake.style.visibility = 'hidden'
     fake.style.pointerEvents = 'none'
     box.appendChild(fake)
     openVideoFeed(fake)
-    // при закрытии VFM фейковую карточку удаляем
     const cleanup = () => { try { fake.remove() } catch {} }
     document.addEventListener('vfm:closed', cleanup, { once: true })
 }

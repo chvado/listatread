@@ -1,9 +1,10 @@
 /* ============================================================
-   listatread — direct.js (v5, Telegram-style, финальная)
+   listatread — direct.js (v6, Telegram-style, финальная + reply)
    — Одна/двойная галочка, онлайн-статус, typing
    — Скелетоны + «Соединение…» в шапке
    — Свой sidebar, темы, стикеры, эмодзи
    — Режим редактирования, pin, контекст-меню
+   — Pull-to-reply (свайп вправо по сообщению)
    — Связь с VFM через window.__ltSetChatTitle
 ============================================================ */
 import { supabase } from './supabase.js'
@@ -78,7 +79,7 @@ const MSG_SIZES = [
     { id:'md', label:'Обычный', fontSize:'14px', lineHeight:'1.45', pad:'8px 12px' },
     { id:'lg', label:'Крупный', fontSize:'16px', lineHeight:'1.5',  pad:'10px 14px' },
 ]
-const EMOJI = ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','👍','👎','👌','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🧠','👀','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💕','💞','💓','💗','💖','💘','💝','🔥','⭐','🌟','✨','⚡','💥','💫','💦','🎉','🎊','🎈','🎁','🎀','🏆','🥇','🎯','🎲','🎮','🎰','🌸','🌹','🌻','🌷','🍀','🍁','🍇','🍉','🍊','🍋','🍌','🍎','🍓','🍒','🍑','🥝','🍔','🍟','🍕','🌭','🍿','🍣','⚽','🏀','🏈','🎾','🎱','🏓','🥊','🎽','🚗','🚕','🚌','🚓','🚑','🚒','🚲','🛵','✈️','🚀','🛸','⌚','📱','💻','🎧','📷','💡','🔦','💸','💰','💎','🔧','🔨','🔮','📿','🧸','🛍️','🛒']
+const EMOJI = ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','👍','👎','👌','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🧠','👀','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💕','💞','💓','💗','💖','💘','💝','🔥','⭐','🌟','✨','⚡','💥','💫','💦','🎉','🎊','🎈','🎁','🎀','🏆','🥇','🎯','🎲','🎮','🎰','🌸','🌹','🌻','🌷','🍀','🍁','🍇','🍉','🍊','🍋','🍌','🍎','🍓','🍒','🍑','🥝','🍔','🍟','🍕','🌭','🍿','🍣','⚽','🏀','🏈','🎾','🎱','🏓','🥊','🎽','🚗','🚕','🚌','🚓','🚑','🚒','🚲','🛵','✈️','🚀','🛸','⌚','📱','💻','🎧','📷','💡','🔦','💸','💰','💎','🔧','🔨','🔮','📿','🧸','🎁','🛍️','🛒']
 
 /* ============================================================
    Локальные настройки (prefs)
@@ -98,6 +99,7 @@ const D = {
         currentStickerPack: null,
         stickerSendTimes: [],
         mutedUntil: 0,
+        replyTo: null,                 // ← НОВОЕ: текущий ответ
     }
 ;(function initPrefs(){
     const lp = loadLocalPrefs()
@@ -110,7 +112,7 @@ function getTheme(){ return CHAT_THEMES.find(t => t.id === (D.chatThemeId || 't1
 function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || MSG_SIZES[1] }
 
 /* ============================================================
-   Инжектируемые оверрайды CSS
+   Инжектируемые оверрайды CSS (включая reply-стили)
 ============================================================ */
 ;(function injectCSS(){
     if(document.getElementById('direct-v4-overrides')) return
@@ -392,6 +394,55 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
         }
         .dr-send-btn:active{ transform:scale(.93) }
 
+        /* ============ REPLY (pull-to-reply) ============ */
+        .dr-reply-banner{
+            display:flex; align-items:center; gap:10px;
+            padding:8px 14px; background:var(--surface-2);
+            border-top:1px solid var(--border);
+            border-left:3px solid var(--blue);
+            flex-shrink:0;
+        }
+        .dr-reply-banner.hidden{ display:none }
+        .dr-reply-banner-info{ flex:1; min-width:0 }
+        .dr-reply-banner-label{
+            font-size:11px; font-weight:800; color:var(--blue);
+            text-transform:uppercase; letter-spacing:.05em;
+        }
+        .dr-reply-banner-text{
+            font-size:13px; color:var(--text-secondary);
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+            margin-top:2px;
+        }
+        .dr-reply-banner-close{
+            width:30px; height:30px; border-radius:50%; border:none;
+            background:transparent; color:var(--text-secondary);
+            cursor:pointer; font-size:18px;
+            display:flex; align-items:center; justify-content:center;
+        }
+        .dr-reply-quote{
+            padding:6px 10px; margin-bottom:6px;
+            border-left:3px solid currentColor;
+            background:rgba(0,0,0,.15); border-radius:8px;
+            font-size:12.5px; opacity:.92;
+        }
+        .dr-row.mine .dr-reply-quote{ background:rgba(0,0,0,.2) }
+        .dr-reply-quote-name{ font-weight:700; margin-bottom:2px }
+
+        .dr-row{ position:relative; touch-action: pan-y }
+        .dr-reply-icon{
+            position:absolute; left:8px; top:50%;
+            transform:translateY(-50%);
+            width:32px; height:32px; border-radius:50%;
+            background:var(--blue); color:#fff;
+            display:flex; align-items:center; justify-content:center;
+            z-index:1; pointer-events:none;
+            animation: drReplyPop .2s cubic-bezier(.34,1.56,.64,1) both;
+        }
+        @keyframes drReplyPop{
+            from{ opacity:0; transform:translateY(-50%) scale(.5) }
+            to{ opacity:1; transform:translateY(-50%) scale(1) }
+        }
+
         /* Пузыри */
         .direct-bubble{
             padding: var(--bubble-pad, 8px 12px);
@@ -662,10 +713,10 @@ document.addEventListener('lt-player-state', syncShareTrackBtns)
 function leaveChat(){
     const r = $('direct-room'); if(r) r.classList.add('hidden')
     D.currentChat = null
+    D.replyTo = null
     if(D.refreshTimer){ clearInterval(D.refreshTimer); D.refreshTimer = null }
     unsubscribeTyping()
     document.body.classList.remove('in-direct')
-    // сброс заголовка VFM
     try { window.__ltSetChatTitle?.('') } catch {}
 }
 
@@ -1234,7 +1285,6 @@ export async function openDirectChat(peerId, peerProfile = null){
         peerProfile = { ...peerProfile, ...(data||{}) }
     }
 
-    // ── Синхронизация с VFM ──
     const peerName = peerProfile?.full_name || peerProfile?.username || 'user'
     try { window.__ltSetChatTitle?.(peerName) } catch {}
 
@@ -1304,6 +1354,13 @@ function renderChatRoom(){
     </header>
     <div class="dr-pinned-bar hidden" id="dr-pinned-bar"></div>
     <div class="direct-messages" id="direct-messages" style="background:${theme.bg}"></div>
+    <div class="dr-reply-banner hidden" id="dr-reply-banner">
+      <div class="dr-reply-banner-info">
+        <div class="dr-reply-banner-label">Ответ</div>
+        <div class="dr-reply-banner-text" id="dr-reply-banner-text"></div>
+      </div>
+      <button class="dr-reply-banner-close" id="dr-reply-banner-close" aria-label="Отменить">×</button>
+    </div>
     <div class="dr-panel" id="dr-panel">
       <div class="dr-panel-tabs">
         <button class="dr-panel-tab active" data-ptab="emoji">${I.smile} Эмодзи</button>
@@ -1344,6 +1401,21 @@ function renderChatRoom(){
         renderPanelBody()
     }))
 
+    // === REPLY BANNER ===
+    D.replyTo = null
+    const replyBanner = $('dr-reply-banner')
+    const replyText = $('dr-reply-banner-text')
+    $('dr-reply-banner-close')?.addEventListener('click', () => {
+        D.replyTo = null
+        replyBanner?.classList.add('hidden')
+    })
+    window.__ltSetReply = (msgId, text) => {
+        D.replyTo = { id: msgId, text: (text || '').slice(0, 80) }
+        if(replyText) replyText.textContent = D.replyTo.text || 'Сообщение'
+        replyBanner?.classList.remove('hidden')
+        $('dr-input')?.focus()
+    }
+
     subscribeTyping(peerId)
     loadMessages()
 
@@ -1368,6 +1440,7 @@ function closeChatRoom(){
     const r = $('direct-room')
     if(r) r.classList.add('hidden')
     D.currentChat = null
+    D.replyTo = null
     if(D.refreshTimer) clearInterval(D.refreshTimer)
     if(D.typingTimer) clearInterval(D.typingTimer)
     unsubscribeTyping()
@@ -1390,11 +1463,21 @@ async function pushMessage(payload){
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user || !D.currentChat) return
     const { peerId } = D.currentChat
+
+    // === reply_to ===
+    if(D.replyTo && D.replyTo.id && payload.content !== undefined){
+        payload.reply_to = D.replyTo.id
+    }
+
     try {
         const { error } = await supabase.from('direct_messages').insert({
             from_id: user.id, to_id: peerId, ...payload
         })
         if(error) throw error
+
+        // сброс reply после отправки
+        D.replyTo = null
+        $('dr-reply-banner')?.classList.add('hidden')
 
         const { isMutual } = D.currentChat
         const peerAdmin = !!D.currentChat.peerProfile?.is_admin
@@ -1449,6 +1532,18 @@ async function loadMessages(silent = false){
     const pinned = visible.filter(m => m.pinned_at)
     renderPinnedBar(pinned)
 
+    // === подтянем родительские сообщения для reply_to ===
+    const replyIds = [...new Set(visible.filter(m => m.reply_to).map(m => m.reply_to))]
+    let replyMap = {}
+    if(replyIds.length){
+        try {
+            const { data: parents } = await supabase.from('direct_messages')
+                .select('id, from_id, content, media_url, media_type')
+                .in('id', replyIds)
+            ;(parents || []).forEach(pr => { replyMap[pr.id] = pr })
+        } catch(e){ console.warn('[reply parents]', e.message) }
+    }
+
     const box = $('direct-messages')
     if(!box) return
 
@@ -1480,6 +1575,7 @@ async function loadMessages(silent = false){
             html += `<div class="dr-date-sep">${formatDateSep(m.created_at)}</div>`
             lastDay = dayKey
         }
+        if(m.reply_to && replyMap[m.reply_to]) m.__reply_msg = replyMap[m.reply_to]
         html += renderMessage(m, visible[i-1], user.id, mp, peerProfile, theme)
     })
     box.innerHTML = html
@@ -1516,7 +1612,6 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
     const content = m.content || ''
     const stickerMatch = content.match(/^\[sticker:(.+?)\]$/)
     const shareData = shareOf(content)
-    let isCard = false
 
     if(m.media_url){
         const clean = m.media_url.split('?')[0].toLowerCase()
@@ -1525,13 +1620,25 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
         else body = `<img src="${m.media_url}" style="max-width:100%;">`
     }
     if(shareData){
-        isSticker = true; isCard = true
+        isSticker = true
         body = renderShareCard(shareData)
     } else if(stickerMatch){
         isSticker = true
         body = `<img src="${esc(stickerMatch[1])}" alt="sticker">`
     } else if(content){
         body = `<div>${esc(content)}</div>`
+    }
+
+    // === reply quote ===
+    let replyQuote = ''
+    if(m.reply_to){
+        const rmsg = m.__reply_msg || null
+        const rtext = rmsg ? (rmsg.content || '[медиа]') : 'Сообщение'
+        const rname = rmsg && rmsg.from_id === myId ? 'Вы' : (peerProf?.full_name || peerProf?.username || 'user')
+        replyQuote = `<div class="dr-reply-quote">
+            <div class="dr-reply-quote-name">${esc(rname)}</div>
+            <div>${esc(contentLabel(rtext)).slice(0, 80)}</div>
+        </div>`
     }
 
     const pinnedMark = m.pinned_at
@@ -1579,7 +1686,7 @@ function renderMessage(m, prev, myId, myProf, peerProf, theme){
     return `<div class="dr-row ${mine ? 'mine' : ''}" data-mid="${m.id}" data-mine="${mine?1:0}">
       <div class="dr-row-ava ${showAva ? '' : 'ghost'}">${av(avaSrc, avaName)}</div>
       <div class="direct-bubble" style="${bubbleStyle}">
-        ${pinnedMark}${body}
+        ${pinnedMark}${replyQuote}${body}
         <div class="direct-bubble-foot" style="color:${footColor}">
           <span>${time}</span>${checkHtml}
         </div>
@@ -1652,7 +1759,7 @@ async function unpinMessage(msgId){
 }
 
 /* ============================================================
-   КОНТЕКСТ-МЕНЮ СООБЩЕНИЯ
+   КОНТЕКСТ-МЕНЮ СООБЩЕНИЯ + PULL-TO-REPLY
 ============================================================ */
 async function toggleReaction(msgId, emoji){
     const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
@@ -1691,6 +1798,60 @@ function attachMsgMenu(row){
     row.addEventListener('mouseleave', cancelPress)
     row.addEventListener('dblclick', e => { if(!e.target.closest('button,video,audio,.sh-card')) doubleTap() })
     row.addEventListener('contextmenu', e => { e.preventDefault(); showMsgMenu(row) })
+
+    // === PULL-TO-REPLY (свайп вправо) ===
+    let rx0 = 0, ry0 = 0, rDx = 0, rDrag = false
+    let replyIcon = null
+
+    row.addEventListener('touchstart', e => {
+        if(e.target.closest('button, video, audio, .sh-card, .dr-react-chip')) return
+        rx0 = e.touches[0].clientX
+        ry0 = e.touches[0].clientY
+        rDrag = false; rDx = 0
+    }, { passive: true })
+
+    row.addEventListener('touchmove', e => {
+        if(!D.currentChat) return
+        const dx = e.touches[0].clientX - rx0
+        const dy = e.touches[0].clientY - ry0
+        if(!rDrag){
+            if(Math.abs(dx) < 10 || Math.abs(dy) > Math.abs(dx)) return
+            rDrag = true
+            row.style.transition = 'none'
+        }
+        if(e.cancelable) e.preventDefault()
+        rDx = Math.max(0, Math.min(dx, 90))
+        row.style.transform = `translateX(${rDx}px)`
+        if(rDx > 20 && !replyIcon){
+            replyIcon = document.createElement('div')
+            replyIcon.className = 'dr-reply-icon'
+            replyIcon.innerHTML = I.reply
+            row.appendChild(replyIcon)
+        }
+        if(replyIcon){
+            const sc = Math.min(1, rDx / 70)
+            replyIcon.style.transform = `translateY(-50%) scale(${sc})`
+        }
+    }, { passive: false })
+
+    const releaseSwipe = () => {
+        if(!rDrag){ rDx = 0; return }
+        if(rDx > 55){
+            const mid = row.dataset.mid
+            const bubble = row.querySelector('.direct-bubble')
+            const text = bubble ? bubble.textContent.trim().slice(0, 80) : 'Сообщение'
+            window.__ltSetReply?.(mid, text)
+            try { navigator.vibrate?.(12) } catch {}
+        }
+        row.style.transition = 'transform .22s cubic-bezier(.22,1,.36,1)'
+        row.style.transform = ''
+        setTimeout(() => { row.style.transition = '' }, 240)
+        replyIcon?.remove()
+        replyIcon = null
+        rDrag = false; rDx = 0
+    }
+    row.addEventListener('touchend', releaseSwipe)
+    row.addEventListener('touchcancel', releaseSwipe)
 }
 
 function showMsgMenu(row){
@@ -1742,11 +1903,11 @@ async function copyMsg(msgId){
     }
 }
 async function replyMsg(msgId){
-    const { data:msg } = await supabase.from('direct_messages').select('content').eq('id', msgId).maybeSingle()
+    // теперь используем нормальный ответ через баннер
+    const { data:msg } = await supabase.from('direct_messages').select('content, from_id').eq('id', msgId).maybeSingle()
     if(!msg) return
-    const input = $('dr-input'); if(!input) return
-    input.value = `> ${(msg.content || '').slice(0, 40)}\n`
-    input.focus()
+    const text = contentLabel(msg.content).slice(0, 80) || 'Сообщение'
+    window.__ltSetReply?.(msgId, text)
 }
 async function deleteMsg(msgId, isMine, row){
     const { data:{ user } } = await supabase.auth.getUser()
