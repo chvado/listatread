@@ -1543,6 +1543,10 @@ function attachHandlersToCard(card, userId){
     }
 
     card.querySelectorAll('.feed-sub-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); handleFeedSubBtn(btn, userId) }))
+    card.querySelectorAll('.feed-avatar-plus').forEach(btn => btn.addEventListener('click', e => {
+        e.stopPropagation(); e.preventDefault()
+        followAuthor(btn.dataset.plusUid)
+    }))
     card.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
     card.querySelectorAll('.feed-post-image').forEach(img => {
         img.style.cursor = 'zoom-in'
@@ -1817,6 +1821,12 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const isVideo = isVideoUrl(post.media_url)
     const adminMark = p.is_admin ? adminBadge(true) : ''
 
+    // плюсик под аватаркой
+    const plusHtml = (myId && post.author_id !== myId && !state.myFollows.has(post.author_id))
+        ? `<button class="feed-avatar-plus" data-plus-uid="${post.author_id}" aria-label="Подписаться">+</button>`
+        : ''
+    const avatarBlock = `<div class="feed-avatar-wrap"><div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div>${plusHtml}</div>`
+
     let channelBadge = ''
     if(ch.id){
         const chName = ch.name || 'Канал'
@@ -1840,7 +1850,7 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
         })
         return `<article class="feed-post" data-pid="${post.id}" data-channel="${post.channel_id || ''}">
     <div class="feed-post-header">
-      <div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div>
+      ${avatarBlock}
       <div class="feed-post-info">
     <div class="feed-post-name verified">${escapeHtml(name)}${adminMark}${channelBadge}</div>
     ${buildMetaRow(time, contextLabel, post)}
@@ -1864,7 +1874,7 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     <div class="post-bg-overlay"></div>
     <div class="feed-post-video-hint" style="white-space:nowrap">нажмите чтобы посмотреть</div>
     <div class="feed-post-header">
-      <div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div>
+      ${avatarBlock}
       <div class="feed-post-info">
     <div class="feed-post-name verified">${escapeHtml(name)}${adminMark}${channelBadge}</div>
     ${buildMetaRow(time, contextLabel, post)}
@@ -2060,6 +2070,10 @@ function applySubState(chId, sub){
 
 async function attachFeedActions(list, myId){
     list.querySelectorAll('.feed-sub-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); handleFeedSubBtn(btn, myId) }))
+    list.querySelectorAll('.feed-avatar-plus').forEach(btn => btn.addEventListener('click', e => {
+        e.stopPropagation(); e.preventDefault()
+        followAuthor(btn.dataset.plusUid)
+    }))
     list.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
     list.querySelectorAll('.feed-channel-badge[data-chbadge]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openChannel(b.dataset.chbadge) }))
 
@@ -2506,6 +2520,11 @@ function renderLivePost(post, myId, postsMap, counts = {}, likedSet = new Set(),
     const isVideo = isVideoUrl(post.media_url)
     const adminMark = p.is_admin ? adminBadge(true) : ''
 
+    const plusHtml = (myId && post.author_id !== myId && !state.myFollows.has(post.author_id))
+        ? `<button class="feed-avatar-plus" data-plus-uid="${post.author_id}" aria-label="Подписаться">+</button>`
+        : ''
+    const avatarBlock = `<div class="feed-avatar-wrap"><div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div>${plusHtml}</div>`
+
     let replyBlock = ''
     if(post.reply_to && postsMap[post.reply_to]){
         const orig = postsMap[post.reply_to]
@@ -2531,7 +2550,7 @@ function renderLivePost(post, myId, postsMap, counts = {}, likedSet = new Set(),
                 <button class="feed-more" data-pid="${post.id}" data-author="${uname}" data-mine="0">${ICONS.dots}</button>
               </div>`
 
-        return `<article class="feed-post" data-live="1" data-pid="${post.id}">${replyBlock}<div class="feed-post-header"><div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div>
+        return `<article class="feed-post" data-live="1" data-pid="${post.id}">${replyBlock}<div class="feed-post-header">${avatarBlock}
 <div class="feed-post-info">
     <div class="feed-post-name">${escapeHtml(name)}${adminMark}</div>
     ${buildMetaRow(time, 'live chat', post)}
@@ -2553,7 +2572,7 @@ function renderLivePost(post, myId, postsMap, counts = {}, likedSet = new Set(),
         <div class="post-bg-overlay"></div>
         <div class="feed-post-video-hint" style="white-space:nowrap">нажмите чтобы посмотреть</div>
         ${replyBlock}
-        <div class="feed-post-header"><div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div><div class="feed-post-info"><div class="feed-post-name">${escapeHtml(name)}${adminMark}</div><div class="feed-post-time">${time}</div></div></div>
+        <div class="feed-post-header">${avatarBlock}<div class="feed-post-info"><div class="feed-post-name">${escapeHtml(name)}${adminMark}</div><div class="feed-post-time">${time}</div></div></div>
         <div class="feed-post-content">${escapeHtml(post.content || '')}</div>
         ${footer}
     </article>`
@@ -2843,6 +2862,11 @@ function renderProfilePost(p, myId, likedSet = new Set(), repostedSet = new Set(
     const rc = counts[p.id]?.reposts || 0
     const adminMark = prof.is_admin ? adminBadge(true) : ''
 
+    const plusHtml = (myId && p.author_id !== myId && !state.myFollows.has(p.author_id))
+        ? `<button class="feed-avatar-plus" data-plus-uid="${p.author_id}" aria-label="Подписаться">+</button>`
+        : ''
+    const avatarBlock = `<div class="feed-avatar-wrap"><div class="feed-post-avatar avatar-with-status" data-uid="${p.author_id}">${avContent}<div class="story-status-badge">${emoji}</div></div>${plusHtml}</div>`
+
     let channelBadge = ''
     if(ch.id){
         const chName = ch.name || 'Канал'
@@ -2864,7 +2888,7 @@ function renderProfilePost(p, myId, likedSet = new Set(), repostedSet = new Set(
     }
 
     const header = `<div class="feed-post-header">
-    <div class="feed-post-avatar avatar-with-status" data-uid="${p.author_id}">${avContent}<div class="story-status-badge">${emoji}</div></div>
+    ${avatarBlock}
     <div class="feed-post-info">
         <div class="feed-post-name">${escapeHtml(name)}${adminMark}${channelBadge}</div>
         ${buildMetaRow(time, ch.id ? 'пост канала' : 'из live chat', p)}
@@ -4473,7 +4497,28 @@ function syncPostRepost(postId, reposted, delta){
     const fullRep = document.getElementById('full-repost')
     if(fullRep && music.postId === postId){ fullRep.classList.toggle('reposted', reposted); fullRep.style.background = reposted ? 'var(--green)' : '' }
 }
-
+async function followAuthor(authorId){
+    if(!authorId) return
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user || user.id === authorId) return
+    try {
+        const isFollowing = state.myFollows.has(authorId)
+        if(isFollowing){
+            await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', authorId)
+            state.myFollows.delete(authorId)
+            showToast('info', 'Отписка', { icon:'👋' })
+        } else {
+            await supabase.from('follows').insert({ follower_id: user.id, following_id: authorId })
+            state.myFollows.add(authorId)
+            showToast('success', 'Вы подписаны', { icon:'✓' })
+        }
+        // убрать/показать все плюсики этого автора
+        document.querySelectorAll(`.feed-avatar-plus[data-plus-uid="${authorId}"]`).forEach(x => x.remove())
+        refreshFollowCache()
+    } catch(e){
+        showToast('error', 'Не удалось: ' + (e.message || ''), { icon:'⚠️' })
+    }
+}
 async function toggleLikeGlobal(postId){
     const anyBtn = document.querySelector(`.feed-action[data-like="${postId}"], .ch-post-action[data-like="${postId}"]`)
     const wasLiked = anyBtn ? anyBtn.classList.contains('liked') : false
@@ -5081,32 +5126,30 @@ function vfmBuildOverlay(){
     el.className = 'vfm'
     el.innerHTML = `
       <video class="vfm-video" playsinline preload="metadata"></video>
-      <div class="vfm-overlay"></div>
 
       <div class="vfm-topbar">
         <button class="vfm-back" id="vfm-back" aria-label="Назад">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
         </button>
-        <div class="vfm-brand">treadvisor</div>
-        <button class="vfm-more" id="vfm-more" aria-label="Действия">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
-        </button>
-      </div>
 
-      <div class="vfm-info">
-        <div class="vfm-ava" id="vfm-ava">?</div>
-        <div class="vfm-meta">
-          <div class="vfm-name" id="vfm-name">user</div>
-          <div class="vfm-marquee" id="vfm-marquee"></div>
+        <div class="vfm-author-block">
+          <div class="vfm-ava-wrap">
+            <div class="vfm-ava" id="vfm-ava">?</div>
+            <span class="vfm-ava-status" id="vfm-ava-status"></span>
+            <button class="vfm-ava-plus hidden" id="vfm-ava-plus" aria-label="Подписаться">+</button>
+          </div>
+          <div class="vfm-author-meta">
+            <div class="vfm-author-name" id="vfm-name">user</div>
+            <div class="vfm-author-marquee" id="vfm-marquee"></div>
+          </div>
         </div>
-        <button class="vfm-sub" id="vfm-sub" type="button">
-          <span class="vfm-sub-text">Подписаться</span>
-          <span class="vfm-sub-plus">+</span>
-        </button>
       </div>
 
       <div class="vfm-bottom">
-        <div class="vfm-actions-inline" id="vfm-actions">
+        <div class="vfm-desc" id="vfm-desc"></div>
+        <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
+
+        <div class="vfm-actions-row" id="vfm-actions">
           <button class="vfm-act" data-vfm="like" aria-label="Нравится">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             <span class="vfm-act-count" data-vfm-count="like">0</span>
@@ -5122,17 +5165,10 @@ function vfmBuildOverlay(){
           <button class="vfm-act" data-vfm="share" aria-label="Поделиться">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
           </button>
-        </div>
 
-        <div class="vfm-desc-row">
-          <div class="vfm-desc-wrap">
-            <div class="vfm-desc" id="vfm-desc"></div>
-            <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
-          </div>
-          <div class="vfm-sound-disc" id="vfm-sound-disc" title="Звук">
-            <div class="vfm-sound-disc-inner" id="vfm-sound-ava">♪</div>
-            <div class="vfm-sound-dot"></div>
-          </div>
+          <button class="vfm-act vfm-more" data-vfm="more" aria-label="Действия">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+          </button>
         </div>
       </div>
 
@@ -5148,13 +5184,23 @@ function vfmBuildOverlay(){
 
     el.querySelector('#vfm-back').addEventListener('click', () => closeVideoFeed())
 
-    el.querySelector('#vfm-more').addEventListener('click', () => openVfmMoreMenu())
-
-    el.querySelector('#vfm-sub').addEventListener('click', async e => {
+    // плюсик под авой = подписка
+    el.querySelector('#vfm-ava-plus').addEventListener('click', async e => {
         e.stopPropagation()
         const item = VFM.list[VFM.index]; if(!item || !item.card) return
-        const btn = item.card.querySelector('.feed-sub-btn')
-        if(btn){ btn.click(); setTimeout(syncVfmMeta, 220) }
+        const authorId = item.card.querySelector('.feed-post-avatar[data-uid]')?.dataset.uid
+        if(authorId) await followAuthor(authorId)
+        setTimeout(syncVfmMeta, 260)
+    })
+
+    // тап по аве = открыть канал / профиль
+    el.querySelector('#vfm-ava').addEventListener('click', e => {
+        e.stopPropagation()
+        const item = VFM.list[VFM.index]; if(!item || !item.card) return
+        const badge = item.card.querySelector('.feed-channel-badge[data-chbadge]')
+        if(badge){ closeVideoFeed(); setTimeout(() => openChannel(badge.dataset.chbadge), 300); return }
+        const authorId = item.card.querySelector('.feed-post-avatar[data-uid]')?.dataset.uid
+        if(authorId){ closeVideoFeed(); setTimeout(() => openUserProfile(authorId), 300) }
     })
 
     el.querySelectorAll('[data-vfm]').forEach(b => b.addEventListener('click', async e => {
@@ -5169,9 +5215,9 @@ function vfmBuildOverlay(){
             const content = item.card?.querySelector('.feed-post-content')?.textContent || ''
             openShareSheet({ type:'post', postId: pid, src: item.src, title: content })
         }
+        if(k === 'more'){ openVfmMoreMenu() }
     }))
 
-    // прогресс-бар
     const bar = el.querySelector('#vfm-progress')
     const fill = el.querySelector('#vfm-progress-fill')
     const setSeek = clientX => {
@@ -5189,36 +5235,20 @@ function vfmBuildOverlay(){
         fill.style.width = (VFM.video.currentTime / VFM.video.duration * 100) + '%'
     })
 
-    // клик по видео: пауза / play + анимированный оверлей
     const pauseOverlay = el.querySelector('#vfm-pause-overlay')
-    const showPauseOverlay = () => { pauseOverlay.classList.add('show') }
-    const hidePauseOverlay = () => { pauseOverlay.classList.remove('show') }
+    const showPauseOverlay = () => pauseOverlay.classList.add('show')
+    const hidePauseOverlay = () => pauseOverlay.classList.remove('show')
 
     VFM.video.addEventListener('click', e => {
         e.stopPropagation()
-        if(VFM.video.paused){
-            VFM.video.play().catch(()=>{})
-            hidePauseOverlay()
-        } else {
-            VFM.video.pause()
-            showPauseOverlay()
-        }
+        if(VFM.video.paused){ VFM.video.play().catch(()=>{}); hidePauseOverlay() }
+        else { VFM.video.pause(); showPauseOverlay() }
     })
-
     VFM.video.addEventListener('play',  () => hidePauseOverlay())
     VFM.video.addEventListener('pause', () => { if(!VFM.video.ended && !VFM.cleanScreen) showPauseOverlay() })
-
-    // завершение видео
     VFM.video.addEventListener('ended', () => {
         if(VFM.autoplay){ vfmNext(); return }
-        // без автопролистывания — крутим с начала
         try { VFM.video.currentTime = 0; VFM.video.play().catch(()=>{}) } catch {}
-    })
-
-    // звуковой диск — пока заглушка
-    el.querySelector('#vfm-sound-disc').addEventListener('click', e => {
-        e.stopPropagation()
-        // TODO: отдельный экран звука
     })
 
     initVfmSwipe(el)
@@ -5445,96 +5475,70 @@ function syncVfmMeta(){
     const card = item.card
     const el = VFM.el
 
-    // если карточки нет (single) — просто выходим
     if(!card){
         el.querySelector('#vfm-ava').textContent = '?'
+        el.querySelector('#vfm-ava-status').textContent = ''
         el.querySelector('#vfm-name').textContent = 'user'
         el.querySelector('#vfm-marquee').innerHTML = ''
-        el.querySelector('#vfm-sub').style.display = 'none'
+        el.querySelector('#vfm-ava-plus').classList.add('hidden')
         return
     }
 
-    const avaEl   = card.querySelector('.feed-post-avatar')
-    const nameEl  = card.querySelector('.feed-post-name')
-    const mqEl    = card.querySelector('.post-marquee-wrap')
-    const subBtn  = card.querySelector('.feed-sub-btn')
+    const avaEl    = card.querySelector('.feed-post-avatar')
+    const nameEl   = card.querySelector('.feed-post-name')
+    const mqEl     = card.querySelector('.post-marquee-wrap')
+    const statusB  = card.querySelector('.story-status-badge')
+    const authorId = avaEl?.dataset.uid
 
-    // аватар
+    // ава
     el.querySelector('#vfm-ava').innerHTML =
         avaEl ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'') : '?'
 
-    // имя
+    // статус-эмодзи в правом нижнем углу авы
+    el.querySelector('#vfm-ava-status').textContent = statusB ? statusB.textContent : ''
+
+    // имя + бейдж канала
     el.querySelector('#vfm-name').innerHTML = nameEl ? nameEl.innerHTML : 'user'
 
-    // БЕГУЩАЯ СТРОКА — фикс: сбрасываем инициализацию, чтобы анимация работала каждый раз
+    // бегущая строка
     const mq = el.querySelector('#vfm-marquee')
-    if(mq){
-        mq.innerHTML = mqEl ? mqEl.innerHTML : ''
-        mq.removeAttribute('data-mqInit')
-        const inner = mq.querySelector('.post-marquee-inner')
-        if(inner) inner.classList.remove('scrolling')
-        const tracks = mq.querySelectorAll('.post-marquee-track')
-        tracks.forEach(t => { t.style.display = '' })
-    }
+    mq.innerHTML = mqEl ? mqEl.innerHTML : ''
+    mq.removeAttribute('data-mqInit')
+    const inner = mq.querySelector('.post-marquee-inner')
+    if(inner) inner.classList.remove('scrolling')
+    const tracks = mq.querySelectorAll('.post-marquee-track')
+    tracks.forEach(t => { t.style.display = '' })
 
-    // кнопка подписки
-    const subEl = el.querySelector('#vfm-sub')
-    if(subBtn && subBtn.style.display !== 'none' && !subBtn.classList.contains('hidden')){
-        subEl.style.display = ''
-        const sub = subBtn.classList.contains('subscribed')
-        subEl.classList.toggle('subscribed', sub)
-        el.querySelector('.vfm-sub-text').textContent = sub ? 'Отписаться' : 'Подписаться'
-        el.querySelector('.vfm-sub-plus').style.display = sub ? 'none' : ''
+    // плюсик: показываем если автор не я и я на него не подписан
+    const plusBtn = el.querySelector('#vfm-ava-plus')
+    const me = state.currentUser?.id
+    if(authorId && authorId !== me && !state.myFollows.has(authorId)){
+        plusBtn.classList.remove('hidden')
     } else {
-        subEl.style.display = 'none'
+        plusBtn.classList.add('hidden')
     }
 
-    // описание + «ещё»
-    const descEl = el.querySelector('#vfm-desc')
+    // описание
+    const descEl  = el.querySelector('#vfm-desc')
     const moreBtn = el.querySelector('#vfm-desc-more')
     const text = card.querySelector('.feed-post-content')?.textContent || ''
     descEl.textContent = text
     descEl.classList.remove('expanded')
     moreBtn.classList.add('hidden')
-    moreBtn.onclick = e => {
-        e.stopPropagation()
-        descEl.classList.add('expanded')
-        moreBtn.classList.add('hidden')
-    }
-    // проверяем переполнение
+    moreBtn.onclick = e => { e.stopPropagation(); descEl.classList.add('expanded'); moreBtn.classList.add('hidden') }
     requestAnimationFrame(() => {
-        if(descEl.scrollHeight > descEl.clientHeight + 4){
-            moreBtn.classList.remove('hidden')
-        }
+        if(descEl.scrollHeight > descEl.clientHeight + 4) moreBtn.classList.remove('hidden')
     })
 
-    // счётчики кнопок
-    const likeBtn  = card.querySelector('.feed-action[data-like]')
-    const repBtn   = card.querySelector('.feed-action[data-repost]')
-    const counts = {
-        like:    card.querySelector('[data-like-count]')?.textContent || '0',
-        comment: card.querySelector('[data-comment-count]')?.textContent || '0',
-        repost:  card.querySelector('[data-repost-count]')?.textContent || '0',
-    }
-    el.querySelector('[data-vfm-count="like"]').textContent = counts.like
-    el.querySelector('[data-vfm-count="comment"]').textContent = counts.comment
-    el.querySelector('[data-vfm-count="repost"]').textContent = counts.repost
+    // счётчики
+    const likeBtn = card.querySelector('.feed-action[data-like]')
+    const repBtn  = card.querySelector('.feed-action[data-repost]')
+    el.querySelector('[data-vfm-count="like"]').textContent    = card.querySelector('[data-like-count]')?.textContent || '0'
+    el.querySelector('[data-vfm-count="comment"]').textContent = card.querySelector('[data-comment-count]')?.textContent || '0'
+    el.querySelector('[data-vfm-count="repost"]').textContent  = card.querySelector('[data-repost-count]')?.textContent || '0'
     el.querySelector('[data-vfm="like"]').classList.toggle('liked', !!likeBtn?.classList.contains('liked'))
     el.querySelector('[data-vfm="repost"]').classList.toggle('reposted', !!repBtn?.classList.contains('reposted'))
 
-    // диск звука — ставим аватар автора
-    const discAva = el.querySelector('#vfm-sound-ava')
-    if(discAva){
-        const img = avaEl?.querySelector('img')
-        if(img && img.src){
-            discAva.innerHTML = `<img src="${img.src}" alt="">`
-        } else {
-            const name = nameEl?.textContent?.trim() || 'U'
-            discAva.innerHTML = `<span>${name.charAt(0).toUpperCase()}</span>`
-        }
-    }
-
-    // переинициализируем бегущую строку
     initPostMarquees(el)
 }
 
@@ -7269,6 +7273,7 @@ window.__lt = {
         else { await supabase.from('saved_tracks').insert({ user_id:user.id, post_id:pid }); showToast('success', 'Сохранено в профиль', { icon:'🔖' }) }
     }
 }
+window.followAuthor = followAuthor
 boot()
 setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
