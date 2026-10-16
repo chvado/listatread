@@ -527,18 +527,16 @@
                 </button>
             </div>
 
-            <!-- ПРОМОКОД -->
-            <div class="shop-promo">
-                <div class="shop-promo-input-wrap">
+            <!-- КНОПКА АКТИВИРОВАТЬ ПРОМОКОД (без поля) -->
+            <div class="shop-promo-single">
+                <button class="shop-promo-activate" id="shop-promo-btn">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
                         <rect x="3" y="8" width="18" height="13" rx="2"/>
                         <path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/>
                     </svg>
-                    <input type="text" id="shop-promo-input" placeholder="Промокод" maxlength="40" autocomplete="off">
-                </div>
-                <button class="shop-promo-btn" id="shop-promo-btn">Активировать</button>
+                    Активировать промокод
+                </button>
             </div>
-            <p class="shop-promo-hint" id="shop-promo-hint"></p>
 
             <!-- КАРУСЕЛЬ -->
             <div class="shop-carousel-label">Как это работает</div>
@@ -567,11 +565,16 @@
                 </p>
             </div>
 
-            <!-- ФИКСИРОВАННАЯ КНОПКА -->
+            <!-- ФИКСИРОВАННАЯ ПАНЕЛЬ ОФОРМЛЕНИЯ -->
             <div class="shop-buy-bar">
+                <div class="shop-buy-today" id="shop-buy-today">Сегодня спишется 299 ₽, а следующее списание произойдёт —</div>
                 <button class="shop-buy" id="shop-buy">
                     <span id="shop-buy-label">Оформить за 299 ₽/мес</span>
                 </button>
+                <p class="shop-buy-legal">
+                    Нажимая на кнопку, вы соглашаетесь с <a href="/terms" target="_blank">условиями пользования</a>
+                    и условиями автопродления. Отмена автопродления в любое время.
+                </p>
             </div>
         </section>
         <!-- PROMO PAGE -->

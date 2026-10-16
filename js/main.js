@@ -7530,7 +7530,6 @@ function shopRenderCard(dir = 'r') {
     const p = SHOP_PRIVILEGES[i];
     const card = document.createElement('div');
     card.className = `shop-card flip-in-${dir}`;
-    card.style.background = shopGradient(i);
     card.innerHTML = `
         <span class="shop-card-num">${String(i + 1).padStart(2,'0')} / ${SHOP_PRIVILEGES.length}</span>
         <div class="shop-card-icon">${p.icon}</div>
@@ -7553,8 +7552,8 @@ function shopRenderCard(dir = 'r') {
 function shopRenderList() {
     const box = document.getElementById('shop-list');
     if (!box) return;
-    box.innerHTML = SHOP_PRIVILEGES.map((p, i) => `
-        <div class="shop-item" style="background:${shopGradient(i)}">
+    box.innerHTML = SHOP_PRIVILEGES.map((p) => `
+        <div class="shop-item">
             <div class="shop-item-icon">${p.icon}</div>
             <div class="shop-item-info">
                 <div class="shop-item-name">${escapeHtml(p.name)}</div>
@@ -7571,6 +7570,23 @@ function openShopPage() {
     shopInit();
 }
 
+function formatNextChargeDate(planKey) {
+    const d = new Date();
+    if (planKey === 'yearly') d.setFullYear(d.getFullYear() + 1);
+    else d.setMonth(d.getMonth() + 1);
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function updateShopBuyTexts() {
+    const price = _shopPlan.key === 'yearly' ? '2 499 ₽' : '299 ₽';
+    const todayEl = document.getElementById('shop-buy-today');
+    if (todayEl) {
+        todayEl.textContent = `Сегодня спишется ${price}, а следующее списание произойдёт ${formatNextChargeDate(_shopPlan.key)}`;
+    }
+    const label = document.getElementById('shop-buy-label');
+    if (label) label.textContent = 'Оформить за ' + _shopPlan.price;
+}
+
 function shopInit() {
     _shopIndex = 0;
     _shopPlan = { key: 'monthly', price: '299 ₽/мес' };
@@ -7578,16 +7594,12 @@ function shopInit() {
     const plans = document.querySelectorAll('.shop-plan');
     plans.forEach(b => b.classList.toggle('active', b.dataset.plan === 'monthly'));
 
-    const label = document.getElementById('shop-buy-label');
-    if (label) label.textContent = 'Оформить за 299 ₽/мес';
-
     const hint = document.getElementById('shop-promo-hint');
     if (hint) { hint.textContent = ''; hint.className = 'shop-promo-hint'; }
-    const input = document.getElementById('shop-promo-input');
-    if (input) input.value = '';
 
     shopRenderCard('r');
     shopRenderList();
+    updateShopBuyTexts();
 
     // Свайпы
     const carousel = document.getElementById('shop-carousel');
@@ -7605,13 +7617,8 @@ function shopInit() {
             const dx = e.changedTouches[0].clientX - startX;
             const dy = e.changedTouches[0].clientY - startY;
             if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-                if (dx < 0) { // свайп влево — след.
-                    _shopIndex = (_shopIndex + 1) % SHOP_PRIVILEGES.length;
-                    shopRenderCard('r');
-                } else { // свайп вправо — пред.
-                    _shopIndex = (_shopIndex - 1 + SHOP_PRIVILEGES.length) % SHOP_PRIVILEGES.length;
-                    shopRenderCard('l');
-                }
+                if (dx < 0) { _shopIndex = (_shopIndex + 1) % SHOP_PRIVILEGES.length; shopRenderCard('r'); }
+                else        { _shopIndex = (_shopIndex - 1 + SHOP_PRIVILEGES.length) % SHOP_PRIVILEGES.length; shopRenderCard('l'); }
             }
         }, { passive: true });
     }
@@ -7639,8 +7646,7 @@ document.addEventListener('click', e => {
     if (plan) {
         document.querySelectorAll('.shop-plan').forEach(b => b.classList.toggle('active', b === plan));
         _shopPlan = { key: plan.dataset.plan, price: plan.dataset.price };
-        const label = document.getElementById('shop-buy-label');
-        if (label) label.textContent = 'Оформить за ' + plan.dataset.price;
+        updateShopBuyTexts();
         return;
     }
     if (e.target.closest('#shop-promo-btn')) {
