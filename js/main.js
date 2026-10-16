@@ -4549,6 +4549,9 @@ async function toggleLikeGlobal(postId){
         showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' })
     }
     invalidateFeedCache()
+    // синхронизация VFM-кнопки
+    const vfmLike = document.querySelector('.vfm-act[data-vfm="like"]');
+    if(vfmLike) vfmLike.classList.toggle('liked', nowLiked);
 }
 
 async function toggleRepostGlobal(postId){
@@ -4580,6 +4583,9 @@ async function toggleRepostGlobal(postId){
         showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' })
     }
     invalidateFeedCache()
+    // синхронизация VFM-кнопки
+    const vfmRep = document.querySelector('.vfm-act[data-vfm="repost"]');
+    if(vfmRep) vfmRep.classList.toggle('reposted', nowReposted);
 }
 
 /* ============================================================
@@ -5144,26 +5150,20 @@ function vfmBuildOverlay(){
         </button>
       </div>
 
-      <!-- ============ НИЖНИЙ БЛОК ============ -->
+            <!-- ============ НИЖНИЙ БЛОК ============ -->
       <div class="vfm-bottom">
 
-        <!-- ЯРУС 1: описание + бегущая строка + пластинка -->
-        <div class="vfm-tier1">
-          <div class="vfm-desc-col">
-            <div class="vfm-desc-line">
-              <span class="vfm-desc-text" id="vfm-desc"></span>
-              <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
-            </div>
-            <div class="vfm-marquee" id="vfm-marquee"></div>
+        <!-- ЯРУС 1 (верх): АВТОР -->
+        <div class="vfm-author-row">
+          <div class="vfm-author-ava-wrap">
+            <div class="vfm-author-ava" id="vfm-author-ava">A</div>
+            <span class="vfm-author-status" id="vfm-author-status"></span>
           </div>
-          <div class="vfm-vinyl" id="vfm-vinyl">
-            <div class="vfm-vinyl-disc">
-              <div class="vfm-vinyl-cover" id="vfm-vinyl-cover">K</div>
-            </div>
-          </div>
+          <button class="vfm-author-sub hidden" id="vfm-author-sub" aria-label="Подписаться на автора">+</button>
+          <div class="vfm-author-name" id="vfm-author-name">user</div>
         </div>
 
-        <!-- ЯРУС 2: лайк / коммент / репост / шара -->
+        <!-- ЯРУС 2 (середина): ЛАЙК / КОММЕНТ / РЕПОСТ / ШАРА -->
         <div class="vfm-actions-row" id="vfm-actions">
           <button class="vfm-act" data-vfm="like" aria-label="Нравится">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -5182,15 +5182,23 @@ function vfmBuildOverlay(){
           </button>
         </div>
 
-        <!-- ЯРУС 3: автор -->
-        <div class="vfm-author-row">
-          <div class="vfm-author-ava-wrap">
-            <div class="vfm-author-ava" id="vfm-author-ava">A</div>
-            <span class="vfm-author-status" id="vfm-author-status"></span>
+        <!-- ЯРУС 3 (низ): ОПИСАНИЕ + БЕГУЩАЯ СТРОКА + ПЛАСТИНКА -->
+        <div class="vfm-tier1">
+          <div class="vfm-desc-col">
+            <div class="vfm-desc-line">
+              <span class="vfm-desc-text" id="vfm-desc"></span>
+              <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
+            </div>
+            <div class="vfm-marquee" id="vfm-marquee"></div>
           </div>
-          <button class="vfm-author-sub hidden" id="vfm-author-sub" aria-label="Подписаться на автора">+</button>
-          <div class="vfm-author-name" id="vfm-author-name">user</div>
+          <div class="vfm-vinyl" id="vfm-vinyl">
+            <div class="vfm-vinyl-disc">
+              <div class="vfm-vinyl-cover" id="vfm-vinyl-cover">K</div>
+            </div>
+          </div>
         </div>
+
+      
 
       </div>
 
@@ -5203,7 +5211,20 @@ function vfmBuildOverlay(){
     document.body.appendChild(el)
     VFM.el = el
     VFM.video = el.querySelector('.vfm-video')
-
+    // ---- Позиция видео: большое — от верха, маленькое — по центру ----
+    VFM.video.addEventListener('loadedmetadata', () => {
+        const v = VFM.video;
+        const vw = v.videoWidth, vh = v.videoHeight;
+        if(!vw || !vh) return;
+        const elW = v.clientWidth  || window.innerWidth;
+        const elH = v.clientHeight || window.innerHeight;
+        const videoAspect = vw / vh;
+        const widthFitHeight = elW / videoAspect;      // высота, если видео вписать по ширине
+        const fillRatio = widthFitHeight / elH;        // 1.0 = полностью заполнит экран
+        // Большое видео (≥60% высоты экрана) — прижать к верху
+        // Маленькое — центрировать
+        v.style.objectPosition = (fillRatio >= 0.6) ? 'center top' : 'center center';
+    });
     // ---------- ВЕРХНИЙ УРОВЕНЬ ----------
     el.querySelector('#vfm-back').addEventListener('click', () => closeVideoFeed())
 

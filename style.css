@@ -1820,17 +1820,18 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
     color: #fff;
 }
 
-/* ---------- ВИДЕО (по центру) ---------- */
+/* ---------- ВИДЕО ---------- */
 .vfm-video{
     position: absolute;
-    top: 76px;
-    bottom: 260px;
-    left: 0; right: 0;
-    width: 100%; height: auto;
-    object-fit: contain;
-    background: #000;
+    inset: 0;                      /* top:0 right:0 bottom:0 left:0 */
+    width: 100%;
+    height: 100%;
+    object-fit: contain;           /* всё видео видно, без обрезки */
+    object-position: center center;/* по умолчанию — по центру */
+    background: transparent;
     z-index: 0;
     cursor: pointer;
+    transition: object-position .25s ease;
 }
 
 /* ---------- ВЕРХНЯЯ ПОЛОСА ---------- */
@@ -2015,9 +2016,15 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
     transition: fill .2s, stroke .2s;
 }
 .vfm-act.liked{ color: var(--red-pink) }
-.vfm-act.liked svg{ fill: var(--red-pink); stroke: var(--red-pink) }
+.vfm-act.liked svg{
+    fill: var(--red-pink);
+    stroke: var(--red-pink);
+}
 .vfm-act.reposted{ color: var(--green) }
-.vfm-act.reposted svg{ fill: var(--green); stroke: var(--green) }
+.vfm-act.reposted svg{
+    fill: var(--green);
+    stroke: var(--green);
+}
 .vfm-act:active{ transform: scale(.9) }
 .vfm-act .vfm-act-count{
     font-weight: 800; font-variant-numeric: tabular-nums; color: currentColor;
@@ -2108,7 +2115,7 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 }
 
 @media (max-width: 480px){
-    .vfm-video{ top: 72px; bottom: 280px; }
+
     .vfm-bottom{ gap: 12px; padding: 18px 14px 12px; }
     .vfm-actions-row{ gap: 18px; }
     .vfm-vinyl{ width: 48px; height: 48px; }
