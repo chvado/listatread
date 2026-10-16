@@ -5535,7 +5535,7 @@ function renderVfmSlide(){
     VFM.endedShown = false
 }
 
-ffunction syncVfmMeta(){
+function syncVfmMeta(){
     const item = VFM.list[VFM.index]; if(!item || !VFM.el) return
     const card = item.card
     const el = VFM.el
