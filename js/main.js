@@ -7479,29 +7479,29 @@ const SHOP_ICONS = {
 };
 
 const SHOP_PRIVILEGES = [
-    { icon: SHOP_ICONS.statuses,    name: '30 премиум статусов',              desc: 'Открой доступ к эксклюзивной коллекции статусов для профиля.' },
-    { icon: SHOP_ICONS.gradProfile, name: 'Градиентный фон профиля',          desc: 'Установи градиент в качестве заднего фона страницы профиля.' },
-    { icon: SHOP_ICONS.patternProf, name: 'Узор профиля',                     desc: 'Наложи узор поверх фона профиля — уникальный вид.' },
-    { icon: SHOP_ICONS.nameColor,   name: 'Настраиваемый цвет имени',         desc: 'Выбери любой цвет и градиент для своего имени.' },
-    { icon: SHOP_ICONS.gradChannel, name: 'Градиентный фон канала',           desc: 'Оформи личный канал премиальным градиентным фоном.' },
-    { icon: SHOP_ICONS.patternCh,   name: 'Узор канала',                      desc: 'Добавь узор на задний фон канала.' },
-    { icon: SHOP_ICONS.nameCh,      name: 'Настраиваемый цвет имени канала',  desc: 'Задай свой цвет и градиент для имени канала.' },
-    { icon: SHOP_ICONS.postBg,      name: 'Настраиваемый фон постов',         desc: 'Меняй фон каждой публикации в ленте и на канале.' },
-    { icon: SHOP_ICONS.musicBg,     name: 'Фон карточки музыки',              desc: 'Настрой фон карточки трека под свой вкус.' },
-    { icon: SHOP_ICONS.hideOnline,  name: 'Скрытие последнего входа',         desc: 'Никто не увидит, когда ты заходил в сеть в последний раз.' },
-    { icon: SHOP_ICONS.chatPreset,  name: 'Пресеты оформления чатов',         desc: 'Личные пресеты: фон, обои, шрифты — сохраняй и включай одним тапом.' },
-    { icon: SHOP_ICONS.avatars,     name: 'До 5 аватарок',                    desc: 'Загружай несколько аватарок и переключайся между ними.' },
-    { icon: SHOP_ICONS.bioLink,     name: 'Расширенное описание и ссылки',    desc: 'Больше символов в bio и ссылки на свои страницы.' },
-    { icon: SHOP_ICONS.videoLimit,  name: 'Расширенные лимиты видео',         desc: 'Видео до 5 минут и размером до 15 МБ.' },
-    { icon: SHOP_ICONS.channels,    name: 'До 5 каналов (verify — до 20)',    desc: 'Создавай до 5 каналов. С listatread verify — до 20.' },
-    { icon: SHOP_ICONS.giftPlus,    name: 'Кнопка подарка и «в историю»',     desc: 'Кнопка подарка для постов и добавление видео в историю.' },
-    { icon: SHOP_ICONS.frame,       name: 'Рамки аватара',                    desc: 'Стильные рамки для аватара профиля и личного канала.' },
-    { icon: SHOP_ICONS.wallpapers,  name: 'Свои фото-обои для чатов',         desc: 'Устанавливай свои обои — видят и вы, и собеседник.' },
-    { icon: SHOP_ICONS.chvadBadge,  name: 'Статус chvad для канала',          desc: 'Эксклюзивный статус chvad рядом с именем канала.' },
-    { icon: SHOP_ICONS.download,    name: 'Скачивание без водяного знака',    desc: 'Качай видео, фото и баннеры музыки без watermark.' },
-    { icon: SHOP_ICONS.noAds,       name: 'Никакой рекламы',                  desc: 'Полностью чистая лента — только твой контент.' },
-    { icon: SHOP_ICONS.early,       name: 'Доступ к новинкам первыми',        desc: 'Ранний доступ ко всем новым функциям listatread.' },
-    { icon: SHOP_ICONS.analytics,   name: 'Расширенная аналитика',            desc: 'Подробная статистика по контенту, охватам и вовлечённости.' }
+    { icon: SHOP_ICONS.statuses,    name: '30 эксклюзивных статусов',              desc: 'Открой доступ к эксклюзивной коллекции статусов для профиля' },
+    { icon: SHOP_ICONS.gradProfile, name: 'Градиентный фон профиля',          desc: 'Установите градиент в качестве заднего фона страницы профиля' },
+    { icon: SHOP_ICONS.patternProf, name: 'Узор профиля',                     desc: 'Наложите узор поверх фона профиля' },
+    { icon: SHOP_ICONS.nameColor,   name: 'Настраиваемый цвет имени',         desc: 'Выберите любой цвет или градиент для своего имени' },
+    { icon: SHOP_ICONS.gradChannel, name: 'Градиентный фон вашего канала',           desc: 'Оформите свой канал премиальным градиентным фоном' },
+    { icon: SHOP_ICONS.patternCh,   name: 'Узор для фона вашего канала',                      desc: 'Добавь узор на задний фон канала' },
+    { icon: SHOP_ICONS.nameCh,      name: 'Настраиваемый цвет имени канала',  desc: 'Задайте свой цвет или градиент для имени канала' },
+    { icon: SHOP_ICONS.postBg,      name: 'Настраиваемый фон постов',         desc: 'Меняйте фон каждой публикации в ленте и на канале' },
+    { icon: SHOP_ICONS.musicBg,     name: 'Фон карточки музыки',              desc: 'Настройте фон карточки трека под свой вкус' },
+    { icon: SHOP_ICONS.hideOnline,  name: 'Скрытие последнего входа',         desc: 'Никто не увидит, когда вы заходили в сеть в последний раз' },
+    { icon: SHOP_ICONS.chatPreset,  name: 'Пресеты оформления чатов',         desc: 'Личные пресеты: настройте цвет фона, цвет личных сообщений и цвет сообщений собеседника в чатах' },
+    { icon: SHOP_ICONS.avatars,     name: 'До 5 аватарок',                    desc: 'Загружайте несколько аватарок, их можно листать в вашем личном профиле в listadirect или в профиле' },
+    { icon: SHOP_ICONS.bioLink,     name: 'Расширенное описание и ссылки',    desc: 'Больше символов в bio и ссылки на свои страницы в соцсетях' },
+    { icon: SHOP_ICONS.videoLimit,  name: 'Расширенные лимиты видео',         desc: 'Видео до 8 минут и размером до 23 МБ.' },
+    { icon: SHOP_ICONS.channels,    name: 'Создайте до 5 каналов',    desc: 'Создавай до 5 каналов. С listatread verify - до 20.' },
+    { icon: SHOP_ICONS.giftPlus,    name: 'Кнопка подарка на постах и «в историю» на видео',     desc: 'Кнопка подарка для тредов - вам могут отправить подарок прямо из ленты и добавьте кнопку "в историю" - любой человек может добавить ваше видео в историю с вашей отметкой' },
+    { icon: SHOP_ICONS.frame,       name: 'Рамки аватара вашего канала и личного профиля',                    desc: 'Эксклюзивные рамки для аватара профиля и личного канала' },
+    { icon: SHOP_ICONS.wallpapers,  name: 'Свои фото-обои для чатов',         desc: 'Устанавливай свои обои - видят и вы, и собеседник' },
+    { icon: SHOP_ICONS.chvadBadge,  name: 'Статус chvad для канала',          desc: 'Эксклюзивный статус chvad рядом с именем канала' },
+    { icon: SHOP_ICONS.download,    name: 'Скачивание без водяного знака',    desc: 'Качайте видео, фото и баннеры музыки без watermark' },
+    { icon: SHOP_ICONS.noAds,       name: 'Никакой рекламы',                  desc: 'Полностью чистая лента - только контент для вас' },
+    { icon: SHOP_ICONS.early,       name: 'Доступ к новинкам первыми',        desc: 'Ранний доступ ко всем новым функциям listatread до их релиза на listatread.online/rts' },
+    { icon: SHOP_ICONS.analytics,   name: 'Расширенная аналитика',            desc: 'Подробная статистика по контенту, охватам и вовлечённости ваших видео и тредов' }
 ];
 
 const SHOP_GRADIENTS = [
@@ -7532,7 +7532,7 @@ function shopRenderCard(dir = 'r') {
     card.className = `shop-card flip-in-${dir}`;
     card.innerHTML = `
         <span class="shop-card-num">${String(i + 1).padStart(2,'0')} / ${SHOP_PRIVILEGES.length}</span>
-        <div class="shop-card-icon">${p.icon}</div>
+        <div class="shop-card-icon" style="background:${shopGradient(i)}">${p.icon}</div>
         <div>
             <div class="shop-card-name">${escapeHtml(p.name)}</div>
             <div class="shop-card-desc">${escapeHtml(p.desc)}</div>
@@ -7552,9 +7552,9 @@ function shopRenderCard(dir = 'r') {
 function shopRenderList() {
     const box = document.getElementById('shop-list');
     if (!box) return;
-    box.innerHTML = SHOP_PRIVILEGES.map((p) => `
+    box.innerHTML = SHOP_PRIVILEGES.map((p, i) => `
         <div class="shop-item">
-            <div class="shop-item-icon">${p.icon}</div>
+            <div class="shop-item-icon" style="background:${shopGradient(i)}">${p.icon}</div>
             <div class="shop-item-info">
                 <div class="shop-item-name">${escapeHtml(p.name)}</div>
                 <div class="shop-item-desc">${escapeHtml(p.desc)}</div>
