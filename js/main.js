@@ -5150,32 +5150,10 @@ function vfmBuildOverlay(){
     </button>
   </div>
 
-  <!-- ============ НИЖНИЙ БЛОК ============ -->
+    <!-- ============ НИЖНИЙ БЛОК ============ -->
   <div class="vfm-bottom">
 
-    <!-- ИМЯ АВТОРА + КНОПКА ПОДПИСАТЬСЯ (правее имени) -->
-    <div class="vfm-author-name-row">
-      <div class="vfm-author-name" id="vfm-author-name">user</div>
-      <button class="vfm-author-sub hidden" id="vfm-author-sub">Подписаться</button>
-    </div>
-
-    <!-- ОПИСАНИЕ + ПЛАСТИНКА -->
-    <div class="vfm-tier1">
-      <div class="vfm-desc-col">
-        <div class="vfm-desc-line">
-          <span class="vfm-desc-text" id="vfm-desc"></span>
-          <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
-        </div>
-        <div class="vfm-marquee" id="vfm-marquee"></div>
-      </div>
-      <div class="vfm-vinyl" id="vfm-vinyl">
-        <div class="vfm-vinyl-disc">
-          <div class="vfm-vinyl-cover" id="vfm-vinyl-cover">K</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- АВАТАР АВТОРА + ЛАЙК / КОММЕНТ / РЕПОСТ / ПОДАРОК / ШАРА -->
+    <!-- ЯРУС 1 (верх): АВАТАР АВТОРА + ЛАЙК / КОММЕНТ / РЕПОСТ / ПОДАРОК / ШАРА -->
     <div class="vfm-actions-row" id="vfm-actions">
       <div class="vfm-author-ava-wrap">
         <div class="vfm-author-ava" id="vfm-author-ava">A</div>
@@ -5199,6 +5177,28 @@ function vfmBuildOverlay(){
       <button class="vfm-act" data-vfm="share" aria-label="Поделиться">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
       </button>
+    </div>
+
+    <!-- ЯРУС 2 (середина): ИМЯ АВТОРА + ПОДПИСАТЬСЯ -->
+    <div class="vfm-author-name-row">
+      <div class="vfm-author-name" id="vfm-author-name">user</div>
+      <button class="vfm-author-sub hidden" id="vfm-author-sub">Подписаться</button>
+    </div>
+
+    <!-- ЯРУС 3 (низ): ОПИСАНИЕ + БЕГУЩАЯ СТРОКА + ПЛАСТИНКА -->
+    <div class="vfm-tier1">
+      <div class="vfm-desc-col">
+        <div class="vfm-desc-line">
+          <span class="vfm-desc-text" id="vfm-desc"></span>
+          <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
+        </div>
+        <div class="vfm-marquee" id="vfm-marquee"></div>
+      </div>
+      <div class="vfm-vinyl" id="vfm-vinyl">
+        <div class="vfm-vinyl-disc">
+          <div class="vfm-vinyl-cover" id="vfm-vinyl-cover">K</div>
+        </div>
+      </div>
     </div>
 
   </div>
