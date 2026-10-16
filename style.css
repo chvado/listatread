@@ -1869,15 +1869,17 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 }
 .vfm-channel-ava img{ width: 100%; height: 100%; object-fit: cover }
 .vfm-channel-name{
-    font-size: 14px; font-weight: 700; color: #fff;
+    font-size: 14px; font-weight: 600;              /* было 700 */
+    color: #fff;
     text-shadow: 0 1px 5px rgba(0,0,0,.65);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     max-width: 40vw;
 }
+
 .vfm-ch-sub{
     width: 26px; height: 26px; border-radius: 50%;
     background: var(--red-pink); color: #fff;
-    border: none; font-size: 16px; font-weight: 900;
+    border: none; font-size: 15px; font-weight: 700; /* было 16px / 900 */
     display: flex; align-items: center; justify-content: center;
     padding: 0; padding-bottom: 2px;
     cursor: pointer; flex-shrink: 0;
@@ -2022,7 +2024,7 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 }
 .vfm-act.reposted{ color: var(--green) }
 .vfm-act.reposted svg{
-    fill: var(--green);
+    fill: none;
     stroke: var(--green);
 }
 .vfm-act:active{ transform: scale(.9) }
@@ -2059,7 +2061,7 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 .vfm-author-sub{
     width: 26px; height: 26px; border-radius: 50%;
     background: var(--red-pink); color: #fff;
-    border: 2px solid #fff; font-size: 16px; font-weight: 900;
+    border: 2px solid #fff; font-size: 15px; font-weight: 700; /* было 16px / 900 */
     display: flex; align-items: center; justify-content: center;
     padding: 0; padding-bottom: 2px;
     cursor: pointer; flex-shrink: 0;
@@ -2068,7 +2070,8 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 .vfm-author-sub.hidden{ display: none }
 .vfm-author-sub:active{ scale: .9 }
 .vfm-author-name{
-    font-size: 14px; font-weight: 700; color: #fff;
+    font-size: 14px; font-weight: 600;              /* было 700 */
+    color: #fff;
     text-shadow: 0 1px 5px rgba(0,0,0,.6);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     flex: 1; min-width: 0;

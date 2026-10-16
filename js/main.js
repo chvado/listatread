@@ -5580,7 +5580,15 @@ function syncVfmMeta(){
     const nameEl   = card.querySelector('.feed-post-name')
     const statusB  = card.querySelector('.story-status-badge')
     const authorId = avaEl?.dataset.uid
-    const authorName = nameEl ? (nameEl.textContent || '').trim().split(/\s+/)[0] : 'user'
+
+    // Имя автора — только текст, без бейджа канала и без админ-значка
+    let authorName = 'user'
+    if(nameEl){
+        const clone = nameEl.cloneNode(true)
+        clone.querySelectorAll('.feed-channel-badge, .admin-badge').forEach(el => el.remove())
+        authorName = (clone.textContent || '').trim() || 'user'
+    }
+
     const avaHTML = avaEl ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'') : '?'
 
     // ============== ЯРУС 3: АВТОР ==============
