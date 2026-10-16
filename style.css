@@ -2246,6 +2246,252 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 }
 .feed-avatar-plus.hidden{ display: none }
 .feed-avatar-plus:active{ scale: .88 }
+
+/* ============================================================
+   CHVAD — премиум-подписка
+============================================================ */
+.chvad-modal{position:fixed;inset:0;z-index:9350;display:flex;align-items:flex-end;justify-content:center}
+.chvad-modal.hidden{display:none!important}
+.chvad-backdrop{position:absolute;inset:0;background:var(--scrim);-webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);animation:fadeIn .3s var(--ease) backwards}
+
+.chvad-sheet{
+    position:relative;width:100%;max-width:480px;max-height:94dvh;
+    background:var(--bg);color:var(--text);
+    border:1px solid var(--glass-border);border-bottom:none;
+    border-radius:28px 28px 0 0;
+    display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;
+    box-shadow:0 -12px 48px rgba(0,0,0,.22),var(--glass-hi);
+    animation:sheetUp .42s var(--ease-out) backwards;
+    padding:0 20px calc(24px + var(--safe-bottom));
+    isolation:isolate;
+}
+/* Оранжевый градиент поверх фона (белый/чёрный по теме) */
+.chvad-sheet::before{
+    content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+    background:
+            radial-gradient(70% 40% at 50% 0%, rgba(255,159,10,.38), transparent 70%),
+            radial-gradient(60% 40% at 0% 20%, rgba(255,55,95,.20), transparent 70%),
+            radial-gradient(60% 45% at 100% 30%, rgba(191,90,242,.18), transparent 70%),
+            radial-gradient(80% 45% at 50% 100%, rgba(10,132,255,.10), transparent 70%);
+    border-radius:28px 28px 0 0;
+}
+html[data-theme="dark"] .chvad-sheet::before{
+    background:
+            radial-gradient(70% 40% at 50% 0%, rgba(255,159,10,.30), transparent 70%),
+            radial-gradient(60% 40% at 0% 20%, rgba(255,55,95,.22), transparent 70%),
+            radial-gradient(60% 45% at 100% 30%, rgba(191,90,242,.26), transparent 70%),
+            radial-gradient(80% 45% at 50% 100%, rgba(10,132,255,.18), transparent 70%);
+}
+
+.chvad-handle{width:52px;height:6px;border-radius:100px;background:rgba(120,120,128,.42);margin:10px auto 4px;flex-shrink:0}
+.chvad-close{
+    position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;
+    background:var(--surface-2);color:var(--text);border:none;
+    display:flex;align-items:center;justify-content:center;z-index:3;
+}
+
+/* HERO */
+.chvad-hero{display:flex;flex-direction:column;align-items:center;gap:6px;padding:6px 0 18px;text-align:center}
+.chvad-star-wrap{position:relative;width:110px;height:110px;display:flex;align-items:center;justify-content:center;margin-top:2px}
+.chvad-star-glow{
+    position:absolute;inset:-10%;border-radius:50%;
+    background:radial-gradient(circle at 50% 50%, rgba(255,159,10,.55), transparent 65%);
+    animation:chvadGlow 3.4s ease-in-out infinite;pointer-events:none;
+}
+.chvad-star{
+    width:80px;height:80px;color:#ff9f0a;
+    filter:drop-shadow(0 6px 22px rgba(255,159,10,.55));
+    animation:chvadStarPulse 3.2s ease-in-out infinite;
+    transform-origin:50% 50%;
+    position:relative;z-index:1;
+}
+@keyframes chvadStarPulse{
+    0%,100%{transform:scale(1) rotate(0);filter:drop-shadow(0 6px 22px rgba(255,159,10,.55))}
+    50%{transform:scale(1.08) rotate(6deg);filter:drop-shadow(0 10px 32px rgba(255,159,10,.8))}
+}
+@keyframes chvadGlow{
+    0%,100%{transform:scale(1);opacity:.7}
+    50%{transform:scale(1.18);opacity:1}
+}
+
+.chvad-title{
+    display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;justify-content:center;
+    font-size:30px;font-weight:900;letter-spacing:-.03em;margin-top:2px;line-height:1.05;
+}
+.chvad-title-lista{
+    background:linear-gradient(135deg,#ff375f,#ff3b30);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+}
+.chvad-title-chvad{
+    background:linear-gradient(135deg,#bf5af2,#0a84ff);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+}
+.chvad-tagline{font-size:13px;color:var(--text-secondary);margin-top:4px}
+
+/* ПЛАНЫ */
+.chvad-plans{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.chvad-plan{
+    position:relative;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    padding:16px 10px;border-radius:18px;
+    background:var(--surface-2);border:2px solid transparent;color:var(--text);
+    cursor:pointer;transition:border-color .2s,background .2s,scale .2s var(--spring);
+}
+.chvad-plan.active{
+    border-color:#ff9f0a;
+    background:linear-gradient(135deg,rgba(255,159,10,.14),rgba(255,55,95,.12));
+    box-shadow:0 8px 24px rgba(255,159,10,.25);
+}
+.chvad-plan-name{font-size:12.5px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em}
+.chvad-plan-price{font-size:19px;font-weight:900;color:var(--text)}
+.chvad-plan-price i{font-style:normal;font-size:11.5px;font-weight:600;color:var(--text-secondary);margin-left:1px}
+.chvad-plan-badge{
+    position:absolute;top:-9px;right:10px;
+    background:linear-gradient(135deg,#30d158,#28a948);color:#fff;
+    font-size:10px;font-weight:800;padding:3px 8px;border-radius:100px;
+    box-shadow:0 4px 10px rgba(48,209,88,.4);
+}
+
+/* ПРОМОКОД */
+.chvad-promo{display:flex;gap:8px;margin-bottom:4px}
+.chvad-promo-input{
+    flex:1;min-width:0;height:44px;padding:0 14px;font-size:14px;color:var(--text);
+    background:var(--surface-2);border:1.5px solid transparent;border-radius:14px;outline:none;
+}
+.chvad-promo-input:focus{background:var(--bg);border-color:var(--blue);box-shadow:0 0 0 4px rgba(10,132,255,.15)}
+.chvad-promo-btn{
+    padding:0 16px;height:44px;border:none;border-radius:14px;
+    background:var(--surface-3);color:var(--text);font-size:14px;font-weight:700;flex-shrink:0;
+}
+.chvad-promo-btn:active{scale:.96}
+.chvad-promo-hint{font-size:12px;color:var(--text-secondary);min-height:16px;margin:2px 2px 8px}
+.chvad-promo-hint.ok{color:var(--green);font-weight:600}
+.chvad-promo-hint.err{color:var(--red-pink);font-weight:600}
+
+/* КАРУСЕЛЬ */
+.chvad-carousel-title,
+.chvad-list-title{
+    font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--text-tertiary);margin:14px 0 10px;
+}
+.chvad-carousel-wrap{position:relative;display:flex;align-items:center;gap:6px}
+.chvad-carousel{
+    flex:1;min-width:0;perspective:1000px;
+    min-height:168px;position:relative;
+    display:flex;align-items:center;justify-content:center;
+}
+.chvad-carousel-arrow{
+    width:36px;height:36px;border-radius:50%;flex-shrink:0;
+    border:1px solid var(--glass-edge);background:var(--glass);color:var(--text);
+    font-size:20px;font-weight:700;line-height:1;
+    display:flex;align-items:center;justify-content:center;box-shadow:var(--glass-hi);
+}
+.chvad-carousel-arrow:active{scale:.92}
+
+.chvad-card{
+    position:absolute;inset:0;margin:auto;
+    width:100%;max-width:330px;height:100%;
+    border-radius:22px;padding:18px;
+    color:#fff;
+    display:flex;flex-direction:column;justify-content:space-between;gap:10px;
+    box-shadow:0 14px 36px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.28);
+    transform-style:preserve-3d;
+    backface-visibility:hidden;
+    overflow:hidden;
+}
+.chvad-card::after{
+    content:'';position:absolute;inset:0;border-radius:22px;pointer-events:none;
+    background:radial-gradient(circle at 20% 0%, rgba(255,255,255,.28), transparent 60%);
+}
+.chvad-card-icon{
+    width:52px;height:52px;border-radius:16px;
+    background:rgba(255,255,255,.22);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4);
+}
+.chvad-card-icon svg{width:26px;height:26px;display:block}
+.chvad-card-name{font-size:18px;font-weight:900;line-height:1.15}
+.chvad-card-desc{font-size:13px;opacity:.94;line-height:1.4}
+.chvad-card-num{
+    position:absolute;top:14px;right:16px;
+    font-size:11px;font-weight:800;letter-spacing:.08em;opacity:.85;
+}
+
+/* Анимации смены карточки (книжка) */
+@keyframes chvadFlipInR{
+    0%{opacity:0;transform:rotateY(60deg) translateX(24px)}
+    100%{opacity:1;transform:rotateY(0) translateX(0)}
+}
+@keyframes chvadFlipInL{
+    0%{opacity:0;transform:rotateY(-60deg) translateX(-24px)}
+    100%{opacity:1;transform:rotateY(0) translateX(0)}
+}
+.chvad-card.flip-in-r{animation:chvadFlipInR .42s var(--ease-out) both}
+.chvad-card.flip-in-l{animation:chvadFlipInL .42s var(--ease-out) both}
+
+.chvad-carousel-dots{
+    display:flex;justify-content:center;gap:5px;margin-top:10px;flex-wrap:wrap;
+}
+.chvad-dot{
+    width:6px;height:6px;border-radius:50%;background:rgba(120,120,128,.32);
+    transition:background .2s,transform .2s;
+}
+.chvad-dot.active{background:#ff9f0a;transform:scale(1.4)}
+
+/* СПИСОК ПРИВИЛЕГИЙ */
+.chvad-list{display:flex;flex-direction:column;gap:8px}
+.chvad-item{
+    display:flex;gap:12px;align-items:center;
+    padding:12px 14px;border-radius:16px;color:#fff;
+    box-shadow:0 6px 18px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.22);
+    position:relative;overflow:hidden;
+}
+.chvad-item::after{
+    content:'';position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(circle at 15% 0%, rgba(255,255,255,.22), transparent 55%);
+}
+.chvad-item-icon{
+    width:40px;height:40px;border-radius:12px;
+    background:rgba(255,255,255,.22);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;flex-shrink:0;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4);
+}
+.chvad-item-icon svg{width:22px;height:22px;display:block}
+.chvad-item-info{flex:1;min-width:0}
+.chvad-item-name{font-size:14.5px;font-weight:800;line-height:1.2}
+.chvad-item-desc{font-size:12px;opacity:.92;line-height:1.4;margin-top:2px}
+
+/* О ПОДПИСКЕ */
+.chvad-about{
+    margin-top:18px;padding:14px;border-radius:18px;
+    background:var(--surface-2);border:1px solid var(--glass-edge);
+}
+.chvad-about-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-tertiary);margin-bottom:8px}
+.chvad-about-text{font-size:13px;line-height:1.55;color:var(--text-secondary);margin-bottom:10px}
+.chvad-about-contact{font-size:12px;line-height:1.6;color:var(--text-tertiary)}
+.chvad-about-contact a{color:var(--blue);text-decoration:none;font-weight:600}
+
+/* КНОПКА КУПИТЬ */
+.chvad-buy{
+    margin-top:16px;width:100%;height:52px;border:none;border-radius:16px;
+    background:linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2);
+    background-size:200% 200%;
+    color:#fff;font-size:15.5px;font-weight:800;
+    box-shadow:0 10px 28px rgba(255,55,95,.35),inset 0 1px 0 rgba(255,255,255,.35);
+    animation:liveCardBg 6s ease-in-out infinite;
+}
+.chvad-buy:active{scale:.98}
+
+@media (max-width:380px){
+    .chvad-title{font-size:26px}
+    .chvad-card-name{font-size:16px}
+    .chvad-card-desc{font-size:12px}
+}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

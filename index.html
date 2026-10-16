@@ -870,7 +870,81 @@
     </div>
     <div class="sys-notif-list" id="sys-notif-list"></div>
 </div>
+<!-- CHVAD SUBSCRIPTION MODAL -->
+<div id="chvad-modal" class="chvad-modal hidden">
+    <div class="chvad-backdrop" id="chvad-backdrop"></div>
+    <div class="chvad-sheet" id="chvad-sheet">
+        <div class="chvad-handle"></div>
+        <button class="chvad-close" id="chvad-close" aria-label="Закрыть">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
 
+        <!-- HERO -->
+        <div class="chvad-hero">
+            <div class="chvad-star-wrap">
+                <div class="chvad-star-glow"></div>
+                <svg class="chvad-star" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg>
+            </div>
+            <h1 class="chvad-title">
+                <span class="chvad-title-lista">listatread</span>
+                <span class="chvad-title-chvad">chvad</span>
+            </h1>
+            <p class="chvad-tagline">Больше возможностей для тебя</p>
+        </div>
+
+        <!-- ПЛАНЫ -->
+        <div class="chvad-plans">
+            <button class="chvad-plan active" data-plan="monthly" data-price="299 ₽/мес">
+                <span class="chvad-plan-name">Ежемесячно</span>
+                <span class="chvad-plan-price">299 ₽<i>/мес</i></span>
+            </button>
+            <button class="chvad-plan" data-plan="yearly" data-price="2 499 ₽/год">
+                <span class="chvad-plan-badge">−30%</span>
+                <span class="chvad-plan-name">Ежегодно</span>
+                <span class="chvad-plan-price">2 499 ₽<i>/год</i></span>
+            </button>
+        </div>
+
+        <!-- ПРОМОКОД -->
+        <div class="chvad-promo">
+            <input type="text" class="chvad-promo-input" id="chvad-promo-input"
+                   placeholder="Промокод (lisatread / shoponline)" autocomplete="off" maxlength="40">
+            <button class="chvad-promo-btn" id="chvad-promo-btn">Активировать</button>
+        </div>
+        <p class="chvad-promo-hint" id="chvad-promo-hint"></p>
+
+        <!-- КАРУСЕЛЬ "книжка" -->
+        <div class="chvad-carousel-title">Как это работает</div>
+        <div class="chvad-carousel-wrap">
+            <button class="chvad-carousel-arrow left" id="chvad-prev" aria-label="Назад">‹</button>
+            <div class="chvad-carousel" id="chvad-carousel"></div>
+            <button class="chvad-carousel-arrow right" id="chvad-next" aria-label="Вперёд">›</button>
+        </div>
+        <div class="chvad-carousel-dots" id="chvad-dots"></div>
+
+        <!-- ВСЕ ПРИВИЛЕГИИ -->
+        <div class="chvad-list-title">Все привилегии · 23</div>
+        <div class="chvad-list" id="chvad-list"></div>
+
+        <!-- О ПОДПИСКЕ -->
+        <div class="chvad-about">
+            <div class="chvad-about-title">О подписке</div>
+            <p class="chvad-about-text">
+                listatread chvad — премиум-подписка, открывающая полный доступ к оформлению
+                профиля и канала, расширенные лимиты, эксклюзивные функции и отсутствие рекламы.
+                Отменить можно в любой момент.
+            </p>
+            <p class="chvad-about-contact">
+                Поддержка: <a href="mailto:support@listatread.online">support@listatread.online</a><br>
+                Сайт: <a href="https://listatread.online" target="_blank" rel="noopener">listatread.online</a>
+            </p>
+        </div>
+
+        <button class="chvad-buy" id="chvad-buy">
+            <span id="chvad-buy-label">Оформить за 299 ₽/мес</span>
+        </button>
+    </div>
+</div>
 <script type="module" src="js/main.js?v=33"></script>
 <script>
     /* ============================================================

@@ -912,7 +912,7 @@ document.addEventListener('keydown', e => {
 
 prioritiBackdrop.addEventListener('click', closePrioriti)
 $('storr-gifts-btn')?.addEventListener('click', () => { closePrioriti(); alert('Магазин подарков и клигов — скоро') })
-$('storr-chvad-btn')?.addEventListener('click', () => { closePrioriti(); alert('Подписка listatread chvad — скоро') })
+$('storr-chvad-btn')?.addEventListener('click', () => { closePrioriti(); setTimeout(openChvadModal, 180) })
 
 /* ============================================================
    ACTIONSHEET
@@ -6720,15 +6720,7 @@ document.addEventListener('click', e => {
     if(e.target.closest('#chan-add-btn')){ e.preventDefault(); e.stopPropagation(); openCreateChannel(); return }
     if(e.target.closest('#chvad-more')){
         e.preventDefault(); e.stopPropagation()
-        showActionSheet('listatread chvad', [
-            { label:'Без рекламы', icon:ICONS.check, onClick: () => {} },
-            { label:'Музыка без ограничений', icon:ICONS.music, onClick: () => {} },
-            { label:'Оформление профиля', icon:ICONS.person, onClick: () => {} },
-            { label:'Больше статусов', icon:ICONS.star, onClick: () => {} },
-            { label:'Публикация видео', icon:ICONS.send, onClick: () => {} },
-            { label:'Live без ограничений', icon:ICONS.live, onClick: () => {} },
-            { label:'Оформить подписку', icon:ICONS.gift, onClick: () => openPrioriti() }
-        ])
+        openChvadModal()
         return
     }
     if(e.target.closest('#chan-create-empty')){ e.preventDefault(); e.stopPropagation(); openCreateChannel(); return }
@@ -7440,6 +7432,194 @@ document.addEventListener('click', (e) => {
     }
 })();
 window.__ltSetChatTitle = (t) => { state.chatTitle = t }
+/* ============================================================
+   CHVAD — премиум-подписка (SVG-иконки)
+============================================================ */
+const CHVAD_ICONS = {
+    statuses:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5L7 22l5-2.5L17 22l-1.5-9.5"/><circle cx="12" cy="8" r="1.6" fill="currentColor" stroke="none"/></svg>',
+    gradProfile:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/><path d="M3 3l18 18" opacity=".45"/></svg>',
+    patternProf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>',
+    nameColor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L10 4h1l6 16"/><path d="M7 14h7"/><path d="M18 8l1.5-1.5M20 12l1.5 1.5" opacity=".55"/></svg>',
+    gradChannel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/><path d="M5 5l14 14" opacity=".4"/></svg>',
+    patternCh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 11h18M3 15h18M9 5v14M15 5v14"/></svg>',
+    nameCh:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 15l2.5-6L12 15M8 13h3M15 9v6M15 12h2.5M17.5 15V11"/></svg>',
+    postBg:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/><path d="M8 13h8M8 16h5"/></svg>',
+    musicBg:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 17V9l8-1.5v8"/><circle cx="7" cy="17" r="2"/><circle cx="15" cy="15.5" r="2"/></svg>',
+    hideOnline:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>',
+    chatPreset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="8.5" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="10.5" r="1.1" fill="currentColor" stroke="none"/></svg>',
+    avatars:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/><circle cx="17.5" cy="8" r="2.4"/><path d="M14.8 13.6c3 .1 5.4 2.5 5.4 5.6"/></svg>',
+    bioLink:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>',
+    videoLimit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="14" height="12" rx="2.5"/><path d="M22 8l-5.5 4 5.5 4z"/><path d="M8.5 10v4M10.5 12h-4" opacity=".85"/></svg>',
+    channels:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="12" rx="3"/><path d="M9 9.5v5l4-2.5z" fill="currentColor" stroke="none"/><rect x="16" y="8" width="5" height="10" rx="2"/></svg>',
+    giftPlus:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="15" height="12" rx="2"/><path d="M3 12h15M10.5 8v12"/><path d="M6.5 8s-1.2-4-3.2-4S2 7 6.5 8zM14.5 8s1.2-4 3.2-4S19 7 14.5 8z" opacity=".8"/><path d="M20.5 8v6M17.5 11h6"/></svg>',
+    frame:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/></svg>',
+    wallpapers:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9.5" r="1.7"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>',
+    chvadBadge:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 4 5 1-1 5 3 4-3 4 1 5-5-1-3 4-3-4-5-1 1-5-3-4 3-4-1-5 5 1z"/><path d="M8.5 12l2.5 2.5L15.5 9.5"/></svg>',
+    download:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 11l6 6 6-6"/><path d="M5 21h14"/><path d="M3 3l18 18" opacity=".4"/></svg>',
+    noAds:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.5 5.5l13 13"/><path d="M9 9h4a2 2 0 1 1 0 4H9zM9 13v3" opacity=".85"/></svg>',
+    early:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/><path d="M12 8v5l3 2"/></svg>',
+    analytics: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg>'
+};
+
+const CHVAD_PRIVILEGES = [
+    { icon:CHVAD_ICONS.statuses,    name:'30 премиум статусов',              desc:'Открой доступ к эксклюзивной коллекции статусов для профиля.' },
+    { icon:CHVAD_ICONS.gradProfile, name:'Градиентный фон профиля',          desc:'Установи градиент в качестве заднего фона страницы профиля.' },
+    { icon:CHVAD_ICONS.patternProf, name:'Узор профиля',                     desc:'Наложи узор поверх фона профиля — уникальный вид.' },
+    { icon:CHVAD_ICONS.nameColor,   name:'Настраиваемый цвет имени',         desc:'Выбери любой цвет и градиент для своего имени.' },
+    { icon:CHVAD_ICONS.gradChannel, name:'Градиентный фон канала',           desc:'Оформи личный канал премиальным градиентным фоном.' },
+    { icon:CHVAD_ICONS.patternCh,   name:'Узор канала',                      desc:'Добавь узор на задний фон канала.' },
+    { icon:CHVAD_ICONS.nameCh,      name:'Настраиваемый цвет имени канала',  desc:'Задай свой цвет и градиент для имени канала.' },
+    { icon:CHVAD_ICONS.postBg,      name:'Настраиваемый фон постов',         desc:'Меняй фон каждой публикации в ленте и на канале.' },
+    { icon:CHVAD_ICONS.musicBg,     name:'Фон карточки музыки',              desc:'Настрой фон карточки трека под свой вкус.' },
+    { icon:CHVAD_ICONS.hideOnline,  name:'Скрытие последнего входа',         desc:'Никто не увидит, когда ты заходил в сеть в последний раз.' },
+    { icon:CHVAD_ICONS.chatPreset,  name:'Пресеты оформления чатов',         desc:'Личные пресеты: фон, обои, шрифты — сохраняй и включай одним тапом.' },
+    { icon:CHVAD_ICONS.avatars,     name:'До 5 аватарок',                    desc:'Загружай несколько аватарок и переключайся между ними.' },
+    { icon:CHVAD_ICONS.bioLink,     name:'Расширенное описание и ссылки',    desc:'Больше символов в bio и ссылки на свои страницы.' },
+    { icon:CHVAD_ICONS.videoLimit,  name:'Расширенные лимиты видео',         desc:'Видео до 5 минут и размером до 15 МБ.' },
+    { icon:CHVAD_ICONS.channels,    name:'До 5 каналов (verify — до 20)',    desc:'Создавай до 5 каналов. С listatread verify — до 20.' },
+    { icon:CHVAD_ICONS.giftPlus,    name:'Кнопка подарка и «в историю»',     desc:'Кнопка подарка для постов и добавление видео в историю.' },
+    { icon:CHVAD_ICONS.frame,       name:'Рамки аватара',                    desc:'Стильные рамки для аватара профиля и личного канала.' },
+    { icon:CHVAD_ICONS.wallpapers,  name:'Свои фото-обои для чатов',         desc:'Устанавливай свои обои — видят и вы, и собеседник.' },
+    { icon:CHVAD_ICONS.chvadBadge,  name:'Статус chvad для канала',          desc:'Эксклюзивный статус chvad рядом с именем канала.' },
+    { icon:CHVAD_ICONS.download,    name:'Скачивание без водяного знака',    desc:'Качай видео, фото и баннеры музыки без watermark.' },
+    { icon:CHVAD_ICONS.noAds,       name:'Никакой рекламы',                  desc:'Полностью чистая лента — только твой контент.' },
+    { icon:CHVAD_ICONS.early,       name:'Доступ к новинкам первыми',        desc:'Ранний доступ ко всем новым функциям listatread.' },
+    { icon:CHVAD_ICONS.analytics,   name:'Расширенная аналитика',            desc:'Подробная статистика по контенту, охватам и вовлечённости.' }
+];
+
+/* Радуга градиентов для карточек: orange → yellow → green → cyan → blue → violet → pink → red → orange */
+const CHVAD_GRADIENTS = [
+    ['#ff9f0a','#ffb340'], ['#ffb340','#ffcc55'], ['#ffcc55','#ffd60a'],
+    ['#ffd60a','#d4e04d'], ['#d4e04d','#a8e063'], ['#a8e063','#56ab2f'],
+    ['#56ab2f','#30d158'], ['#30d158','#26d5a4'], ['#26d5a4','#26d5d5'],
+    ['#26d5d5','#26a5e4'], ['#26a5e4','#0a84ff'], ['#0a84ff','#5e5ce6'],
+    ['#5e5ce6','#7c4dff'], ['#7c4dff','#8e44ff'], ['#8e44ff','#a855f7'],
+    ['#a855f7','#bf5af2'], ['#bf5af2','#d946ef'], ['#d946ef','#ec4899'],
+    ['#ec4899','#ff375f'], ['#ff375f','#ff453a'], ['#ff453a','#ff6b35'],
+    ['#ff6b35','#ff9f0a'], ['#ff9f0a','#ffd60a']
+];
+function chvadGradient(i){
+    const g = CHVAD_GRADIENTS[i % CHVAD_GRADIENTS.length];
+    return `linear-gradient(135deg,${g[0]},${g[1]})`;
+}
+
+let _chvadIndex = 0;
+let _chvadPlan = { key:'monthly', price:'299 ₽/мес' };
+
+function chvadRenderCard(dir = 'r'){
+    const box = document.getElementById('chvad-carousel');
+    if(!box) return;
+    const i = _chvadIndex;
+    const p = CHVAD_PRIVILEGES[i];
+    const card = document.createElement('div');
+    card.className = `chvad-card flip-in-${dir}`;
+    card.style.background = chvadGradient(i);
+    card.innerHTML = `
+        <span class="chvad-card-num">${String(i + 1).padStart(2,'0')} / ${CHVAD_PRIVILEGES.length}</span>
+        <div class="chvad-card-icon">${p.icon}</div>
+        <div>
+            <div class="chvad-card-name">${escapeHtml(p.name)}</div>
+            <div class="chvad-card-desc">${escapeHtml(p.desc)}</div>
+        </div>
+    `;
+    box.querySelectorAll('.chvad-card').forEach(c => c.remove());
+    box.appendChild(card);
+
+    const dots = document.getElementById('chvad-dots');
+    if(dots){
+        dots.innerHTML = CHVAD_PRIVILEGES.map((_,k) =>
+            `<span class="chvad-dot ${k === i ? 'active' : ''}"></span>`
+        ).join('');
+    }
+}
+
+function chvadRenderList(){
+    const box = document.getElementById('chvad-list');
+    if(!box) return;
+    box.innerHTML = CHVAD_PRIVILEGES.map((p, i) => `
+        <div class="chvad-item" style="background:${chvadGradient(i)}">
+            <div class="chvad-item-icon">${p.icon}</div>
+            <div class="chvad-item-info">
+                <div class="chvad-item-name">${escapeHtml(p.name)}</div>
+                <div class="chvad-item-desc">${escapeHtml(p.desc)}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openChvadModal(){
+    const modal = document.getElementById('chvad-modal');
+    if(!modal) return;
+    _chvadIndex = 0;
+    _chvadPlan = { key:'monthly', price:'299 ₽/мес' };
+    modal.classList.remove('hidden');
+    void modal.offsetWidth;
+    requestAnimationFrame(() => modal.classList.add('open'));
+    modal.querySelector('.chvad-sheet').scrollTop = 0;
+
+    modal.querySelectorAll('.chvad-plan').forEach(b => {
+        b.classList.toggle('active', b.dataset.plan === 'monthly');
+    });
+    const label = document.getElementById('chvad-buy-label');
+    if(label) label.textContent = 'Оформить за 299 ₽/мес';
+
+    const hint = document.getElementById('chvad-promo-hint');
+    if(hint){ hint.textContent = ''; hint.className = 'chvad-promo-hint'; }
+    const input = document.getElementById('chvad-promo-input');
+    if(input) input.value = '';
+
+    chvadRenderCard('r');
+    chvadRenderList();
+}
+
+function closeChvadModal(){
+    const modal = document.getElementById('chvad-modal');
+    if(!modal) return;
+    modal.classList.remove('open');
+    setTimeout(() => { if(!modal.classList.contains('open')) modal.classList.add('hidden') }, 320);
+}
+
+/* Слушатели — делегирование (навешиваем один раз) */
+document.addEventListener('click', e => {
+    if(e.target.closest('#chvad-close') || e.target.closest('#chvad-backdrop')){
+        e.preventDefault(); closeChvadModal(); return;
+    }
+    if(e.target.closest('#chvad-prev')){
+        _chvadIndex = (_chvadIndex - 1 + CHVAD_PRIVILEGES.length) % CHVAD_PRIVILEGES.length;
+        chvadRenderCard('l'); return;
+    }
+    if(e.target.closest('#chvad-next')){
+        _chvadIndex = (_chvadIndex + 1) % CHVAD_PRIVILEGES.length;
+        chvadRenderCard('r'); return;
+    }
+    const plan = e.target.closest('.chvad-plan');
+    if(plan){
+        document.querySelectorAll('.chvad-plan').forEach(b => b.classList.toggle('active', b === plan));
+        _chvadPlan = { key: plan.dataset.plan, price: plan.dataset.price };
+        const label = document.getElementById('chvad-buy-label');
+        if(label) label.textContent = 'Оформить за ' + plan.dataset.price;
+        return;
+    }
+    if(e.target.closest('#chvad-promo-btn')){
+        const input = document.getElementById('chvad-promo-input');
+        const hint = document.getElementById('chvad-promo-hint');
+        if(!input || !hint) return;
+        const code = input.value.trim().toLowerCase();
+        if(!code){ hint.textContent = 'Введите промокод'; hint.className = 'chvad-promo-hint err'; return; }
+        if(code === 'lisatread' || code === 'shoponline'){
+            hint.textContent = 'Промокод принят — скидка активирована';
+            hint.className = 'chvad-promo-hint ok';
+        } else {
+            hint.textContent = 'Промокод не найден';
+            hint.className = 'chvad-promo-hint err';
+        }
+        return;
+    }
+    if(e.target.closest('#chvad-buy')){
+        showToast('success', 'Оплата пока недоступна — скоро', { icon:'⭐' });
+        return;
+    }
+});
 window.__lt = {
     music,
     openFs: (src, pid) => enterVideoFS(src, pid),
