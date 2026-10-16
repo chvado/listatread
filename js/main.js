@@ -394,7 +394,8 @@ const Router = {
         if ((m = path.match(/^\/(?:live)\/([A-Za-z0-9_-]+)$/i))) return { type:'live', code: m[1] };
         if ((m = path.match(/^\/(?:p|post)\/([A-Za-z0-9-]+)$/))) return { type:'post', id: m[1] };
         if ((m = path.match(/^\/([A-Z0-9]{5})$/i))) return { type:'code', code: m[1].toUpperCase() };
-
+        if (path === '/shop')  return { type: 'shop' };
+        if (path === '/promo') return { type: 'promo' };
         return null;
     },
 
@@ -456,6 +457,19 @@ const Router = {
                 const { data: live } = await supabase.from('lives')
                     .select('id').eq('join_code', r.code).eq('is_active', true).maybeSingle();
                 if (live){ await openLiveRoom(live.id); this.replace(r.raw); return true; }
+            }
+            if (r.type === 'shop') {
+                switchScreen('shop');
+                shopInit();
+                this.replace('/shop');
+                return true;
+            }
+
+            if (r.type === 'promo') {
+                switchScreen('promo');
+                promoInit();
+                this.replace('/promo');
+                return true;
             }
         } catch(e){ console.warn('[router]', e.message) }
 
@@ -912,7 +926,10 @@ document.addEventListener('keydown', e => {
 
 prioritiBackdrop.addEventListener('click', closePrioriti)
 $('storr-gifts-btn')?.addEventListener('click', () => { closePrioriti(); alert('Магазин подарков и клигов — скоро') })
-$('storr-chvad-btn')?.addEventListener('click', () => { closePrioriti(); setTimeout(openChvadModal, 180) })
+$('storr-chvad-btn')?.addEventListener('click', () => {
+    closePrioriti();
+    setTimeout(openShopPage, 180);
+});
 
 /* ============================================================
    ACTIONSHEET
@@ -7433,9 +7450,9 @@ document.addEventListener('click', (e) => {
 })();
 window.__ltSetChatTitle = (t) => { state.chatTitle = t }
 /* ============================================================
-   CHVAD — премиум-подписка (SVG-иконки)
+   SHOP — отдельная страница /shop
 ============================================================ */
-const CHVAD_ICONS = {
+const SHOP_ICONS = {
     statuses:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5L7 22l5-2.5L17 22l-1.5-9.5"/><circle cx="12" cy="8" r="1.6" fill="currentColor" stroke="none"/></svg>',
     gradProfile:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/><path d="M3 3l18 18" opacity=".45"/></svg>',
     patternProf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>',
@@ -7461,34 +7478,33 @@ const CHVAD_ICONS = {
     analytics: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg>'
 };
 
-const CHVAD_PRIVILEGES = [
-    { icon:CHVAD_ICONS.statuses,    name:'30 премиум статусов',              desc:'Открой доступ к эксклюзивной коллекции статусов для профиля.' },
-    { icon:CHVAD_ICONS.gradProfile, name:'Градиентный фон профиля',          desc:'Установи градиент в качестве заднего фона страницы профиля.' },
-    { icon:CHVAD_ICONS.patternProf, name:'Узор профиля',                     desc:'Наложи узор поверх фона профиля — уникальный вид.' },
-    { icon:CHVAD_ICONS.nameColor,   name:'Настраиваемый цвет имени',         desc:'Выбери любой цвет и градиент для своего имени.' },
-    { icon:CHVAD_ICONS.gradChannel, name:'Градиентный фон канала',           desc:'Оформи личный канал премиальным градиентным фоном.' },
-    { icon:CHVAD_ICONS.patternCh,   name:'Узор канала',                      desc:'Добавь узор на задний фон канала.' },
-    { icon:CHVAD_ICONS.nameCh,      name:'Настраиваемый цвет имени канала',  desc:'Задай свой цвет и градиент для имени канала.' },
-    { icon:CHVAD_ICONS.postBg,      name:'Настраиваемый фон постов',         desc:'Меняй фон каждой публикации в ленте и на канале.' },
-    { icon:CHVAD_ICONS.musicBg,     name:'Фон карточки музыки',              desc:'Настрой фон карточки трека под свой вкус.' },
-    { icon:CHVAD_ICONS.hideOnline,  name:'Скрытие последнего входа',         desc:'Никто не увидит, когда ты заходил в сеть в последний раз.' },
-    { icon:CHVAD_ICONS.chatPreset,  name:'Пресеты оформления чатов',         desc:'Личные пресеты: фон, обои, шрифты — сохраняй и включай одним тапом.' },
-    { icon:CHVAD_ICONS.avatars,     name:'До 5 аватарок',                    desc:'Загружай несколько аватарок и переключайся между ними.' },
-    { icon:CHVAD_ICONS.bioLink,     name:'Расширенное описание и ссылки',    desc:'Больше символов в bio и ссылки на свои страницы.' },
-    { icon:CHVAD_ICONS.videoLimit,  name:'Расширенные лимиты видео',         desc:'Видео до 5 минут и размером до 15 МБ.' },
-    { icon:CHVAD_ICONS.channels,    name:'До 5 каналов (verify — до 20)',    desc:'Создавай до 5 каналов. С listatread verify — до 20.' },
-    { icon:CHVAD_ICONS.giftPlus,    name:'Кнопка подарка и «в историю»',     desc:'Кнопка подарка для постов и добавление видео в историю.' },
-    { icon:CHVAD_ICONS.frame,       name:'Рамки аватара',                    desc:'Стильные рамки для аватара профиля и личного канала.' },
-    { icon:CHVAD_ICONS.wallpapers,  name:'Свои фото-обои для чатов',         desc:'Устанавливай свои обои — видят и вы, и собеседник.' },
-    { icon:CHVAD_ICONS.chvadBadge,  name:'Статус chvad для канала',          desc:'Эксклюзивный статус chvad рядом с именем канала.' },
-    { icon:CHVAD_ICONS.download,    name:'Скачивание без водяного знака',    desc:'Качай видео, фото и баннеры музыки без watermark.' },
-    { icon:CHVAD_ICONS.noAds,       name:'Никакой рекламы',                  desc:'Полностью чистая лента — только твой контент.' },
-    { icon:CHVAD_ICONS.early,       name:'Доступ к новинкам первыми',        desc:'Ранний доступ ко всем новым функциям listatread.' },
-    { icon:CHVAD_ICONS.analytics,   name:'Расширенная аналитика',            desc:'Подробная статистика по контенту, охватам и вовлечённости.' }
+const SHOP_PRIVILEGES = [
+    { icon: SHOP_ICONS.statuses,    name: '30 премиум статусов',              desc: 'Открой доступ к эксклюзивной коллекции статусов для профиля.' },
+    { icon: SHOP_ICONS.gradProfile, name: 'Градиентный фон профиля',          desc: 'Установи градиент в качестве заднего фона страницы профиля.' },
+    { icon: SHOP_ICONS.patternProf, name: 'Узор профиля',                     desc: 'Наложи узор поверх фона профиля — уникальный вид.' },
+    { icon: SHOP_ICONS.nameColor,   name: 'Настраиваемый цвет имени',         desc: 'Выбери любой цвет и градиент для своего имени.' },
+    { icon: SHOP_ICONS.gradChannel, name: 'Градиентный фон канала',           desc: 'Оформи личный канал премиальным градиентным фоном.' },
+    { icon: SHOP_ICONS.patternCh,   name: 'Узор канала',                      desc: 'Добавь узор на задний фон канала.' },
+    { icon: SHOP_ICONS.nameCh,      name: 'Настраиваемый цвет имени канала',  desc: 'Задай свой цвет и градиент для имени канала.' },
+    { icon: SHOP_ICONS.postBg,      name: 'Настраиваемый фон постов',         desc: 'Меняй фон каждой публикации в ленте и на канале.' },
+    { icon: SHOP_ICONS.musicBg,     name: 'Фон карточки музыки',              desc: 'Настрой фон карточки трека под свой вкус.' },
+    { icon: SHOP_ICONS.hideOnline,  name: 'Скрытие последнего входа',         desc: 'Никто не увидит, когда ты заходил в сеть в последний раз.' },
+    { icon: SHOP_ICONS.chatPreset,  name: 'Пресеты оформления чатов',         desc: 'Личные пресеты: фон, обои, шрифты — сохраняй и включай одним тапом.' },
+    { icon: SHOP_ICONS.avatars,     name: 'До 5 аватарок',                    desc: 'Загружай несколько аватарок и переключайся между ними.' },
+    { icon: SHOP_ICONS.bioLink,     name: 'Расширенное описание и ссылки',    desc: 'Больше символов в bio и ссылки на свои страницы.' },
+    { icon: SHOP_ICONS.videoLimit,  name: 'Расширенные лимиты видео',         desc: 'Видео до 5 минут и размером до 15 МБ.' },
+    { icon: SHOP_ICONS.channels,    name: 'До 5 каналов (verify — до 20)',    desc: 'Создавай до 5 каналов. С listatread verify — до 20.' },
+    { icon: SHOP_ICONS.giftPlus,    name: 'Кнопка подарка и «в историю»',     desc: 'Кнопка подарка для постов и добавление видео в историю.' },
+    { icon: SHOP_ICONS.frame,       name: 'Рамки аватара',                    desc: 'Стильные рамки для аватара профиля и личного канала.' },
+    { icon: SHOP_ICONS.wallpapers,  name: 'Свои фото-обои для чатов',         desc: 'Устанавливай свои обои — видят и вы, и собеседник.' },
+    { icon: SHOP_ICONS.chvadBadge,  name: 'Статус chvad для канала',          desc: 'Эксклюзивный статус chvad рядом с именем канала.' },
+    { icon: SHOP_ICONS.download,    name: 'Скачивание без водяного знака',    desc: 'Качай видео, фото и баннеры музыки без watermark.' },
+    { icon: SHOP_ICONS.noAds,       name: 'Никакой рекламы',                  desc: 'Полностью чистая лента — только твой контент.' },
+    { icon: SHOP_ICONS.early,       name: 'Доступ к новинкам первыми',        desc: 'Ранний доступ ко всем новым функциям listatread.' },
+    { icon: SHOP_ICONS.analytics,   name: 'Расширенная аналитика',            desc: 'Подробная статистика по контенту, охватам и вовлечённости.' }
 ];
 
-/* Радуга градиентов для карточек: orange → yellow → green → cyan → blue → violet → pink → red → orange */
-const CHVAD_GRADIENTS = [
+const SHOP_GRADIENTS = [
     ['#ff9f0a','#ffb340'], ['#ffb340','#ffcc55'], ['#ffcc55','#ffd60a'],
     ['#ffd60a','#d4e04d'], ['#d4e04d','#a8e063'], ['#a8e063','#56ab2f'],
     ['#56ab2f','#30d158'], ['#30d158','#26d5a4'], ['#26d5a4','#26d5d5'],
@@ -7498,128 +7514,248 @@ const CHVAD_GRADIENTS = [
     ['#ec4899','#ff375f'], ['#ff375f','#ff453a'], ['#ff453a','#ff6b35'],
     ['#ff6b35','#ff9f0a'], ['#ff9f0a','#ffd60a']
 ];
-function chvadGradient(i){
-    const g = CHVAD_GRADIENTS[i % CHVAD_GRADIENTS.length];
+
+let _shopIndex = 0;
+let _shopPlan = { key: 'monthly', price: '299 ₽/мес' };
+
+function shopGradient(i) {
+    const g = SHOP_GRADIENTS[i % SHOP_GRADIENTS.length];
     return `linear-gradient(135deg,${g[0]},${g[1]})`;
 }
 
-let _chvadIndex = 0;
-let _chvadPlan = { key:'monthly', price:'299 ₽/мес' };
-
-function chvadRenderCard(dir = 'r'){
-    const box = document.getElementById('chvad-carousel');
-    if(!box) return;
-    const i = _chvadIndex;
-    const p = CHVAD_PRIVILEGES[i];
+function shopRenderCard(dir = 'r') {
+    const box = document.getElementById('shop-carousel');
+    if (!box) return;
+    const i = _shopIndex;
+    const p = SHOP_PRIVILEGES[i];
     const card = document.createElement('div');
-    card.className = `chvad-card flip-in-${dir}`;
-    card.style.background = chvadGradient(i);
+    card.className = `shop-card flip-in-${dir}`;
+    card.style.background = shopGradient(i);
     card.innerHTML = `
-        <span class="chvad-card-num">${String(i + 1).padStart(2,'0')} / ${CHVAD_PRIVILEGES.length}</span>
-        <div class="chvad-card-icon">${p.icon}</div>
+        <span class="shop-card-num">${String(i + 1).padStart(2,'0')} / ${SHOP_PRIVILEGES.length}</span>
+        <div class="shop-card-icon">${p.icon}</div>
         <div>
-            <div class="chvad-card-name">${escapeHtml(p.name)}</div>
-            <div class="chvad-card-desc">${escapeHtml(p.desc)}</div>
+            <div class="shop-card-name">${escapeHtml(p.name)}</div>
+            <div class="shop-card-desc">${escapeHtml(p.desc)}</div>
         </div>
     `;
-    box.querySelectorAll('.chvad-card').forEach(c => c.remove());
+    box.querySelectorAll('.shop-card').forEach(c => c.remove());
     box.appendChild(card);
 
-    const dots = document.getElementById('chvad-dots');
-    if(dots){
-        dots.innerHTML = CHVAD_PRIVILEGES.map((_,k) =>
-            `<span class="chvad-dot ${k === i ? 'active' : ''}"></span>`
+    const dots = document.getElementById('shop-dots');
+    if (dots) {
+        dots.innerHTML = SHOP_PRIVILEGES.map((_, k) =>
+            `<span class="shop-dot ${k === i ? 'active' : ''}"></span>`
         ).join('');
     }
 }
 
-function chvadRenderList(){
-    const box = document.getElementById('chvad-list');
-    if(!box) return;
-    box.innerHTML = CHVAD_PRIVILEGES.map((p, i) => `
-        <div class="chvad-item" style="background:${chvadGradient(i)}">
-            <div class="chvad-item-icon">${p.icon}</div>
-            <div class="chvad-item-info">
-                <div class="chvad-item-name">${escapeHtml(p.name)}</div>
-                <div class="chvad-item-desc">${escapeHtml(p.desc)}</div>
+function shopRenderList() {
+    const box = document.getElementById('shop-list');
+    if (!box) return;
+    box.innerHTML = SHOP_PRIVILEGES.map((p, i) => `
+        <div class="shop-item" style="background:${shopGradient(i)}">
+            <div class="shop-item-icon">${p.icon}</div>
+            <div class="shop-item-info">
+                <div class="shop-item-name">${escapeHtml(p.name)}</div>
+                <div class="shop-item-desc">${escapeHtml(p.desc)}</div>
             </div>
         </div>
     `).join('');
 }
 
-function openChvadModal(){
-    const modal = document.getElementById('chvad-modal');
-    if(!modal) return;
-    _chvadIndex = 0;
-    _chvadPlan = { key:'monthly', price:'299 ₽/мес' };
-    modal.classList.remove('hidden');
-    void modal.offsetWidth;
-    requestAnimationFrame(() => modal.classList.add('open'));
-    modal.querySelector('.chvad-sheet').scrollTop = 0;
-
-    modal.querySelectorAll('.chvad-plan').forEach(b => {
-        b.classList.toggle('active', b.dataset.plan === 'monthly');
-    });
-    const label = document.getElementById('chvad-buy-label');
-    if(label) label.textContent = 'Оформить за 299 ₽/мес';
-
-    const hint = document.getElementById('chvad-promo-hint');
-    if(hint){ hint.textContent = ''; hint.className = 'chvad-promo-hint'; }
-    const input = document.getElementById('chvad-promo-input');
-    if(input) input.value = '';
-
-    chvadRenderCard('r');
-    chvadRenderList();
+function openShopPage() {
+    // маршрут /shop
+    Router.push('/shop');
+    switchScreen('shop');
+    shopInit();
 }
 
-function closeChvadModal(){
-    const modal = document.getElementById('chvad-modal');
-    if(!modal) return;
-    modal.classList.remove('open');
-    setTimeout(() => { if(!modal.classList.contains('open')) modal.classList.add('hidden') }, 320);
+function shopInit() {
+    _shopIndex = 0;
+    _shopPlan = { key: 'monthly', price: '299 ₽/мес' };
+
+    const plans = document.querySelectorAll('.shop-plan');
+    plans.forEach(b => b.classList.toggle('active', b.dataset.plan === 'monthly'));
+
+    const label = document.getElementById('shop-buy-label');
+    if (label) label.textContent = 'Оформить за 299 ₽/мес';
+
+    const hint = document.getElementById('shop-promo-hint');
+    if (hint) { hint.textContent = ''; hint.className = 'shop-promo-hint'; }
+    const input = document.getElementById('shop-promo-input');
+    if (input) input.value = '';
+
+    shopRenderCard('r');
+    shopRenderList();
+
+    // Свайпы
+    const carousel = document.getElementById('shop-carousel');
+    if (carousel && !carousel.dataset.swipeBound) {
+        carousel.dataset.swipeBound = '1';
+        let startX = 0, startY = 0, dragging = false;
+        carousel.addEventListener('touchstart', e => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            dragging = true;
+        }, { passive: true });
+        carousel.addEventListener('touchend', e => {
+            if (!dragging) return;
+            dragging = false;
+            const dx = e.changedTouches[0].clientX - startX;
+            const dy = e.changedTouches[0].clientY - startY;
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+                if (dx < 0) { // свайп влево — след.
+                    _shopIndex = (_shopIndex + 1) % SHOP_PRIVILEGES.length;
+                    shopRenderCard('r');
+                } else { // свайп вправо — пред.
+                    _shopIndex = (_shopIndex - 1 + SHOP_PRIVILEGES.length) % SHOP_PRIVILEGES.length;
+                    shopRenderCard('l');
+                }
+            }
+        }, { passive: true });
+    }
 }
 
-/* Слушатели — делегирование (навешиваем один раз) */
+// Обработчики (делегирование)
 document.addEventListener('click', e => {
-    if(e.target.closest('#chvad-close') || e.target.closest('#chvad-backdrop')){
-        e.preventDefault(); closeChvadModal(); return;
-    }
-    if(e.target.closest('#chvad-prev')){
-        _chvadIndex = (_chvadIndex - 1 + CHVAD_PRIVILEGES.length) % CHVAD_PRIVILEGES.length;
-        chvadRenderCard('l'); return;
-    }
-    if(e.target.closest('#chvad-next')){
-        _chvadIndex = (_chvadIndex + 1) % CHVAD_PRIVILEGES.length;
-        chvadRenderCard('r'); return;
-    }
-    const plan = e.target.closest('.chvad-plan');
-    if(plan){
-        document.querySelectorAll('.chvad-plan').forEach(b => b.classList.toggle('active', b === plan));
-        _chvadPlan = { key: plan.dataset.plan, price: plan.dataset.price };
-        const label = document.getElementById('chvad-buy-label');
-        if(label) label.textContent = 'Оформить за ' + plan.dataset.price;
+    if (e.target.closest('#shop-back')) {
+        e.preventDefault();
+        Router.push('/');
+        switchScreen('home');
         return;
     }
-    if(e.target.closest('#chvad-promo-btn')){
-        const input = document.getElementById('chvad-promo-input');
-        const hint = document.getElementById('chvad-promo-hint');
-        if(!input || !hint) return;
-        const code = input.value.trim().toLowerCase();
-        if(!code){ hint.textContent = 'Введите промокод'; hint.className = 'chvad-promo-hint err'; return; }
-        if(code === 'lisatread' || code === 'shoponline'){
-            hint.textContent = 'Промокод принят — скидка активирована';
-            hint.className = 'chvad-promo-hint ok';
-        } else {
-            hint.textContent = 'Промокод не найден';
-            hint.className = 'chvad-promo-hint err';
-        }
+    if (e.target.closest('#shop-prev')) {
+        _shopIndex = (_shopIndex - 1 + SHOP_PRIVILEGES.length) % SHOP_PRIVILEGES.length;
+        shopRenderCard('l');
         return;
     }
-    if(e.target.closest('#chvad-buy')){
-        showToast('success', 'Оплата пока недоступна — скоро', { icon:'⭐' });
+    if (e.target.closest('#shop-next')) {
+        _shopIndex = (_shopIndex + 1) % SHOP_PRIVILEGES.length;
+        shopRenderCard('r');
+        return;
+    }
+    const plan = e.target.closest('.shop-plan');
+    if (plan) {
+        document.querySelectorAll('.shop-plan').forEach(b => b.classList.toggle('active', b === plan));
+        _shopPlan = { key: plan.dataset.plan, price: plan.dataset.price };
+        const label = document.getElementById('shop-buy-label');
+        if (label) label.textContent = 'Оформить за ' + plan.dataset.price;
+        return;
+    }
+    if (e.target.closest('#shop-promo-btn')) {
+        e.preventDefault();
+        Router.push('/promo');
+        switchScreen('promo');
+        promoInit();
+        return;
+    }
+    if (e.target.closest('#shop-buy')) {
+        showToast('success', 'Оплата пока недоступна — скоро', { icon: '⭐' });
         return;
     }
 });
+/* ============================================================
+   PROMO PAGE — активация промокода
+============================================================ */
+function promoInit() {
+    // Сброс полей
+    const serviceInput = document.getElementById('promo-service-code');
+    const boxes = [...document.querySelectorAll('#promo-product-boxes .promo-code-box')];
+    const providerId = document.getElementById('promo-provider-id');
+    const providerHost = document.getElementById('promo-provider-host');
+    const errEl = document.getElementById('promo-error');
+    const submitBtn = document.getElementById('promo-submit');
+
+    if (serviceInput) serviceInput.value = '';
+    boxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
+    if (providerId) providerId.value = '';
+    if (providerHost) providerHost.value = '';
+    if (errEl) errEl.textContent = '';
+
+    // --- Код услуги: только буквы, 5 символов ---
+    serviceInput?.addEventListener('input', () => {
+        serviceInput.value = serviceInput.value.replace(/[^A-Za-z]/g, '').slice(0, 5).toUpperCase();
+    });
+
+    // --- Код товара: буквы и цифры, автопереход ---
+    boxes.forEach((box, idx) => {
+        box.addEventListener('input', () => {
+            box.value = box.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 1).toUpperCase();
+            box.classList.toggle('filled', !!box.value);
+            if (box.value && idx < boxes.length - 1) boxes[idx + 1].focus();
+        });
+        box.addEventListener('keydown', e => {
+            if (e.key === 'Backspace' && !box.value && idx > 0) boxes[idx - 1].focus();
+        });
+        box.addEventListener('paste', e => {
+            e.preventDefault();
+            const p = (e.clipboardData || window.clipboardData).getData('text')
+                .replace(/[^A-Za-z0-9]/g, '').slice(0, 5).toUpperCase();
+            [...p].forEach((ch, i) => {
+                if (boxes[i]) { boxes[i].value = ch; boxes[i].classList.add('filled'); }
+            });
+            const next = boxes.findIndex(b => !b.value);
+            (next >= 0 ? boxes[next] : boxes[boxes.length - 1]).focus();
+        });
+    });
+
+    // --- Провайдер: idpe (8 цифр с 2 точками) ---
+    providerId?.addEventListener('input', () => {
+        let v = providerId.value.replace(/[^0-9.]/g, '');
+        // Автоматически вставляем точки после 2-й и 5-й цифры
+        const digits = v.replace(/\./g, '');
+        if (digits.length >= 2) {
+            v = digits.slice(0, 2) + '.' + digits.slice(2);
+        }
+        if (digits.length >= 5) {
+            v = digits.slice(0, 2) + '.' + digits.slice(2, 5) + '.' + digits.slice(5);
+        }
+        providerId.value = v.slice(0, 12);
+    });
+
+    // --- Кнопка "Активировать" ---
+    submitBtn?.addEventListener('click', () => {
+        errEl.textContent = '';
+
+        const serviceCode = serviceInput?.value.trim() || '';
+        const productCode = boxes.map(b => b.value).join('');
+        const pid = providerId?.value.trim() || '';
+        const host = providerHost?.value.trim() || '';
+
+        // Валидация
+        if (serviceCode.length < 5) {
+            errEl.textContent = 'Код услуги: 5 букв';
+            return;
+        }
+        if (productCode.length < 5) {
+            errEl.textContent = 'Код товара: 5 символов';
+            return;
+        }
+        if (!/^\d{2}\.\d{2}\.\d{2}$/.test(pid)) {
+            errEl.textContent = 'Провайдер: idpe в формате XX.XXX.XX';
+            return;
+        }
+        if (!host) {
+            errEl.textContent = 'Введите хост провайдера';
+            return;
+        }
+
+        // Заглушка
+        errEl.textContent = 'Код не существует, не активен или уже активирован';
+    });
+
+    // Кнопка "Назад"
+    document.getElementById('promo-back')?.addEventListener('click', () => {
+        Router.push('/shop');
+        switchScreen('shop');
+    });
+}
+
+// Экспорт
+window.promoInit = promoInit;
+// Экспорт для вызова из других мест
+window.openShopPage = openShopPage;
 window.__lt = {
     music,
     openFs: (src, pid) => enterVideoFS(src, pid),

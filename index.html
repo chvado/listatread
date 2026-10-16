@@ -492,7 +492,146 @@
                 </div>
             </div>
         </section>
+        <!-- SHOP / CHVAD PAGE -->
+        <section id="screen-shop" class="app-screen">
+            <header class="shop-topbar">
+                <button class="topbar-btn" id="shop-back">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+                </button>
+                <div class="shop-topbar-logo">listatread</div>
+                <div class="shop-topbar-chvad">chvad</div>
+                <span class="topbar-spacer-btn"></span>
+            </header>
 
+            <div class="shop-hero">
+                <div class="shop-star-wrap">
+                    <div class="shop-star-glow"></div>
+                    <svg class="shop-star" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/>
+                    </svg>
+                </div>
+                <h1 class="shop-title">Откройте для себя больше свободы и самовыражения</h1>
+                <p class="shop-subtitle">Доступ к эксклюзивным функциям listatread</p>
+            </div>
+
+            <!-- ПЛАНЫ -->
+            <div class="shop-plans">
+                <button class="shop-plan active" data-plan="monthly" data-price="299 ₽/мес">
+                    <span class="shop-plan-name">Ежемесячно</span>
+                    <span class="shop-plan-price">299 ₽<i>/мес</i></span>
+                </button>
+                <button class="shop-plan" data-plan="yearly" data-price="2 499 ₽/год">
+                    <span class="shop-plan-badge">−30%</span>
+                    <span class="shop-plan-name">Ежегодно</span>
+                    <span class="shop-plan-price">2 499 ₽<i>/год</i></span>
+                </button>
+            </div>
+
+            <!-- ПРОМОКОД -->
+            <div class="shop-promo">
+                <div class="shop-promo-input-wrap">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <rect x="3" y="8" width="18" height="13" rx="2"/>
+                        <path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/>
+                    </svg>
+                    <input type="text" id="shop-promo-input" placeholder="Промокод" maxlength="40" autocomplete="off">
+                </div>
+                <button class="shop-promo-btn" id="shop-promo-btn">Активировать</button>
+            </div>
+            <p class="shop-promo-hint" id="shop-promo-hint"></p>
+
+            <!-- КАРУСЕЛЬ -->
+            <div class="shop-carousel-label">Как это работает</div>
+            <div class="shop-carousel-wrap">
+                <button class="shop-carousel-arrow left" id="shop-prev" aria-label="Назад">‹</button>
+                <div class="shop-carousel" id="shop-carousel"></div>
+                <button class="shop-carousel-arrow right" id="shop-next" aria-label="Вперёд">›</button>
+            </div>
+            <div class="shop-carousel-dots" id="shop-dots"></div>
+
+            <!-- СПИСОК ВСЕХ ПРИВИЛЕГИЙ -->
+            <div class="shop-list-label">Все привилегии · 23</div>
+            <div class="shop-list" id="shop-list"></div>
+
+            <!-- О ПОДПИСКЕ -->
+            <div class="shop-about">
+                <div class="shop-about-title">О подписке</div>
+                <p class="shop-about-text">
+                    listatread chvad — премиум-подписка, открывающая полный доступ к оформлению
+                    профиля и канала, расширенные лимиты, эксклюзивные функции и отсутствие рекламы.
+                    Отменить можно в любой момент.
+                </p>
+                <p class="shop-about-contact">
+                    Поддержка: <a href="mailto:support@listatread.online">support@listatread.online</a><br>
+                    Сайт: <a href="https://listatread.online" target="_blank" rel="noopener">listatread.online</a>
+                </p>
+            </div>
+
+            <!-- ФИКСИРОВАННАЯ КНОПКА -->
+            <div class="shop-buy-bar">
+                <button class="shop-buy" id="shop-buy">
+                    <span id="shop-buy-label">Оформить за 299 ₽/мес</span>
+                </button>
+            </div>
+        </section>
+        <!-- PROMO PAGE -->
+        <section id="screen-promo" class="app-screen">
+            <header class="shop-topbar">
+                <button class="topbar-btn" id="promo-back">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+                </button>
+                <div class="shop-topbar-logo">listatread</div>
+                <span class="topbar-spacer-btn"></span>
+            </header>
+
+            <div class="promo-hero">
+                <h1 class="promo-title">Активируйте свой промокод</h1>
+                <p class="promo-subtitle">Введите код услуги, код товара и данные провайдера</p>
+            </div>
+
+            <!-- 1. Код услуги -->
+            <div class="promo-field">
+                <label class="promo-label">Код услуги</label>
+                <input type="text" id="promo-service-code" class="promo-input promo-input-large"
+                       maxlength="5" inputmode="text" autocomplete="off"
+                       placeholder="XXXXX" autocapitalize="characters" spellcheck="false">
+                <p class="promo-hint">5 символов, только буквы</p>
+            </div>
+
+            <!-- 2. Код товара (5 окон через дефис) -->
+            <div class="promo-field">
+                <label class="promo-label">Код товара</label>
+                <div class="promo-code-boxes" id="promo-product-boxes">
+                    <input type="text" maxlength="1" inputmode="text" class="promo-code-box" autocapitalize="characters">
+                    <span class="promo-dash">-</span>
+                    <input type="text" maxlength="1" inputmode="text" class="promo-code-box" autocapitalize="characters">
+                    <span class="promo-dash">-</span>
+                    <input type="text" maxlength="1" inputmode="text" class="promo-code-box" autocapitalize="characters">
+                    <span class="promo-dash">-</span>
+                    <input type="text" maxlength="1" inputmode="text" class="promo-code-box" autocapitalize="characters">
+                    <span class="promo-dash">-</span>
+                    <input type="text" maxlength="1" inputmode="text" class="promo-code-box" autocapitalize="characters">
+                </div>
+            </div>
+
+            <!-- 3. Провайдер -->
+            <div class="promo-field">
+                <label class="promo-label">Провайдер</label>
+                <div class="promo-provider-row">
+                    <input type="text" id="promo-provider-id" class="promo-input"
+                           maxlength="12" inputmode="numeric" autocomplete="off"
+                           placeholder="idpe (8 цифр)" spellcheck="false">
+                    <input type="text" id="promo-provider-host" class="promo-input"
+                           autocomplete="off" placeholder="host (listatread.online/shop)" spellcheck="false">
+                </div>
+            </div>
+
+            <p class="promo-error" id="promo-error"></p>
+
+            <button class="shop-buy" id="promo-submit" style="margin: 16px 20px 0; width: calc(100% - 40px);">
+                Активировать
+            </button>
+        </section>
         <nav class="bottom-nav">
             <button class="nav-btn active" data-screen="home"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Главная</span></button>
             <button class="nav-btn" data-screen="music"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>Музыка</span></button>
