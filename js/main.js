@@ -5131,83 +5131,84 @@ function vfmBuildOverlay(){
     el.id = 'vfm'
     el.className = 'vfm'
     el.innerHTML = `
-      <video class="vfm-video" playsinline preload="metadata"></video>
+  <video class="vfm-video" playsinline preload="metadata"></video>
 
-      <!-- ============ ВЕРХНИЙ УРОВЕНЬ ============ -->
-      <div class="vfm-topbar">
-        <button class="vfm-back" id="vfm-back" aria-label="Назад">
-          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
-        </button>
+  <!-- ============ ВЕРХНИЙ УРОВЕНЬ ============ -->
+  <div class="vfm-topbar">
+    <button class="vfm-back" id="vfm-back" aria-label="Назад">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
 
-        <div class="vfm-channel-block">
-          <div class="vfm-channel-ava" id="vfm-ch-ava">K</div>
-          <div class="vfm-channel-name" id="vfm-ch-name">—</div>
-          <button class="vfm-ch-sub hidden" id="vfm-ch-sub" aria-label="Подписаться на канал">+</button>
+    <div class="vfm-channel-block">
+      <div class="vfm-channel-ava" id="vfm-ch-ava">K</div>
+      <div class="vfm-channel-name" id="vfm-ch-name">—</div>
+      <button class="vfm-ch-sub hidden" id="vfm-ch-sub" aria-label="Подписаться на канал">+</button>
+    </div>
+
+    <button class="vfm-top-more" id="vfm-top-more" aria-label="Действия">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+    </button>
+  </div>
+
+  <!-- ============ НИЖНИЙ БЛОК ============ -->
+  <div class="vfm-bottom">
+
+    <!-- ИМЯ АВТОРА + КНОПКА ПОДПИСАТЬСЯ (правее имени) -->
+    <div class="vfm-author-name-row">
+      <div class="vfm-author-name" id="vfm-author-name">user</div>
+      <button class="vfm-author-sub hidden" id="vfm-author-sub">Подписаться</button>
+    </div>
+
+    <!-- ОПИСАНИЕ + ПЛАСТИНКА -->
+    <div class="vfm-tier1">
+      <div class="vfm-desc-col">
+        <div class="vfm-desc-line">
+          <span class="vfm-desc-text" id="vfm-desc"></span>
+          <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
         </div>
-
-        <button class="vfm-top-more" id="vfm-top-more" aria-label="Действия">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
-        </button>
+        <div class="vfm-marquee" id="vfm-marquee"></div>
       </div>
-
-            <!-- ============ НИЖНИЙ БЛОК ============ -->
-      <div class="vfm-bottom">
-
-        <!-- ЯРУС 1 (верх): АВТОР -->
-        <div class="vfm-author-row">
-          <div class="vfm-author-ava-wrap">
-            <div class="vfm-author-ava" id="vfm-author-ava">A</div>
-            <span class="vfm-author-status" id="vfm-author-status"></span>
-          </div>
-          <button class="vfm-author-sub hidden" id="vfm-author-sub" aria-label="Подписаться на автора">+</button>
-          <div class="vfm-author-name" id="vfm-author-name">user</div>
+      <div class="vfm-vinyl" id="vfm-vinyl">
+        <div class="vfm-vinyl-disc">
+          <div class="vfm-vinyl-cover" id="vfm-vinyl-cover">K</div>
         </div>
-
-        <!-- ЯРУС 2 (середина): ЛАЙК / КОММЕНТ / РЕПОСТ / ШАРА -->
-        <div class="vfm-actions-row" id="vfm-actions">
-          <button class="vfm-act" data-vfm="like" aria-label="Нравится">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            <span class="vfm-act-count" data-vfm-count="like">0</span>
-          </button>
-          <button class="vfm-act" data-vfm="comment" aria-label="Комментарии">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span class="vfm-act-count" data-vfm-count="comment">0</span>
-          </button>
-          <button class="vfm-act" data-vfm="repost" aria-label="Репост">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-            <span class="vfm-act-count" data-vfm-count="repost">0</span>
-          </button>
-          <button class="vfm-act" data-vfm="share" aria-label="Поделиться">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-          </button>
-        </div>
-
-        <!-- ЯРУС 3 (низ): ОПИСАНИЕ + БЕГУЩАЯ СТРОКА + ПЛАСТИНКА -->
-        <div class="vfm-tier1">
-          <div class="vfm-desc-col">
-            <div class="vfm-desc-line">
-              <span class="vfm-desc-text" id="vfm-desc"></span>
-              <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
-            </div>
-            <div class="vfm-marquee" id="vfm-marquee"></div>
-          </div>
-          <div class="vfm-vinyl" id="vfm-vinyl">
-            <div class="vfm-vinyl-disc">
-              <div class="vfm-vinyl-cover" id="vfm-vinyl-cover">K</div>
-            </div>
-          </div>
-        </div>
-
-      
-
       </div>
+    </div>
 
-      <div class="vfm-progress" id="vfm-progress"><div class="vfm-progress-fill" id="vfm-progress-fill"></div></div>
-
-      <div class="vfm-pause-overlay" id="vfm-pause-overlay">
-        <svg viewBox="0 0 24 24" width="60" height="60" fill="#fff"><rect x="6" y="4" width="4" height="16" rx="1.6"/><rect x="14" y="4" width="4" height="16" rx="1.6"/></svg>
+    <!-- АВАТАР АВТОРА + ЛАЙК / КОММЕНТ / РЕПОСТ / ПОДАРОК / ШАРА -->
+    <div class="vfm-actions-row" id="vfm-actions">
+      <div class="vfm-author-ava-wrap">
+        <div class="vfm-author-ava" id="vfm-author-ava">A</div>
+        <span class="vfm-author-status" id="vfm-author-status"></span>
       </div>
-    `
+      <button class="vfm-act" data-vfm="like" aria-label="Нравится">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <span class="vfm-act-count" data-vfm-count="like">0</span>
+      </button>
+      <button class="vfm-act" data-vfm="comment" aria-label="Комментарии">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="vfm-act-count" data-vfm-count="comment">0</span>
+      </button>
+      <button class="vfm-act" data-vfm="repost" aria-label="Репост">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span class="vfm-act-count" data-vfm-count="repost">0</span>
+      </button>
+      <button class="vfm-act" data-vfm="gift" aria-label="Подарок">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg>
+      </button>
+      <button class="vfm-act" data-vfm="share" aria-label="Поделиться">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+      </button>
+    </div>
+
+  </div>
+
+  <div class="vfm-progress" id="vfm-progress"><div class="vfm-progress-fill" id="vfm-progress-fill"></div></div>
+
+  <div class="vfm-pause-overlay" id="vfm-pause-overlay">
+    <svg viewBox="0 0 24 24" width="60" height="60" fill="#fff"><rect x="6" y="4" width="4" height="16" rx="1.6"/><rect x="14" y="4" width="4" height="16" rx="1.6"/></svg>
+  </div>
+`;
     document.body.appendChild(el)
     VFM.el = el
     VFM.video = el.querySelector('.vfm-video')
@@ -5272,6 +5273,7 @@ function vfmBuildOverlay(){
         if(k === 'like'){ await toggleLikeGlobal(pid); syncVfmMeta() }
         if(k === 'comment') openCommentsSheet(pid)
         if(k === 'repost'){ await toggleRepostGlobal(pid); syncVfmMeta() }
+        if(k === 'gift'){ openPrioriti() }                       // ← НОВОЕ
         if(k === 'share'){
             const content = item.card?.querySelector('.feed-post-content')?.textContent || ''
             openShareSheet({ type:'post', postId: pid, src: item.src, title: content })
@@ -5597,10 +5599,14 @@ function syncVfmMeta(){
     el.querySelector('#vfm-author-name').textContent = authorName
 
     const authorSubBtn = el.querySelector('#vfm-author-sub')
-    if(authorId && authorId !== me && !state.myFollows.has(authorId)){
+    if(authorId && authorId !== me){
         authorSubBtn.classList.remove('hidden')
+        const isFollowing = state.myFollows.has(authorId)
+        authorSubBtn.textContent = isFollowing ? 'Вы подписаны' : 'Подписаться'
+        authorSubBtn.classList.toggle('subscribed', isFollowing)
     } else {
         authorSubBtn.classList.add('hidden')
+        authorSubBtn.classList.remove('subscribed')
     }
 
     // ============== ВЕРХНИЙ УРОВЕНЬ: КАНАЛ ==============
