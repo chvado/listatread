@@ -5127,28 +5127,43 @@ function vfmBuildOverlay(){
     el.innerHTML = `
       <video class="vfm-video" playsinline preload="metadata"></video>
 
+      <!-- ============ ВЕРХНИЙ УРОВЕНЬ ============ -->
       <div class="vfm-topbar">
         <button class="vfm-back" id="vfm-back" aria-label="Назад">
           <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
         </button>
 
-        <div class="vfm-author-block">
-          <div class="vfm-ava-wrap">
-            <div class="vfm-ava" id="vfm-ava">?</div>
-            <span class="vfm-ava-status" id="vfm-ava-status"></span>
-            <button class="vfm-ava-plus hidden" id="vfm-ava-plus" aria-label="Подписаться">+</button>
-          </div>
-          <div class="vfm-author-meta">
-            <div class="vfm-author-name" id="vfm-name">user</div>
-            <div class="vfm-author-marquee" id="vfm-marquee"></div>
-          </div>
+        <div class="vfm-channel-block">
+          <div class="vfm-channel-ava" id="vfm-ch-ava">K</div>
+          <div class="vfm-channel-name" id="vfm-ch-name">—</div>
+          <button class="vfm-ch-sub hidden" id="vfm-ch-sub" aria-label="Подписаться на канал">+</button>
         </div>
+
+        <button class="vfm-top-more" id="vfm-top-more" aria-label="Действия">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+        </button>
       </div>
 
+      <!-- ============ НИЖНИЙ БЛОК ============ -->
       <div class="vfm-bottom">
-        <div class="vfm-desc" id="vfm-desc"></div>
-        <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
 
+        <!-- ЯРУС 1: описание + бегущая строка + пластинка -->
+        <div class="vfm-tier1">
+          <div class="vfm-desc-col">
+            <div class="vfm-desc-line">
+              <span class="vfm-desc-text" id="vfm-desc"></span>
+              <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
+            </div>
+            <div class="vfm-marquee" id="vfm-marquee"></div>
+          </div>
+          <div class="vfm-vinyl" id="vfm-vinyl">
+            <div class="vfm-vinyl-disc">
+              <div class="vfm-vinyl-cover" id="vfm-vinyl-cover">K</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ЯРУС 2: лайк / коммент / репост / шара -->
         <div class="vfm-actions-row" id="vfm-actions">
           <button class="vfm-act" data-vfm="like" aria-label="Нравится">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -5165,11 +5180,18 @@ function vfmBuildOverlay(){
           <button class="vfm-act" data-vfm="share" aria-label="Поделиться">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
           </button>
-
-          <button class="vfm-act vfm-more" data-vfm="more" aria-label="Действия">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
-          </button>
         </div>
+
+        <!-- ЯРУС 3: автор -->
+        <div class="vfm-author-row">
+          <div class="vfm-author-ava-wrap">
+            <div class="vfm-author-ava" id="vfm-author-ava">A</div>
+            <span class="vfm-author-status" id="vfm-author-status"></span>
+          </div>
+          <button class="vfm-author-sub hidden" id="vfm-author-sub" aria-label="Подписаться на автора">+</button>
+          <div class="vfm-author-name" id="vfm-author-name">user</div>
+        </div>
+
       </div>
 
       <div class="vfm-progress" id="vfm-progress"><div class="vfm-progress-fill" id="vfm-progress-fill"></div></div>
@@ -5182,19 +5204,10 @@ function vfmBuildOverlay(){
     VFM.el = el
     VFM.video = el.querySelector('.vfm-video')
 
+    // ---------- ВЕРХНИЙ УРОВЕНЬ ----------
     el.querySelector('#vfm-back').addEventListener('click', () => closeVideoFeed())
 
-    // плюсик под авой = подписка
-    el.querySelector('#vfm-ava-plus').addEventListener('click', async e => {
-        e.stopPropagation()
-        const item = VFM.list[VFM.index]; if(!item || !item.card) return
-        const authorId = item.card.querySelector('.feed-post-avatar[data-uid]')?.dataset.uid
-        if(authorId) await followAuthor(authorId)
-        setTimeout(syncVfmMeta, 260)
-    })
-
-    // тап по аве = открыть канал / профиль
-    el.querySelector('#vfm-ava').addEventListener('click', e => {
+    el.querySelector('#vfm-ch-ava').addEventListener('click', e => {
         e.stopPropagation()
         const item = VFM.list[VFM.index]; if(!item || !item.card) return
         const badge = item.card.querySelector('.feed-channel-badge[data-chbadge]')
@@ -5203,6 +5216,33 @@ function vfmBuildOverlay(){
         if(authorId){ closeVideoFeed(); setTimeout(() => openUserProfile(authorId), 300) }
     })
 
+    el.querySelector('#vfm-ch-sub').addEventListener('click', async e => {
+        e.stopPropagation()
+        const chId = e.currentTarget.dataset.chid
+        if(!chId) return
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user) return
+        const wasSub = state.myChannelSubs.has(chId)
+        const nowSub = !wasSub
+        applySubState(chId, nowSub)
+        if(nowSub) state.myChannelSubs.add(chId); else state.myChannelSubs.delete(chId)
+        try {
+            if(nowSub) await supabase.from('subscriptions').insert({ follower_id: user.id, channel_id: chId })
+            else await supabase.from('subscriptions').delete().eq('follower_id', user.id).eq('channel_id', chId)
+            showToast('success', nowSub ? 'Вы подписаны' : 'Отписка', { icon: nowSub ? '✓' : '👋' })
+        } catch(err){
+            applySubState(chId, wasSub)
+            if(wasSub) state.myChannelSubs.add(chId); else state.myChannelSubs.delete(chId)
+        }
+        setTimeout(syncVfmMeta, 260)
+    })
+
+    el.querySelector('#vfm-top-more').addEventListener('click', e => {
+        e.stopPropagation()
+        openVfmMoreMenu()
+    })
+
+    // ---------- ЯРУС 2: экшены ----------
     el.querySelectorAll('[data-vfm]').forEach(b => b.addEventListener('click', async e => {
         e.stopPropagation()
         const item = VFM.list[VFM.index]; if(!item) return
@@ -5215,9 +5255,27 @@ function vfmBuildOverlay(){
             const content = item.card?.querySelector('.feed-post-content')?.textContent || ''
             openShareSheet({ type:'post', postId: pid, src: item.src, title: content })
         }
-        if(k === 'more'){ openVfmMoreMenu() }
     }))
 
+    // ---------- ЯРУС 3: автор ----------
+    el.querySelector('#vfm-author-ava').addEventListener('click', e => {
+        e.stopPropagation()
+        const item = VFM.list[VFM.index]; if(!item || !item.card) return
+        const authorId = item.card.querySelector('.feed-post-avatar[data-uid]')?.dataset.uid
+        if(authorId){ closeVideoFeed(); setTimeout(() => openUserProfile(authorId), 300) }
+    })
+
+    el.querySelector('#vfm-author-sub').addEventListener('click', async e => {
+        e.stopPropagation()
+        const item = VFM.list[VFM.index]; if(!item || !item.card) return
+        const authorId = item.card.querySelector('.feed-post-avatar[data-uid]')?.dataset.uid
+        if(authorId){
+            await followAuthor(authorId)
+            setTimeout(syncVfmMeta, 260)
+        }
+    })
+
+    // ---------- PROGRESS BAR ----------
     const bar = el.querySelector('#vfm-progress')
     const fill = el.querySelector('#vfm-progress-fill')
     const setSeek = clientX => {
@@ -5235,6 +5293,7 @@ function vfmBuildOverlay(){
         fill.style.width = (VFM.video.currentTime / VFM.video.duration * 100) + '%'
     })
 
+    // ---------- PAUSE OVERLAY ----------
     const pauseOverlay = el.querySelector('#vfm-pause-overlay')
     const showPauseOverlay = () => pauseOverlay.classList.add('show')
     const hidePauseOverlay = () => pauseOverlay.classList.remove('show')
@@ -5244,8 +5303,14 @@ function vfmBuildOverlay(){
         if(VFM.video.paused){ VFM.video.play().catch(()=>{}); hidePauseOverlay() }
         else { VFM.video.pause(); showPauseOverlay() }
     })
-    VFM.video.addEventListener('play',  () => hidePauseOverlay())
-    VFM.video.addEventListener('pause', () => { if(!VFM.video.ended && !VFM.cleanScreen) showPauseOverlay() })
+    VFM.video.addEventListener('play',  () => {
+        hidePauseOverlay()
+        el.querySelector('.vfm-vinyl')?.classList.add('playing')
+    })
+    VFM.video.addEventListener('pause', () => {
+        if(!VFM.video.ended && !VFM.cleanScreen) showPauseOverlay()
+        el.querySelector('.vfm-vinyl')?.classList.remove('playing')
+    })
     VFM.video.addEventListener('ended', () => {
         if(VFM.autoplay){ vfmNext(); return }
         try { VFM.video.currentTime = 0; VFM.video.play().catch(()=>{}) } catch {}
@@ -5470,67 +5535,120 @@ function renderVfmSlide(){
     VFM.endedShown = false
 }
 
-function syncVfmMeta(){
+ffunction syncVfmMeta(){
     const item = VFM.list[VFM.index]; if(!item || !VFM.el) return
     const card = item.card
     const el = VFM.el
 
     if(!card){
-        el.querySelector('#vfm-ava').textContent = '?'
-        el.querySelector('#vfm-ava-status').textContent = ''
-        el.querySelector('#vfm-name').textContent = 'user'
+        el.querySelector('#vfm-ch-ava').textContent = '?'
+        el.querySelector('#vfm-ch-name').textContent = 'user'
+        el.querySelector('#vfm-ch-sub').classList.add('hidden')
+        el.querySelector('#vfm-author-ava').textContent = '?'
+        el.querySelector('#vfm-author-status').textContent = ''
+        el.querySelector('#vfm-author-name').textContent = 'user'
+        el.querySelector('#vfm-author-sub').classList.add('hidden')
+        el.querySelector('#vfm-desc').textContent = ''
         el.querySelector('#vfm-marquee').innerHTML = ''
-        el.querySelector('#vfm-ava-plus').classList.add('hidden')
+        el.querySelector('#vfm-vinyl-cover').textContent = 'K'
         return
     }
 
-    const avaEl    = card.querySelector('.feed-post-avatar')
+    const me = state.currentUser?.id
+    const avaEl    = card.querySelector('.feed-post-avatar[data-uid]')
     const nameEl   = card.querySelector('.feed-post-name')
-    const mqEl     = card.querySelector('.post-marquee-wrap')
     const statusB  = card.querySelector('.story-status-badge')
     const authorId = avaEl?.dataset.uid
+    const authorName = nameEl ? (nameEl.textContent || '').trim().split(/\s+/)[0] : 'user'
+    const avaHTML = avaEl ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'') : '?'
 
-    // ава
-    el.querySelector('#vfm-ava').innerHTML =
-        avaEl ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'') : '?'
+    // ============== ЯРУС 3: АВТОР ==============
+    el.querySelector('#vfm-author-ava').innerHTML = avaHTML
+    el.querySelector('#vfm-author-status').textContent = statusB ? statusB.textContent : ''
+    el.querySelector('#vfm-author-name').textContent = authorName
 
-    // статус-эмодзи в правом нижнем углу авы
-    el.querySelector('#vfm-ava-status').textContent = statusB ? statusB.textContent : ''
-
-    // имя + бейдж канала
-    el.querySelector('#vfm-name').innerHTML = nameEl ? nameEl.innerHTML : 'user'
-
-    // бегущая строка
-    const mq = el.querySelector('#vfm-marquee')
-    mq.innerHTML = mqEl ? mqEl.innerHTML : ''
-    mq.removeAttribute('data-mqInit')
-    const inner = mq.querySelector('.post-marquee-inner')
-    if(inner) inner.classList.remove('scrolling')
-    const tracks = mq.querySelectorAll('.post-marquee-track')
-    tracks.forEach(t => { t.style.display = '' })
-
-    // плюсик: показываем если автор не я и я на него не подписан
-    const plusBtn = el.querySelector('#vfm-ava-plus')
-    const me = state.currentUser?.id
+    const authorSubBtn = el.querySelector('#vfm-author-sub')
     if(authorId && authorId !== me && !state.myFollows.has(authorId)){
-        plusBtn.classList.remove('hidden')
+        authorSubBtn.classList.remove('hidden')
     } else {
-        plusBtn.classList.add('hidden')
+        authorSubBtn.classList.add('hidden')
     }
 
-    // описание
-    const descEl  = el.querySelector('#vfm-desc')
+    // ============== ВЕРХНИЙ УРОВЕНЬ: КАНАЛ ==============
+    const chBadge = card.querySelector('.feed-channel-badge')
+    const chAvaEl = el.querySelector('#vfm-ch-ava')
+    const chNameEl = el.querySelector('#vfm-ch-name')
+    const chSubBtn = el.querySelector('#vfm-ch-sub')
+    const vinylCover = el.querySelector('#vfm-vinyl-cover')
+
+    if(chBadge){
+        const logoEl = chBadge.querySelector('.feed-channel-logo')
+        const chName = chBadge.querySelector('.feed-channel-name')
+        chAvaEl.innerHTML = logoEl ? logoEl.innerHTML : 'K'
+        chNameEl.textContent = chName ? chName.textContent : 'Канал'
+        vinylCover.innerHTML = logoEl ? logoEl.innerHTML : 'K'
+
+        const chId = chBadge.dataset.chbadge
+        if(chId && !state.myChannelSubs.has(chId)){
+            chSubBtn.classList.remove('hidden')
+            chSubBtn.dataset.chid = chId
+        } else {
+            chSubBtn.classList.add('hidden')
+            chSubBtn.dataset.chid = ''
+        }
+    } else {
+        // Нет канала — показываем автора в топе
+        chAvaEl.innerHTML = avaHTML
+        chNameEl.textContent = authorName
+        chSubBtn.classList.add('hidden')
+        chSubBtn.dataset.chid = ''
+        vinylCover.innerHTML = avaHTML
+    }
+
+    // ============== ЯРУС 1: ОПИСАНИЕ ==============
+    const descEl = el.querySelector('#vfm-desc')
     const moreBtn = el.querySelector('#vfm-desc-more')
-    const text = card.querySelector('.feed-post-content')?.textContent || ''
+    const text = (card.querySelector('.feed-post-content')?.textContent || '').trim()
+
     descEl.textContent = text
     descEl.classList.remove('expanded')
     moreBtn.classList.add('hidden')
-    moreBtn.onclick = e => { e.stopPropagation(); descEl.classList.add('expanded'); moreBtn.classList.add('hidden') }
+    moreBtn.onclick = e => {
+        e.stopPropagation()
+        descEl.classList.add('expanded')
+        moreBtn.classList.add('hidden')
+    }
+
+    // Показать кнопку "ещё" только если текст реально не влезает в одну строку
     requestAnimationFrame(() => {
-        if(descEl.scrollHeight > descEl.clientHeight + 4) moreBtn.classList.remove('hidden')
+        descEl.classList.remove('expanded')
+        // Принудительный reflow для корректного scrollWidth
+        void descEl.offsetWidth
+        if(text && descEl.scrollWidth > descEl.clientWidth + 2){
+            moreBtn.classList.remove('hidden')
+        }
     })
 
-    // счётчики
+    // ============== ЯРУС 1: БЕГУЩАЯ СТРОКА ==============
+    const mqEl = card.querySelector('.post-marquee-wrap')
+    const mq = el.querySelector('#vfm-marquee')
+    mq.innerHTML = ''
+    if(mqEl){
+        // Клонируем содержимое (2 трека) для корректной анимации
+        const tracks = mqEl.querySelectorAll('.post-marquee-track')
+        if(tracks.length >= 2){
+            const inner = document.createElement('div')
+            inner.className = 'post-marquee-inner'
+            tracks.forEach((t, i) => {
+                const clone = t.cloneNode(true)
+                if(i === 1) clone.setAttribute('aria-hidden', 'true')
+                inner.appendChild(clone)
+            })
+            mq.appendChild(inner)
+        }
+    }
+
+    // ============== ЯРУС 2: СЧЁТЧИКИ ==============
     const likeBtn = card.querySelector('.feed-action[data-like]')
     const repBtn  = card.querySelector('.feed-action[data-repost]')
     el.querySelector('[data-vfm-count="like"]').textContent    = card.querySelector('[data-like-count]')?.textContent || '0'
@@ -5539,7 +5657,34 @@ function syncVfmMeta(){
     el.querySelector('[data-vfm="like"]').classList.toggle('liked', !!likeBtn?.classList.contains('liked'))
     el.querySelector('[data-vfm="repost"]').classList.toggle('reposted', !!repBtn?.classList.contains('reposted'))
 
-    initPostMarquees(el)
+    // Синхронизация состояния пластинки
+    const vinyl = el.querySelector('.vfm-vinyl')
+    if(vinyl){
+        if(!VFM.video.paused) vinyl.classList.add('playing')
+        else vinyl.classList.remove('playing')
+    }
+
+    // Запускаем бегущую строку после того как блок полностью отрисован
+    setTimeout(() => {
+        initPostMarquees(el)
+        // Принудительно переинициализируем VFM-маркизу, т.к. она создана заново
+        mq.querySelectorAll('.post-marquee-wrap, .post-marquee-inner').forEach(node => {
+            node.removeAttribute?.('data-mqInit')
+        })
+        const inner = mq.querySelector('.post-marquee-inner')
+        const trks  = mq.querySelectorAll('.post-marquee-track')
+        if(!inner || trks.length < 2) return
+        inner.classList.remove('scrolling')
+        const wrapW  = mq.clientWidth
+        const trackW = trks[0].scrollWidth
+        if(trackW > wrapW + 2){
+            const dur = Math.max(12, Math.round(trackW / 30))
+            inner.style.animationDuration = dur + 's'
+            inner.classList.add('scrolling')
+        } else {
+            trks[1].style.display = 'none'
+        }
+    }, 120)
 }
 
 async function vfmLoadMore(){

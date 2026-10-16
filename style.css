@@ -1805,6 +1805,9 @@ body.in-direct .mini-player{z-index:170;bottom:auto;top:calc(var(--safe-top) + 7
 /* ============================================================
    VIDEO FEED MODE (VFM) — новая компоновка
 ============================================================ */
+/* ============================================================
+   VIDEO FEED MODE (VFM) — новая компоновка
+============================================================ */
 body.vfm-active .bottom-nav{ z-index: 8700 }
 body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 
@@ -1816,10 +1819,12 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
     will-change: transform, opacity, border-radius;
     color: #fff;
 }
+
+/* ---------- ВИДЕО (по центру) ---------- */
 .vfm-video{
     position: absolute;
-    top: 78px;
-    bottom: 180px;
+    top: 76px;
+    bottom: 260px;
     left: 0; right: 0;
     width: 100%; height: auto;
     object-fit: contain;
@@ -1827,17 +1832,14 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
     z-index: 0;
     cursor: pointer;
 }
-@media (max-width: 480px){
-    .vfm-video{ top: 72px; bottom: 200px; }
-}
 
 /* ---------- ВЕРХНЯЯ ПОЛОСА ---------- */
 .vfm-topbar{
     position: absolute; top: 0; left: 0; right: 0;
-    padding: calc(var(--safe-top) + 12px) 14px 18px;
-    display: flex; align-items: center; gap: 12px;
+    padding: calc(var(--safe-top) + 10px) 12px 14px;
+    display: flex; align-items: center; gap: 10px;
     z-index: 3;
-    background: linear-gradient(180deg, rgba(0,0,0,.55), transparent);
+    background: linear-gradient(180deg, rgba(0,0,0,.6), transparent);
     pointer-events: none;
 }
 .vfm-topbar > *{ pointer-events: auto; }
@@ -1851,117 +1853,218 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 }
 .vfm-back:active{ scale: .93 }
 
-.vfm-author-block{
-    display: flex; align-items: center; gap: 12px;
+.vfm-channel-block{
+    display: flex; align-items: center; gap: 8px;
     flex: 1; min-width: 0;
 }
-
-.vfm-ava-wrap{ position: relative; flex-shrink: 0; padding-bottom: 10px; }
-.vfm-ava{
-    width: 44px; height: 44px; border-radius: 50%;
-    overflow: hidden; position: relative;
+.vfm-channel-ava{
+    width: 34px; height: 34px; border-radius: 50%;
+    overflow: hidden; flex-shrink: 0;
     background: linear-gradient(135deg,#ffd60a,#ff375f);
     display: flex; align-items: center; justify-content: center;
-    font-size: 17px; font-weight: 800; color: #fff;
-    box-shadow: 0 4px 16px rgba(0,0,0,.45);
-    border: 1.5px solid rgba(255,255,255,.25);
+    font-size: 14px; font-weight: 800; color: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,.5);
+    cursor: pointer;
 }
-.vfm-ava img{ width: 100%; height: 100%; object-fit: cover }
-
-.vfm-ava-status{
-    position: absolute; right: -1px; bottom: 12px;
-    font-size: 13px; line-height: 1;
-    filter: drop-shadow(0 1px 3px rgba(0,0,0,.6));
-    pointer-events: none; z-index: 2;
-}
-.vfm-ava-plus{
-    position: absolute; left: 50%; bottom: 2px;
-    transform: translateX(-50%);
-    width: 20px; height: 20px; border-radius: 50%;
-    background: #ff8a00; color: #fff;
-    border: 2px solid #fff;
-    font-size: 13px; font-weight: 900; line-height: 1;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; padding: 0; padding-bottom: 2px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.5);
-    z-index: 3;
-}
-.vfm-ava-plus.hidden{ display: none }
-.vfm-ava-plus:active{ scale: .9 }
-
-.vfm-author-meta{ flex: 1; min-width: 0 }
-.vfm-author-name{
-    font-size: 15px; font-weight: 800; color: #fff;
-    text-shadow: 0 1px 5px rgba(0,0,0,.6);
-    display: flex; align-items: center; gap: 6px;
+.vfm-channel-ava img{ width: 100%; height: 100%; object-fit: cover }
+.vfm-channel-name{
+    font-size: 14px; font-weight: 700; color: #fff;
+    text-shadow: 0 1px 5px rgba(0,0,0,.65);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 40vw;
 }
-.vfm-author-name .feed-channel-badge{
-    background: rgba(255,255,255,.18);
-    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-    color: #fff;
+.vfm-ch-sub{
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--red-pink); color: #fff;
+    border: none; font-size: 16px; font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; padding-bottom: 2px;
+    cursor: pointer; flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(255,55,95,.55);
 }
-.vfm-author-name .feed-channel-name{ color: #fff }
-.vfm-author-marquee{
-    margin-top: 3px; height: 15px; overflow: hidden;
-    font-size: 12px; color: rgba(255,255,255,.85);
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
-    mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+.vfm-ch-sub.hidden{ display: none }
+.vfm-ch-sub:active{ scale: .9 }
+
+.vfm-top-more{
+    width: 40px; height: 40px; border-radius: 50%;
+    border: none; background: transparent; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+    filter: drop-shadow(0 1px 5px rgba(0,0,0,.6));
 }
-.vfm-author-marquee .post-marquee-track{ color: rgba(255,255,255,.85) }
-.vfm-author-marquee .mq-sound-name{ color: rgba(255,255,255,.85) }
+.vfm-top-more:active{ scale: .93 }
 
 /* ---------- НИЖНИЙ БЛОК ---------- */
 .vfm-bottom{
     position: absolute; left: 0; right: 0;
-    bottom: calc(var(--nav-height) + var(--safe-bottom));
-    padding: 40px 16px 22px;
+    bottom: calc(var(--nav-height) + var(--safe-bottom) + 6px);
+    padding: 20px 16px 14px;
     z-index: 3;
-    display: flex; flex-direction: column; gap: 12px;
-    background: linear-gradient(0deg, rgba(0,0,0,.78) 30%, transparent);
+    display: flex; flex-direction: column; gap: 14px;
+    background: linear-gradient(0deg, rgba(0,0,0,.9) 35%, rgba(0,0,0,.5) 75%, transparent);
 }
 
-.vfm-desc{
-    font-size: 14px; line-height: 1.45; color: #fff;
-    max-height: 4.4em; overflow: hidden;
-    text-shadow: 0 1px 6px rgba(0,0,0,.6);
-    white-space: pre-wrap; word-break: break-word;
-    transition: max-height .4s cubic-bezier(.22,1,.36,1);
+/* ===== ЯРУС 1 ===== */
+.vfm-tier1{
+    display: flex; align-items: center; gap: 12px;
 }
-.vfm-desc.expanded{ max-height: 44vh; overflow-y: auto }
+.vfm-desc-col{
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 6px;
+}
+.vfm-desc-line{
+    display: flex; align-items: center; gap: 6px;
+    min-width: 0;
+}
+.vfm-desc-text{
+    font-size: 14px; line-height: 1.4; color: #fff;
+    text-shadow: 0 1px 5px rgba(0,0,0,.65);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 1; min-width: 0;
+}
+.vfm-desc-text.expanded{
+    white-space: normal;
+    display: block;
+    max-height: 30vh; overflow-y: auto;
+}
 .vfm-desc-more{
-    display: inline-block; margin-top: 4px;
-    font-size: 13px; font-weight: 700; color: rgba(255,255,255,.75);
+    flex-shrink: 0;
+    font-size: 13px; font-weight: 700; color: rgba(255,255,255,.8);
     background: transparent; border: none; padding: 0; cursor: pointer;
-    text-shadow: 0 1px 6px rgba(0,0,0,.55); align-self: flex-start;
+    text-shadow: 0 1px 5px rgba(0,0,0,.6);
 }
 .vfm-desc-more.hidden{ display: none }
 
+/* ----- Бегущая строка (в самом низу яруса 1) ----- */
+.vfm-marquee{
+    height: 15px; overflow: hidden;
+    font-size: 12px; color: rgba(255,255,255,.85);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+}
+.vfm-marquee .post-marquee-inner{
+    display: flex; width: max-content; height: 100%;
+    align-items: center;
+}
+.vfm-marquee .post-marquee-inner.scrolling{
+    animation: marqueeScroll linear infinite;
+}
+.vfm-marquee .post-marquee-track{
+    display: inline-flex; align-items: center; gap: 8px;
+    white-space: nowrap; padding-right: 28px; flex-shrink: 0;
+    height: 15px; line-height: 15px;
+    font-size: 12px; color: rgba(255,255,255,.85);
+}
+.vfm-marquee .mq-label,
+.vfm-marquee .mq-dot,
+.vfm-marquee .mq-sound-name{ color: rgba(255,255,255,.85) }
+.vfm-marquee .post-date{ color: rgba(255,255,255,.7) }
+.vfm-marquee .mq-sound-ava{ background: rgba(255,255,255,.25) }
+
+/* ----- Пластинка справа ----- */
+.vfm-vinyl{
+    width: 56px; height: 56px; flex-shrink: 0;
+    border-radius: 50%;
+    background: #111;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 20px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.06);
+    animation: vfmVinylSpin 4s linear infinite;
+    animation-play-state: paused;
+}
+.vfm-vinyl.playing{ animation-play-state: running }
+.vfm-vinyl-disc{
+    width: 100%; height: 100%; border-radius: 50%;
+    background:
+            radial-gradient(circle at 50% 50%, #2a2a2a 0 22%, #0d0d0d 22% 100%),
+            repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.05) 0 1px, transparent 1px 4px);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+}
+.vfm-vinyl-disc::after{
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.18), transparent 45%);
+    pointer-events: none;
+}
+.vfm-vinyl-cover{
+    width: 22px; height: 22px; border-radius: 50%;
+    background: linear-gradient(135deg,#ffd60a,#ff375f);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; color: #fff;
+    overflow: hidden;
+    position: relative; z-index: 1;
+    box-shadow: 0 0 0 2px #000;
+}
+.vfm-vinyl-cover img{ width: 100%; height: 100%; object-fit: cover }
+
+@keyframes vfmVinylSpin{ to{ transform: rotate(360deg) } }
+
+/* ===== ЯРУС 2: ЛАЙК / КОММЕНТ / РЕПОСТ / ШАРА ===== */
 .vfm-actions-row{
-    display: flex; align-items: center;
-    gap: 22px;
-    padding-top: 18px;
+    display: flex; align-items: center; gap: 22px;
 }
 .vfm-act{
     display: inline-flex; align-items: center; gap: 6px;
     background: transparent; border: none; color: #fff;
     font-size: 13px; font-weight: 700; padding: 0;
-    cursor: pointer; text-shadow: 0 1px 6px rgba(0,0,0,.55);
+    cursor: pointer; text-shadow: 0 1px 5px rgba(0,0,0,.6);
     transition: color .18s, transform .18s;
 }
 .vfm-act svg{
     width: 26px; height: 26px; stroke-width: 1.9;
-    filter: drop-shadow(0 1px 3px rgba(0,0,0,.55));
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,.6));
+    transition: fill .2s, stroke .2s;
 }
 .vfm-act.liked{ color: var(--red-pink) }
+.vfm-act.liked svg{ fill: var(--red-pink); stroke: var(--red-pink) }
 .vfm-act.reposted{ color: var(--green) }
+.vfm-act.reposted svg{ fill: var(--green); stroke: var(--green) }
 .vfm-act:active{ transform: scale(.9) }
-.vfm-act .vfm-act-count{ font-weight: 800; font-variant-numeric: tabular-nums }
+.vfm-act .vfm-act-count{
+    font-weight: 800; font-variant-numeric: tabular-nums; color: currentColor;
+}
 
-.vfm-act.vfm-more{
-    margin-left: auto;
-    color: #fff;
-    padding-left: 8px;
+/* ===== ЯРУС 3: АВТОР ===== */
+.vfm-author-row{
+    display: flex; align-items: center; gap: 10px;
+}
+.vfm-author-ava-wrap{
+    position: relative; flex-shrink: 0; padding-bottom: 6px;
+}
+.vfm-author-ava{
+    width: 36px; height: 36px; border-radius: 50%;
+    overflow: hidden;
+    background: transparent;
+    border: 2px solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: #fff;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,.55);
+}
+.vfm-author-ava img{ width: 100%; height: 100%; object-fit: cover; border-radius: 50% }
+.vfm-author-status{
+    position: absolute; right: -3px; bottom: 2px;
+    font-size: 14px; line-height: 1;
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,.65));
+    animation: statusBob 2.6s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 2;
+}
+.vfm-author-sub{
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--red-pink); color: #fff;
+    border: 2px solid #fff; font-size: 16px; font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; padding-bottom: 2px;
+    cursor: pointer; flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(255,55,95,.55);
+}
+.vfm-author-sub.hidden{ display: none }
+.vfm-author-sub:active{ scale: .9 }
+.vfm-author-name{
+    font-size: 14px; font-weight: 700; color: #fff;
+    text-shadow: 0 1px 5px rgba(0,0,0,.6);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 1; min-width: 0;
 }
 
 /* ---------- ПРОГРЕСС ---------- */
@@ -1991,11 +2094,6 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 }
 .vfm-pause-overlay.show{
     opacity: 1; transform: translate(-50%,-50%) scale(1);
-    animation: vfmPulse 1.6s ease-in-out infinite;
-}
-@keyframes vfmPulse{
-    0%,100%{ transform: translate(-50%,-50%) scale(1) }
-    50%{ transform: translate(-50%,-50%) scale(1.07) }
 }
 .vfm-pause-overlay svg{ width: 60px; height: 60px }
 
@@ -2007,6 +2105,14 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
     background: rgba(0,0,0,.78);
     -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
     animation: fadeIn .3s var(--ease);
+}
+
+@media (max-width: 480px){
+    .vfm-video{ top: 72px; bottom: 280px; }
+    .vfm-bottom{ gap: 12px; padding: 18px 14px 12px; }
+    .vfm-actions-row{ gap: 18px; }
+    .vfm-vinyl{ width: 48px; height: 48px; }
+    .vfm-vinyl-cover{ width: 18px; height: 18px; font-size: 9px; }
 }
 /* ===== DIRECT: pull-to-reply ===== */
 .dr-row{position:relative;touch-action:pan-y}
