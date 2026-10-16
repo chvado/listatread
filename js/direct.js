@@ -217,12 +217,16 @@ function getSize(){ return MSG_SIZES.find(s => s.id === (D.msgSize || 'md')) || 
             color:var(--text); display:flex; align-items:center; gap:8px;
         }
         .ds-brand-mark{
-            width:32px; height:32px; border-radius:50%;
-            background:#000; color:#fff;
-            display:flex; align-items:center; justify-content:center;
-            font-family:serif; font-size:22px; line-height:1; padding-bottom:4px; box-sizing:border-box;
-        }
-        html[data-theme="dark"] .ds-brand-mark{ background:#fff; color:#000 }
+    width:32px; height:32px; border-radius:50%;
+    background:#000; color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden; flex-shrink:0; padding:0;
+}
+html[data-theme="dark"] .ds-brand-mark{ background:#fff; color:#000 }
+.ds-brand-mark img{
+    width:100%; height:100%; object-fit:cover;
+    border-radius:50%; display:block;
+}
         .ds-scroll{ flex:1; overflow-y:auto; padding:8px 0 24px }
         .ds-section{ padding:4px 0 }
         .ds-section-title{
