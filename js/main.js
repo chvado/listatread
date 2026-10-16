@@ -794,7 +794,7 @@ document.querySelectorAll('.sidebar-item').forEach(item => {
         if(a === 'help-policy')   return window.open('/policy','_blank')
         if(a === 'help-rules')    return window.open('/rules','_blank')
         if(a === 'help-cookie')   return window.open('/cookie','_blank')
-        if(a === 'help-about')    return showToast('info','listatread.online · v15',{icon:'ℓ'})
+        if(a === 'help-about')    return showToast('info','listatread.online · v16',{icon:'<img src="/logo.jpeg" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;display:block">'})
         if(a === 'karsq') return showScreen('karsq')
     })
 })

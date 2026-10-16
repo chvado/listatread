@@ -2171,6 +2171,29 @@ body.vfm-active .mini-player{
 }
 .dr-row.mine .dr-reply-quote{background:rgba(0,0,0,.2)}
 .dr-reply-quote-name{font-weight:700;margin-bottom:2px}
+
+.brand-circle img,
+.auth-logo-circle img,
+.brand-circle-sm img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+    pointer-events: none;
+    user-select: none;
+}
+.brand-circle,
+.auth-logo-circle{ overflow: hidden; }
+
+.ds-brand-mark{ overflow: hidden; }
+.ds-brand-mark img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

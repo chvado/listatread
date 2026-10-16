@@ -1105,7 +1105,7 @@ function ensureSidebar(){
     sb.id = 'ds-sidebar'
     sb.innerHTML = `
       <div class="ds-header">
-        <div class="ds-brand"><span class="ds-brand-mark">ℓ</span><span>listadirect</span></div>
+        <div class="ds-brand"><span class="ds-brand-mark"><img src="/logo.jpeg" alt="listatread"></span><span>listadirect</span></div>
       </div>
       <div class="ds-scroll">
         <div class="ds-section">
