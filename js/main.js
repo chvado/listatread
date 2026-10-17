@@ -2834,12 +2834,15 @@ async function loadProfile(userId = null){
         if(iBlocked) renderBlockedContent()
         else if(state.profileTab === 'posts') await renderMyPosts(targetId)
         else renderProfileTab()
+
+        // === Применяем сохранённую тему профиля (после рендера DOM) ===
+        setTimeout(() => {
+            try {
+                const theme = (profile && profile.profile_theme) || null
+                applyProfileTheme(profile, theme, state.viewingOwnProfile)
+            } catch(e){ console.warn('[theme apply]', e) }
+        }, 120)
     } catch(e){ console.warn(e.message) }
-    // === Применяем сохранённую тему профиля ===
-    try {
-        const theme = (profile && profile.profile_theme) || null
-        applyProfileTheme(profile, theme, state.viewingOwnProfile)
-    } catch(e){ console.warn('[theme apply]', e) }
     finally { loader.classList.add('hidden'); body.classList.remove('hidden') }
 }
 
