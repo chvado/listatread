@@ -2836,13 +2836,10 @@ async function loadProfile(userId = null){
         else renderProfileTab()
     } catch(e){ console.warn(e.message) }
     // === Применяем сохранённую тему профиля ===
-    // === Применяем сохранённую тему профиля (после рендера DOM) ===
-    setTimeout(() => {
-        try {
-            const theme = (profile && profile.profile_theme) || null
-            applyProfileTheme(profile, theme, state.viewingOwnProfile)
-        } catch(e){ console.warn('[theme apply]', e) }
-    }, 120)
+    try {
+        const theme = (profile && profile.profile_theme) || null
+        applyProfileTheme(profile, theme, state.viewingOwnProfile)
+    } catch(e){ console.warn('[theme apply]', e) }
     finally { loader.classList.add('hidden'); body.classList.remove('hidden') }
 }
 
