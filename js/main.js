@@ -1929,43 +1929,55 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const isVideo = isVideoUrl(post.media_url)
     const adminMark = p.is_admin ? adminBadge(true) : ''
 
-    // аватар без плюса
-    const avatarBlock = `<div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div>`
+    // Данные канала
+    const chName = ch.name || 'Канал'
+    const chLogo = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : chName.charAt(0).toUpperCase()
 
-    // кнопка подписки на АВТОРА
-    const isFollowing = myId && state.myFollows.has(post.author_id)
-    const authorFollowBtn = (myId && post.author_id !== myId)
-        ? `<button class="feed-author-sub-btn ${isFollowing ? 'subscribed' : ''}" data-follow-uid="${post.author_id}">${isFollowing ? 'Вы подписаны' : 'Подписаться'}</button>`
-        : ''
-
-    // ряд канала
-    let channelRowHtml = ''
-    if (ch.id) {
-        const chName = ch.name || 'Канал'
-        const chLogo = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : chName.charAt(0).toUpperCase()
-        const isChSub = state.myChannelSubs.has(ch.id)
-        channelRowHtml = `
-            <div class="feed-channel-row">
-                <button class="feed-channel-badge" data-chbadge="${ch.id}">
-                    <span class="feed-channel-logo">${chLogo}</span>
-                    <span class="feed-channel-name">${escapeHtml(chName)}</span>
-                </button>
-                ${!isMine ? `<button class="feed-channel-sub-mini ${isChSub ? 'subscribed' : ''}" data-ch-sub="${ch.id}" aria-label="${isChSub ? 'Отписаться' : 'Подписаться'}">${isChSub ? '✓' : '+'}</button>` : ''}
-            </div>`
+    // Кнопка подписки (остается справа)
+    let subBtn = ''
+    if(!isMine && ch.id){
+        const isSub = state.myChannelSubs.has(ch.id)
+        subBtn = `<button class="feed-sub-btn ${isSub ? 'subscribed' : ''}" data-chid="${ch.id}">${isSub ? ICONS.checkSmall : ICONS.plus}</button>`
     }
 
+    // Собираем хедер ровно из 2 ярусов
     const headerHtml = `
-        <div class="feed-post-header">
-            ${avatarBlock}
-            <div class="feed-post-info">
-                <div class="feed-post-name-row">
-                    <div class="feed-post-name">${escapeHtml(name)}${adminMark}</div>
-                    ${authorFollowBtn}
+        <div class="feed-post-header" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; align-items: stretch; width: 100%;">
+            
+            <!-- ВЕРХНИЙ ЯРУС -->
+            <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                
+                <!-- КАНАЛ 50% -->
+                <div style="flex: 1; min-width: 0;">
+                    <button class="feed-channel-badge" data-chbadge="${ch.id}" style="margin-left: 0; display: flex; align-items: center; gap: 6px; width: 100%; padding: 3px 6px 3px 3px; border-radius: 10px; background: var(--surface-2);">
+                        <span class="feed-channel-logo" style="width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;">${chLogo}</span>
+                        <span class="feed-channel-name fade-text" style="flex: 1; text-align: left; font-size: 13px; color: var(--text); font-weight: 700;">${escapeHtml(chName)}</span>
+                        <!-- СИНЯЯ ГАЛОЧКА -->
+                        <span style="width: 14px; height: 14px; background: #0a84ff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; flex-shrink: 0;">✓</span>
+                    </button>
                 </div>
-                ${channelRowHtml}
+
+                <!-- АВТОР 50% -->
+                <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px;">
+                    <div class="feed-post-avatar" style="width: 24px; height: 24px; font-size: 12px; flex-shrink: 0; position: relative;">
+                        ${av}
+                        <div class="story-status-badge" style="font-size: 10px; right: -4px; bottom: -4px;">${emoji}</div>
+                    </div>
+                    <span class="feed-post-name fade-text" style="flex: 1; text-align: left; font-size: 13px; color: var(--text); font-weight: 700;">
+                        ${escapeHtml(name)}${adminMark}
+                    </span>
+                </div>
+
+                <!-- КНОПКА ПОДПИСКИ СПРАВА -->
+                ${subBtn}
+            </div>
+
+            <!-- НИЖНИЙ ЯРУС -->
+            <div style="width: 100%;">
                 ${buildMetaRow(time, contextLabel, post)}
             </div>
-        </div>`
+        </div>
+    `
 
     const pollHtml = post.poll ? renderPoll(post.poll, post.id) : ''
     const repostStyle = isReposted ? 'style="color:var(--purple)"' : ''
@@ -2643,7 +2655,6 @@ function renderLivePost(post, myId, postsMap, counts = {}, likedSet = new Set(),
     const isVideo = isVideoUrl(post.media_url)
     const adminMark = p.is_admin ? adminBadge(true) : ''
 
-
     const avatarBlock = `<div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div>`
 
     let replyBlock = ''
@@ -2683,7 +2694,7 @@ function renderLivePost(post, myId, postsMap, counts = {}, likedSet = new Set(),
         ? `<div class="feed-post-footer" style="justify-content:flex-end;border-top:none;padding-top:8px;margin-top:8px;gap:12px"><button class="feed-action profile-toggle ${hidden ? 'hidden-post' : ''}" data-toggle="${post.id}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="feed-more" data-pid="${post.id}" data-author="${uname}" data-mine="1">${ICONS.dots}</button></div>`
         : `<div class="feed-post-footer">
             <button class="feed-action" data-reply="${post.id}" data-author="${uname}">${ICONS.reply}</button>
-            <button class="feed-action ${isRep?'reposted':''}" data-repost="${post.id}" ${isRep?'style="color:var(--green)"':''}>${ICONS.repost}<span class="feed-count" data-repost-count="${post.id}">${rc}</span></button>
+            <button class="feed-action ${isRep?'reposted':''}" data-repost="${post.id}" ${isRep?'style="color:var(--purple)"':''}>${ICONS.repost}<span class="feed-count" data-repost-count="${post.id}">${rc}</span></button>
             <button class="feed-action" data-share="${post.id}">${ICONS.share}</button>
             <button class="feed-more" data-pid="${post.id}" data-author="${uname}" data-mine="0">${ICONS.dots}</button>
           </div>`
@@ -5251,6 +5262,7 @@ function vfmBuildOverlay(){
     el.innerHTML = `
   <video class="vfm-video" playsinline preload="metadata"></video>
 
+  <!-- ВЕРХНИЙ УРОВЕНЬ: КАНАЛ -->
   <div class="vfm-topbar">
     <button class="vfm-back" id="vfm-back" aria-label="Назад">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
@@ -5265,7 +5277,9 @@ function vfmBuildOverlay(){
     </button>
   </div>
 
+  <!-- НИЖНИЙ БЛОК -->
   <div class="vfm-bottom">
+    <!-- ЯРУС 1: АВТОР + ЭКШЕНЫ -->
     <div class="vfm-actions-row" id="vfm-actions">
       <div class="vfm-author-ava-wrap">
         <div class="vfm-author-ava" id="vfm-author-ava">A</div>
@@ -5294,6 +5308,7 @@ function vfmBuildOverlay(){
       </button>
     </div>
 
+    <!-- ЯРУС 2: ОПИСАНИЕ -->
     <div class="vfm-tier1">
       <div class="vfm-desc-col">
         <div class="vfm-desc-line">
@@ -5319,7 +5334,7 @@ function vfmBuildOverlay(){
     document.body.appendChild(el)
     VFM.el = el
     VFM.video = el.querySelector('.vfm-video')
-    // ---- Позиция видео: большое — от верха, маленькое — по центру ----
+
     VFM.video.addEventListener('loadedmetadata', () => {
         const v = VFM.video;
         const vw = v.videoWidth, vh = v.videoHeight;
@@ -5327,13 +5342,11 @@ function vfmBuildOverlay(){
         const elW = v.clientWidth  || window.innerWidth;
         const elH = v.clientHeight || window.innerHeight;
         const videoAspect = vw / vh;
-        const widthFitHeight = elW / videoAspect;      // высота, если видео вписать по ширине
-        const fillRatio = widthFitHeight / elH;        // 1.0 = полностью заполнит экран
-        // Большое видео (≥60% высоты экрана) — прижать к верху
-        // Маленькое — центрировать
+        const widthFitHeight = elW / videoAspect;
+        const fillRatio = widthFitHeight / elH;
         v.style.objectPosition = (fillRatio >= 0.6) ? 'center top' : 'center center';
     });
-    // ---------- ВЕРХНИЙ УРОВЕНЬ ----------
+
     el.querySelector('#vfm-back').addEventListener('click', () => closeVideoFeed())
 
     el.querySelector('#vfm-ch-ava').addEventListener('click', e => {
@@ -5371,7 +5384,6 @@ function vfmBuildOverlay(){
         openVfmMoreMenu()
     })
 
-    // ---------- ЯРУС 2: экшены ----------
     el.querySelectorAll('[data-vfm]').forEach(b => b.addEventListener('click', async e => {
         e.stopPropagation()
         const item = VFM.list[VFM.index]; if(!item) return
@@ -5380,14 +5392,13 @@ function vfmBuildOverlay(){
         if(k === 'like'){ await toggleLikeGlobal(pid); syncVfmMeta() }
         if(k === 'comment') openCommentsSheet(pid)
         if(k === 'repost'){ await toggleRepostGlobal(pid); syncVfmMeta() }
-        if(k === 'gift'){ openPrioriti() }                       // ← НОВОЕ
+        if(k === 'gift'){ openPrioriti() }
         if(k === 'share'){
             const content = item.card?.querySelector('.feed-post-content')?.textContent || ''
             openShareSheet({ type:'post', postId: pid, src: item.src, title: content })
         }
     }))
 
-    // ---------- ЯРУС 3: автор ----------
     el.querySelector('#vfm-author-ava').addEventListener('click', e => {
         e.stopPropagation()
         const item = VFM.list[VFM.index]; if(!item || !item.card) return
@@ -5401,7 +5412,6 @@ function vfmBuildOverlay(){
         if(uid) handleAuthorFollow(e.currentTarget, uid)
     })
 
-    // ---------- PROGRESS BAR ----------
     const bar = el.querySelector('#vfm-progress')
     const fill = el.querySelector('#vfm-progress-fill')
     const setSeek = clientX => {
@@ -5419,7 +5429,6 @@ function vfmBuildOverlay(){
         fill.style.width = (VFM.video.currentTime / VFM.video.duration * 100) + '%'
     })
 
-    // ---------- PAUSE OVERLAY ----------
     const pauseOverlay = el.querySelector('#vfm-pause-overlay')
     const showPauseOverlay = () => pauseOverlay.classList.add('show')
     const hidePauseOverlay = () => pauseOverlay.classList.remove('show')
@@ -5685,7 +5694,7 @@ function syncVfmMeta(){
     const statusB  = card.querySelector('.story-status-badge')
     const authorId = avaEl?.dataset.uid
 
-    // Имя автора — только текст (без бейджа канала и без админ-значка)
+    // Имя автора без бейджа канала
     let authorName = 'user'
     if(nameEl){
         const clone = nameEl.cloneNode(true)
@@ -5695,11 +5704,10 @@ function syncVfmMeta(){
 
     const avaHTML = avaEl ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'') : '?'
 
-    // ===== Автор-аватар =====
+    // ===== ЯРУС 1: АВТОР И КНОПКА =====
     el.querySelector('#vfm-author-ava').innerHTML = avaHTML
     el.querySelector('#vfm-author-status').textContent = statusB ? statusB.textContent : ''
 
-    // ===== Кнопка подписки в actions-row =====
     const followBtn = el.querySelector('#vfm-follow-btn')
     if(authorId && me && authorId !== me){
         followBtn.style.display = ''
@@ -5713,7 +5721,7 @@ function syncVfmMeta(){
         followBtn.style.display = 'none'
     }
 
-    // ===== Верхний уровень: канал =====
+    // ===== ВЕРХНИЙ УРОВЕНЬ: КАНАЛ =====
     const chBadge = card.querySelector('.feed-channel-badge')
     const chAvaEl = el.querySelector('#vfm-ch-ava')
     const chNameEl = el.querySelector('#vfm-ch-name')
@@ -5743,7 +5751,7 @@ function syncVfmMeta(){
         vinylCover.innerHTML = avaHTML
     }
 
-    // ===== Описание: имя + текст =====
+    // ===== ЯРУС 2: ОПИСАНИЕ =====
     const descEl = el.querySelector('#vfm-desc')
     const moreBtn = el.querySelector('#vfm-desc-more')
     const text = (card.querySelector('.feed-post-content')?.textContent || '').trim()
@@ -5764,7 +5772,7 @@ function syncVfmMeta(){
         }
     })
 
-    // ===== Бегущая строка =====
+    // ===== БЕГУЩАЯ СТРОКА =====
     const mqEl = card.querySelector('.post-marquee-wrap')
     const mq = el.querySelector('#vfm-marquee')
     mq.innerHTML = ''
@@ -5782,7 +5790,7 @@ function syncVfmMeta(){
         }
     }
 
-    // ===== Счётчики =====
+    // ===== СЧЁТЧИКИ =====
     const likeBtn = card.querySelector('.feed-action[data-like]')
     const repBtn  = card.querySelector('.feed-action[data-repost]')
     el.querySelector('[data-vfm-count="like"]').textContent    = card.querySelector('[data-like-count]')?.textContent || '0'
@@ -5797,7 +5805,6 @@ function syncVfmMeta(){
         else vinyl.classList.remove('playing')
     }
 
-    // бегущая строка
     setTimeout(() => {
         initPostMarquees(el)
         mq.querySelectorAll('.post-marquee-wrap, .post-marquee-inner').forEach(n => n.removeAttribute?.('data-mqInit'))
