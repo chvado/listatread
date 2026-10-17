@@ -5170,12 +5170,19 @@ function vfmBuildOverlay(){
     <!-- ============ НИЖНИЙ БЛОК ============ -->
   <div class="vfm-bottom">
 
-    <!-- ЯРУС 1 (верх): АВАТАР АВТОРА + ЛАЙК / КОММЕНТ / РЕПОСТ / ПОДАРОК / ШАРА -->
+        <!-- ЯРУС 1: АВАТАР + ПОДПИСАТЬСЯ + ЛАЙК / КОММЕНТ / РЕПОСТ / ПОДАРОК / ШАРА -->
     <div class="vfm-actions-row" id="vfm-actions">
       <div class="vfm-author-ava-wrap">
         <div class="vfm-author-ava" id="vfm-author-ava">A</div>
         <span class="vfm-author-status" id="vfm-author-status"></span>
       </div>
+      <button class="vfm-follow-btn hidden" id="vfm-follow-btn" aria-label="Подписаться">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M2 21c0-3.9 3.1-7 7-7 1.6 0 3 .5 4.3 1.4"/>
+          <path d="M17 11h6M20 8v6"/>
+        </svg>
+      </button>
       <button class="vfm-act" data-vfm="like" aria-label="Нравится">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         <span class="vfm-act-count" data-vfm-count="like">0</span>
@@ -5196,16 +5203,11 @@ function vfmBuildOverlay(){
       </button>
     </div>
 
-    <!-- ЯРУС 2 (середина): ИМЯ АВТОРА + ПОДПИСАТЬСЯ -->
-    <div class="vfm-author-name-row">
-      <div class="vfm-author-name" id="vfm-author-name">user</div>
-      <button class="vfm-author-sub hidden" id="vfm-author-sub">Подписаться</button>
-    </div>
-
-    <!-- ЯРУС 3 (низ): ОПИСАНИЕ + БЕГУЩАЯ СТРОКА + ПЛАСТИНКА -->
+    <!-- ЯРУС 2: ОПИСАНИЕ (с именем автора) + БЕГУЩАЯ СТРОКА + ПЛАСТИНКА -->
     <div class="vfm-tier1">
       <div class="vfm-desc-col">
         <div class="vfm-desc-line">
+          <span class="vfm-desc-author" id="vfm-desc-author"></span>
           <span class="vfm-desc-text" id="vfm-desc"></span>
           <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
         </div>
@@ -5298,6 +5300,7 @@ function vfmBuildOverlay(){
     }))
 
     // ---------- ЯРУС 3: автор ----------
+    // ---------- Автор: тап по аватарке ----------
     el.querySelector('#vfm-author-ava').addEventListener('click', e => {
         e.stopPropagation()
         const item = VFM.list[VFM.index]; if(!item || !item.card) return
@@ -5305,14 +5308,17 @@ function vfmBuildOverlay(){
         if(authorId){ closeVideoFeed(); setTimeout(() => openUserProfile(authorId), 300) }
     })
 
-    el.querySelector('#vfm-author-sub').addEventListener('click', async e => {
+    // ---------- Кнопка подписаться (человек с плюсом) ----------
+    el.querySelector('#vfm-follow-btn').addEventListener('click', async e => {
         e.stopPropagation()
         const item = VFM.list[VFM.index]; if(!item || !item.card) return
         const authorId = item.card.querySelector('.feed-post-avatar[data-uid]')?.dataset.uid
-        if(authorId){
-            await followAuthor(authorId)
-            setTimeout(syncVfmMeta, 260)
-        }
+        if(!authorId) return
+        const btn = e.currentTarget
+        const wasFollowing = btn.classList.contains('following')
+        btn.classList.toggle('following', !wasFollowing)   // оптимистично
+        await followAuthor(authorId)
+        setTimeout(syncVfmMeta, 260)
     })
 
     // ---------- PROGRESS BAR ----------
@@ -5586,8 +5592,9 @@ function syncVfmMeta(){
         el.querySelector('#vfm-ch-sub').classList.add('hidden')
         el.querySelector('#vfm-author-ava').textContent = '?'
         el.querySelector('#vfm-author-status').textContent = ''
-        el.querySelector('#vfm-author-name').textContent = 'user'
-        el.querySelector('#vfm-author-sub').classList.add('hidden')
+        el.querySelector('#vfm-follow-btn').classList.add('hidden')
+        el.querySelector('#vfm-follow-btn').classList.remove('following')
+        el.querySelector('#vfm-desc-author').textContent = ''
         el.querySelector('#vfm-desc').textContent = ''
         el.querySelector('#vfm-marquee').innerHTML = ''
         el.querySelector('#vfm-vinyl-cover').textContent = 'K'
@@ -5610,20 +5617,19 @@ function syncVfmMeta(){
 
     const avaHTML = avaEl ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'') : '?'
 
-    // ============== ЯРУС 3: АВТОР ==============
+    // ============== АВТОР: аватар + подписка ==============
     el.querySelector('#vfm-author-ava').innerHTML = avaHTML
     el.querySelector('#vfm-author-status').textContent = statusB ? statusB.textContent : ''
-    el.querySelector('#vfm-author-name').textContent = authorName
 
-    const authorSubBtn = el.querySelector('#vfm-author-sub')
+    const followBtn = el.querySelector('#vfm-follow-btn')
     if(authorId && authorId !== me){
-        authorSubBtn.classList.remove('hidden')
-        const isFollowing = state.myFollows.has(authorId)
-        authorSubBtn.textContent = isFollowing ? 'Вы подписаны' : 'Подписаться'
-        authorSubBtn.classList.toggle('subscribed', isFollowing)
+        followBtn.classList.remove('hidden')
+        followBtn.classList.toggle('following', state.myFollows.has(authorId))
+        followBtn.dataset.uid = authorId
     } else {
-        authorSubBtn.classList.add('hidden')
-        authorSubBtn.classList.remove('subscribed')
+        followBtn.classList.add('hidden')
+        followBtn.classList.remove('following')
+        followBtn.dataset.uid = ''
     }
 
     // ============== ВЕРХНИЙ УРОВЕНЬ: КАНАЛ ==============
@@ -5659,9 +5665,11 @@ function syncVfmMeta(){
 
     // ============== ЯРУС 1: ОПИСАНИЕ ==============
     const descEl = el.querySelector('#vfm-desc')
+    const descAuthorEl = el.querySelector('#vfm-desc-author')
     const moreBtn = el.querySelector('#vfm-desc-more')
     const text = (card.querySelector('.feed-post-content')?.textContent || '').trim()
 
+    descAuthorEl.textContent = authorName
     descEl.textContent = text
     descEl.classList.remove('expanded')
     moreBtn.classList.add('hidden')
