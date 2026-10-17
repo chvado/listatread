@@ -1933,48 +1933,47 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const chName = ch.name || 'Канал'
     const chLogo = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : chName.charAt(0).toUpperCase()
 
-    // Кнопка подписки (остается справа)
+    // Кнопка подписки для левого верхнего угла
     let subBtn = ''
     if(!isMine && ch.id){
         const isSub = state.myChannelSubs.has(ch.id)
-        subBtn = `<button class="feed-sub-btn ${isSub ? 'subscribed' : ''}" data-chid="${ch.id}">${isSub ? ICONS.checkSmall : ICONS.plus}</button>`
+        subBtn = `<button class="feed-sub-btn ${isSub ? 'subscribed' : ''}" data-chid="${ch.id}" style="width: 32px; height: 32px; min-width: 32px; margin: 0; padding: 0; align-self: flex-start; background: var(--red-pink); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: none;">${isSub ? ICONS.checkSmall : ICONS.plus}</button>`
+    } else {
+        subBtn = `<div style="width: 32px; flex-shrink: 0;"></div>` // Пустышка для отступа, если это свой пост
     }
 
-    // Собираем хедер ровно из 2 ярусов
+    // ХЕДЕР: 2 яруса
     const headerHtml = `
-        <div class="feed-post-header" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; align-items: stretch; width: 100%;">
+        <div class="feed-post-header" style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; background: transparent;">
             
-            <!-- ВЕРХНИЙ ЯРУС -->
-            <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
-                
-                <!-- КАНАЛ 50% -->
-                <div style="flex: 1; min-width: 0;">
-                    <button class="feed-channel-badge" data-chbadge="${ch.id}" style="margin-left: 0; display: flex; align-items: center; gap: 6px; width: 100%; padding: 3px 6px 3px 3px; border-radius: 10px; background: var(--surface-2);">
-                        <span class="feed-channel-logo" style="width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;">${chLogo}</span>
-                        <span class="feed-channel-name fade-text" style="flex: 1; text-align: left; font-size: 13px; color: var(--text); font-weight: 700;">${escapeHtml(chName)}</span>
-                        <!-- СИНЯЯ ГАЛОЧКА -->
-                        <span style="width: 14px; height: 14px; background: #0a84ff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; flex-shrink: 0;">✓</span>
-                    </button>
-                </div>
+            <!-- 1. Кнопка подписки (левый верхний угол) -->
+            ${subBtn}
 
-                <!-- АВТОР 50% -->
-                <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px;">
-                    <div class="feed-post-avatar" style="width: 24px; height: 24px; font-size: 12px; flex-shrink: 0; position: relative;">
-                        ${av}
-                        <div class="story-status-badge" style="font-size: 10px; right: -4px; bottom: -4px;">${emoji}</div>
-                    </div>
-                    <span class="feed-post-name fade-text" style="flex: 1; text-align: left; font-size: 13px; color: var(--text); font-weight: 700;">
-                        ${escapeHtml(name)}${adminMark}
-                    </span>
-                </div>
-
-                <!-- КНОПКА ПОДПИСКИ СПРАВА -->
-                ${subBtn}
+            <!-- 2. Аватарка автора (на 2 яруса) -->
+            <div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}" style="width: 50px; height: 50px; min-width: 50px; font-size: 18px; margin: 0; flex-shrink: 0;">
+                ${av}
+                <div class="story-status-badge">${emoji}</div>
             </div>
 
-            <!-- НИЖНИЙ ЯРУС -->
-            <div style="width: 100%;">
-                ${buildMetaRow(time, contextLabel, post)}
+            <!-- 3. Правая часть (2 яруса) -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-top: 4px;">
+                
+                <!-- ВЕРХНИЙ ЯРУС: Имя автора -> Канал -->
+                <div style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
+                    <span class="feed-post-name fade-text" style="font-weight: 500; font-size: 14px; color: var(--text);">${escapeHtml(name)}${adminMark}</span>
+                    
+                    <div style="display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden;">
+                        <div class="feed-channel-logo" style="width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;">${chLogo}</div>
+                        <span class="feed-channel-name fade-text" style="font-weight: 500; font-size: 14px; color: var(--text);">${escapeHtml(chName)}</span>
+                        <!-- СИНЯЯ ГАЛОЧКА -->
+                        <span style="width: 12px; height: 12px; background: #0a84ff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 900; flex-shrink: 0;">✓</span>
+                    </div>
+                </div>
+
+                <!-- НИЖНИЙ ЯРУС: Дата + Бегущая строка -->
+                <div style="min-width: 0; width: 100%;">
+                    ${buildMetaRow(time, contextLabel, post)}
+                </div>
             </div>
         </div>
     `
