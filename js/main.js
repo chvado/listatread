@@ -8188,18 +8188,16 @@ function promoInit() {
         });
     });
 
-    // --- Провайдер: idpe (8 цифр с 2 точками) ---
+    // --- Провайдер: idpe в формате XX.XXX.XX (7 цифр) ---
     providerId?.addEventListener('input', () => {
-        let v = providerId.value.replace(/[^0-9.]/g, '');
-        // Автоматически вставляем точки после 2-й и 5-й цифры
-        const digits = v.replace(/\./g, '');
-        if (digits.length >= 2) {
+        const digits = providerId.value.replace(/[^0-9]/g, '').slice(0, 7);
+        let v = digits;
+        if (digits.length > 5) {
+            v = digits.slice(0, 2) + '.' + digits.slice(2, 5) + '.' + digits.slice(5);
+        } else if (digits.length > 2) {
             v = digits.slice(0, 2) + '.' + digits.slice(2);
         }
-        if (digits.length >= 5) {
-            v = digits.slice(0, 2) + '.' + digits.slice(2, 5) + '.' + digits.slice(5);
-        }
-        providerId.value = v.slice(0, 12);
+        providerId.value = v;
     });
 
     // --- Кнопка "Активировать" ---
@@ -8240,7 +8238,10 @@ function promoInit() {
 
             if (serviceCode.length < 5) { errEl.textContent = 'Код услуги: 5 букв'; return }
             if (productCode.length < 5) { errEl.textContent = 'Код товара: 5 символов'; return }
-            if (!/^\d{2}\.\d{2}\.\d{2}$/.test(pid)) { errEl.textContent = 'Провайдер: idpe в формате XX.XXX.XX'; return }
+            if (!/^\d{2}\.\d{3}\.\d{2}$/.test(pid)) {
+                errEl.textContent = 'Провайдер: введите 7 цифр — формат XX.XXX.XX';
+                return;
+            }
             if (!host) { errEl.textContent = 'Введите хост провайдера'; return }
 
             submitBtn.disabled = true
