@@ -3364,6 +3364,39 @@ html[data-theme="dark"]{
     flex-shrink: 0;                    /* синяя галочка не сжимается */
 }
 /* ============================================================
+   VFM — кнопка подписки на автора (человек с плюсом)
+============================================================ */
+.vfm-follow-btn{
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--red-pink);
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(255,55,95,.55), inset 0 1px 0 rgba(255,255,255,.35);
+    transition: background-color .2s, scale .2s var(--spring);
+}
+.vfm-follow-btn.hidden{ display: none }
+.vfm-follow-btn:active{ scale: .88 }
+.vfm-follow-btn svg{
+    width: 16px;
+    height: 16px;
+    display: block;
+    stroke: currentColor;
+}
+.vfm-follow-btn.following{
+    background: rgba(48,209,88,.92);
+    box-shadow: 0 2px 10px rgba(48,209,88,.55), inset 0 1px 0 rgba(255,255,255,.35);
+}
+/* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
 @media (max-width:767px){

@@ -5241,9 +5241,28 @@ function vfmBuildOverlay(){
         const videoAspect = vw / vh;
         const widthFitHeight = elW / videoAspect;      // высота, если видео вписать по ширине
         const fillRatio = widthFitHeight / elH;        // 1.0 = полностью заполнит экран
-        // Большое видео (≥60% высоты экрана) — прижать к верху
-        // Маленькое — центрировать
-        v.style.objectPosition = (fillRatio >= 0.6) ? 'center top' : 'center center';
+
+        if(fillRatio >= 0.6){
+            // ── БОЛЬШОЕ ВИДЕО ──
+            // Растягиваем контейнер от верха экрана до белой полоски прогресса
+            v.style.objectFit      = 'cover';
+            v.style.objectPosition = 'center top';
+            v.style.top            = '0';
+            v.style.left           = '0';
+            v.style.right          = '0';
+            v.style.bottom         = 'calc(var(--nav-height) + var(--safe-bottom) + 3px)';
+            v.style.height         = 'auto';
+        } else {
+            // ── МАЛЕНЬКОЕ ВИДЕО ──
+            // Чуть выше центра (35% вместо 50%)
+            v.style.objectFit      = 'contain';
+            v.style.objectPosition = 'center 35%';
+            v.style.top            = '0';
+            v.style.left           = '0';
+            v.style.right          = '0';
+            v.style.bottom         = '0';
+            v.style.height         = 'auto';
+        }
     });
     // ---------- ВЕРХНИЙ УРОВЕНЬ ----------
     el.querySelector('#vfm-back').addEventListener('click', () => closeVideoFeed())
