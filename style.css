@@ -3641,6 +3641,7 @@ html[data-theme="dark"] .pc-color.no-bg{
     padding: 12px 20px 18px;
     display: flex; flex-direction: column; gap: 8px;
 }
+#profile-body { position: relative; }
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

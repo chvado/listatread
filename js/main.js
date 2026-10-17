@@ -243,8 +243,12 @@ function statusEmojiForUser(code, isChvad){
     return map[code]?.emoji || STATUS_MAP[code]?.emoji || '👋'
 }
 const STATUS_MAP = Object.fromEntries(STATUSES.map(s => [s.code, s]))
-function statusEmoji(c){ return STATUS_MAP[c]?.emoji || '👋' }
-function statusLabel(c){ return STATUS_MAP[c]?.label || 'По умолчанию' }
+function statusEmoji(c){
+    return CHVAD_STATUS_MAP[c]?.emoji || STATUS_MAP[c]?.emoji || '👋'
+}
+function statusLabel(c){
+    return CHVAD_STATUS_MAP[c]?.label || STATUS_MAP[c]?.label || 'По умолчанию'
+}
 
 const EMOJI_LIST = ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','👍','👎','👌','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🧠','👀','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💕','💞','💓','💗','💖','💘','💝','🔥','⭐','🌟','✨','⚡','💥','💫','💦','🎉','🎊','🎈','🎁','🎀','🏆','🥇','🎯','🎲','🎮','🎰','🌸','🌹','🌻','🌷','🍀','🍁','🍇','🍉','🍊','🍋','🍌','🍎','🍓','🍒','🍑','🥝','🍔','🍟','🍕','🌭','🍿','🍣','⚽','🏀','🏈','🎾','🎱','🏓','🥊','🎽','🚗','🚕','🚌','🚓','🚑','🚒','🚲','🛵','✈️','🚀','🛸','⌚','📱','💻','🎧','📷','💡','🔦','💸','💰','💎','🔧','🔨','🔮','📿','🧸','🎁','🛍️','🛒']
 
@@ -2832,10 +2836,13 @@ async function loadProfile(userId = null){
         else renderProfileTab()
     } catch(e){ console.warn(e.message) }
     // === Применяем сохранённую тему профиля ===
-    try {
-        const theme = (profile && profile.profile_theme) || null
-        applyProfileTheme(profile, theme, state.viewingOwnProfile)
-    } catch(e){ console.warn('[theme apply]', e) }
+    // === Применяем сохранённую тему профиля (после рендера DOM) ===
+    setTimeout(() => {
+        try {
+            const theme = (profile && profile.profile_theme) || null
+            applyProfileTheme(profile, theme, state.viewingOwnProfile)
+        } catch(e){ console.warn('[theme apply]', e) }
+    }, 120)
     finally { loader.classList.add('hidden'); body.classList.remove('hidden') }
 }
 
