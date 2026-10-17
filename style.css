@@ -3397,6 +3397,251 @@ html[data-theme="dark"]{
     box-shadow: 0 2px 10px rgba(48,209,88,.55), inset 0 1px 0 rgba(255,255,255,.35);
 }
 /* ============================================================
+   CHVAD SETTINGS + PROFILE CUSTOMIZER
+============================================================ */
+@keyframes chvadBtnShimmer{
+    0%{ background-position: 0% 50%; }
+    50%{ background-position: 100% 50%; }
+    100%{ background-position: 0% 50%; }
+}
+
+.chvad-settings-btn{
+    position:relative;
+    display:flex; align-items:center; gap:10px;
+    width:100%; padding:14px 16px; margin:14px 0 12px;
+    border:none; border-radius:16px;
+    color:#fff; font-family:inherit; font-size:15px; font-weight:800;
+    cursor:pointer; overflow:hidden;
+    background:linear-gradient(120deg,#ff9f0a,#ff375f,#bf5af2,#0a84ff,#ff9f0a);
+    background-size:300% 100%;
+    animation:chvadBtnShimmer 4s ease-in-out infinite;
+    box-shadow:0 10px 28px rgba(255,55,95,.35), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.chvad-settings-btn.hidden{ display:none!important }
+.chvad-settings-btn:active{ scale:.98 }
+.chvad-settings-shimmer{
+    position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(60deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);
+    background-size:250% 100%;
+    animation:chvadBtnShimmer 3s ease-in-out infinite;
+}
+.chvad-settings-star{ font-size:18px; filter:drop-shadow(0 1px 3px rgba(0,0,0,.35)) }
+.chvad-settings-label{ flex:1; text-align:left; position:relative; z-index:1 }
+.chvad-settings-arrow{ font-size:18px; opacity:.9; position:relative; z-index:1 }
+
+.settings-status-more-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    width:100%; justify-content:center;
+    margin-top:12px; padding:12px;
+    background:linear-gradient(120deg,#ff9f0a,#ff375f,#bf5af2,#0a84ff,#ff9f0a);
+    background-size:300% 100%;
+    animation:chvadBtnShimmer 4s ease-in-out infinite;
+    color:#fff; font-family:inherit; font-size:14px; font-weight:800;
+    border:none; border-radius:14px;
+    box-shadow:0 8px 22px rgba(255,55,95,.32), inset 0 1px 0 rgba(255,255,255,.3);
+    cursor:pointer;
+}
+.settings-status-more-btn.hidden{ display:none!important }
+.settings-status-more-btn span{ font-size:16px }
+
+/* === CUSTOMIZER === */
+.profile-customizer{
+    position:fixed; inset:0; z-index:7000;
+    background:var(--bg); color:var(--text);
+    display:flex; flex-direction:column;
+    overflow-y:auto;
+    animation:screenIn .3s var(--ease-out) both;
+}
+.profile-customizer.hidden{ display:none!important }
+
+.pc-topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:calc(var(--safe-top) + 14px) 16px 12px;
+    position:sticky; top:0; z-index:10;
+    background:var(--glass);
+    -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+    border-bottom:1px solid var(--glass-edge);
+}
+.pc-title{ font-size:17px; font-weight:800 }
+.pc-tabs{
+    display:flex; gap:4px; padding:10px 16px;
+    background:var(--glass);
+    border-bottom:1px solid var(--glass-edge);
+    position:sticky; top:65px; z-index:9;
+}
+.pc-tab{
+    flex:1; padding:10px; border:none; border-radius:100px;
+    background:transparent; color:var(--text-secondary);
+    font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
+}
+.pc-tab.active{ background:var(--text); color:var(--bg) }
+
+.pc-preview-wrap{ padding:16px }
+.pc-preview{
+    position:relative;
+    border-radius:24px;
+    overflow:hidden;
+    min-height:320px;
+    background:var(--card);
+    border:1px solid var(--glass-edge);
+    box-shadow:var(--shadow-md);
+    transition:background .35s ease;
+}
+.pc-pattern-layer{
+    position:absolute; inset:-30%; pointer-events:none;
+    opacity:.18;
+    background-repeat:repeat;
+    background-size:64px 64px;
+    transform:rotate(-14deg);
+    z-index:0;
+}
+.pc-preview-inner{
+    position:relative; z-index:1;
+    display:flex; flex-direction:column; align-items:center;
+    padding:24px 20px 20px; text-align:center; gap:6px;
+}
+.pc-ava{
+    width:88px; height:88px; border-radius:50%;
+    background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+    display:flex; align-items:center; justify-content:center;
+    font-size:34px; font-weight:800; color:#fff;
+    overflow:hidden; margin-bottom:6px;
+    box-shadow:0 10px 28px rgba(255,55,95,.28);
+}
+.pc-ava img{ width:100%; height:100%; object-fit:cover }
+.pc-name{ font-size:22px; font-weight:800; line-height:1.2 }
+.pc-username{ font-size:13px; color:var(--text-secondary) }
+.pc-bio{ font-size:12.5px; color:var(--text-secondary); margin-top:6px; max-width:280px }
+.pc-stats{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
+    padding:12px; margin-top:12px; width:100%;
+    background:rgba(120,120,128,.08); border-radius:14px;
+}
+.pc-stat{ text-align:center }
+.pc-stat strong{ display:block; font-size:16px; font-weight:800 }
+.pc-stat span{ font-size:11px; color:var(--text-secondary) }
+.pc-actions{
+    display:flex; gap:8px; align-items:center; margin-top:12px; width:100%;
+}
+.pc-act{
+    flex:1; padding:11px; border-radius:12px;
+    background:var(--red-pink); color:#fff; border:none;
+    font-family:inherit; font-size:13.5px; font-weight:700;
+}
+.pc-act-icon{
+    width:40px; height:40px; border-radius:50%;
+    border:none; background:var(--surface-2); color:var(--text);
+    display:flex; align-items:center; justify-content:center;
+}
+
+.pc-controls{ padding:0 16px 32px }
+
+.pc-section{ margin-bottom:20px }
+.pc-section-title{
+    font-size:12px; font-weight:800; text-transform:uppercase;
+    letter-spacing:.06em; color:var(--text-tertiary);
+    padding:0 4px 10px;
+}
+.pc-colors{
+    display:grid; grid-template-columns:repeat(6,1fr); gap:10px;
+}
+.pc-color{
+    aspect-ratio:1; border-radius:50%;
+    border:3px solid transparent;
+    cursor:pointer; padding:0;
+    box-shadow:0 2px 8px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.25);
+    transition:transform .15s var(--spring), border-color .15s;
+    position:relative;
+}
+.pc-color:active{ transform:scale(.9) }
+.pc-color.active{
+    border-color:var(--text);
+    box-shadow:0 0 0 3px var(--bg), 0 0 0 4px var(--text);
+}
+.pc-color.no-bg{
+    background:
+            linear-gradient(45deg,#666 25%,transparent 25%) 0 0/12px 12px,
+            linear-gradient(-45deg,#666 25%,transparent 25%) 0 6px/12px 12px,
+            linear-gradient(45deg,transparent 75%,#666 75%) 6px -6px/12px 12px,
+            linear-gradient(-45deg,transparent 75%,#666 75%) -6px 0/12px 12px,
+            #ddd;
+}
+html[data-theme="dark"] .pc-color.no-bg{
+    background:
+            linear-gradient(45deg,#444 25%,transparent 25%) 0 0/12px 12px,
+            linear-gradient(-45deg,#444 25%,transparent 25%) 0 6px/12px 12px,
+            linear-gradient(45deg,transparent 75%,#444 75%) 6px -6px/12px 12px,
+            linear-gradient(-45deg,transparent 75%,#444 75%) -6px 0/12px 12px,
+            #222;
+}
+
+.pc-pattern-actions{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
+}
+.pc-pattern-btn{
+    padding:11px 8px; border-radius:12px;
+    background:var(--surface-2); border:2px solid transparent;
+    font-family:inherit; font-size:13px; font-weight:700;
+    color:var(--text); cursor:pointer;
+}
+.pc-pattern-btn.active{ border-color:var(--blue); background:rgba(10,132,255,.1); color:var(--blue) }
+
+.pc-pattern-picker{
+    display:grid; grid-template-columns:repeat(8,1fr); gap:4px;
+    max-height:200px; overflow-y:auto;
+    margin-top:10px; padding:8px;
+    background:var(--surface-2); border-radius:12px;
+}
+.pc-pattern-picker.hidden{ display:none!important }
+.pc-pattern-picker button{
+    aspect-ratio:1; border-radius:8px; border:none; background:transparent;
+    font-size:22px; cursor:pointer;
+}
+.pc-pattern-picker button:hover{ background:var(--surface-3) }
+.pc-pattern-picker img{ width:100%; height:100%; object-fit:contain }
+
+.pc-save{ width:100%; margin-top:12px }
+
+/* === Модалка 100 статусов === */
+.chvad-statuses-modal{ position:fixed; inset:0; z-index:7800; display:flex; align-items:flex-end; justify-content:center }
+.chvad-statuses-modal.hidden{ display:none!important }
+.chvad-statuses-sheet{
+    position:relative; width:100%; max-width:480px;
+    background:var(--glass-strong);
+    -webkit-backdrop-filter:var(--blur-strong); backdrop-filter:var(--blur-strong);
+    border-radius:28px 28px 0 0;
+    max-height:88dvh; overflow-y:auto;
+    padding:12px 20px calc(24px + var(--safe-bottom));
+    animation:sheetUp .35s var(--ease-out) backwards;
+}
+.chvad-statuses-grid{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
+    padding:4px 0 8px;
+}
+.chvad-statuses-grid .status-item{
+    display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:4px;
+    padding:12px 4px; border-radius:14px;
+    background:var(--surface-2); border:2px solid transparent;
+    font-family:inherit; cursor:pointer;
+}
+.chvad-statuses-grid .status-item.active{
+    border-color:var(--blue); background:rgba(10,132,255,.12);
+}
+.chvad-statuses-grid .status-item-emoji{ font-size:26px; line-height:1 }
+.chvad-statuses-grid .status-item-label{
+    font-size:10px; font-weight:600; color:var(--text-secondary);
+    text-align:center; line-height:1.1;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;
+}
+#profile-body .profile-theme-layer{ pointer-events:none }
+#profile-body .profile-theme-layer ~ *{ position:relative; z-index:1 }
+#profile-name{ transition:color .3s ease }
+.shop-buy-inline{
+    padding: 12px 20px 18px;
+    display: flex; flex-direction: column; gap: 8px;
+}
+/* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
 @media (max-width:767px){

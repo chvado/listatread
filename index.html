@@ -397,6 +397,12 @@
             <div class="settings-body">
                 <div class="settings-panel active" data-panel="general">
                     <div class="settings-avatar-block"><label class="settings-avatar-label" for="set-avatar"><div class="profile-avatar-lg" id="set-avatar-preview">ℓ</div><input type="file" id="set-avatar" accept="image/*" hidden><div class="settings-avatar-hint">Нажмите чтобы изменить</div></label></div>
+                    <button type="button" class="chvad-settings-btn hidden" id="chvad-settings-btn">
+                        <span class="chvad-settings-shimmer"></span>
+                        <span class="chvad-settings-star">⭐</span>
+                        <span class="chvad-settings-label">Настройка профиля · listatread chvad</span>
+                        <span class="chvad-settings-arrow">›</span>
+                    </button>
                     <label class="settings-label">Имя</label><input type="text" id="set-name" placeholder="Ваше имя">
                     <label class="settings-label">Никнейм · можно менять раз в неделю</label><div class="input-prefix"><span>@</span><input type="text" id="set-username" placeholder="username" maxlength="20"></div>
                     <label class="settings-label">О себе</label><textarea id="set-bio" placeholder="О себе" maxlength="150" rows="3"></textarea>
@@ -537,6 +543,16 @@
                     Активировать промокод
                 </button>
             </div>
+            <!-- КНОПКА КУПИТЬ (перенесена сюда) -->
+            <div class="shop-buy-inline">
+                <div class="shop-buy-today" id="shop-buy-today">Сегодня спишется 299 ₽, следующее списание — </div>
+                <button class="shop-buy" id="shop-buy">
+                    <span id="shop-buy-label">Оформить за 299 ₽/мес</span>
+                </button>
+                <p class="shop-buy-legal">
+                    Нажимая на кнопку, вы соглашаетесь с <a href="/terms" target="_blank">условиями</a>.
+                </p>
+            </div>
 
             <!-- КАРУСЕЛЬ -->
             <div class="shop-carousel-label">Как это работает</div>
@@ -566,16 +582,7 @@
             </div>
 
             <!-- ФИКСИРОВАННАЯ ПАНЕЛЬ ОФОРМЛЕНИЯ -->
-            <div class="shop-buy-bar">
-                <div class="shop-buy-today" id="shop-buy-today">Сегодня спишется 299 ₽, а следующее списание произойдёт —</div>
-                <button class="shop-buy" id="shop-buy">
-                    <span id="shop-buy-label">Оформить за 299 ₽/мес</span>
-                </button>
-                <p class="shop-buy-legal">
-                    Нажимая на кнопку, вы соглашаетесь с <a href="/terms" target="_blank">условиями пользования</a>
-                    и условиями автопродления. Отмена автопродления в любое время.
-                </p>
-            </div>
+
         </section>
         <!-- PROMO PAGE -->
         <section id="screen-promo" class="app-screen">
@@ -1085,6 +1092,53 @@
         <button class="chvad-buy" id="chvad-buy">
             <span id="chvad-buy-label">Оформить за 299 ₽/мес</span>
         </button>
+    </div>
+</div>
+<div id="profile-customizer" class="profile-customizer hidden">
+    <header class="pc-topbar">
+        <button class="topbar-btn" id="pc-back">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <div class="pc-title">оформление профиля</div>
+        <span class="topbar-spacer-btn"></span>
+    </header>
+    <div class="pc-tabs">
+        <button class="pc-tab active" data-pctab="personal">Личный профиль</button>
+        <button class="pc-tab" data-pctab="direct">Профиль listadirect</button>
+    </div>
+    <div class="pc-preview-wrap">
+        <div class="pc-preview" id="pc-preview"></div>
+    </div>
+    <div class="pc-controls">
+        <div class="pc-section">
+            <div class="pc-section-title">Цвет фона</div>
+            <div class="pc-colors" id="pc-bg-colors"></div>
+        </div>
+        <div class="pc-section">
+            <div class="pc-section-title">Цвет имени</div>
+            <div class="pc-colors pc-name-colors" id="pc-name-colors"></div>
+        </div>
+        <div class="pc-section">
+            <div class="pc-section-title">Узор</div>
+            <div class="pc-pattern-actions">
+                <button class="pc-pattern-btn" id="pc-pattern-none">Нет</button>
+                <button class="pc-pattern-btn" id="pc-pattern-emoji">Эмодзи</button>
+                <button class="pc-pattern-btn" id="pc-pattern-sticker">Стикер</button>
+            </div>
+            <div class="pc-pattern-picker hidden" id="pc-pattern-picker"></div>
+        </div>
+        <button class="btn-primary pc-save" id="pc-save">Сохранить</button>
+    </div>
+</div>
+
+<!-- Модалка 100 статусов для chvad -->
+<div id="chvad-statuses-modal" class="chvad-statuses-modal hidden">
+    <div class="code-modal-backdrop" id="chvad-statuses-backdrop"></div>
+    <div class="chvad-statuses-sheet">
+        <div class="lang-sheet-handle"></div>
+        <h3 class="code-modal-title">Статусы · chvad</h3>
+        <p class="code-modal-sub">100 эксклюзивных статусов</p>
+        <div class="chvad-statuses-grid" id="chvad-statuses-grid"></div>
     </div>
 </div>
 <script type="module" src="js/main.js?v=39"></script>

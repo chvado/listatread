@@ -174,6 +174,74 @@ const STATUSES = [
     { code:'female',  label:'Женский',      emoji:'🚺' },
     { code:'baby',    label:'Ребёнок',      emoji:'🚼' }
 ]
+/* ============================================================
+   CHVAD-СТАТУСЫ (56 доп. + 44 существующих = 100)
+============================================================ */
+const CHVAD_EXTRA_STATUSES = [
+    { code:'chvad_flame',  label:'Пламя',       emoji:'🔥' },
+    { code:'chvad_ice',    label:'Лёд',         emoji:'🧊' },
+    { code:'chvad_star',   label:'Звезда',      emoji:'⭐' },
+    { code:'chvad_bolt',   label:'Молния',      emoji:'⚡' },
+    { code:'chvad_moon',   label:'Луна',        emoji:'🌙' },
+    { code:'chvad_sun',    label:'Солнце',      emoji:'☀️' },
+    { code:'chvad_rainbow',label:'Радуга',      emoji:'🌈' },
+    { code:'chvad_cloud',  label:'Облако',      emoji:'☁️' },
+    { code:'chvad_snowflake',label:'Снежинка',  emoji:'❄️' },
+    { code:'chvad_rocket', label:'Ракета',      emoji:'🚀' },
+    { code:'chvad_ufo',    label:'НЛО',         emoji:'🛸' },
+    { code:'chvad_planet', label:'Планета',     emoji:'🪐' },
+    { code:'chvad_comet',  label:'Комета',      emoji:'☄️' },
+    { code:'chvad_crown',  label:'Корона',      emoji:'👑' },
+    { code:'chvad_diamond',label:'Алмаз',       emoji:'💎' },
+    { code:'chvad_trophy', label:'Кубок',       emoji:'🏆' },
+    { code:'chvad_medal',  label:'Медаль',      emoji:'🏅' },
+    { code:'chvad_heart_fire',label:'Сердце в огне', emoji:'❤️‍🔥' },
+    { code:'chvad_heart_arrow',label:'Простреленное', emoji:'💘' },
+    { code:'chvad_heart_ribbon',label:'Сердце с лентой', emoji:'💝' },
+    { code:'chvad_heart_sparkle',label:'Сияющее', emoji:'💖' },
+    { code:'chvad_heart_grow',label:'Растущее', emoji:'💗' },
+    { code:'chvad_heart_beat',label:'Биение',   emoji:'💓' },
+    { code:'chvad_peace',  label:'Мир',         emoji:'☮️' },
+    { code:'chvad_yin',    label:'Инь-ян',      emoji:'☯️' },
+    { code:'chvad_dna',    label:'ДНК',         emoji:'🧬' },
+    { code:'chvad_atom',   label:'Атом',        emoji:'⚛️' },
+    { code:'chvad_wave',   label:'Волна',       emoji:'🌊' },
+    { code:'chvad_mountain',label:'Гора',       emoji:'🏔️' },
+    { code:'chvad_volcano',label:'Вулкан',      emoji:'🌋' },
+    { code:'chvad_desert', label:'Пустыня',     emoji:'🏜️' },
+    { code:'chvad_island', label:'Остров',      emoji:'🏝️' },
+    { code:'chvad_sunset', label:'Закат',       emoji:'🌇' },
+    { code:'chvad_night',  label:'Ночь',        emoji:'🌃' },
+    { code:'chvad_aurora', label:'Сияние',      emoji:'🌌' },
+    { code:'chvad_cherry', label:'Сакура',      emoji:'🌸' },
+    { code:'chvad_hibiscus',label:'Гибискус',   emoji:'🌺' },
+    { code:'chvad_sunflower',label:'Подсолнух', emoji:'🌻' },
+    { code:'chvad_tulip',  label:'Тюльпан',     emoji:'🌷' },
+    { code:'chvad_clover', label:'Клевер',      emoji:'☘️' },
+    { code:'chvad_leaf',   label:'Лист',        emoji:'🍃' },
+    { code:'chvad_cactus', label:'Кактус',      emoji:'🌵' },
+    { code:'chvad_palm',   label:'Пальма',      emoji:'🌴' },
+    { code:'chvad_fox',    label:'Лиса',        emoji:'🦊' },
+    { code:'chvad_panda',  label:'Панда',       emoji:'🐼' },
+    { code:'chvad_lion',   label:'Лев',         emoji:'🦁' },
+    { code:'chvad_wolf',   label:'Волк',        emoji:'🐺' },
+    { code:'chvad_owl',    label:'Сова',        emoji:'🦉' },
+    { code:'chvad_unicorn',label:'Единорог',    emoji:'🦄' },
+    { code:'chvad_dragon', label:'Дракон',      emoji:'🐉' },
+    { code:'chvad_butterfly',label:'Бабочка',   emoji:'🦋' },
+    { code:'chvad_octopus',label:'Осьминог',    emoji:'🐙' },
+    { code:'chvad_whale',  label:'Кит',         emoji:'🐳' },
+    { code:'chvad_dolphin',label:'Дельфин',     emoji:'🐬' },
+    { code:'chvad_penguin',label:'Пингвин',     emoji:'🐧' },
+    { code:'chvad_phoenix',label:'Феникс',      emoji:'🦅' }
+]
+const CHVAD_ALL_STATUSES = [...STATUSES, ...CHVAD_EXTRA_STATUSES]
+const CHVAD_STATUS_MAP = Object.fromEntries(CHVAD_ALL_STATUSES.map(s => [s.code, s]))
+
+function statusEmojiForUser(code, isChvad){
+    const map = isChvad ? CHVAD_STATUS_MAP : STATUS_MAP
+    return map[code]?.emoji || STATUS_MAP[code]?.emoji || '👋'
+}
 const STATUS_MAP = Object.fromEntries(STATUSES.map(s => [s.code, s]))
 function statusEmoji(c){ return STATUS_MAP[c]?.emoji || '👋' }
 function statusLabel(c){ return STATUS_MAP[c]?.label || 'По умолчанию' }
@@ -1290,10 +1358,38 @@ async function loadStatus(){
         if(lbl) lbl.textContent = 'Статус: ' + statusLabel(code)
     } catch {}
 }
-function renderSettingsStatusGrid(){
+async function renderSettingsStatusGrid(){
     const grid = $('settings-status-grid'); if(!grid) return
-    grid.innerHTML = STATUSES.map(s => `<button class="status-item ${state.data.status === s.code ? 'active' : ''}" data-code="${s.code}"><div class="status-item-emoji">${s.emoji}</div><div class="status-item-label">${s.label}</div></button>`).join('')
+    let isChvad = false
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(user){
+            const { data:p } = await supabase.from('profiles')
+                .select('chvad_active, chvad_until').eq('id', user.id).maybeSingle()
+            isChvad = !!p?.chvad_active && (!p.chvad_until || new Date(p.chvad_until) > new Date())
+        }
+    } catch {}
+
+    const list = isChvad ? CHVAD_ALL_STATUSES : STATUSES
+    grid.innerHTML = list.map(s => `
+        <button class="status-item ${state.data.status === s.code ? 'active' : ''}" data-code="${s.code}">
+            <div class="status-item-emoji">${s.emoji}</div>
+            <div class="status-item-label">${s.label}</div>
+        </button>
+    `).join('')
     grid.querySelectorAll('.status-item').forEach(b => b.addEventListener('click', () => saveStatus(b.dataset.code)))
+
+    // Кнопка «больше >» — только для chvad
+    let moreBtn = $('settings-status-more')
+    if(!moreBtn){
+        moreBtn = document.createElement('button')
+        moreBtn.id = 'settings-status-more'
+        moreBtn.className = 'settings-status-more-btn hidden'
+        moreBtn.innerHTML = `Ещё статусы <span>›</span>`
+        grid.parentElement.insertBefore(moreBtn, grid.nextSibling)
+        moreBtn.addEventListener('click', () => openChvadStatusesModal())
+    }
+    moreBtn.classList.toggle('hidden', !isChvad)
 }
 document.querySelectorAll('#status-current').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2698,7 +2794,18 @@ async function loadProfile(userId = null){
 
         if(profile){
             state.currentProfile = profile
-            const uname = profile.username || 'user'
+            // ── ФИКС: fallback на user_metadata / email, если username пуст в profiles
+            const metaUsername = user?.user_metadata?.username || null
+            const emailNick = user?.email ? user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_.]/g, '') : null
+            const resolvedUsername = (profile.username && profile.username.trim())
+                || (targetId === user.id ? (metaUsername || emailNick) : null)
+                || 'user'
+            // Если у себя username пуст — пробуем записать его в БД
+            if(targetId === user.id && !profile.username && resolvedUsername !== 'user'){
+                try { await supabase.from('profiles').update({ username: resolvedUsername }).eq('id', user.id) } catch {}
+                profile.username = resolvedUsername
+            }
+            const uname = resolvedUsername
             const fname = profile.full_name || 'Пользователь'
             $('profile-name').innerHTML = escapeHtml(fname) + (profile.is_admin ? adminBadge(true, 'big') : '')
             $('profile-username').textContent = '@' + uname
@@ -2724,6 +2831,11 @@ async function loadProfile(userId = null){
         else if(state.profileTab === 'posts') await renderMyPosts(targetId)
         else renderProfileTab()
     } catch(e){ console.warn(e.message) }
+    // === Применяем сохранённую тему профиля ===
+    try {
+        const theme = (profile && profile.profile_theme) || null
+        applyProfileTheme(profile, theme, state.viewingOwnProfile)
+    } catch(e){ console.warn('[theme apply]', e) }
     finally { loader.classList.add('hidden'); body.classList.remove('hidden') }
 }
 
@@ -2865,7 +2977,74 @@ async function renderProfileTab(){
     if(state.profileTab === 'shop') return box.innerHTML = '<p class="empty">Магазин — скоро</p>'
     box.innerHTML = '<p class="empty">Пока пусто</p>'
 }
+function applyProfileTheme(profile, theme, isOwn){
+    const screen = $('screen-profile')
+    if(!screen) return
+    // убираем старое
+    screen.querySelectorAll('.profile-theme-layer').forEach(el => el.remove())
+    const hero = screen.querySelector('.profile-hero')
+    const wrap = hero?.parentElement // profile-body
+    if(!wrap) return
 
+    // Сброс
+    wrap.style.background = ''
+    const nameEl = $('profile-name')
+    if(nameEl){ nameEl.style.color = '' }
+
+    if(!theme || !profile) return
+
+    // Фон: от верха до табов
+    const bgDef = PROFILE_BG_COLORS.find(c => c.key === theme.bg)
+    if(bgDef?.css){
+        const tabsEl = screen.querySelector('.profile-tabs')
+        const layer = document.createElement('div')
+        layer.className = 'profile-theme-layer'
+        layer.style.cssText = `
+            position:absolute; left:0; right:0; top:0;
+            height:${tabsEl ? (tabsEl.offsetTop + 80) : 420}px;
+            background:${bgDef.css};
+            pointer-events:none; z-index:0;
+            border-radius:0 0 24px 24px;
+        `
+        wrap.style.position = 'relative'
+        wrap.insertBefore(layer, wrap.firstChild)
+        // Все прямые дети — под слоем
+        ;[...wrap.children].forEach(c => {
+            if(c !== layer && !c.style.position) c.style.position = 'relative'
+            if(c !== layer) c.style.zIndex = '1'
+        })
+    }
+
+    // Узор (плитка по диагонали)
+    if(theme.patternType !== 'none' && theme.pattern){
+        let dataUri = ''
+        if(theme.patternType === 'emoji'){
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><text x="32" y="44" font-size="32" text-anchor="middle">${theme.pattern}</text></svg>`
+            dataUri = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+        } else {
+            dataUri = theme.pattern
+        }
+        const patternLayer = document.createElement('div')
+        patternLayer.className = 'profile-theme-layer profile-theme-pattern'
+        patternLayer.style.cssText = `
+            position:absolute; left:-30%; right:-30%; top:0;
+            height:${screen.querySelector('.profile-tabs')?.offsetTop + 80 || 460}px;
+            background-image:url('${dataUri}');
+            background-size:64px 64px;
+            background-repeat:repeat;
+            opacity:.16;
+            transform:rotate(-14deg);
+            pointer-events:none; z-index:0;
+        `
+        wrap.insertBefore(patternLayer, wrap.firstChild)
+    }
+
+    // Цвет имени
+    const nameDef = PROFILE_NAME_COLORS.find(c => c.key === theme.nameColor)
+    if(nameDef?.css && nameEl){
+        nameEl.style.color = nameDef.css
+    }
+}
 function renderProfilePost(p, myId, likedSet = new Set(), repostedSet = new Set(), counts = {}){
     const prof = p.profiles || {}
     const ch = p.channels || {}
@@ -3374,6 +3553,284 @@ async function loadSettings(){
         renderSettingsStatusGrid()
         applyTheme(getTheme())
     } catch(e){ console.warn(e.message) }
+}
+/* ============================================================
+   CHVAD PROFILE CUSTOMIZER
+============================================================ */
+const PROFILE_BG_COLORS = [
+    { key:'none',        label:'Без фона',   css:null },
+    { key:'crimson',     label:'Тёмно-красный', css:'linear-gradient(180deg,#7a0a14 0%,rgba(122,10,20,0) 100%)' },
+    { key:'red',         label:'Красный',    css:'linear-gradient(180deg,#dc143c 0%,rgba(220,20,60,0) 100%)' },
+    { key:'yellow',      label:'Жёлтый',     css:'linear-gradient(180deg,#e6b800 0%,rgba(230,184,0,0) 100%)' },
+    { key:'orange',      label:'Оранжевый',  css:'linear-gradient(180deg,#ff8c00 0%,rgba(255,140,0,0) 100%)' },
+    { key:'green',       label:'Зелёный',    css:'linear-gradient(180deg,#228b22 0%,rgba(34,139,34,0) 100%)' },
+    { key:'lime',        label:'Лаймовый',   css:'linear-gradient(180deg,#32cd32 0%,rgba(50,205,50,0) 100%)' },
+    { key:'darkgreen',   label:'Тёмно-зелёный', css:'linear-gradient(180deg,#0a4a0a 0%,rgba(10,74,10,0) 100%)' },
+    { key:'yellowgreen', label:'Жёлто-зелёный', css:'linear-gradient(180deg,#9acd32 0%,rgba(154,205,50,0) 100%)' },
+    { key:'purple',      label:'Фиолетовый', css:'linear-gradient(180deg,#6a0dad 0%,rgba(106,13,173,0) 100%)' },
+    { key:'lightpurple', label:'Светло-фиолетовый', css:'linear-gradient(180deg,#a366ff 0%,rgba(163,102,255,0) 100%)' },
+    { key:'blue',        label:'Синий',      css:'linear-gradient(180deg,#0066cc 0%,rgba(0,102,204,0) 100%)' },
+    { key:'sky',         label:'Голубой',    css:'linear-gradient(180deg,#00bfff 0%,rgba(0,191,255,0) 100%)' },
+    { key:'darkblue',    label:'Тёмно-синий',css:'linear-gradient(180deg,#00008b 0%,rgba(0,0,139,0) 100%)' },
+    { key:'magenta',     label:'Пурпурный',  css:'linear-gradient(180deg,#8b008b 0%,rgba(139,0,139,0) 100%)' },
+    { key:'lilac',       label:'Лиловый',    css:'linear-gradient(180deg,#c8a2c8 0%,rgba(200,162,200,0) 100%)' },
+    { key:'pink',        label:'Розовый',    css:'linear-gradient(180deg,#ff69b4 0%,rgba(255,105,180,0) 100%)' },
+    { key:'cyan',        label:'Циан',       css:'linear-gradient(180deg,#00ced1 0%,rgba(0,206,209,0) 100%)' },
+    { key:'brown',       label:'Коричневый', css:'linear-gradient(180deg,#8b4513 0%,rgba(139,69,19,0) 100%)' },
+    { key:'gray',        label:'Серый',      css:'linear-gradient(180deg,#808080 0%,rgba(128,128,128,0) 100%)' }
+]
+const PROFILE_NAME_COLORS = [
+    { key:'white',   label:'По умолчанию', css:null },
+    { key:'red',     label:'Красный',   css:'#ff4d5a' },
+    { key:'green',   label:'Зелёный',   css:'#30d158' },
+    { key:'pink',    label:'Розовый',   css:'#ff69b4' },
+    { key:'blue',    label:'Синий',     css:'#0a84ff' },
+    { key:'purple',  label:'Фиолетовый',css:'#bf5af2' },
+    { key:'lilac',   label:'Лиловый',   css:'#c8a2c8' },
+    { key:'sky',     label:'Голубой',   css:'#5ac8fa' },
+    { key:'lime',    label:'Лайм',      css:'#a8e063' },
+    { key:'orange',  label:'Оранжевый', css:'#ff9f0a' }
+]
+const PC_EMOJI_PATTERNS = ['✨','⭐','💫','🌸','🌺','🦋','🎀','💎','🔥','⚡','🌈','☀️','🌙','❤️','🧡','💛','💚','💙','💜','🌹','🌻','🍀','🎨','🎭','👑','🏆','🎯']
+
+const PC = {
+    tab: 'personal',
+    theme: { bg:'none', nameColor:'white', pattern:'', patternType:'none' },
+    isChvad: false,
+    userProfile: null
+}
+
+async function openProfileCustomizer(){
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
+    const { data:prof } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+    if(!prof) return
+    const chvadOk = !!prof.chvad_active && (!prof.chvad_until || new Date(prof.chvad_until) > new Date())
+    if(!chvadOk){ showToast('error','Нужна подписка listatread chvad',{ icon:'⭐' }); return }
+
+    PC.isChvad = true
+    PC.userProfile = prof
+    PC.tab = 'personal'
+    PC.theme = { ...(prof.profile_theme || {}) }
+    if(!PC.theme.bg) PC.theme.bg = 'none'
+    if(!PC.theme.nameColor) PC.theme.nameColor = 'white'
+    if(!PC.theme.pattern) PC.theme.pattern = ''
+    if(!PC.theme.patternType) PC.theme.patternType = 'none'
+
+    const el = $('profile-customizer')
+    el.classList.remove('hidden')
+    renderPcTabs()
+    renderPcPreview()
+    renderPcColors()
+    renderPcPatternPicker()
+    bindPcHandlers()
+}
+
+function closeProfileCustomizer(){
+    $('profile-customizer')?.classList.add('hidden')
+}
+
+function renderPcTabs(){
+    document.querySelectorAll('.pc-tab').forEach(t => t.classList.toggle('active', t.dataset.pctab === PC.tab))
+}
+
+function renderPcPreview(){
+    const p = PC.userProfile || {}
+    const fname = p.full_name || 'Пользователь'
+    const uname = p.username || 'user'
+    const ava = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : fname.charAt(0).toUpperCase()
+    const bgDef = PROFILE_BG_COLORS.find(c => c.key === PC.theme.bg) || PROFILE_BG_COLORS[0]
+    const nameDef = PROFILE_NAME_COLORS.find(c => c.key === PC.theme.nameColor) || PROFILE_NAME_COLORS[0]
+    const nameStyle = nameDef.css ? `color:${nameDef.css}` : ''
+    const bgStyle = bgDef.css ? `background:${bgDef.css}` : ''
+
+    let patternLayer = ''
+    if(PC.theme.patternType !== 'none' && PC.theme.pattern){
+        let dataUri = ''
+        if(PC.theme.patternType === 'emoji'){
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><text x="32" y="44" font-size="32" text-anchor="middle">${PC.theme.pattern}</text></svg>`
+            dataUri = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+        } else {
+            dataUri = PC.theme.pattern
+        }
+        patternLayer = `<div class="pc-pattern-layer" style="background-image:url('${dataUri}')"></div>`
+    }
+
+    const preview = $('pc-preview')
+    preview.style.cssText = bgStyle
+    preview.innerHTML = `
+        ${patternLayer}
+        <div class="pc-preview-inner">
+            <div class="pc-ava">${ava}</div>
+            <div class="pc-name" style="${nameStyle}">${escapeHtml(fname)}</div>
+            <div class="pc-username">@${escapeHtml(uname)}</div>
+            <div class="pc-bio">${escapeHtml(p.bio || 'Описание пока не добавлено')}</div>
+            <div class="pc-stats">
+                <div class="pc-stat"><strong>0</strong><span>подписчики</span></div>
+                <div class="pc-stat"><strong>0</strong><span>посты</span></div>
+                <div class="pc-stat"><strong>0</strong><span>подписки</span></div>
+            </div>
+            <div class="pc-actions">
+                <button class="pc-act-icon" disabled>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </button>
+                <button class="pc-act">Подписаться</button>
+                <button class="pc-act-icon" disabled>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg>
+                </button>
+            </div>
+        </div>
+    `
+}
+
+function renderPcColors(){
+    const bgBox = $('pc-bg-colors')
+    bgBox.innerHTML = PROFILE_BG_COLORS.map(c => `
+        <button class="pc-color ${c.key === 'none' ? 'no-bg' : ''} ${PC.theme.bg === c.key ? 'active' : ''}"
+                data-bg="${c.key}" title="${c.label}"
+                style="${c.css ? `background:${c.css}` : ''}"></button>
+    `).join('')
+    bgBox.querySelectorAll('[data-bg]').forEach(b => b.addEventListener('click', () => {
+        PC.theme.bg = b.dataset.bg
+        renderPcColors(); renderPcPreview()
+    }))
+
+    const nameBox = $('pc-name-colors')
+    nameBox.innerHTML = PROFILE_NAME_COLORS.map(c => `
+        <button class="pc-color ${c.key === 'white' ? 'no-bg' : ''} ${PC.theme.nameColor === c.key ? 'active' : ''}"
+                data-name="${c.key}" title="${c.label}"
+                style="${c.css ? `background:${c.css}` : 'background:#f5f5f5'}"></button>
+    `).join('')
+    nameBox.querySelectorAll('[data-name]').forEach(b => b.addEventListener('click', () => {
+        PC.theme.nameColor = b.dataset.name
+        renderPcColors(); renderPcPreview()
+    }))
+
+    document.querySelectorAll('.pc-pattern-btn').forEach(b => {
+        const t = b.id.replace('pc-pattern-', '')
+        b.classList.toggle('active', PC.theme.patternType === t)
+    })
+}
+
+async function renderPcPatternPicker(){
+    const box = $('pc-pattern-picker')
+    box.innerHTML = ''
+    if(PC.theme.patternType === 'none'){ box.classList.add('hidden'); return }
+    box.classList.remove('hidden')
+
+    if(PC.theme.patternType === 'emoji'){
+        box.innerHTML = PC_EMOJI_PATTERNS.map(e => `<button data-emoji="${e}">${e}</button>`).join('')
+        box.querySelectorAll('[data-emoji]').forEach(b => b.addEventListener('click', () => {
+            PC.theme.pattern = b.dataset.emoji
+            renderPcPreview()
+        }))
+    } else if(PC.theme.patternType === 'sticker'){
+        const { data:{ user } } = await supabase.auth.getUser()
+        const { data:packs } = await supabase.from('sticker_packs')
+            .select('stickers').eq('user_id', user.id).limit(5)
+        const stickers = []
+        ;(packs || []).forEach(p => (p.stickers || []).forEach(s => stickers.push(s)))
+        if(!stickers.length){
+            box.innerHTML = '<p class="empty small" style="grid-column:1/-1;padding:14px">Нет стикеров — создайте их в директе</p>'
+            return
+        }
+        box.innerHTML = stickers.slice(0, 32).map(s => `<button data-sticker="${s}"><img src="${s}" alt=""></button>`).join('')
+        box.querySelectorAll('[data-sticker]').forEach(b => b.addEventListener('click', () => {
+            PC.theme.pattern = b.dataset.sticker
+            renderPcPreview()
+        }))
+    }
+}
+
+function bindPcHandlers(){
+    if(bindPcHandlers._bound) return
+    bindPcHandlers._bound = true
+
+    $('pc-back')?.addEventListener('click', closeProfileCustomizer)
+    document.querySelectorAll('.pc-tab').forEach(t => t.addEventListener('click', async () => {
+        PC.tab = t.dataset.pctab
+        renderPcTabs()
+        // при переключении — грузим тему другого типа
+        const field = PC.tab === 'personal' ? 'profile_theme' : 'direct_theme'
+        PC.theme = { ...(PC.userProfile?.[field] || {}) }
+        if(!PC.theme.bg) PC.theme.bg = 'none'
+        if(!PC.theme.nameColor) PC.theme.nameColor = 'white'
+        if(!PC.theme.pattern) PC.theme.pattern = ''
+        if(!PC.theme.patternType) PC.theme.patternType = 'none'
+        renderPcColors(); renderPcPreview(); renderPcPatternPicker()
+    }))
+
+    $('pc-pattern-none')?.addEventListener('click', () => {
+        PC.theme.patternType = 'none'; PC.theme.pattern = ''
+        renderPcColors(); renderPcPreview(); renderPcPatternPicker()
+    })
+    $('pc-pattern-emoji')?.addEventListener('click', () => {
+        PC.theme.patternType = 'emoji'; PC.theme.pattern = PC.theme.pattern || '✨'
+        renderPcColors(); renderPcPreview(); renderPcPatternPicker()
+    })
+    $('pc-pattern-sticker')?.addEventListener('click', () => {
+        PC.theme.patternType = 'sticker'
+        renderPcColors(); renderPcPreview(); renderPcPatternPicker()
+    })
+
+    $('pc-save')?.addEventListener('click', async () => {
+        const btn = $('pc-save')
+        btn.disabled = true; btn.textContent = 'Сохранение…'
+        try {
+            const { data:{ user } } = await supabase.auth.getUser()
+            const field = PC.tab === 'personal' ? 'profile_theme' : 'direct_theme'
+            const update = { [field]: PC.theme }
+            const { error } = await supabase.from('profiles').update(update).eq('id', user.id)
+            if(error) throw error
+            PC.userProfile[field] = PC.theme
+            showToast('success','Оформление сохранено',{ icon:'✓' })
+        } catch(e){
+            showToast('error','Не удалось: ' + (e.message || ''), { icon:'⚠️' })
+        } finally {
+            btn.disabled = false; btn.textContent = 'Сохранить'
+        }
+    })
+}
+
+/* === Кнопка в настройках + проверка chvad === */
+async function refreshChvadSettingsButton(){
+    const btn = $('chvad-settings-btn'); if(!btn) return
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user){ btn.classList.add('hidden'); return }
+        const { data:p } = await supabase.from('profiles')
+            .select('chvad_active, chvad_until').eq('id', user.id).maybeSingle()
+        const active = !!p?.chvad_active && (!p.chvad_until || new Date(p.chvad_until) > new Date())
+        btn.classList.toggle('hidden', !active)
+        if(active && !btn._bound){
+            btn._bound = true
+            btn.addEventListener('click', openProfileCustomizer)
+        }
+    } catch { btn.classList.add('hidden') }
+}
+// вызываем после loadSettings
+const _origLoadSettings = loadSettings
+loadSettings = async function(){
+    await _origLoadSettings()
+    await refreshChvadSettingsButton()
+}
+
+/* === Модалка 100 статусов === */
+function openChvadStatusesModal(){
+    const modal = $('chvad-statuses-modal'); if(!modal) return
+    const grid = $('chvad-statuses-grid')
+    grid.innerHTML = CHVAD_ALL_STATUSES.map(s => `
+        <button class="status-item ${state.data.status === s.code ? 'active' : ''}" data-code="${s.code}">
+            <div class="status-item-emoji">${s.emoji}</div>
+            <div class="status-item-label">${s.label}</div>
+        </button>
+    `).join('')
+    grid.querySelectorAll('.status-item').forEach(b => b.addEventListener('click', () => {
+        saveStatus(b.dataset.code)
+        modal.classList.add('hidden')
+    }))
+    modal.classList.remove('hidden')
+    $('chvad-statuses-backdrop').onclick = () => modal.classList.add('hidden')
 }
 $('save-general')?.addEventListener('click', async () => {
     const btn = $('save-general'); btn.disabled = true; btn.textContent = 'Сохранение...'
@@ -5241,28 +5698,9 @@ function vfmBuildOverlay(){
         const videoAspect = vw / vh;
         const widthFitHeight = elW / videoAspect;      // высота, если видео вписать по ширине
         const fillRatio = widthFitHeight / elH;        // 1.0 = полностью заполнит экран
-
-        if(fillRatio >= 0.6){
-            // ── БОЛЬШОЕ ВИДЕО ──
-            // Растягиваем контейнер от верха экрана до белой полоски прогресса
-            v.style.objectFit      = 'cover';
-            v.style.objectPosition = 'center top';
-            v.style.top            = '0';
-            v.style.left           = '0';
-            v.style.right          = '0';
-            v.style.bottom         = 'calc(var(--nav-height) + var(--safe-bottom) + 3px)';
-            v.style.height         = 'auto';
-        } else {
-            // ── МАЛЕНЬКОЕ ВИДЕО ──
-            // Чуть выше центра (35% вместо 50%)
-            v.style.objectFit      = 'contain';
-            v.style.objectPosition = 'center 35%';
-            v.style.top            = '0';
-            v.style.left           = '0';
-            v.style.right          = '0';
-            v.style.bottom         = '0';
-            v.style.height         = 'auto';
-        }
+        // Большое видео (≥60% высоты экрана) — прижать к верху
+        // Маленькое — центрировать
+        v.style.objectPosition = (fillRatio >= 0.6) ? 'center top' : 'center center';
     });
     // ---------- ВЕРХНИЙ УРОВЕНЬ ----------
     el.querySelector('#vfm-back').addEventListener('click', () => closeVideoFeed())
@@ -6233,6 +6671,23 @@ async function enterApp(){
 
     await checkMainChannelSubscription()
     await refreshFollowCache()
+
+    // ═══════════════════════════════════════════════════════════════
+    // [ПУНКТ 10] Автодеактивация истёкшего chvad — ДО loadProfile()
+    // ═══════════════════════════════════════════════════════════════
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(user){
+            const { data:p } = await supabase.from('profiles')
+                .select('chvad_active, chvad_until').eq('id', user.id).maybeSingle()
+            if(p?.chvad_active && p.chvad_until && new Date(p.chvad_until) < new Date()){
+                await supabase.from('profiles').update({ chvad_active: false }).eq('id', user.id)
+                console.log('[chvad] auto-deactivated (expired)')
+            }
+        }
+    } catch(e){ console.warn('[chvad expire]', e.message) }
+    // ═══════════════════════════════════════════════════════════════
+
     switchScreen('home')
     window.__ltSetChatTitle = (t) => { state.chatTitle = t }
     renderLiveNow(); renderStories(); loadProfile(); loadStatus();
@@ -7765,7 +8220,7 @@ function promoInit() {
             errEl.textContent = 'Код товара: 5 символов';
             return;
         }
-        if (!/^\d{2}\.\d{2}\.\d{2}$/.test(pid)) {
+        if (!/^\d{2}\.\d{3}\.\d{2}$/.test(pid)) {
             errEl.textContent = 'Провайдер: idpe в формате XX.XXX.XX';
             return;
         }
@@ -7775,7 +8230,55 @@ function promoInit() {
         }
 
         // Заглушка
-        errEl.textContent = 'Код не существует, не активен или уже активирован';
+        submitBtn?.addEventListener('click', async () => {
+            errEl.textContent = ''
+
+            const serviceCode = serviceInput?.value.trim() || ''
+            const productCode = boxes.map(b => b.value).join('')
+            const pid = providerId?.value.trim() || ''
+            const host = providerHost?.value.trim() || ''
+
+            if (serviceCode.length < 5) { errEl.textContent = 'Код услуги: 5 букв'; return }
+            if (productCode.length < 5) { errEl.textContent = 'Код товара: 5 символов'; return }
+            if (!/^\d{2}\.\d{2}\.\d{2}$/.test(pid)) { errEl.textContent = 'Провайдер: idpe в формате XX.XXX.XX'; return }
+            if (!host) { errEl.textContent = 'Введите хост провайдера'; return }
+
+            submitBtn.disabled = true
+            submitBtn.textContent = 'Активация…'
+
+            try {
+                const { data:{ user } } = await supabase.auth.getUser()
+                if(!user) throw new Error('Войдите в аккаунт')
+
+                // выдаём chvad на месяц с текущего момента
+                const until = new Date()
+                until.setMonth(until.getMonth() + 1)
+
+                const { error } = await supabase.from('profiles').update({
+                    chvad_active: true,
+                    chvad_until: until.toISOString()
+                }).eq('id', user.id)
+                if(error) throw error
+
+                errEl.style.color = 'var(--green)'
+                errEl.textContent = 'listatread chvad активирован до ' +
+                    until.toLocaleDateString('ru-RU', { day:'2-digit', month:'long', year:'numeric' })
+
+                showToast('success','Подписка chvad активирована на месяц', { icon:'⭐', duration: 5000 })
+
+                setTimeout(() => {
+                    Router.push('/shop')
+                    switchScreen('shop')
+                    shopInit()
+                }, 1600)
+            } catch(e){
+                errEl.style.color = ''
+                errEl.textContent = 'Ошибка активации: ' + (e.message || '')
+            } finally {
+                submitBtn.disabled = false
+                submitBtn.textContent = 'Активировать'
+            }
+        })
     });
 
     // Кнопка "Назад"
