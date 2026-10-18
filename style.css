@@ -4630,6 +4630,163 @@ html[data-theme="dark"] .channel-live-chip{
 html[data-theme="dark"] .channel-live-name{ color: var(--text); }
 html[data-theme="dark"] .channel-live-status{ color: var(--text-secondary); }
 html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
+
+/* ============================================================
+   FIX v6 — VFM, статусы, live-now чипы (без фона), direct
+============================================================ */
+
+/* --- 1. VFM: убираем ДВОЙНОЙ отступ (bottom + padding-bottom) --- */
+.vfm-bottom{
+    position: absolute !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: calc(var(--nav-height) + var(--safe-bottom) + 10px) !important;
+    padding: 0 16px !important;
+    gap: 0 !important;
+    justify-content: flex-end !important;
+    max-height: none !important;
+    transform: none !important;
+    background: transparent !important;
+}
+
+/* --- 2. Статус автора в VFM: без фона + живая анимация --- */
+.vfm-author-status,
+.vfm-right .vfm-author-status{
+    background: transparent !important;
+    border-radius: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 0 !important;
+    right: -4px !important;
+    bottom: -4px !important;
+    translate: 0 0 !important;
+    transform: none !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    pointer-events: none !important;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,.75)) !important;
+    animation: vfmStatusPulse 2.2s ease-in-out infinite !important;
+    will-change: transform;
+    z-index: 3;
+}
+.vfm-right .vfm-author-status{
+    right: 0 !important;
+    bottom: 0 !important;
+    translate: 30% 20% !important;
+}
+@keyframes vfmStatusPulse{
+    0%,100%{ transform: scale(1)   rotate(0deg); }
+    25%    { transform: scale(1.2) rotate(-8deg); }
+    75%    { transform: scale(1.2) rotate(8deg); }
+}
+
+/* --- 3. Discussion input (≥50%): убираем лайк / число / стрелку --- */
+#vfm-cinput .vfm-cinput-like,
+#vfm-cinput .vfm-cinput-count,
+#vfm-cinput .vfm-cinput-arrow{
+    display: none !important;
+}
+
+/* --- 4. Direct: кнопка «Новый чат» больше не за шапкой --- */
+#screen-direct .new-chat-btn{
+    margin-top: calc(100px + var(--safe-top)) !important;
+}
+#screen-direct #direct-body .new-chat-btn{
+    margin-top: 16px !important;
+}
+
+/* --- 5. VFM: цифры не жирные --- */
+.vfm-act .vfm-act-count{ font-weight: 500 !important; }
+.vfm-cpop-total{ font-weight: 500 !important; }
+.vfm-cinput-count{ font-weight: 500 !important; }
+
+/* --- 6. Live Now — чипы каналов БЕЗ фона --- */
+.channel-live-chip{
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 112px;
+    height: 172px;
+    padding: 10px 8px;
+    background: transparent !important;
+    color: var(--text);
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    text-align: center;
+    box-shadow: none !important;
+    cursor: pointer;
+    font-family: inherit;
+    transition: scale .18s var(--ease-out), background-color .2s;
+}
+.channel-live-chip:active{ scale: .96 }
+
+.channel-live-ava{
+    width: 88px;
+    height: 88px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--yellow), var(--red-pink));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 800;
+    color: #fff;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid rgba(128,128,128,.35);
+    transition: border-color .25s;
+}
+.channel-live-ava.has-new{
+    border-color: #ff6b35 !important;
+    animation: none !important;
+    box-shadow: none !important;
+}
+.channel-live-ava img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 18px;
+}
+
+.channel-live-info{
+    margin-top: auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    min-height: 0;
+}
+
+.channel-live-name{
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text);
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.15;
+}
+
+.channel-live-status{
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    line-height: 1.25;
+    text-align: center;
+    white-space: normal;
+    word-break: break-word;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+.channel-live-status.has-new{
+    color: #ff6b35 !important;
+    font-weight: 600;
+}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

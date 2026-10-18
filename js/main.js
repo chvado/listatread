@@ -1465,6 +1465,7 @@ async function renderStories(){
 /* ============================================================
    LIVE NOW
 ============================================================ */
+
 async function renderLiveNow(){
     const row = $('live-now-row'); if(!row) return
     row.innerHTML = loadingBlock()
@@ -1472,7 +1473,6 @@ async function renderLiveNow(){
         const { data:{ user } } = await supabase.auth.getUser()
         if(!user){ row.innerHTML = ''; return }
 
-        // Подписки + свои каналы
         const [{ data: subs }, { data: owned }] = await Promise.all([
             supabase.from('subscriptions')
                 .select('channel_id, channels:channel_id ( id, name, avatar_url )')
@@ -1492,7 +1492,6 @@ async function renderLiveNow(){
 
         const channelIds = channels.map(c => c.id)
 
-        // Последние посты + активные live + количество подписчиков
         const [{ data: recentPosts }, { data: activeLives }, { data: allSubs }] = await Promise.all([
             supabase.from('posts')
                 .select('id, channel_id, media_url, poll, created_at')
@@ -1514,7 +1513,6 @@ async function renderLiveNow(){
             subCounts[s.channel_id] = (subCounts[s.channel_id] || 0) + 1
         })
 
-        // Собираем последнюю активность по каждому каналу
         const latestByChannel = {}
         ;(recentPosts || []).forEach(p => {
             const cur = latestByChannel[p.channel_id]
@@ -1580,8 +1578,10 @@ async function renderLiveNow(){
                     data-post-id="${it.act?.post?.id || ''}"
                     data-live-id="${it.act?.live?.id || ''}">
                 <div class="channel-live-ava ${avaClass}">${av}</div>
-                <div class="channel-live-name">${escapeHtml(name)}</div>
-                <div class="channel-live-status ${statClass}">${escapeHtml(statusText)}</div>
+                <div class="channel-live-info">
+                    <div class="channel-live-name">${escapeHtml(name)}</div>
+                    <div class="channel-live-status ${statClass}">${escapeHtml(statusText)}</div>
+                </div>
             </button>`
         }).join('')
 
@@ -1601,7 +1601,6 @@ async function renderLiveNow(){
                 await openChannel(chId)
 
                 if(type === 'video' && postId){
-                    // ждём появления карточки в канале
                     const card = await new Promise(resolve => {
                         const start = Date.now()
                         const tick = () => {
