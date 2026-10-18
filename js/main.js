@@ -414,16 +414,29 @@ function renderMedia(url, cls = 'feed-post-image', meta = {}){
 
 async function fetchCounts(postIds){
     const out = {}
-    postIds.forEach(id => out[id] = { likes:0, comments:0, reposts:0 })
+    postIds.forEach(id => out[id] = { likes:0, comments:0, reposts:0, commenters:[] })
     if(!postIds.length) return out
     try {
         const [{ data:likes }, { data:comments }, { data:reposts }] = await Promise.all([
                 supabase.from('likes').select('post_id').in('post_id', postIds),
-                supabase.from('comments').select('post_id').in('post_id', postIds),
+                supabase.from('comments')
+                    .select('post_id, user_id, created_at, profiles:user_id ( username, full_name, avatar_url )')
+                    .in('post_id', postIds).order('created_at', { ascending:false }),
                 supabase.from('reposts').select('post_id').in('post_id', postIds)
             ])
         ;(likes || []).forEach(l => { if(out[l.post_id]) out[l.post_id].likes++ })
-        ;(comments || []).forEach(c => { if(out[c.post_id]) out[c.post_id].comments++ })
+        ;(comments || []).forEach(c => {
+            const o = out[c.post_id]; if(!o) return
+            o.comments++
+            if(o.commenters.length < 3 && !o.commenters.some(x => x.uid === c.user_id)){
+                const pr = c.profiles || {}
+                o.commenters.push({
+                    uid: c.user_id,
+                    avatar: pr.avatar_url || null,
+                    initial: (pr.full_name || pr.username || '?').charAt(0).toUpperCase()
+                })
+            }
+        })
         ;(reposts || []).forEach(r => { if(out[r.post_id]) out[r.post_id].reposts++ })
     } catch(e){ console.warn('[counts]', e.message) }
     return out
@@ -805,7 +818,12 @@ function switchScreen(name){
     document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'))
     const t = document.getElementById('screen-' + name)
     if(t) t.classList.add('active')
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === name))
+    document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
+        const s = b.dataset.screen
+        if(s === 'direct'){ openDirectTab(); return }
+        if(s === 'profile'){ state.currentProfileViewId = null; state.viewingOwnProfile = true }
+        switchScreen(s)
+    }))
     state.screen = name; window.scrollTo(0, 0)
     if(name === 'inbox') renderEventsScreen()
     if(name === 'profile'){
@@ -1428,34 +1446,70 @@ async function renderStories(){
 /* ============================================================
    LIVE NOW
 ============================================================ */
+/* ===== Список каналов под кнопкой «По коду» ===== */
+const chSeenKey = id => 'lt_chseen_' + id
+function getChSeen(id){ try { return +localStorage.getItem(chSeenKey(id)) || 0 } catch { return 0 } }
+function markChannelSeen(id){
+    try { localStorage.setItem(chSeenKey(id), String(Date.now())) } catch {}
+    document.querySelectorAll(`.ch-card[data-ch="${id}"]`).forEach(c => c.classList.remove('has-new'))
+}
+function fmtSubs(n){
+    n = n || 0
+    if(n >= 1e6) return (n / 1e6).toFixed(1).replace('.0', '') + 'M'
+    if(n >= 1e3) return (n / 1e3).toFixed(1).replace('.0', '') + 'K'
+    return String(n)
+}
+
 async function renderLiveNow(){
     const row = $('live-now-row'); if(!row) return
-    row.innerHTML = loadingBlock()
+    if(!row.children.length) row.innerHTML = loadingBlock()
     try {
-        const { data:{ user } } = await supabase.auth.getUser()
-        const { data:mySubs } = await supabase.from('subscriptions').select('channel_id').eq('follower_id', user.id)
-        const subIds = (mySubs || []).map(s => s.channel_id)
-        const { data:myChannels } = await supabase.from('channels').select('id').eq('owner_id', user.id)
-        const myIds = (myChannels || []).map(c => c.id)
-        const allIds = [...new Set([...subIds, ...myIds])]
-        let query = supabase.from('lives').select('id, title, type, channels:channel_id ( id, name, avatar_url )').eq('is_active', true).order('created_at', { ascending:false }).limit(10)
-        if(allIds.length) query = query.in('channel_id', allIds)
-        const { data:lives } = await query
-        if(lives && lives.length){
-            row.innerHTML = lives.map(l => {
-                const ch = l.channels || {}
-                const name = ch.name || 'Канал'
-                const av = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
-                return `<div class="live-avatar-wrap" data-live="${l.id}"><div class="live-avatar"><div class="live-avatar-top">LIVE</div><div class="live-avatar-inner">${av}<div class="live-bars"><span></span><span></span><span></span></div></div></div><div class="live-avatar-name">${escapeHtml(name)}</div></div>`
-            }).join('')
-            row.querySelectorAll('.live-avatar-wrap[data-live]').forEach(el => el.addEventListener('click', () => openLiveRoom(el.dataset.live)))
-        } else {
-            const regionObj = COUNTRIES.find(c => c.code === state.data.region)
-            const regionLabel = regionObj ? regionObj.name : 'ваш регион'
-            row.innerHTML = `<button class="live-now-card empty" id="live-now-empty"><div class="live-now-card-bars"><span></span><span></span><span></span></div><span class="live-now-pill">LIVE</span><div><div class="live-now-title">Пока нет live</div><div class="live-now-sub">Присоединитесь к лайв чату · ${escapeHtml(regionLabel)}</div></div></button>`
-            $('live-now-empty')?.addEventListener('click', () => openLiveChat('region', regionObj ? `${regionObj.flag} ${regionObj.name}` : 'Регион'))
+        const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+        const [{ data:subs }, { data:own }] = await Promise.all([
+            supabase.from('subscriptions').select('channels:channel_id ( id, name, avatar_url )').eq('follower_id', user.id),
+            supabase.from('channels').select('id, name, avatar_url').eq('owner_id', user.id)
+        ])
+        const map = new Map()
+        ;[...(own || []), ...(subs || []).map(s => s.channels).filter(Boolean)].forEach(c => map.set(c.id, c))
+        const channels = [...map.values()]
+
+        if(!channels.length){
+            row.innerHTML = `<button class="ch-strip-empty" id="ch-strip-empty">Подпишитесь на каналы — они появятся здесь</button>`
+            $('ch-strip-empty')?.addEventListener('click', () => switchScreen('channels'))
+            return
         }
-    } catch { row.innerHTML = '<p class="empty small">Ошибка</p>' }
+
+        const ids = channels.map(c => c.id)
+        const [{ data:latest }, { data:lives }, ...counts] = await Promise.all([
+            supabase.from('posts').select('channel_id, created_at').in('channel_id', ids).order('created_at', { ascending:false }).limit(300),
+            supabase.from('lives').select('id, channel_id').eq('is_active', true).in('channel_id', ids),
+            ...ids.map(id => supabase.from('subscriptions').select('*', { count:'exact', head:true }).eq('channel_id', id))
+        ])
+        const latestMap = {}
+        ;(latest || []).forEach(p => { if(!latestMap[p.channel_id]) latestMap[p.channel_id] = new Date(p.created_at).getTime() })
+        const liveMap = {}
+        ;(lives || []).forEach(l => { liveMap[l.channel_id] = l.id })
+
+        const WEEK = 7 * 24 * 3600 * 1000
+        const items = channels.map((c, i) => {
+            const ts = latestMap[c.id] || 0
+            return { c, subs: counts[i]?.count || 0, isNew: ts > getChSeen(c.id) && (Date.now() - ts) < WEEK, liveId: liveMap[c.id] || null }
+        }).sort((a, b) => (b.isNew - a.isNew))
+
+        row.innerHTML = items.map(({ c, subs, isNew, liveId }) => {
+            const name = c.name || 'Канал'
+            const av = c.avatar_url ? `<img src="${c.avatar_url}" alt="">` : escapeHtml(name.charAt(0).toUpperCase())
+            return `<button class="ch-card ${isNew ? 'has-new' : ''}" data-ch="${c.id}" data-live="${liveId || ''}">
+                <span class="ch-card-ava">${av}${liveId ? '<i class="ch-card-live">LIVE</i>' : ''}</span>
+                <span class="ch-card-name">${escapeHtml(name)}</span>
+                <span class="ch-card-subs">${fmtSubs(subs)} подп.</span>
+            </button>`
+        }).join('')
+        row.querySelectorAll('.ch-card').forEach(el => el.addEventListener('click', () => {
+            if(el.dataset.live) openLiveRoom(el.dataset.live)
+            else openChannel(el.dataset.ch)
+        }))
+    } catch { row.innerHTML = '<p class="empty small">Не удалось загрузить каналы</p>' }
 }
 
 /* ============================================================
@@ -1833,7 +1887,7 @@ function attachVideoCardClick(card){
     card.dataset.videoClickBound = '1'
 
     card.addEventListener('click', e => {
-        if(e.target.closest('.feed-action, .feed-more, .feed-channel-badge, .feed-post-avatar, .profile-post-more, .feed-sub-btn, .post-video-progress, .poll-view, .track-card')) return
+        if(e.target.closest('.feed-action, .feed-more, .feed-channel-badge, .feed-post-avatar, .profile-post-more, .feed-sub-btn, .post-video-progress, .poll-view, .track-card, .fp-author-bar, .fp-discuss, .fp-follow, .fp-actions')) return
         openVideoFeed(card)
     })
 }
@@ -1856,30 +1910,58 @@ function hideVideoPauseIcon(card){
 function attachVideoProgress(card){
     const vid = card.querySelector('.post-bg-video')
     if(!vid) return
+
+    // 1. Ищем/создаём сам контейнер прогресса
     let bar = card.querySelector('.post-video-progress')
     if(!bar){
         bar = document.createElement('div')
         bar.className = 'post-video-progress'
-        bar.innerHTML = '<div class="post-video-progress-fill"></div>'
-        card.appendChild(bar)
+        const parent = card.querySelector('.fp-card') || card
+        parent.appendChild(bar)
     }
-    const fill = bar.querySelector('.post-video-progress-fill')
+
+    // 2. Ищем/создаём fill отдельно — без innerHTML
+    let fill = bar.querySelector('.post-video-progress-fill')
+    if(!fill){
+        fill = document.createElement('div')
+        fill.className = 'post-video-progress-fill'
+        bar.appendChild(fill)
+    }
+
+    // 3. Защита от повторных подписок на timeupdate
+    if(vid.dataset.progressBound === '1') return
+    vid.dataset.progressBound = '1'
+
     vid.addEventListener('timeupdate', () => {
         if(vid.duration && isFinite(vid.duration)){
             fill.style.width = (vid.currentTime / vid.duration * 100) + '%'
         }
     })
+
+    // 4. Перемотка тапом/драгом
     let dragging = false
     const setFromEvent = (clientX) => {
         const rect = bar.getBoundingClientRect()
+        if(!rect.width) return
         const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
         if(vid.duration && isFinite(vid.duration)){
             vid.currentTime = pct * vid.duration
         }
     }
-    bar.addEventListener('pointerdown', e => { e.stopPropagation(); dragging = true; setFromEvent(e.clientX); bar.setPointerCapture(e.pointerId) })
-    bar.addEventListener('pointermove', e => { if(dragging){ e.stopPropagation(); setFromEvent(e.clientX) } })
-    bar.addEventListener('pointerup', e => { e.stopPropagation(); dragging = false })
+    bar.addEventListener('pointerdown', e => {
+        e.stopPropagation()
+        dragging = true
+        setFromEvent(e.clientX)
+        try { bar.setPointerCapture(e.pointerId) } catch {}
+    })
+    bar.addEventListener('pointermove', e => {
+        if(dragging){ e.stopPropagation(); setFromEvent(e.clientX) }
+    })
+    bar.addEventListener('pointerup', e => {
+        e.stopPropagation()
+        dragging = false
+        try { bar.releasePointerCapture(e.pointerId) } catch {}
+    })
 }
 
 function attachVideoLoading(card){
@@ -1924,90 +2006,95 @@ function attachVideoLoading(card){
     update()
 }
 
-function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new Set(), counts = {}, contextLabel = 'ваши рекомендации'){
+function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new Set(), counts = {}, contextLabel = ''){
     const p = post.profiles || {}, ch = post.channels || {}
-    const name = p.full_name || p.username || 'Канал'
-    const time = new Date(post.created_at).toLocaleString('ru-RU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
-    const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
+    const name = p.full_name || p.username || 'Автор'
+    const date = new Date(post.created_at).toLocaleString('ru-RU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+    const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : escapeHtml(name.charAt(0).toUpperCase())
     const emoji = statusEmoji(computeDisplayStatus(p))
-    const isMine = myId && post.author_id === myId
+    const isMine = !!(myId && post.author_id === myId)
     const isLiked = likedIds.has(post.id), isReposted = repostedIds.has(post.id)
     const lc = counts[post.id]?.likes || 0
     const cc = counts[post.id]?.comments || 0
     const rc = counts[post.id]?.reposts || 0
+    const commenters = counts[post.id]?.commenters || []
     const isVideo = isVideoUrl(post.media_url)
-    const adminMark = p.is_admin ? adminBadge(true) : ''
+    const adminMark = p.is_admin ? adminBadge(true, 'small') : ''
 
-    // плюсик под аватаркой
-    const plusHtml = (myId && post.author_id !== myId && !state.myFollows.has(post.author_id))
-        ? `<button class="feed-avatar-plus" data-plus-uid="${post.author_id}" aria-label="Подписаться">+</button>`
-        : ''
-    const avatarBlock = `<div class="feed-avatar-wrap"><div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div>${plusHtml}</div>`
+    // 1) Автор — над карточкой: ава, имя, статус; справа дата
+    const authorBar = `<div class="fp-author-bar">
+        <div class="feed-post-avatar" data-uid="${post.author_id}">${av}</div>
+        <div class="feed-post-name"><span class="feed-post-name-text">${escapeHtml(name)}${adminMark}</span><span class="story-status-badge fp-status">${emoji}</span></div>
+        <div class="fp-date">${date}</div>
+    </div>`
 
-    let channelBadge = ''
+    // 2) Шапка карточки: квадратная аватарка канала, имя + галочка, плюс справа
+    let chBadge
     if(ch.id){
         const chName = ch.name || 'Канал'
-        const chLogo = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : chName.charAt(0).toUpperCase()
-        channelBadge = `<button class="feed-channel-badge" data-chbadge="${ch.id}"><span class="feed-channel-logo">${chLogo}</span><span class="feed-channel-name">${escapeHtml(chName)}</span></button>`
+        const logo = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : escapeHtml(chName.charAt(0).toUpperCase())
+        chBadge = `<button class="feed-channel-badge fp-chbadge" data-chbadge="${ch.id}"><span class="feed-channel-logo">${logo}</span><span class="feed-channel-name">${escapeHtml(chName)}</span></button>`
+    } else {
+        chBadge = `<div class="fp-chbadge"><span class="feed-channel-logo">${av}</span><span class="feed-channel-name">Live chat</span></div>`
     }
-
     let subBtn = ''
     if(!isMine && ch.id){
         const isSub = state.myChannelSubs.has(ch.id)
         subBtn = `<button class="feed-sub-btn ${isSub ? 'subscribed' : ''}" data-chid="${ch.id}">${isSub ? ICONS.checkSmall : ICONS.plus}</button>`
     }
+    const head = `<div class="fp-head">${chBadge}${subBtn}</div>`
+
+    // 3) Ряд действий: подписаться на автора, лайк, репост, поделиться, ⋯
+    const following = state.myFollows.has(post.author_id)
+    const followBtn = (myId && !isMine)
+        ? `<button class="feed-avatar-plus fp-follow ${following ? 'subscribed' : ''}" data-plus-uid="${post.author_id}">${following ? 'Вы подписаны' : 'Подписаться'}</button>`
+        : ''
+    const actions = `<div class="fp-actions">
+        ${followBtn}
+        <button class="feed-action ${isLiked ? 'liked' : ''}" data-like="${post.id}">${isLiked ? ICONS.heartFill : ICONS.heart}<span class="feed-count" data-like-count="${post.id}">${lc}</span></button>
+        <button class="feed-action ${isReposted ? 'reposted' : ''}" data-repost="${post.id}">${ICONS.repost}<span class="feed-count" data-repost-count="${post.id}">${rc}</span></button>
+        <button class="feed-action" data-share="${post.id}">${ICONS.share}</button>
+        <button class="feed-more" data-pid="${post.id}" data-author="${p.username || 'user'}" data-mine="${isMine ? 1 : 0}" data-channel="${post.channel_id || ''}">${ICONS.dots}</button>
+    </div>`
+
+    // 4) Описание
+    const desc = post.content ? `<div class="feed-post-content fp-desc">${escapeHtml(post.content)}</div>` : '<div class="feed-post-content fp-desc" style="padding:0"></div>'
+
+    // 5) Обсуждение (отдельная полоска с обычным фоном)
+    const stack = commenters.map(c => `<span class="fp-cava">${c.avatar ? `<img src="${c.avatar}" alt="">` : escapeHtml(c.initial)}</span>`).join('')
+    const discuss = `<button class="feed-action fp-discuss" data-comment="${post.id}">
+        ${ICONS.comment}
+        ${stack ? `<span class="fp-cstack">${stack}</span>` : ''}
+        <span class="fp-ccount">(<span class="feed-count" data-comment-count="${post.id}">${cc}</span>)</span>
+        <span class="fp-chev">›</span>
+    </button>`
 
     const pollHtml = post.poll ? renderPoll(post.poll, post.id) : ''
+    const attrs = `data-pid="${post.id}" data-channel="${post.channel_id || ''}"`
 
     if(!isVideo){
         const media = renderMedia(post.media_url, 'feed-post-image', {
-            title: post.media_title || post.title,
-            postId: post.id,
-            username: p.username || 'user'
+            title: post.media_title || post.title, postId: post.id, username: p.username || 'user'
         })
-        return `<article class="feed-post" data-pid="${post.id}" data-channel="${post.channel_id || ''}">
-    <div class="feed-post-header">
-      ${avatarBlock}
-      <div class="feed-post-info">
-<div class="feed-post-name verified"><span class="feed-post-name-text">${escapeHtml(name)}${adminMark}</span>${channelBadge}</div>
-    ${buildMetaRow(time, contextLabel, post)}
-</div>
-      ${subBtn}
-    </div>
-    <div class="feed-post-content">${escapeHtml(post.content || '')}</div>
-    ${media}${pollHtml}
-    <div class="feed-post-footer">
-      <button class="feed-action ${isLiked ? 'liked' : ''}" data-like="${post.id}">${isLiked ? ICONS.heartFill : ICONS.heart}<span class="feed-count" data-like-count="${post.id}">${lc}</span></button>
-      <button class="feed-action" data-comment="${post.id}">${ICONS.comment}<span class="feed-count" data-comment-count="${post.id}">${cc}</span></button>
-      <button class="feed-action ${isReposted ? 'reposted' : ''}" data-repost="${post.id}" ${isReposted ? 'style="color:var(--green)"' : ''}>${ICONS.repost}<span class="feed-count" data-repost-count="${post.id}">${rc}</span></button>
-      <button class="feed-action" data-share="${post.id}">${ICONS.share}</button>
-      <button class="feed-more" data-pid="${post.id}" data-author="${p.username || 'user'}" data-mine="${isMine ? 1 : 0}" data-channel="${post.channel_id || ''}">${ICONS.dots}</button>
-    </div>
-  </article>`
+        return `<article class="feed-post fp" ${attrs}>
+            ${authorBar}
+            <div class="fp-card">${head}${media}${pollHtml}${actions}${desc}</div>
+            ${discuss}
+        </article>`
     }
 
-    return `<article class="feed-post feed-post-video" data-pid="${post.id}" data-channel="${post.channel_id || ''}" data-video-src="${post.media_url}">
-    <video class="post-bg-video" src="${post.media_url}" autoplay muted loop playsinline preload="metadata"></video>
-    <div class="post-bg-overlay"></div>
-    <div class="feed-post-video-hint" style="white-space:nowrap">нажмите чтобы посмотреть</div>
-    <div class="feed-post-header">
-      ${avatarBlock}
-      <div class="feed-post-info">
-    <div class="feed-post-name verified">${escapeHtml(name)}${adminMark}${channelBadge}</div>
-    ${buildMetaRow(time, contextLabel, post)}
-</div>
-      ${subBtn}
-    </div>
-    <div class="feed-post-content">${escapeHtml(post.content || '')}</div>
-    ${pollHtml}
-    <div class="feed-post-footer">
-      <button class="feed-action ${isLiked ? 'liked' : ''}" data-like="${post.id}">${isLiked ? ICONS.heartFill : ICONS.heart}<span class="feed-count" data-like-count="${post.id}">${lc}</span></button>
-      <button class="feed-action" data-comment="${post.id}">${ICONS.comment}<span class="feed-count" data-comment-count="${post.id}">${cc}</span></button>
-      <button class="feed-action ${isReposted ? 'reposted' : ''}" data-repost="${post.id}" ${isReposted ? 'style="color:var(--green)"' : ''}>${ICONS.repost}<span class="feed-count" data-repost-count="${post.id}">${rc}</span></button>
-      <button class="feed-action" data-share="${post.id}">${ICONS.share}</button>
-      <button class="feed-more" data-pid="${post.id}" data-author="${p.username || 'user'}" data-mine="${isMine ? 1 : 0}" data-channel="${post.channel_id || ''}">${ICONS.dots}</button>
-    </div>
-  </article>`
+    return `<article class="feed-post fp feed-post-video" ${attrs} data-video-src="${post.media_url}">
+        ${authorBar}
+        <div class="fp-card">
+            <video class="post-bg-video" src="${post.media_url}" autoplay muted loop playsinline preload="metadata"></video>
+            <div class="post-bg-overlay"></div>
+            <div class="feed-post-video-hint" style="white-space:nowrap">нажмите чтобы посмотреть</div>
+            ${head}${pollHtml}
+            <div class="fp-spacer"></div>
+            ${actions}${desc}
+        </div>
+        ${discuss}
+    </article>`
 }
 
 function renderPoll(poll, postId){
@@ -4303,6 +4390,7 @@ async function ccNext(){
    CHANNEL PAGE
 ============================================================ */
 async function openChannel(channelId){
+    markChannelSeen(channelId)
     try {
         const { data } = await supabase.from('channels').select('join_code').eq('id', channelId).maybeSingle();
         Router.push(urlFor('channel', data?.join_code || channelId));
@@ -5659,9 +5747,7 @@ function vfmBuildOverlay(){
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
         <span class="vfm-act-count" data-vfm-count="repost">0</span>
       </button>
-      <button class="vfm-act" data-vfm="gift" aria-label="Подарок">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg>
-      </button>
+      
       <button class="vfm-act" data-vfm="share" aria-label="Поделиться">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
       </button>
@@ -6075,7 +6161,7 @@ function syncVfmMeta(){
     let authorName = 'user'
     if(nameEl){
         const clone = nameEl.cloneNode(true)
-        clone.querySelectorAll('.feed-channel-badge, .admin-badge').forEach(el => el.remove())
+        clone.querySelectorAll('.feed-channel-badge, .admin-badge, .story-status-badge').forEach(el => el.remove())
         authorName = (clone.textContent || '').trim() || 'user'
     }
 
@@ -6765,9 +6851,8 @@ function openSearchMenu(){
         { label: 'Сканировать QR', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>', onClick: () => openQrScanModal() }
     ])
 }
-document.getElementById('home-chats-btn')?.addEventListener('click', () => {
-    openDirectTab()
-})
+$('home-bell-btn')?.addEventListener('click', () => switchScreen('inbox'))
+// #home-new-thread — пока без функционала
 
 ;(function initTopbarAutoHide(){
     let lastY = window.scrollY, ticking = false
@@ -8327,7 +8412,7 @@ try {
         })
         .on('postgres_changes', { event:'INSERT', schema:'public', table:'follows' }, () => { if(state.screen === 'inbox') renderInboxPanel(); renderStories() })
         .on('postgres_changes', { event:'INSERT', schema:'public', table:'channel_invites' }, () => { if(state.screen === 'inbox') renderInboxPanel() })
-        .on('postgres_changes', { event:'*', schema:'public', table:'lives' }, () => { if(state.screen === 'home') renderLiveNow(); if(state.screen === 'inbox') renderEventsScreen() })
+        .on('postgres_changes', { event:'*', schema:'public', table:'lives' }, () => { if(state.screen === 'home') renderLiveNow(); if(state.screen === 'inbox') renderEventsScreen(); if(state.screen === 'home'){ clearTimeout(window.__chT); window.__chT = setTimeout(renderLiveNow, 1500) }})
     ch.subscribe((s, err) => { if(err) console.warn('[realtime]', err.message) })
 } catch(e){ console.warn('[realtime] disabled:', e.message) }
 
