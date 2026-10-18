@@ -3763,6 +3763,82 @@ html[data-theme="dark"] .pc-color.no-bg{
 .fp-cava img{width:100%;height:100%;object-fit:cover}
 .feed-post.fp-new .fp-discuss .feed-count{color:var(--text-secondary)!important}
 .fp-chev{font-size:20px;line-height:1;color:var(--text-tertiary)}
+
+/* ============================================================
+   FIX v3 — правки под запрос
+============================================================ */
+
+/* --- 1. Убрать полоску перед кнопками лайк/подписка/репост --- */
+.feed-post .feed-post-footer{
+    border-top: none !important;
+    padding-top: 10px;
+}
+/* для видео-поста тоже убираем, но фон-градиент оставляем */
+.feed-post.feed-post-video .feed-post-footer{
+    border-top: none !important;
+}
+
+/* --- 2. Фото на посте: растянуть по ширине, сохранив пропорции --- */
+.feed-post.fp-new .feed-post-image{
+    aspect-ratio: auto !important;
+    object-fit: initial !important;
+    height: auto !important;
+    max-height: none !important;
+    width: calc(100% + 32px) !important;
+    margin: 10px -16px 0 !important;
+    border-radius: 0 !important;
+    display: block;
+}
+/* на всякий случай — не crop-ить через родителя */
+.feed-post.fp-new{
+    overflow: visible;
+}
+
+/* --- 3. Видео в ленте: контент прижат к низу ---
+   Порядок снизу вверх: Обсуждение → Кнопки → Описание
+   (шапка с автором остаётся наверху) */
+.feed-post.feed-post-video{
+    justify-content: flex-start !important;
+}
+.feed-post.feed-post-video .feed-post-content{
+    margin-top: auto !important;   /* забирает всё свободное место сверху */
+    margin-bottom: 10px !important;
+}
+
+/* --- 4. Светлая тема: верхняя шапка главной --- */
+html[data-theme="light"] .topbar-home{
+    background: #ffffff !important;
+    border-bottom: 1px solid rgba(0,0,0,.08) !important;
+}
+html[data-theme="light"] .topbar-home .topbar-btn{
+    color: #000000 !important;
+}
+html[data-theme="light"] .topbar-home .topbar-btn:hover{
+    background: rgba(0,0,0,.06) !important;
+}
+html[data-theme="light"] .topbar-home .th-name{
+    color: #000000 !important;
+}
+html[data-theme="light"] .topbar-home .th-logo{
+    background: #000000 !important;
+}
+
+/* --- 5. Кнопка «создать видео» (#home-new-thread) — оранжевая --- */
+#home-new-thread{
+    background: #ff8a00 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(255,138,0,.45) !important;
+}
+#home-new-thread:hover{
+    background: #ff9a1a !important;
+}
+#home-new-thread svg{
+    stroke: #ffffff !important;
+    color: #ffffff !important;
+}
+html[data-theme="light"] #home-new-thread svg{
+    stroke: #ffffff !important;
+}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

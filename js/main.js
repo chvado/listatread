@@ -825,6 +825,12 @@ function switchScreen(name){
         if(state.currentProfileViewId) loadProfile(state.currentProfileViewId)
         else { state.viewingOwnProfile = true; loadProfile() }
     }
+    if(name !== 'direct'){
+        document.querySelectorAll('.nav-btn').forEach(b =>
+            b.classList.toggle('active', b.dataset.screen === name)
+        )
+    }
+
     if(name === 'settings') loadSettings()
     if(name === 'home'){
         renderLiveNow()
@@ -847,7 +853,14 @@ function switchScreen(name){
 }
 document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
     const s = b.dataset.screen
-    if(s === 'direct'){ openDirectTab(); return }
+    if(s === 'direct'){
+        // подсветить вкладку direct и показать палочку сверху
+        document.querySelectorAll('.nav-btn').forEach(x =>
+            x.classList.toggle('active', x.dataset.screen === 'direct')
+        )
+        openDirectTab()
+        return
+    }
     if(s === 'profile'){ state.currentProfileViewId = null; state.viewingOwnProfile = true }
     switchScreen(s)
 }))
