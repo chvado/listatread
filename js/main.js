@@ -5645,26 +5645,26 @@ function vfmBuildOverlay(){
         <div class="vfm-comment-bar" id="vfm-comment-bar">
 
           <!-- ===== POPULAR (<50%) ===== -->
-          <div class="vfm-comment-state" id="vfm-cpop">
-            <div class="vfm-cpop-icon">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            </div>
-            <div class="vfm-cpop-main">
-              <div class="vfm-cpop-head">
-                <span class="vfm-cpop-ava" id="vfm-cpop-ava">?</span>
-                <span class="vfm-cpop-name" id="vfm-cpop-name">Name</span>
-              </div>
-              <div class="vfm-cpop-body" id="vfm-cpop-body">—</div>
-            </div>
-            <div class="vfm-cpop-right">
-              <button class="vfm-cpop-like" id="vfm-cpop-like">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                <span id="vfm-cpop-likes">0</span>
-              </button>
-              <span class="vfm-cpop-total" id="vfm-cpop-total">0</span>
-              <span class="vfm-cpop-arrow" id="vfm-cpop-arrow">›</span>
-            </div>
-          </div>
+<div class="vfm-comment-state" id="vfm-cpop">
+  <div class="vfm-cpop-icon">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  </div>
+  <div class="vfm-cpop-main">
+    <span class="vfm-cpop-ava" id="vfm-cpop-ava">?</span>
+    <div class="vfm-cpop-text-col">
+      <span class="vfm-cpop-name" id="vfm-cpop-name"></span>
+      <div class="vfm-cpop-body" id="vfm-cpop-body"></div>
+    </div>
+  </div>
+  <div class="vfm-cpop-right">
+    <button class="vfm-cpop-like" id="vfm-cpop-like">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      <span id="vfm-cpop-likes">0</span>
+    </button>
+    <span class="vfm-cpop-total" id="vfm-cpop-total">0</span>
+    <span class="vfm-cpop-arrow" id="vfm-cpop-arrow">›</span>
+  </div>
+</div>
 
           <!-- ===== EMPTY (<50%, нет комментов) ===== -->
           <div class="vfm-comment-state hidden" id="vfm-cempty">
@@ -5985,13 +5985,22 @@ function renderVfmCommentBar(){
         if(pr.avatar_url) pAva.innerHTML = `<img src="${pr.avatar_url}" alt="">`
         else pAva.textContent = nm.charAt(0).toUpperCase()
         pName.textContent = nm   // полное имя, без @
-        pBody.textContent = (data.popular.text || '').slice(0, 80)
+        pBody.textContent = (data.popular.text || '').slice(0, 120)
         pTotal.textContent = data.total
         const liked = !!vfmUserVoteLike[postId]
         pLikeBtn.classList.toggle('liked', liked)
         pLikes.textContent = liked ? (data.popular._likes || 1) : (data.popular._likes || 0)
     } else {
-        // нет комментов — состояние empty
+        // нет комментов — очищаем визуал и показываем «Обсуждение»
+        if(pAva)   pAva.textContent = '?';
+        if(pName)  pName.textContent = '';
+        if(pBody)  pBody.textContent = '';
+        if(pLikes) pLikes.textContent = '0';
+        if(pTotal) pTotal.textContent = '0';
+        const inAvas = el.querySelector('#vfm-cinput-avas');
+        if(inAvas) inAvas.innerHTML = '';
+        const inCount = el.querySelector('#vfm-cinput-count');
+        if(inCount) inCount.textContent = '0';
         setVfmCommentState('empty')
         return
     }
@@ -6537,6 +6546,34 @@ function renderVfmSlide(){
     el.querySelector('#vfm-pause-overlay')?.classList.remove('show')
     el.querySelector('#vfm-progress-fill').style.width = '0%'
 
+    // ═══════════════════════════════════════════════════════════
+    // СБРОС ПРЕДЫДУЩЕГО КОММЕНТАРИЯ — чтобы при свайпе
+    // не видеть старый популярный коммент с другого видео
+    // ═══════════════════════════════════════════════════════════
+    vfmCurrentPostComments = { total: 0, popular: null, avatars: [], likes: {} };
+    const _cAva   = el.querySelector('#vfm-cpop-ava');
+    const _cName  = el.querySelector('#vfm-cpop-name');
+    const _cBody  = el.querySelector('#vfm-cpop-body');
+    const _cLikes = el.querySelector('#vfm-cpop-likes');
+    const _cTotal = el.querySelector('#vfm-cpop-total');
+    const _cLike  = el.querySelector('#vfm-cpop-like');
+    const _cAvas  = el.querySelector('#vfm-cinput-avas');
+    const _cCount = el.querySelector('#vfm-cinput-count');
+    const _cInLikes = el.querySelector('#vfm-cinput-likes');
+    if(_cAva)   _cAva.textContent = '?';
+    if(_cName)  _cName.textContent = '';
+    if(_cBody)  _cBody.textContent = '';
+    if(_cLikes) _cLikes.textContent = '0';
+    if(_cTotal) _cTotal.textContent = '0';
+    if(_cLike)  _cLike.classList.remove('liked');
+    if(_cAvas)  _cAvas.innerHTML = '';
+    if(_cCount) _cCount.textContent = '0';
+    if(_cInLikes)_cInLikes.textContent = '0';
+    // скрываем все три состояния до загрузки — ничего не мелькает
+    el.querySelector('#vfm-cpop')?.classList.add('hidden');
+    el.querySelector('#vfm-cempty')?.classList.add('hidden');
+    el.querySelector('#vfm-cinput')?.classList.add('hidden');
+
     // ─── метаданные и обсуждение ───
     syncVfmMeta()
 
@@ -6681,19 +6718,28 @@ async function syncVfmMeta(){
     } catch(e){ console.warn('[vfm counts]', e.message) }
 
     // ========== ОБСУЖДЕНИЕ ==========
+    const myPostId = item.id;
     await loadVfmCommentData(item.id)
+
+    // Если пока грузили — перелистнули на другое видео → выходим,
+    // не перезаписывая DOM устаревшими данными
+    if(!VFM.list[VFM.index] || VFM.list[VFM.index].id !== myPostId) return;
+
     const data = vfmCurrentPostComments
 
     if(data.total === 0 || !data.popular){
+        // нет комментов — просто пишем «Обсуждение», без авы/имени/текста
         setVfmCommentState('empty')
+        return
+    }
+
+    // есть комменты — заполняем поля и показываем нужное состояние
+    renderVfmCommentBar()
+
+    if(!VFM.video.duration || VFM.video.currentTime < VFM.video.duration / 2){
+        setVfmCommentState('popular')
     } else {
-        renderVfmCommentBar()
-        // сбросим в popular, если сейчас начало видео
-        if(!VFM.video.duration || VFM.video.currentTime < VFM.video.duration / 2){
-            setVfmCommentState('popular')
-        } else {
-            setVfmCommentState('input')
-        }
+        setVfmCommentState('input')
     }
 
     // ========== Пластинка ==========
