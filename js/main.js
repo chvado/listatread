@@ -409,7 +409,7 @@ function renderMedia(url, cls = 'feed-post-image', meta = {}){
       <div class="track-progress"><div class="track-progress-fill"></div></div>
     </div>`
     }
-    return `<img class="${cls}" src="${url}" alt="">`
+    return `<img class="${cls}" src="${url}" alt="" loading="lazy" decoding="async">`
 }
 
 async function fetchCounts(postIds){
@@ -1675,7 +1675,21 @@ async function appendRecommendedChunk(list, userId, size = 5){
         const newCards = allCards.slice(allCards.length - enriched.length)
         newCards.forEach(card => attachHandlersToCard(card, userId))
         markSeen(enriched.map(p => p.id))
+        markSeen(enriched.map(p => p.id))
 
+        // ═══ PREFETCH: подтянуть следующий чанк в фоне через 1 сек ═══
+        if(!__prefetchScheduled){
+            const currentCount = list.querySelectorAll('.feed-post').length;
+            if(currentCount < 20){
+                __prefetchScheduled = true;
+                setTimeout(() => {
+                    __prefetchScheduled = false;
+                    if(state.recLoading || !list.isConnected) return;
+                    if(list.querySelectorAll('.feed-post').length >= 20) return;
+                    appendRecommendedChunk(list, userId, 5).catch(()=>{});
+                }, 1000);
+            }
+        }
         setTimeout(initTrackObserver, 60)
     } catch(e){
         console.warn('[appendRecommendedChunk]', e.message)
@@ -3109,93 +3123,19 @@ function applyProfileTheme(profile, theme, isOwn){
     }
 }
 function renderProfilePost(p, myId, likedSet = new Set(), repostedSet = new Set(), counts = {}){
-    const prof = p.profiles || {}
-    const ch = p.channels || {}
-    const name = prof.full_name || prof.username || 'Пользователь'
-    const avContent = prof.avatar_url ? `<img src="${prof.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
-    const emoji = statusEmoji(computeDisplayStatus(prof))
-    const time = new Date(p.created_at).toLocaleString('ru-RU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
-    const isMine = p.author_id === myId
-    const isVideo = isVideoUrl(p.media_url)
-    const isRep = repostedSet.has(p.id)
-    const rc = counts[p.id]?.reposts || 0
-    const adminMark = prof.is_admin ? adminBadge(true) : ''
+    // ═══ УНИФИЦИРОВАННЫЙ ДИЗАЙН ═══
+    // Используем тот же рендер, что в ленте и канале — новый стиль постов
+    const isLiveChat = !p.channel_id
+    const html = renderChannelPost(p, myId, likedSet, repostedSet, counts, isLiveChat ? 'профиль' : 'пост канала')
 
-    const plusHtml = (myId && p.author_id !== myId && !state.myFollows.has(p.author_id))
-        ? `<button class="feed-avatar-plus" data-plus-uid="${p.author_id}" aria-label="Подписаться">+</button>`
-        : ''
-    const avatarBlock = `<div class="feed-avatar-wrap"><div class="feed-post-avatar avatar-with-status" data-uid="${p.author_id}">${avContent}<div class="story-status-badge">${emoji}</div></div>${plusHtml}</div>`
-
-    let channelBadge = ''
-    if(ch.id){
-        const chName = ch.name || 'Канал'
-        const chLogo = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : chName.charAt(0).toUpperCase()
-        channelBadge = `<button class="feed-channel-badge" data-chbadge="${ch.id}"><span class="feed-channel-logo">${chLogo}</span><span class="feed-channel-name">${escapeHtml(chName)}</span></button>`
+    // Для постов из live chat — добавляем строку-маркер сверху
+    if(isLiveChat && html.includes('<article')){
+        return html.replace(
+            /<article([^>]*)>/,
+            `<article$1><div class="profile-post-source-line">из LIVE CHAT</div>`
+        )
     }
-
-    let subBtn = ''
-    if(!isMine && ch.id){
-        const isSub = state.myChannelSubs.has(ch.id)
-        subBtn = `<button class="feed-sub-btn ${isSub ? 'subscribed' : ''}" data-chid="${ch.id}">${isSub ? ICONS.checkSmall : ICONS.plus}</button>`
-    }
-
-    const moreBtn = `<button class="feed-more profile-post-more" data-pid="${p.id}" data-author="${prof.username||'user'}" data-mine="${isMine ? 1 : 0}" data-channel="${p.channel_id||''}">${ICONS.dots}</button>`
-
-    let sourceLine = ''
-    if(!ch.id){
-        sourceLine = `<div class="profile-post-source-line">из LIVE CHAT</div>`
-    }
-
-    const header = `<div class="feed-post-header">
-    ${avatarBlock}
-    <div class="feed-post-info">
-<div class="feed-post-name"><span class="feed-post-name-text">${escapeHtml(name)}${adminMark}</span>${channelBadge}</div>
-        ${buildMetaRow(time, ch.id ? 'пост канала' : 'из live chat', p)}
-    </div>
-    ${subBtn}
-</div>`
-
-    const pollHtml = p.poll ? renderPoll(p.poll, p.id) : ''
-
-    if(!isVideo){
-        const media = renderMedia(p.media_url, 'feed-post-image', { title: p.media_title, postId: p.id, username: prof.username || 'user' })
-        const lc = counts[p.id]?.likes || 0
-        const cc = counts[p.id]?.comments || 0
-        const isLiked = likedSet.has(p.id)
-        return `<article class="feed-post" data-pid="${p.id}" style="margin-bottom:12px" data-channel="${p.channel_id||''}">
-        ${sourceLine}
-        ${header}
-        <div class="feed-post-content">${escapeHtml(p.content || '')}</div>
-        ${media}${pollHtml}
-        <div class="feed-post-footer">
-            <button class="feed-action ${isLiked?'liked':''}" data-like="${p.id}">${isLiked?ICONS.heartFill:ICONS.heart}<span class="feed-count" data-like-count="${p.id}">${lc}</span></button>
-            <button class="feed-action" data-comment="${p.id}">${ICONS.comment}<span class="feed-count" data-comment-count="${p.id}">${cc}</span></button>
-            <button class="feed-action ${isRep?'reposted':''}" data-repost="${p.id}" ${isRep?'style="color:var(--green)"':''}>${ICONS.repost}<span class="feed-count" data-repost-count="${p.id}">${rc}</span></button>
-            <button class="feed-action" data-share="${p.id}">${ICONS.share}</button>
-            ${moreBtn}
-        </div>
-    </article>`
-    }
-
-    const lc = counts[p.id]?.likes || 0
-    const cc = counts[p.id]?.comments || 0
-    const isLiked = likedSet.has(p.id)
-    return `<article class="feed-post feed-post-video" data-pid="${p.id}" data-channel="${p.channel_id||''}" data-video-src="${p.media_url}" style="margin-bottom:12px">
-    <video class="post-bg-video" src="${p.media_url}" autoplay muted loop playsinline preload="metadata"></video>
-    <div class="post-bg-overlay"></div>
-    <div class="feed-post-video-hint" style="white-space:nowrap">нажмите чтобы посмотреть</div>
-    ${sourceLine}
-    ${header}
-    <div class="feed-post-content">${escapeHtml(p.content || '')}</div>
-    ${pollHtml}
-    <div class="feed-post-footer">
-        <button class="feed-action ${isLiked?'liked':''}" data-like="${p.id}">${isLiked?ICONS.heartFill:ICONS.heart}<span class="feed-count" data-like-count="${p.id}">${lc}</span></button>
-        <button class="feed-action" data-comment="${p.id}">${ICONS.comment}<span class="feed-count" data-comment-count="${p.id}">${cc}</span></button>
-        <button class="feed-action ${isRep?'reposted':''}" data-repost="${p.id}" ${isRep?'style="color:var(--green)"':''}>${ICONS.repost}<span class="feed-count" data-repost-count="${p.id}">${rc}</span></button>
-        <button class="feed-action" data-share="${p.id}">${ICONS.share}</button>
-        ${moreBtn}
-    </div>
-</article>`
+    return html
 }
 
 async function renderMyLiked(userId){
@@ -5577,6 +5517,7 @@ async function loadSaveTrackState(postId){
    OBSERVER: автоплей видео
 ============================================================ */
 let feedVideoObserver = null
+let __prefetchScheduled = false;
 function reportView(card, vid){
     const ms = Date.now() - card._t0
     recordWatch({ ...cardMeta(card), ms, dur: (vid && isFinite(vid.duration)) ? vid.duration * 1000 : 0 })
@@ -5669,108 +5610,147 @@ function vfmBuildOverlay(){
     el.id = 'vfm'
     el.className = 'vfm'
     el.innerHTML = `
-  <video class="vfm-video" playsinline preload="metadata"></video>
+      <div class="vfm-stack" id="vfm-stack">
+    <video class="vfm-video vfm-current" id="vfm-video-current" playsinline preload="auto" crossorigin="anonymous"></video>
+    <video class="vfm-video vfm-next" id="vfm-video-next" playsinline preload="auto" muted></video>
+  </div>
 
-  <!-- ============ ВЕРХНИЙ УРОВЕНЬ ============ -->
+  <!-- ВЕРХНИЙ УРОВЕНЬ -->
   <div class="vfm-topbar">
     <button class="vfm-back" id="vfm-back" aria-label="Назад">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
     </button>
-
     <div class="vfm-channel-block">
       <div class="vfm-channel-ava" id="vfm-ch-ava">K</div>
       <div class="vfm-channel-name" id="vfm-ch-name">—</div>
       <button class="vfm-ch-sub hidden" id="vfm-ch-sub" aria-label="Подписаться на канал">+</button>
     </div>
-
     <button class="vfm-top-more" id="vfm-top-more" aria-label="Действия">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
     </button>
   </div>
 
-    <!-- ============ НИЖНИЙ БЛОК ============ -->
-  <!-- ============ НИЖНИЙ БЛОК ============ -->
-<div class="vfm-bottom">
-
-  <div class="vfm-content-area">
-    <!-- Левая колонка: автор → описание → панель обсуждения -->
-    <div class="vfm-left">
-      <div class="vfm-desc-row">
-        <span class="vfm-desc-author" id="vfm-desc-author"></span>
-        <span class="vfm-desc-text" id="vfm-desc"></span>
-        <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
-      </div>
-
-      <div class="vfm-comment-bar" id="vfm-comment-bar">
-        <!-- популярный комментарий (по умолчанию) -->
-        <div class="vfm-comment-state vfm-comment-popular" id="vfm-cpop">
-          <div class="vfm-cpop-head">
-            <span class="vfm-cpop-ava" id="vfm-cpop-ava">?</span>
-            <span class="vfm-cpop-name" id="vfm-cpop-name">@user</span>
-          </div>
-          <div class="vfm-cpop-body" id="vfm-cpop-body">Пока нет комментариев — напишите первым</div>
-          <div class="vfm-cpop-actions">
-            <button class="vfm-cpop-like" id="vfm-cpop-like" aria-label="Нравится">❤ <span id="vfm-cpop-likes">0</span></button>
-            <span class="vfm-cpop-total" id="vfm-cpop-total">0</span>
-            <span class="vfm-cpop-arrow">›</span>
+  <!-- НИЖНИЙ БЛОК -->
+  <div class="vfm-bottom">
+    <div class="vfm-content-area">
+      <div class="vfm-left">
+        <div class="vfm-desc-block">
+          <div class="vfm-desc-author" id="vfm-desc-author"></div>
+          <div class="vfm-desc-row">
+            <span class="vfm-desc-text" id="vfm-desc"></span>
+            <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
           </div>
         </div>
 
-        <!-- поле ввода (появляется после середины видео) -->
-        <div class="vfm-comment-state vfm-comment-input hidden" id="vfm-cinput">
-          <span class="vfm-cinput-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          </span>
-          <input type="text" id="vfm-cinput-field" placeholder="что думаете?" maxlength="300" autocomplete="off">
-          <button class="vfm-cinput-send hidden" id="vfm-cinput-send" aria-label="Отправить">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
+        <div class="vfm-comment-bar" id="vfm-comment-bar">
 
-    <!-- Правая колонка: пластинка → share → repost → like → автор -->
-    <div class="vfm-right">
-      <div class="vfm-vinyl" id="vfm-vinyl">
-        <div class="vfm-vinyl-disc">
-          <div class="vfm-vinyl-cover" id="vfm-vinyl-cover">K</div>
+          <!-- ===== POPULAR (<50%) ===== -->
+          <div class="vfm-comment-state" id="vfm-cpop">
+            <div class="vfm-cpop-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="vfm-cpop-main">
+              <div class="vfm-cpop-head">
+                <span class="vfm-cpop-ava" id="vfm-cpop-ava">?</span>
+                <span class="vfm-cpop-name" id="vfm-cpop-name">Name</span>
+              </div>
+              <div class="vfm-cpop-body" id="vfm-cpop-body">—</div>
+            </div>
+            <div class="vfm-cpop-right">
+              <button class="vfm-cpop-like" id="vfm-cpop-like">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                <span id="vfm-cpop-likes">0</span>
+              </button>
+              <span class="vfm-cpop-total" id="vfm-cpop-total">0</span>
+              <span class="vfm-cpop-arrow" id="vfm-cpop-arrow">›</span>
+            </div>
+          </div>
+
+          <!-- ===== EMPTY (<50%, нет комментов) ===== -->
+          <div class="vfm-comment-state hidden" id="vfm-cempty">
+            <div class="vfm-cpop-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="vfm-cpop-main">
+              <div class="vfm-cpop-title">Обсуждение</div>
+            </div>
+            <div class="vfm-cpop-right">
+              <span class="vfm-cpop-arrow" id="vfm-cempty-arrow">›</span>
+            </div>
+          </div>
+
+          <!-- ===== INPUT (>=50%) ===== -->
+          <div class="vfm-comment-state hidden" id="vfm-cinput">
+            <span class="vfm-cinput-icon">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </span>
+            <input type="text" id="vfm-cinput-field" placeholder="что думаете?" maxlength="300" autocomplete="off">
+            <div class="vfm-cinput-right" id="vfm-cinput-right">
+              <button class="vfm-cinput-like" id="vfm-cinput-like">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                <span id="vfm-cinput-likes">0</span>
+              </button>
+              <div class="vfm-cinput-avas" id="vfm-cinput-avas"></div>
+              <span class="vfm-cinput-count" id="vfm-cinput-count">0</span>
+              <span class="vfm-cinput-arrow" id="vfm-cinput-arrow">›</span>
+            </div>
+            <button class="vfm-cinput-send hidden" id="vfm-cinput-send" aria-label="Отправить">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+            <button class="vfm-cinput-check" id="vfm-cinput-check" aria-label="Отправлено">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-11"/></svg>
+            </button>
+          </div>
+
         </div>
       </div>
-      <button class="vfm-act" data-vfm="share" aria-label="Поделиться">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-      </button>
-      <button class="vfm-act" data-vfm="repost" aria-label="Репост">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-        <span class="vfm-act-count" data-vfm-count="repost">0</span>
-      </button>
-      <button class="vfm-act" data-vfm="like" aria-label="Нравится">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        <span class="vfm-act-count" data-vfm-count="like">0</span>
-      </button>
-      <button class="vfm-follow-btn hidden" id="vfm-follow-btn" aria-label="Подписаться">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="9" cy="7" r="4"/>
-          <path d="M2 21c0-3.9 3.1-7 7-7 1.6 0 3 .5 4.3 1.4"/>
-          <path d="M17 11h6M20 8v6"/>
-        </svg>
-      </button>
-      <div class="vfm-author-ava" id="vfm-author-ava">A</div>
-      <span class="vfm-author-status" id="vfm-author-status"></span>
+
+      <!-- ПРАВАЯ КОЛОНКА (DOM сверху вниз → визуально снизу вверх через column-reverse) -->
+      <div class="vfm-right">
+        <div class="vfm-vinyl" id="vfm-vinyl">
+          <div class="vfm-vinyl-disc">
+            <div class="vfm-vinyl-cover" id="vfm-vinyl-cover">K</div>
+          </div>
+        </div>
+        <button class="vfm-act" data-vfm="share" aria-label="Поделиться">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        </button>
+        <button class="vfm-act" data-vfm="repost" aria-label="Репост">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          <span class="vfm-act-count" data-vfm-count="repost">0</span>
+        </button>
+        <button class="vfm-act" data-vfm="like" aria-label="Нравится">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span class="vfm-act-count" data-vfm-count="like">0</span>
+        </button>
+        <button class="vfm-follow-btn hidden" id="vfm-follow-btn" aria-label="Подписаться">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M2 21c0-3.9 3.1-7 7-7 1.6 0 3 .5 4.3 1.4"/>
+            <path d="M17 11h6M20 8v6"/>
+          </svg>
+        </button>
+        <div class="vfm-author-ava-wrap">
+          <div class="vfm-author-ava" id="vfm-author-ava">A</div>
+          <span class="vfm-author-status" id="vfm-author-status"></span>
+        </div>
+      </div>
     </div>
   </div>
-
-</div>
 
   <div class="vfm-progress" id="vfm-progress"><div class="vfm-progress-fill" id="vfm-progress-fill"></div></div>
 
   <div class="vfm-pause-overlay" id="vfm-pause-overlay">
-    <svg viewBox="0 0 24 24" width="60" height="60" fill="#fff"><rect x="6" y="4" width="4" height="16" rx="1.6"/><rect x="14" y="4" width="4" height="16" rx="1.6"/></svg>
+    <svg viewBox="0 0 24 24" fill="#fff"><rect x="6" y="4" width="4" height="16" rx="1.6"/><rect x="14" y="4" width="4" height="16" rx="1.6"/></svg>
   </div>
 `;
     document.body.appendChild(el)
+    document.body.appendChild(el)
     VFM.el = el
-    VFM.video = el.querySelector('.vfm-video')
-    // ---- Позиция видео: большое — от верха, маленькое — по центру ----
+    VFM.video     = el.querySelector('#vfm-video-current')
+    VFM.videoNext = el.querySelector('#vfm-video-next')
+    VFM.stack     = el.querySelector('#vfm-stack')
+
     VFM.video.addEventListener('loadedmetadata', () => {
         const v = VFM.video;
         const vw = v.videoWidth, vh = v.videoHeight;
@@ -5778,17 +5758,14 @@ function vfmBuildOverlay(){
         const elW = v.clientWidth  || window.innerWidth;
         const elH = v.clientHeight || window.innerHeight;
         const videoAspect = vw / vh;
-        const widthFitHeight = elW / videoAspect;      // высота, если видео вписать по ширине
-        const fillRatio = widthFitHeight / elH;        // 1.0 = полностью заполнит экран
-        // Большое видео (≥60% высоты экрана) — прижать к верху
-        // Маленькое — центрировать
+        const fillRatio = (elW / videoAspect) / elH;
         v.style.objectPosition = (fillRatio >= 0.6) ? 'center top' : 'center center';
     });
-    // ---------- ВЕРХНИЙ УРОВЕНЬ ----------
+
+    /* ---- Связываем все обработчики ---- */
     el.querySelector('#vfm-back').addEventListener('click', () => closeVideoFeed())
 
-    el.querySelector('#vfm-ch-ava').addEventListener('click', e => {
-        e.stopPropagation()
+    el.querySelector('#vfm-ch-ava').addEventListener('click', () => {
         const item = VFM.list[VFM.index]; if(!item || !item.card) return
         const badge = item.card.querySelector('.feed-channel-badge[data-chbadge]')
         if(badge){ closeVideoFeed(); setTimeout(() => openChannel(badge.dataset.chbadge), 300); return }
@@ -5797,7 +5774,6 @@ function vfmBuildOverlay(){
     })
 
     el.querySelector('#vfm-ch-sub').addEventListener('click', async e => {
-        e.stopPropagation()
         const chId = e.currentTarget.dataset.chid
         if(!chId) return
         const { data:{ user } } = await supabase.auth.getUser()
@@ -5817,50 +5793,42 @@ function vfmBuildOverlay(){
         setTimeout(syncVfmMeta, 260)
     })
 
-    el.querySelector('#vfm-top-more').addEventListener('click', e => {
-        e.stopPropagation()
-        openVfmMoreMenu()
-    })
+    el.querySelector('#vfm-top-more').addEventListener('click', openVfmMoreMenu)
 
-    // ---------- ЯРУС 2: экшены ----------
+    /* ---- Кнопки: share / repost / like ---- */
     el.querySelectorAll('[data-vfm]').forEach(b => b.addEventListener('click', async e => {
         e.stopPropagation()
         const item = VFM.list[VFM.index]; if(!item) return
         const k = b.dataset.vfm
         const pid = item.id
         if(k === 'like'){ await toggleLikeGlobal(pid); syncVfmMeta() }
-        if(k === 'comment') openCommentsSheet(pid)
         if(k === 'repost'){ await toggleRepostGlobal(pid); syncVfmMeta() }
-        if(k === 'gift'){ openPrioriti() }                       // ← НОВОЕ
         if(k === 'share'){
             const content = item.card?.querySelector('.feed-post-content')?.textContent || ''
             openShareSheet({ type:'post', postId: pid, src: item.src, title: content })
         }
     }))
 
-    // ---------- ЯРУС 3: автор ----------
-    // ---------- Автор: тап по аватарке ----------
-    el.querySelector('#vfm-author-ava').addEventListener('click', e => {
-        e.stopPropagation()
+    /* ---- Автор: клик на аватарку ---- */
+    el.querySelector('#vfm-author-ava').addEventListener('click', () => {
         const item = VFM.list[VFM.index]; if(!item || !item.card) return
         const authorId = item.card.querySelector('.feed-post-avatar[data-uid]')?.dataset.uid
         if(authorId){ closeVideoFeed(); setTimeout(() => openUserProfile(authorId), 300) }
     })
 
-    // ---------- Кнопка подписаться (человек с плюсом) ----------
+    /* ---- Подписаться ---- */
     el.querySelector('#vfm-follow-btn').addEventListener('click', async e => {
-        e.stopPropagation()
         const item = VFM.list[VFM.index]; if(!item || !item.card) return
         const authorId = item.card.querySelector('.feed-post-avatar[data-uid]')?.dataset.uid
         if(!authorId) return
         const btn = e.currentTarget
         const wasFollowing = btn.classList.contains('following')
-        btn.classList.toggle('following', !wasFollowing)   // оптимистично
+        btn.classList.toggle('following', !wasFollowing)
         await followAuthor(authorId)
         setTimeout(syncVfmMeta, 260)
     })
 
-    // ---------- PROGRESS BAR ----------
+    /* ---- Прогресс ---- */
     const bar = el.querySelector('#vfm-progress')
     const fill = el.querySelector('#vfm-progress-fill')
     const setSeek = clientX => {
@@ -5876,24 +5844,32 @@ function vfmBuildOverlay(){
     VFM.video.addEventListener('timeupdate', () => {
         if(!VFM.video.duration) return
         fill.style.width = (VFM.video.currentTime / VFM.video.duration * 100) + '%'
+        // Переключение popular ↔ input по 50%
+        const half = VFM.video.duration / 2
+        const target = VFM.video.currentTime < half ? 'popular' : 'input'
+        if(vfmCommentState !== target) setVfmCommentState(target)
     })
 
-    // ---------- PAUSE OVERLAY ----------
+    /* ---- Пауза ---- */
     const pauseOverlay = el.querySelector('#vfm-pause-overlay')
-    const showPauseOverlay = () => pauseOverlay.classList.add('show')
-    const hidePauseOverlay = () => pauseOverlay.classList.remove('show')
-
     VFM.video.addEventListener('click', e => {
+        // если только что был свайп — не переключаем play/pause
+        if(window.__vfmSuppressClick) return
         e.stopPropagation()
-        if(VFM.video.paused){ VFM.video.play().catch(()=>{}); hidePauseOverlay() }
-        else { VFM.video.pause(); showPauseOverlay() }
+        if(VFM.video.paused){
+            VFM.video.play().catch(()=>{})
+            pauseOverlay.classList.remove('show')
+        } else {
+            VFM.video.pause()
+            pauseOverlay.classList.add('show')
+        }
     })
     VFM.video.addEventListener('play',  () => {
-        hidePauseOverlay()
+        pauseOverlay.classList.remove('show')
         el.querySelector('.vfm-vinyl')?.classList.add('playing')
     })
     VFM.video.addEventListener('pause', () => {
-        if(!VFM.video.ended && !VFM.cleanScreen) showPauseOverlay()
+        if(!VFM.video.ended && !VFM.cleanScreen) pauseOverlay.classList.add('show')
         el.querySelector('.vfm-vinyl')?.classList.remove('playing')
     })
     VFM.video.addEventListener('ended', () => {
@@ -5901,111 +5877,218 @@ function vfmBuildOverlay(){
         try { VFM.video.currentTime = 0; VFM.video.play().catch(()=>{}) } catch {}
     })
 
+    /* ---- Описание: раскрыть «ещё» ---- */
+    el.querySelector('#vfm-desc-more').addEventListener('click', e => {
+        e.stopPropagation()
+        el.querySelector('#vfm-desc').classList.add('expanded')
+        e.currentTarget.classList.add('hidden')
+    })
+
+    /* ---- Обсуждение: переключение состояний и события ---- */
+    initVfmCommentBar(el)
+
     initVfmSwipe(el)
-
-    /* ============ ПАНЕЛЬ ОБСУЖДЕНИЯ ПОД ВИДЕО ============ */
-    const cpop        = el.querySelector('#vfm-cpop')
-    const cinput      = el.querySelector('#vfm-cinput')
-    const cinputField = el.querySelector('#vfm-cinput-field')
-    const cinputSend  = el.querySelector('#vfm-cinput-send')
-    let __commentState = 'popular'
-
-    async function loadTopComment(){
-        const item = VFM.list[VFM.index]; if(!item) return
-        const { data } = await supabase.from('comments')
-            .select('id, text, profiles:user_id ( id, username, full_name, avatar_url )')
-            .eq('post_id', item.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-        const c = data?.[0]
-        const avaEl  = el.querySelector('#vfm-cpop-ava')
-        const nameEl = el.querySelector('#vfm-cpop-name')
-        const bodyEl = el.querySelector('#vfm-cpop-body')
-        const likesEl = el.querySelector('#vfm-cpop-likes')
-        if(!c){
-            avaEl.textContent = '?'
-            nameEl.textContent = '@никто'
-            bodyEl.textContent = 'Пока нет комментариев — напишите первым'
-            likesEl.textContent = '0'
-            return
-        }
-        const p = c.profiles || {}
-        const nm = p.full_name || p.username || 'user'
-        if(p.avatar_url) avaEl.innerHTML = `<img src="${p.avatar_url}" alt="">`
-        else avaEl.textContent = nm.charAt(0).toUpperCase()
-        nameEl.textContent = '@' + (p.username || 'user')
-        bodyEl.textContent = c.text || ''
-        likesEl.textContent = '0'
-    }
-
-    function setCommentState(state){
-        if(__commentState === state) return
-        __commentState = state
-        if(state === 'input'){
-            cpop.classList.add('flying-up')
-            setTimeout(() => {
-                cpop.classList.add('hidden')
-                cpop.classList.remove('flying-up')
-                cinput.classList.remove('hidden')
-                cinput.classList.add('sliding-in')
-                cinputField.focus({ preventScroll: true })
-                setTimeout(() => cinput.classList.remove('sliding-in'), 400)
-            }, 260)
-        } else {
-            cinput.classList.add('hidden')
-            cpop.classList.remove('hidden')
-            cpop.classList.remove('flying-up')
-            cpop.classList.add('sliding-in')
-            setTimeout(() => cpop.classList.remove('sliding-in'), 400)
-            loadTopComment()
-        }
-    }
-
-    cpop.querySelector('#vfm-cpop-like').addEventListener('click', e => {
-        e.stopPropagation()
-        const n = el.querySelector('#vfm-cpop-likes')
-        n.textContent = String((parseInt(n.textContent) || 0) + 1)
-    })
-
-    cpop.querySelector('.vfm-cpop-arrow').addEventListener('click', e => {
-        e.stopPropagation()
-        const item = VFM.list[VFM.index]; if(!item) return
-        openCommentsSheet(item.id)
-    })
-
-    cinputField.addEventListener('input', () => {
-        cinputSend.classList.toggle('hidden', !cinputField.value.trim())
-    })
-    cinputSend.addEventListener('click', async () => {
-        const text = cinputField.value.trim(); if(!text) return
-        const item = VFM.list[VFM.index]; if(!item) return
-        const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
-        cinputField.value = ''; cinputSend.classList.add('hidden')
-        try {
-            await supabase.from('comments').insert({ user_id: user.id, post_id: item.id, text })
-            showToast('success', 'Комментарий добавлен', { icon: '✓' })
-            loadTopComment()
-        } catch(err){ showToast('error', 'Не удалось: ' + err.message) }
-    })
-
-    // popular → input при переходе через середину видео
-    VFM.video.addEventListener('timeupdate', () => {
-        if(!VFM.video.duration) return
-        const mid = VFM.video.duration / 2
-        if(VFM.video.currentTime < mid) setCommentState('popular')
-        else                            setCommentState('input')
-    })
-    VFM.video.addEventListener('seeking', () => {
-        if(!VFM.video.duration) return
-        setCommentState(VFM.video.currentTime < VFM.video.duration / 2 ? 'popular' : 'input')
-    })
-    VFM.video.addEventListener('ended', () => setCommentState('popular'))
-
-    setTimeout(loadTopComment, 400)
-
     return el
 }
+/* ============================================================
+   VFM COMMENT BAR — state machine
+   ============================================================ */
+let vfmCommentState = 'popular';   // 'popular' | 'empty' | 'input'
+let vfmCurrentPostComments = { total: 0, popular: null, avatars: [], likes: {} };
+let vfmUserVoteLike = {};          // { [postId]: true } — локальный лайк коммента
 
+function setVfmCommentState(state){
+    const el = VFM.el; if(!el) return
+    if(vfmCommentState === state) return
+
+    // если уходим из input — сбрасываем поле и правую зону
+    if(vfmCommentState === 'input'){
+        const field = el.querySelector('#vfm-cinput-field')
+        if(field) field.value = ''
+        const right = el.querySelector('#vfm-cinput-right')
+        const send  = el.querySelector('#vfm-cinput-send')
+        const check = el.querySelector('#vfm-cinput-check')
+        if(right) right.classList.remove('hidden')
+        if(send)  send.classList.add('hidden')
+        if(check){ check.classList.remove('show'); check.classList.remove('entering') }
+    }
+
+    vfmCommentState = state
+    const pop   = el.querySelector('#vfm-cpop')
+    const empty = el.querySelector('#vfm-cempty')
+    const inp   = el.querySelector('#vfm-cinput')
+
+    pop.classList.add('hidden')
+    empty.classList.add('hidden')
+    inp.classList.add('hidden')
+
+    if(state === 'input'){ inp.classList.remove('hidden') }
+    else if(state === 'empty'){ empty.classList.remove('hidden') }
+    else { pop.classList.remove('hidden') }
+}
+
+async function loadVfmCommentData(postId){
+    // одним запросом — счётчик, популярный и 3 последних
+    const [{ count }, { data: recent }] = await Promise.all([
+        supabase.from('comments').select('*', { count:'exact', head:true }).eq('post_id', postId),
+        supabase.from('comments')
+            .select('id, text, created_at, user_id, profiles:user_id ( username, full_name, avatar_url )')
+            .eq('post_id', postId)
+            .order('created_at', { ascending:false })
+            .limit(3)
+    ])
+    const total = count || 0
+    const list = recent || []
+    vfmCurrentPostComments = {
+        total,
+        popular: list[0] || null,
+        avatars: list.map(c => {
+            const p = c.profiles || {}
+            return {
+                uid: c.user_id,
+                ava: p.avatar_url || null,
+                initial: (p.full_name || p.username || '?').charAt(0).toUpperCase()
+            }
+        })
+    }
+    return vfmCurrentPostComments
+}
+
+function renderVfmCommentBar(){
+    const el = VFM.el; if(!el) return
+    const item = VFM.list[VFM.index]; if(!item) return
+    const data = vfmCurrentPostComments
+    const postId = item.id
+
+    // обновляем обе правые зоны (popular + input)
+    const setCounts = (selCount, selLikes) => {
+        el.querySelector(selCount).textContent = data.total
+        const likeBtn = el.querySelector(selLikes)
+        if(likeBtn){
+            likeBtn.classList.toggle('liked', !!vfmUserVoteLike[postId])
+            const numEl = likeBtn.querySelector('span')
+            if(numEl) numEl.textContent = data.popular?._likes || (vfmUserVoteLike[postId] ? 1 : 0)
+        }
+    }
+
+    // popular
+    const pAva   = el.querySelector('#vfm-cpop-ava')
+    const pName  = el.querySelector('#vfm-cpop-name')
+    const pBody  = el.querySelector('#vfm-cpop-body')
+    const pTotal = el.querySelector('#vfm-cpop-total')
+    const pLikes = el.querySelector('#vfm-cpop-likes')
+    const pLikeBtn = el.querySelector('#vfm-cpop-like')
+
+    if(data.popular){
+        const pr = data.popular.profiles || {}
+        const nm = pr.full_name || pr.username || 'user'
+        if(pr.avatar_url) pAva.innerHTML = `<img src="${pr.avatar_url}" alt="">`
+        else pAva.textContent = nm.charAt(0).toUpperCase()
+        pName.textContent = nm   // полное имя, без @
+        pBody.textContent = (data.popular.text || '').slice(0, 80)
+        pTotal.textContent = data.total
+        const liked = !!vfmUserVoteLike[postId]
+        pLikeBtn.classList.toggle('liked', liked)
+        pLikes.textContent = liked ? (data.popular._likes || 1) : (data.popular._likes || 0)
+    } else {
+        // нет комментов — состояние empty
+        setVfmCommentState('empty')
+        return
+    }
+
+    // input
+    setCounts('#vfm-cinput-count', '#vfm-cinput-like')
+    const avasEl = el.querySelector('#vfm-cinput-avas')
+    avasEl.innerHTML = ''
+    ;(data.avatars || []).forEach(a => {
+        const span = document.createElement('span')
+        span.className = 'vfm-cinput-ava'
+        span.innerHTML = a.ava ? `<img src="${a.ava}" alt="">` : escapeHtml(a.initial)
+        avasEl.appendChild(span)
+    })
+}
+
+function initVfmCommentBar(el){
+    const popLike   = el.querySelector('#vfm-cpop-like')
+    const popArrow  = el.querySelector('#vfm-cpop-arrow')
+    const emptyArrow= el.querySelector('#vfm-cempty-arrow')
+    const inLike    = el.querySelector('#vfm-cinput-like')
+    const inArrow   = el.querySelector('#vfm-cinput-arrow')
+    const inField   = el.querySelector('#vfm-cinput-field')
+    const inRight   = el.querySelector('#vfm-cinput-right')
+    const inSend    = el.querySelector('#vfm-cinput-send')
+    const inCheck   = el.querySelector('#vfm-cinput-check')
+
+    const openSheet = () => {
+        const item = VFM.list[VFM.index]; if(!item) return
+        openCommentsSheet(item.id)
+    }
+
+    popArrow.addEventListener('click', openSheet)
+    emptyArrow.addEventListener('click', openSheet)
+    inArrow.addEventListener('click', openSheet)
+
+    // Лайк популярного коммента
+    popLike.addEventListener('click', e => {
+        e.stopPropagation()
+        const item = VFM.list[VFM.index]; if(!item) return
+        vfmUserVoteLike[item.id] = !vfmUserVoteLike[item.id]
+        if(vfmCurrentPostComments.popular){
+            vfmCurrentPostComments.popular._likes = (vfmCurrentPostComments.popular._likes || 0) + (vfmUserVoteLike[item.id] ? 1 : -1)
+            if(vfmCurrentPostComments.popular._likes < 0) vfmCurrentPostComments.popular._likes = 0
+        }
+        renderVfmCommentBar()
+    })
+
+    // Лайк в правой зоне input — тот же самый (визуально)
+    inLike.addEventListener('click', e => {
+        e.stopPropagation()
+        popLike.click()
+    })
+
+    // Ввод текста: показать send
+    inField.addEventListener('input', () => {
+        const has = !!inField.value.trim()
+        inSend.classList.toggle('hidden', !has)
+        inRight.classList.toggle('hidden', has)
+    })
+
+    // Отправка
+    inSend.addEventListener('click', async () => {
+        const text = inField.value.trim(); if(!text) return
+        const item = VFM.list[VFM.index]; if(!item) return
+        const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+
+        // Оптимистично: спрятать send, показать check
+        inSend.classList.add('hidden')
+        inCheck.classList.add('show', 'entering')
+        inField.value = ''
+
+        try {
+            const { error } = await supabase.from('comments').insert({
+                user_id: user.id, post_id: item.id, text
+            })
+            if(error) throw error
+            showToast('success', 'Комментарий добавлен', { icon:'✓' })
+            // Обновить данные и вернуть популярное состояние через 600ms
+            await loadVfmCommentData(item.id)
+            setTimeout(() => {
+                inCheck.classList.remove('show', 'entering')
+                inRight.classList.remove('hidden')
+                renderVfmCommentBar()
+                // если видео в первой половине — вернуть popular
+                if(VFM.video.duration && VFM.video.currentTime < VFM.video.duration / 2){
+                    setVfmCommentState('popular')
+                }
+            }, 700)
+        } catch(err){
+            inCheck.classList.remove('show', 'entering')
+            inSend.classList.remove('hidden')
+            inRight.classList.add('hidden')
+            showToast('error', 'Не удалось: ' + (err.message || 'ошибка'), { icon:'⚠️' })
+        }
+    })
+}
 function openVfmMoreMenu(){
     const item = VFM.list[VFM.index]; if(!item) return
     const card = item.card
@@ -6100,37 +6183,237 @@ function toggleCleanScreen(){
 }
 
 function initVfmSwipe(el){
-    let sy = 0, cy = 0, active = false, moved = false
-    el.addEventListener('touchstart', e => {
-        if(e.target.closest('.vfm-topbar, .vfm-actions, .vfm-progress, .vfm-sub, .vfm-sound-disc')) return
-        sy = cy = e.touches[0].clientY; active = true; moved = false
-        el.style.transition = 'none'
-    }, { passive: true })
-    el.addEventListener('touchmove', e => {
-        if(!active) return
-        cy = e.touches[0].clientY
-        const dy = cy - sy
-        if(Math.abs(dy) > 8) moved = true
-        el.style.transform = `translate3d(0, ${dy * 0.55}px, 0)`
-    }, { passive: true })
-    el.addEventListener('touchend', () => {
-        if(!active) return
-        active = false
-        const dy = cy - sy
-        el.style.transition = ''
-        el.style.transform = ''
-        if(!moved) return
-        if(dy < -70) vfmNext()
-        else if(dy > 70){
-            if(VFM.index === 0) closeVideoFeed()
-            else vfmPrev()
+    const stack = el.querySelector('#vfm-stack')
+    if(!stack) return
+    if(el.dataset.swipeBound === '1') return
+    el.dataset.swipeBound = '1'
+
+    let startY = 0
+    let curY   = 0
+    let dragging = false
+    let moved   = false
+    let startTime = 0
+    let lastY = 0, lastTime = 0, velocity = 0
+
+    const H = () => window.innerHeight
+
+    // ── запрет кликов после свайпа (иначе «тап на видео» срабатывает при drag) ──
+    window.__vfmSuppressClick = false
+
+    function applyDrag(dy){
+        const hasNext = VFM.index < VFM.list.length - 1
+        const hasPrev = VFM.index > 0
+        let effective = dy
+
+        // резистентность на границах
+        if(dy < 0 && !hasNext) effective = dy * 0.25           // нет next — тянем «в воздух»
+        if(dy > 0 && !hasPrev) effective = dy * 0.35            // index 0 — лёгкий pull к закрытию
+
+        stack.style.transform = `translate3d(0, ${effective}px, 0)`
+
+        // ── плавный fade UI по мере свайпа ──
+        const progress = Math.min(1, Math.abs(effective) / H() * 1.6)
+        el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
+            n.style.opacity = String(1 - progress)
+        })
+
+        // ── масштабирование текущего видео как в TikTok (немного уменьшается) ──
+        const scale = 1 - Math.min(0.06, Math.abs(effective) / H() * 0.06)
+        const vCur = el.querySelector('#vfm-video-current')
+        if(vCur) vCur.style.transform = `translateZ(0) scale(${scale})`
+    }
+
+    function resetStack(){
+        stack.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1)'
+        stack.style.transform  = 'translate3d(0, 0, 0)'
+        el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
+            n.style.transition = 'opacity .32s ease'
+            n.style.opacity = '1'
+        })
+        const vCur = el.querySelector('#vfm-video-current')
+        if(vCur){
+            vCur.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1)'
+            vCur.style.transform  = 'translateZ(0) scale(1)'
         }
-    })
-    el.addEventListener('wheel', e => {
-        if(Math.abs(e.deltaY) < 40) return
-        e.preventDefault()
-        if(e.deltaY > 0) vfmNext(); else vfmPrev()
+        setTimeout(() => {
+            stack.style.transition = ''
+            if(vCur) vCur.style.transition = ''
+            el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
+                n.style.transition = ''
+            })
+        }, 340)
+    }
+
+    // Прокрутить стек к следующему/предыдущему — потом переключить слайд
+    async function completeNext(){
+        stack.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1)'
+        stack.style.transform  = `translate3d(0, -${H()}px, 0)`
+        el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
+            n.style.transition = 'opacity .3s ease'
+            n.style.opacity = '0'
+        })
+        const vCur = el.querySelector('#vfm-video-current')
+        if(vCur){
+            vCur.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1)'
+            vCur.style.transform  = 'translateZ(0) scale(.94)'
+        }
+        await new Promise(r => setTimeout(r, 320))
+
+        // важно: vfmNext(false) — без своей анимации
+        if(typeof vfmNext === 'function'){
+            await vfmNext(false)
+        }
+    }
+
+    async function completePrev(){
+        // назад — простой fade-out/fade-in, т.к. prev-slide нет в DOM
+        const vCur = el.querySelector('#vfm-video-current')
+        if(vCur){
+            vCur.style.transition = 'transform .25s ease, opacity .25s ease'
+            vCur.style.transform  = 'translateZ(0) scale(.94)'
+            vCur.style.opacity    = '0'
+        }
+        el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
+            n.style.transition = 'opacity .25s ease'
+            n.style.opacity = '0'
+        })
+        await new Promise(r => setTimeout(r, 250))
+
+        if(typeof vfmPrev === 'function'){
+            await vfmPrev(false)
+        }
+        // восстанавливаем прозрачность
+        setTimeout(() => {
+            if(vCur){
+                vCur.style.transition = 'transform .28s cubic-bezier(.22,1,.36,1), opacity .2s ease'
+                vCur.style.transform  = 'translateZ(0) scale(1)'
+                vCur.style.opacity    = '1'
+            }
+            el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
+                n.style.transition = 'opacity .3s ease'
+                n.style.opacity = '1'
+            })
+            setTimeout(() => {
+                if(vCur) vCur.style.transition = ''
+                el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
+                    n.style.transition = ''
+                })
+            }, 320)
+        }, 40)
+    }
+
+    // ═══════════════════ TOUCH ═══════════════════
+    el.addEventListener('touchstart', e => {
+        // не перехватываем свайп внутри UI-элементов
+        if(e.target.closest('.vfm-topbar, .vfm-progress, .vfm-act, .vfm-cinput, .vfm-cpop, .vfm-cinput-field, .vfm-follow-btn, .vfm-author-ava-wrap, .vfm-vinyl, .vfm-comment-bar, .vfm-desc-block, .vfm-ch-sub, .vfm-ch-ava, .vfm-pause-overlay, .vfm-ch-sub')){
+            return
+        }
+        dragging = true
+        moved    = false
+        startY   = e.touches[0].clientY
+        curY     = startY
+        startTime = Date.now()
+        lastY    = startY
+        lastTime = startTime
+        velocity = 0
+        stack.style.transition = 'none'
+        window.__vfmSuppressClick = false
+    }, { passive: true })
+
+    el.addEventListener('touchmove', e => {
+        if(!dragging) return
+        if(e.cancelable) e.preventDefault()
+        curY = e.touches[0].clientY
+        const dy = curY - startY
+        if(Math.abs(dy) > 6) moved = true
+
+        // velocity
+        const now = Date.now()
+        const dt = now - lastTime
+        if(dt > 0) velocity = (curY - lastY) / dt
+        lastY = curY
+        lastTime = now
+
+        applyDrag(dy)
     }, { passive: false })
+
+    function endSwipe(){
+        if(!dragging) return
+        dragging = false
+
+        const dy = curY - startY
+        const H_ = H()
+        const progress = Math.abs(dy) / H_
+        const fastSwipe = Math.abs(velocity) > 0.45 && (Date.now() - startTime) < 500
+
+        // подавить click после свайпа
+        if(moved && Math.abs(dy) > 10){
+            window.__vfmSuppressClick = true
+            setTimeout(() => { window.__vfmSuppressClick = false }, 320)
+        }
+
+        // ── свайп вверх (next) ──
+        if(dy < 0){
+            if(VFM.index >= VFM.list.length - 1){
+                // нет next — если сильно, попробуем подгрузить и пролистнуть
+                if((progress > 0.4 || fastSwipe) && VFM.source === 'home'){
+                    completeNext()
+                } else {
+                    resetStack()
+                }
+                return
+            }
+            if(progress > 0.25 || fastSwipe){
+                completeNext()
+            } else {
+                resetStack()
+            }
+            return
+        }
+
+        // ── свайп вниз (prev / закрыть) ──
+        if(dy > 0){
+            if(progress > 0.3 || (fastSwipe && progress > 0.15)){
+                if(VFM.index === 0){
+                    closeVideoFeed()
+                } else {
+                    completePrev()
+                }
+            } else {
+                resetStack()
+            }
+            return
+        }
+
+        resetStack()
+    }
+
+    el.addEventListener('touchend',    endSwipe)
+    el.addEventListener('touchcancel', endSwipe)
+
+    // ═══════════════════ WHEEL (desktop) ═══════════════════
+    let wheelLock = false
+    el.addEventListener('wheel', e => {
+        if(e.target.closest('.vfm-topbar, .vfm-progress, .vfm-cinput-field, .vfm-comment-bar')) return
+        e.preventDefault()
+        if(wheelLock) return
+        if(Math.abs(e.deltaY) < 40) return
+        wheelLock = true
+        if(e.deltaY > 0) vfmNext()
+        else vfmPrev()
+        setTimeout(() => { wheelLock = false }, 450)
+    }, { passive: false })
+
+    // ═══════════════════ KEYBOARD (desktop) ═══════════════════
+    if(!el.dataset.kbBound){
+        el.dataset.kbBound = '1'
+        document.addEventListener('keydown', e => {
+            if(!VFM.active) return
+            if(e.key === 'ArrowDown' || e.key === 'PageDown'){ e.preventDefault(); vfmNext() }
+            if(e.key === 'ArrowUp'   || e.key === 'PageUp'){   e.preventDefault(); vfmPrev() }
+            if(e.key === 'Escape'){ closeVideoFeed() }
+        })
+    }
 }
 
 function vfmSourceFromCard(card){
@@ -6200,57 +6483,85 @@ function renderVfmSlide(){
     const item = VFM.list[VFM.index]
     if(!item){ closeVideoFeed(); return }
 
-    const el = VFM.el
-    const v = VFM.video
+    const el     = VFM.el
+    const v      = VFM.video
+    const vNext  = VFM.videoNext
+    const stack  = VFM.stack
 
+    // ─── жёсткий сброс позиции стека без анимации ───
+    stack.style.transition = 'none'
+    stack.style.transform  = 'translate3d(0, 0, 0)'
+    void stack.offsetHeight
+    stack.style.transition = ''
+
+    // ─── сброс opacity у UI (на случай если был drag / fade) ───
+    el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
+        n.style.transition = ''
+        n.style.opacity    = '1'
+    })
+
+    // ─── CURRENT ───
     try { v.pause() } catch {}
     v.src = item.src
     v.muted = false
     v.loop = false
-    v.currentTime = 0
+    try { v.currentTime = 0 } catch {}
     v.play().catch(() => { v.muted = true; v.play().catch(()=>{}) })
 
-    // сброс оверлея паузы
+    // ─── NEXT (превью под текущим) ───
+    const nextItem = VFM.list[VFM.index + 1]
+    if(vNext){
+        try { vNext.pause() } catch {}
+        if(nextItem && nextItem.src){
+            if(vNext.src !== nextItem.src){
+                vNext.src = nextItem.src
+                vNext.load()
+            }
+            vNext.muted = true
+            // играем muted — так под текущим видео будет живой превью,
+            // как в TikTok. Если браузер блокирует autoplay — просто покажем 1-й кадр.
+            vNext.play().catch(() => {
+                try {
+                    vNext.addEventListener('loadeddata', () => {
+                        try { vNext.currentTime = 0.05 } catch {}
+                    }, { once: true })
+                } catch {}
+            })
+        } else {
+            vNext.removeAttribute('src')
+            try { vNext.load() } catch {}
+        }
+    }
+
+    // ─── сброс оверлея паузы ───
     el.querySelector('#vfm-pause-overlay')?.classList.remove('show')
     el.querySelector('#vfm-progress-fill').style.width = '0%'
 
+    // ─── метаданные и обсуждение ───
     syncVfmMeta()
-    // перезагрузить популярный комментарий под новый пост
-    setTimeout(() => {
-        if(!VFM.el || !VFM.list[VFM.index]) return
-        const itemId = VFM.list[VFM.index].id
-        supabase.from('comments')
-            .select('id, text, profiles:user_id ( id, username, full_name, avatar_url )')
-            .eq('post_id', itemId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .then(({ data }) => {
-                const c = data?.[0]
-                const el2 = VFM.el
-                const avaEl  = el2.querySelector('#vfm-cpop-ava')
-                const nameEl = el2.querySelector('#vfm-cpop-name')
-                const bodyEl = el2.querySelector('#vfm-cpop-body')
-                if(!c){ avaEl.textContent='?'; nameEl.textContent='@никто'; bodyEl.textContent='Пока нет комментариев'; return }
-                const p = c.profiles || {}
-                const nm = p.full_name || p.username || 'user'
-                if(p.avatar_url) avaEl.innerHTML = `<img src="${p.avatar_url}" alt="">`
-                else avaEl.textContent = nm.charAt(0).toUpperCase()
-                nameEl.textContent = '@' + (p.username || 'user')
-                bodyEl.textContent = c.text || ''
-            })
-    }, 200)
-    // убрать «конец ленты»
 
-    // убрать «конец ленты»
+    vfmCommentState = 'popular'
+    const el2 = VFM.el
+    if(el2){
+        el2.querySelector('#vfm-cpop')?.classList.remove('hidden')
+        el2.querySelector('#vfm-cempty')?.classList.add('hidden')
+        el2.querySelector('#vfm-cinput')?.classList.add('hidden')
+        const f = el2.querySelector('#vfm-cinput-field'); if(f) f.value = ''
+        const r = el2.querySelector('#vfm-cinput-right'); if(r) r.classList.remove('hidden')
+        const s = el2.querySelector('#vfm-cinput-send');  if(s) s.classList.add('hidden')
+        const c = el2.querySelector('#vfm-cinput-check'); if(c) c.classList.remove('show', 'entering')
+    }
+
     el.querySelector('.vfm-end')?.remove()
     VFM.endedShown = false
 }
 
-function syncVfmMeta(){
+async function syncVfmMeta(){
     const item = VFM.list[VFM.index]; if(!item || !VFM.el) return
     const card = item.card
     const el = VFM.el
 
+    // ========== Если карточки нет — сброс ==========
     if(!card){
         el.querySelector('#vfm-ch-ava').textContent = '?'
         el.querySelector('#vfm-ch-name').textContent = 'user'
@@ -6258,11 +6569,11 @@ function syncVfmMeta(){
         el.querySelector('#vfm-author-ava').textContent = '?'
         el.querySelector('#vfm-author-status').textContent = ''
         el.querySelector('#vfm-follow-btn').classList.add('hidden')
-        el.querySelector('#vfm-follow-btn').classList.remove('following')
         el.querySelector('#vfm-desc-author').textContent = ''
         el.querySelector('#vfm-desc').textContent = ''
-        el.querySelector('#vfm-marquee').innerHTML = ''
         el.querySelector('#vfm-vinyl-cover').textContent = 'K'
+        el.querySelectorAll('[data-vfm-count]').forEach(x => x.textContent = '0')
+        setVfmCommentState('empty')
         return
     }
 
@@ -6272,20 +6583,24 @@ function syncVfmMeta(){
     const statusB  = card.querySelector('.story-status-badge')
     const authorId = avaEl?.dataset.uid
 
-    // Имя автора — только текст, без бейджа канала и без админ-значка
+    // ========== Имя автора — без бейджа и без админ-значка ==========
     let authorName = 'user'
     if(nameEl){
         const clone = nameEl.cloneNode(true)
-        clone.querySelectorAll('.feed-channel-badge, .admin-badge').forEach(el => el.remove())
+        clone.querySelectorAll('.feed-channel-badge, .admin-badge').forEach(x => x.remove())
         authorName = (clone.textContent || '').trim() || 'user'
     }
 
-    const avaHTML = avaEl ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'') : '?'
+    const avaHTML = avaEl
+        ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/, '')
+        : '?'
 
-    // ============== АВТОР: аватар + подписка ==============
+    // ========== АВТОР: аватар + статус ==========
     el.querySelector('#vfm-author-ava').innerHTML = avaHTML
-    el.querySelector('#vfm-author-status').textContent = statusB ? statusB.textContent : ''
+    const statusEl = el.querySelector('#vfm-author-status')
+    statusEl.textContent = statusB ? statusB.textContent : ''
 
+    // ========== Подписка на автора ==========
     const followBtn = el.querySelector('#vfm-follow-btn')
     if(authorId && authorId !== me){
         followBtn.classList.remove('hidden')
@@ -6297,12 +6612,12 @@ function syncVfmMeta(){
         followBtn.dataset.uid = ''
     }
 
-    // ============== ВЕРХНИЙ УРОВЕНЬ: КАНАЛ ==============
-    const chBadge = card.querySelector('.feed-channel-badge')
-    const chAvaEl = el.querySelector('#vfm-ch-ava')
-    const chNameEl = el.querySelector('#vfm-ch-name')
-    const chSubBtn = el.querySelector('#vfm-ch-sub')
-    const vinylCover = el.querySelector('#vfm-vinyl-cover')
+    // ========== КАНАЛ в верхней полосе ==========
+    const chBadge   = card.querySelector('.feed-channel-badge')
+    const chAvaEl   = el.querySelector('#vfm-ch-ava')
+    const chNameEl  = el.querySelector('#vfm-ch-name')
+    const chSubBtn  = el.querySelector('#vfm-ch-sub')
+    const vinylCover= el.querySelector('#vfm-vinyl-cover')
 
     if(chBadge){
         const logoEl = chBadge.querySelector('.feed-channel-logo')
@@ -6320,7 +6635,6 @@ function syncVfmMeta(){
             chSubBtn.dataset.chid = ''
         }
     } else {
-        // Нет канала — показываем автора в топе
         chAvaEl.innerHTML = avaHTML
         chNameEl.textContent = authorName
         chSubBtn.classList.add('hidden')
@@ -6328,88 +6642,66 @@ function syncVfmMeta(){
         vinylCover.innerHTML = avaHTML
     }
 
-    // ============== ЯРУС 1: ОПИСАНИЕ ==============
-    const descEl = el.querySelector('#vfm-desc')
+    // ========== ОПИСАНИЕ ==========
+    const descEl       = el.querySelector('#vfm-desc')
     const descAuthorEl = el.querySelector('#vfm-desc-author')
-    const moreBtn = el.querySelector('#vfm-desc-more')
-    const text = (card.querySelector('.feed-post-content')?.textContent || '').trim()
+    const moreBtn      = el.querySelector('#vfm-desc-more')
+    const text         = (card.querySelector('.feed-post-content')?.textContent || '').trim()
 
     descAuthorEl.textContent = authorName
-    descEl.textContent = text
+    descEl.textContent = text || ''
     descEl.classList.remove('expanded')
     moreBtn.classList.add('hidden')
-    moreBtn.onclick = e => {
-        e.stopPropagation()
-        descEl.classList.add('expanded')
-        moreBtn.classList.add('hidden')
-    }
 
-    // Показать кнопку "ещё" только если текст реально не влезает в одну строку
+    // Показать «ещё» только если реально переполнено
     requestAnimationFrame(() => {
-        descEl.classList.remove('expanded')
-        // Принудительный reflow для корректного scrollWidth
-        void descEl.offsetWidth
         if(text && descEl.scrollWidth > descEl.clientWidth + 2){
             moreBtn.classList.remove('hidden')
         }
     })
 
-    // ============== ЯРУС 1: БЕГУЩАЯ СТРОКА ==============
-    const mqEl = card.querySelector('.post-marquee-wrap')
-    const mq = el.querySelector('#vfm-marquee')
-    mq.innerHTML = ''
-    if(mqEl){
-        // Клонируем содержимое (2 трека) для корректной анимации
-        const tracks = mqEl.querySelectorAll('.post-marquee-track')
-        if(tracks.length >= 2){
-            const inner = document.createElement('div')
-            inner.className = 'post-marquee-inner'
-            tracks.forEach((t, i) => {
-                const clone = t.cloneNode(true)
-                if(i === 1) clone.setAttribute('aria-hidden', 'true')
-                inner.appendChild(clone)
-            })
-            mq.appendChild(inner)
+    // ========== СЧЁТЧИКИ — тянем свежие из БД ==========
+    // Читаем из карточки как fast-fallback
+    const cardLike   = card.querySelector('[data-like-count]')?.textContent
+    const cardRepost = card.querySelector('[data-repost-count]')?.textContent
+    el.querySelector('[data-vfm-count="like"]').textContent   = cardLike   || '0'
+    el.querySelector('[data-vfm-count="repost"]').textContent = cardRepost || '0'
+    el.querySelector('[data-vfm="like"]').classList.toggle('liked', !!card.querySelector('.feed-action[data-like]')?.classList.contains('liked'))
+    el.querySelector('[data-vfm="repost"]').classList.toggle('reposted', !!card.querySelector('.feed-action[data-repost]')?.classList.contains('reposted'))
+
+    // Асинхронно — обновляем точными значениями
+    try {
+        const fresh = await fetchCounts([item.id])
+        const c = fresh[item.id] || { likes: 0, reposts: 0, comments: 0 }
+        el.querySelector('[data-vfm-count="like"]').textContent   = String(c.likes   || 0)
+        el.querySelector('[data-vfm-count="repost"]').textContent = String(c.reposts || 0)
+        // обновляем и карточку, чтобы sync оставалось консистентным
+        const likeEl = card.querySelector('[data-like-count]');   if(likeEl) likeEl.textContent = String(c.likes || 0)
+        const repEl  = card.querySelector('[data-repost-count]'); if(repEl)  repEl.textContent  = String(c.reposts || 0)
+    } catch(e){ console.warn('[vfm counts]', e.message) }
+
+    // ========== ОБСУЖДЕНИЕ ==========
+    await loadVfmCommentData(item.id)
+    const data = vfmCurrentPostComments
+
+    if(data.total === 0 || !data.popular){
+        setVfmCommentState('empty')
+    } else {
+        renderVfmCommentBar()
+        // сбросим в popular, если сейчас начало видео
+        if(!VFM.video.duration || VFM.video.currentTime < VFM.video.duration / 2){
+            setVfmCommentState('popular')
+        } else {
+            setVfmCommentState('input')
         }
     }
 
-    // ============== ЯРУС 2: СЧЁТЧИКИ ==============
-    const likeBtn = card.querySelector('.feed-action[data-like]')
-    const repBtn  = card.querySelector('.feed-action[data-repost]')
-    el.querySelector('[data-vfm-count="like"]').textContent    = card.querySelector('[data-like-count]')?.textContent || '0'
-    el.querySelector('[data-vfm-count="comment"]').textContent = card.querySelector('[data-comment-count]')?.textContent || '0'
-    el.querySelector('[data-vfm-count="repost"]').textContent  = card.querySelector('[data-repost-count]')?.textContent || '0'
-    el.querySelector('[data-vfm="like"]').classList.toggle('liked', !!likeBtn?.classList.contains('liked'))
-    el.querySelector('[data-vfm="repost"]').classList.toggle('reposted', !!repBtn?.classList.contains('reposted'))
-
-    // Синхронизация состояния пластинки
+    // ========== Пластинка ==========
     const vinyl = el.querySelector('.vfm-vinyl')
     if(vinyl){
         if(!VFM.video.paused) vinyl.classList.add('playing')
         else vinyl.classList.remove('playing')
     }
-
-    // Запускаем бегущую строку после того как блок полностью отрисован
-    setTimeout(() => {
-        initPostMarquees(el)
-        // Принудительно переинициализируем VFM-маркизу, т.к. она создана заново
-        mq.querySelectorAll('.post-marquee-wrap, .post-marquee-inner').forEach(node => {
-            node.removeAttribute?.('data-mqInit')
-        })
-        const inner = mq.querySelector('.post-marquee-inner')
-        const trks  = mq.querySelectorAll('.post-marquee-track')
-        if(!inner || trks.length < 2) return
-        inner.classList.remove('scrolling')
-        const wrapW  = mq.clientWidth
-        const trackW = trks[0].scrollWidth
-        if(trackW > wrapW + 2){
-            const dur = Math.max(12, Math.round(trackW / 30))
-            inner.style.animationDuration = dur + 's'
-            inner.classList.add('scrolling')
-        } else {
-            trks[1].style.display = 'none'
-        }
-    }, 120)
 }
 
 async function vfmLoadMore(){
@@ -6428,28 +6720,72 @@ async function vfmLoadMore(){
     } finally { VFM.loadingMore = false }
 }
 
-async function vfmNext(){
+async function vfmNext(animate = true){
     if(!VFM.active) return
-    if(VFM.index < VFM.list.length - 1){
-        VFM.index++
-        renderVfmSlide()
-        return
-    }
-    if(VFM.source === 'home'){
-        const ok = await vfmLoadMore()
-        if(ok && VFM.index < VFM.list.length - 1){ VFM.index++; renderVfmSlide(); return }
-    }
-    // источник не home, либо видео закончились — только конец
-    showVfmEnd()
-}
 
-function vfmPrev(){
-    if(!VFM.active) return
-    if(VFM.index === 0){ closeVideoFeed(); return }
-    VFM.index--
+    // если следующего нет — попробовать подгрузить в фоне
+    if(VFM.index >= VFM.list.length - 1){
+        if(VFM.source === 'home'){
+            const ok = await vfmLoadMore()
+            if(!ok){ showVfmEnd(); return }
+            if(VFM.index >= VFM.list.length - 1){ showVfmEnd(); return }
+        } else {
+            showVfmEnd()
+            return
+        }
+    }
+
+    // плавная анимация уже делается в completeNext() внутри initVfmSwipe.
+    // animate=true — только при вызове из кнопок / wheel / клавиатуры
+    if(animate){
+        const stack = VFM.stack
+        if(stack){
+            stack.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1)'
+            stack.style.transform  = `translate3d(0, -${window.innerHeight}px, 0)`
+            VFM.el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
+                n.style.transition = 'opacity .3s ease'
+                n.style.opacity = '0'
+            })
+            await new Promise(r => setTimeout(r, 320))
+        }
+    }
+
+    VFM.index++
     renderVfmSlide()
 }
 
+async function vfmPrev(animate = true){
+    if(!VFM.active) return
+    if(VFM.index === 0){ closeVideoFeed(); return }
+
+    if(animate){
+        const vCur = VFM.video
+        if(vCur){
+            vCur.style.transition = 'transform .22s ease, opacity .22s ease'
+            vCur.style.transform  = 'translateZ(0) scale(.94)'
+            vCur.style.opacity    = '0'
+        }
+        VFM.el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
+            n.style.transition = 'opacity .22s ease'
+            n.style.opacity = '0'
+        })
+        await new Promise(r => setTimeout(r, 220))
+    }
+
+    VFM.index--
+    renderVfmSlide()
+
+    // восстановить видимость current после рендера
+    setTimeout(() => {
+        const v = VFM.video
+        if(v){
+            v.style.transition = 'transform .28s cubic-bezier(.22,1,.36,1), opacity .2s ease'
+            v.style.transform  = 'translateZ(0) scale(1)'
+            v.style.opacity    = '1'
+            setTimeout(() => { v.style.transition = '' }, 320)
+        }
+    }, 30)
+}
 function showVfmEnd(){
     if(VFM.endedShown) return
     VFM.endedShown = true
@@ -6474,6 +6810,8 @@ async function closeVideoFeed(){
     const origin = VFM.originCard
 
     try { VFM.video.pause(); VFM.video.removeAttribute('src'); VFM.video.load() } catch {}
+    try { VFM.videoNext?.pause(); VFM.videoNext?.removeAttribute('src'); VFM.videoNext?.load() } catch {}
+    window.__vfmSuppressClick = false
 
     el.querySelectorAll('.vfm-topbar, .vfm-info, .vfm-bottom, .vfm-progress, .vfm-pause-overlay').forEach(n => {
         n.style.transition = 'opacity .18s ease'
@@ -6506,10 +6844,21 @@ async function closeVideoFeed(){
     }
 
     await new Promise(r => setTimeout(r, 520))
-
+    // ═══ CLEANUP prefetch video ═══
+    if(VFM._prefetchVideo){
+        try {
+            VFM._prefetchVideo.pause();
+            VFM._prefetchVideo.removeAttribute('src');
+            VFM._prefetchVideo.load();
+            VFM._prefetchVideo.remove();
+        } catch {}
+        VFM._prefetchVideo = null;
+    }
     el.remove()
     VFM.el = null
     VFM.video = null
+    VFM.videoNext = null
+    VFM.stack = null
     VFM.list = []
     VFM.index = 0
     VFM.originCard = null
@@ -6542,6 +6891,37 @@ function enterVideoFS(src, postId){
     fake.style.visibility = 'hidden'
     fake.style.pointerEvents = 'none'
     box.appendChild(fake)
+
+    // ═══ ЗАГРУЖАЕМ РЕАЛЬНЫЕ ДАННЫЕ ПОСТА В ФЕЙКОВУЮ КАРТОЧКУ ═══
+    // (чтобы VFM показал правильные счётчики, аватар, канал, статус)
+    if(postId){
+        (async () => {
+            try {
+                const { data: post } = await supabase.from('posts')
+                    .select('id, content, media_url, author_id, channel_id, profiles:author_id ( username, full_name, avatar_url, status, is_admin ), channels:channel_id ( id, name, avatar_url )')
+                    .eq('id', postId).maybeSingle()
+                if(!post) return
+                const p = post.profiles || {}, ch = post.channels || {}
+                const name = p.full_name || p.username || 'user'
+                const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
+                const emoji = statusEmoji(computeDisplayStatus(p))
+                const chLogo = ch.avatar_url ? `<img src="${ch.avatar_url}">` : (ch.name||'K').charAt(0)
+                fake.innerHTML = `
+                    <div class="feed-avatar-wrap">
+                        <div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">
+                            ${av}<div class="story-status-badge">${emoji}</div>
+                        </div>
+                    </div>
+                    <div class="feed-post-name"><span class="feed-post-name-text">${escapeHtml(name)}${p.is_admin ? adminBadge(true) : ''}</span></div>
+                    <div class="feed-post-content">${escapeHtml(post.content || '')}</div>
+                    ${ch.id ? `<div class="feed-channel-badge" data-chbadge="${ch.id}"><span class="feed-channel-logo">${chLogo}</span><span class="feed-channel-name">${escapeHtml(ch.name||'Канал')}</span></div>` : ''}
+                    <span class="feed-action" data-like="${post.id}"><span class="feed-count" data-like-count="${post.id}">0</span></span>
+                    <span class="feed-action" data-repost="${post.id}"><span class="feed-count" data-repost-count="${post.id}">0</span></span>
+                `
+            } catch(e){ console.warn('[enterVideoFS fallback]', e.message) }
+        })()
+    }
+
     openVideoFeed(fake)
     const cleanup = () => { try { fake.remove() } catch {} }
     document.addEventListener('vfm:closed', cleanup, { once: true })
@@ -9055,42 +9435,4 @@ window.__ltOpenRegisterLanding = function(){
     }
     reset();
     setTimeout(reset, 300);
-})();
-/* ============================================================
-   iOS PWA VIEWPORT FIX
-   Принудительно пересчитывает viewport после первой загрузки,
-   чтобы убрать пустое место под bottom-nav в PWA/fullscreen
-============================================================ */
-;(function pwaViewportFix(){
-    function recalc(){
-        // Чтение innerHeight принудительно запускает
-        // пересчёт viewport-единиц (dvh/vh) в браузере
-        void window.innerHeight;
-        void window.innerWidth;
-
-        // Принудительный reflow — заставляет браузер
-        // пересчитать layout всех элементов
-        void document.documentElement.offsetHeight;
-        void document.body.offsetHeight;
-
-        // Если по какой-то причине страница «съехала» вниз — вернуть наверх
-        if(window.scrollY !== 0) window.scrollTo(0, 0);
-    }
-
-    if(document.readyState === 'loading'){
-        document.addEventListener('DOMContentLoaded', recalc);
-    } else {
-        recalc();
-    }
-
-    // Основные события, когда браузер может неправильно посчитать viewport
-    window.addEventListener('load', recalc);
-    window.addEventListener('pageshow', recalc);
-    window.addEventListener('orientationchange', recalc);
-
-    // iOS PWA — viewport «догоняет» с задержкой. Несколько повторов:
-    setTimeout(recalc, 100);
-    setTimeout(recalc, 500);
-    setTimeout(recalc, 1500);
-    setTimeout(recalc, 3000);
 })();

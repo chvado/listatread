@@ -2,6 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <!-- Preconnect — DNS+TLS к Supabase прогреваются до первого запроса -->
+    <link rel="preconnect" href="https://YOUR_PROJECT.supabase.co" crossorigin>
+    <link rel="dns-prefetch" href="https://YOUR_PROJECT.supabase.co">
+    <link rel="preconnect" href="https://api.qrserver.com">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -659,7 +663,7 @@
                     <circle cx="12" cy="12" r="9.5"/>
                     <path d="M12 8v8M8 12h8"/>
                 </svg>
-                <span>+ tread</span>
+                <span>tread</span>
             </button>
             <button class="nav-btn" data-screen="direct">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>

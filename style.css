@@ -1820,7 +1820,7 @@ body.in-direct .mini-player{z-index:170;bottom:auto;top:calc(var(--safe-top) + 7
    VIDEO FEED MODE (VFM) — новая компоновка
 ============================================================ */
 /* ============================================================
-   VIDEO FEED MODE (VFM) — новая компоновка
+   VIDEO FEED MODE (VFM) — v2 (bottom-anchored layout)
 ============================================================ */
 body.vfm-active .bottom-nav{ z-index: 8700 }
 body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
@@ -1835,17 +1835,41 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 }
 
 /* ---------- ВИДЕО ---------- */
+/* ============ VFM STACK — TikTok swipe ============ */
+.vfm-stack{
+    position: absolute;
+    inset: 0;
+    will-change: transform;
+    z-index: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
 .vfm-video{
     position: absolute;
-    inset: 0;                      /* top:0 right:0 bottom:0 left:0 */
+    left: 0;
+    right: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;           /* всё видео видно, без обрезки */
-    object-position: center center;/* по умолчанию — по центру */
-    background: transparent;
-    z-index: 0;
+    object-fit: cover;
+    object-position: center center;
+    background: #000;
+    display: block;
     cursor: pointer;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
     transition: object-position .25s ease;
+}
+
+.vfm-video.vfm-current{
+    top: 0;
+    z-index: 1;
+}
+
+.vfm-video.vfm-next{
+    top: 100%;
+    z-index: 0;
 }
 
 /* ---------- ВЕРХНЯЯ ПОЛОСА ---------- */
@@ -1854,7 +1878,6 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
     padding: calc(var(--safe-top) + 10px) 12px 14px;
     display: flex; align-items: center; gap: 10px;
     z-index: 3;
-    background: linear-gradient(180deg, rgba(0,0,0,.6), transparent);
     pointer-events: none;
 }
 .vfm-topbar > *{ pointer-events: auto; }
@@ -1874,7 +1897,7 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 }
 .vfm-channel-ava{
     width: 34px; height: 34px;
-    border-radius: 10px;              /* было 50% — теперь квадрат со скруглением */
+    border-radius: 10px;
     overflow: hidden; flex-shrink: 0;
     background: linear-gradient(135deg,#ffd60a,#ff375f);
     display: flex; align-items: center; justify-content: center;
@@ -1884,17 +1907,16 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 }
 .vfm-channel-ava img{ width: 100%; height: 100%; object-fit: cover }
 .vfm-channel-name{
-    font-size: 14px; font-weight: 600;              /* было 700 */
+    font-size: 14px; font-weight: 600;
     color: #fff;
     text-shadow: 0 1px 5px rgba(0,0,0,.65);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     max-width: 40vw;
 }
-
 .vfm-ch-sub{
     width: 26px; height: 26px; border-radius: 50%;
     background: var(--red-pink); color: #fff;
-    border: none; font-size: 15px; font-weight: 700; /* было 16px / 900 */
+    border: none; font-size: 15px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
     padding: 0; padding-bottom: 2px;
     cursor: pointer; flex-shrink: 0;
@@ -1912,80 +1934,313 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 }
 .vfm-top-more:active{ scale: .93 }
 
-/* ---------- НИЖНИЙ БЛОК ---------- */
+/* ---------- НИЖНИЙ БЛОК (строго у низа) ---------- */
 .vfm-bottom{
     position: absolute;
     left: 0;
     right: 0;
-    bottom: calc(var(--nav-height) + var(--safe-bottom) + 6px);
-    padding: 20px 16px 14px;
+    bottom: 0;
+    padding: 0 14px calc(var(--nav-height) + var(--safe-bottom) + 10px);
     z-index: 3;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 0;
     background: transparent !important;
+    max-height: 70vh;
 }
 
-/* ===== ЯРУС 1 ===== */
-.vfm-tier1{
-    display: flex; align-items: center; gap: 12px;
+.vfm-content-area{
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    width: 100%;
 }
-.vfm-desc-col{
-    flex: 1; min-width: 0;
-    display: flex; flex-direction: column; gap: 6px;
+
+/* ----- ЛЕВАЯ КОЛОНКА ----- */
+.vfm-left{
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
-.vfm-desc-line{
-    display: flex; align-items: center; gap: 6px;
+
+/* Автор — отдельной строкой НАД описанием */
+.vfm-desc-block{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.vfm-desc-author{
+    font-size: 14px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 4px rgba(0,0,0,.6);
+}
+
+/* Описание — ОДНА строка с «ещё» */
+.vfm-desc-row{
+    display: flex;
+    align-items: center;
+    gap: 6px;
     min-width: 0;
 }
 .vfm-desc-text{
-    font-size: 14px; line-height: 1.4; color: #fff;
-    text-shadow: 0 1px 5px rgba(0,0,0,.65);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    flex: 1; min-width: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: rgba(255,255,255,.92);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
 }
 .vfm-desc-text.expanded{
     white-space: normal;
-    display: block;
-    max-height: 30vh; overflow-y: auto;
+    display: -webkit-box;
+    -webkit-line-clamp: 8;
+    -webkit-box-orient: vertical;
+    overflow-y: auto;
+    max-height: 30vh;
 }
 .vfm-desc-more{
     flex-shrink: 0;
-    font-size: 13px; font-weight: 700; color: rgba(255,255,255,.8);
-    background: transparent; border: none; padding: 0; cursor: pointer;
-    text-shadow: 0 1px 5px rgba(0,0,0,.6);
+    font-size: 12px;
+    font-weight: 800;
+    color: rgba(255,255,255,.85);
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
 }
 .vfm-desc-more.hidden{ display: none }
 
-/* ----- Бегущая строка (в самом низу яруса 1) ----- */
-.vfm-marquee{
-    height: 15px; overflow: hidden;
-    font-size: 12px; color: rgba(255,255,255,.85);
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
-    mask-image: linear-gradient(to right, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
-}
-.vfm-marquee .post-marquee-inner{
-    display: flex; width: max-content; height: 100%;
+/* ----- БАННЕР ОБСУЖДЕНИЯ (единая высота 46px) ----- */
+.vfm-comment-bar{
+    position: relative;
+    width: 100%;
+    height: 46px;
+    border-radius: 14px;
+    padding: 0 12px;
+    background: rgba(20,20,22,.55);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+    border: 1px solid rgba(255,255,255,.08);
+    overflow: hidden;
+    display: flex;
     align-items: center;
 }
-.vfm-marquee .post-marquee-inner.scrolling{
-    animation: marqueeScroll linear infinite;
+.vfm-comment-state{
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    gap: 8px;
+    position: absolute;
+    inset: 0;
+    padding: 0 12px;
 }
-.vfm-marquee .post-marquee-track{
-    display: inline-flex; align-items: center; gap: 8px;
-    white-space: nowrap; padding-right: 28px; flex-shrink: 0;
-    height: 15px; line-height: 15px;
-    font-size: 12px; color: rgba(255,255,255,.85);
-}
-.vfm-marquee .mq-label,
-.vfm-marquee .mq-dot,
-.vfm-marquee .mq-sound-name{ color: rgba(255,255,255,.85) }
-.vfm-marquee .post-date{ color: rgba(255,255,255,.7) }
-.vfm-marquee .mq-sound-ava{ background: rgba(255,255,255,.25) }
+.vfm-comment-state.hidden{ display: none !important }
 
-/* ----- Пластинка справа ----- */
+/* Иконка коммента слева */
+.vfm-cpop-icon,
+.vfm-cinput-icon{
+    flex-shrink: 0;
+    color: rgba(255,255,255,.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+}
+
+/* --- POPULAR STATE --- */
+.vfm-cpop-main{
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.vfm-cpop-head{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+.vfm-cpop-ava{
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--yellow), var(--red-pink));
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 9px; color: #fff;
+    overflow: hidden; flex-shrink: 0;
+}
+.vfm-cpop-ava img{ width: 100%; height: 100%; object-fit: cover }
+.vfm-cpop-name{
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,.95);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.vfm-cpop-body{
+    font-size: 12.5px;
+    line-height: 1.25;
+    color: rgba(255,255,255,.85);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.vfm-cpop-title{
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,.8);
+    white-space: nowrap;
+}
+
+/* Правая часть popular/empty: like → count → arrow */
+.vfm-cpop-right{
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+.vfm-cpop-like{
+    background: transparent; border: none; padding: 0;
+    color: rgba(255,255,255,.85);
+    font-size: 11px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 3px;
+    cursor: pointer;
+}
+.vfm-cpop-like svg{
+    width: 16px; height: 16px;
+    transition: fill .18s, stroke .18s;
+}
+.vfm-cpop-like.liked svg{
+    fill: var(--red-pink);
+    stroke: var(--red-pink);
+}
+.vfm-cpop-like.liked{ color: var(--red-pink) }
+.vfm-cpop-total{
+    font-size: 11px; font-weight: 800; color: rgba(255,255,255,.75);
+}
+.vfm-cpop-arrow{
+    font-size: 20px; line-height: 1;
+    color: rgba(255,255,255,.7);
+    cursor: pointer; padding: 0 2px;
+    margin-left: 2px;
+}
+
+/* --- INPUT STATE --- */
+.vfm-cinput-icon{ width: 22px }
+#vfm-cinput-field{
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 13px;
+    outline: none;
+    padding: 4px 0;
+    font-family: inherit;
+}
+#vfm-cinput-field::placeholder{ color: rgba(255,255,255,.5) }
+
+/* Правая зона input: like → 3 авы → count → arrow */
+.vfm-cinput-right{
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.vfm-cinput-right.hidden{ display: none }
+.vfm-cinput-like{
+    background: transparent; border: none; padding: 0;
+    color: rgba(255,255,255,.85);
+    font-size: 11px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 3px;
+    cursor: pointer;
+}
+.vfm-cinput-like svg{ width: 16px; height: 16px; transition: fill .18s, stroke .18s }
+.vfm-cinput-like.liked svg{ fill: var(--red-pink); stroke: var(--red-pink) }
+.vfm-cinput-like.liked{ color: var(--red-pink) }
+.vfm-cinput-avas{
+    display: inline-flex; align-items: center;
+    flex-shrink: 0;
+}
+.vfm-cinput-avas:empty{ display: none }
+.vfm-cinput-ava{
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--yellow), var(--red-pink));
+    color: #fff; font-size: 9px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    border: 1.5px solid rgba(20,20,22,.8);
+    margin-left: -5px;
+}
+.vfm-cinput-ava:first-child{ margin-left: 0 }
+.vfm-cinput-ava img{ width: 100%; height: 100%; object-fit: cover }
+.vfm-cinput-count{ font-size: 11px; font-weight: 800; color: rgba(255,255,255,.75) }
+.vfm-cinput-arrow{
+    font-size: 20px; line-height: 1;
+    color: rgba(255,255,255,.7);
+    cursor: pointer; padding: 0 2px;
+}
+
+/* Кнопка отправить — слева от input (меняет правую зону) */
+.vfm-cinput-send,
+.vfm-cinput-check{
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: opacity .2s, transform .25s var(--spring);
+}
+.vfm-cinput-send{
+    background: var(--red-pink);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(255,55,95,.5);
+}
+.vfm-cinput-send.hidden{ display: none !important }
+.vfm-cinput-check{
+    background: var(--green);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(48,209,88,.5);
+    display: none;
+}
+.vfm-cinput-check.show{ display: inline-flex }
+.vfm-cinput-send.leaving{ opacity: 0; transform: scale(.6) }
+.vfm-cinput-check.entering{ animation: vfmCheckIn .35s var(--spring) both }
+@keyframes vfmCheckIn{
+    0%{ opacity: 0; transform: scale(.4) }
+    60%{ opacity: 1; transform: scale(1.15) }
+    100%{ opacity: 1; transform: scale(1) }
+}
+
+/* ----- ПРАВАЯ КОЛОНКА (порядок снизу вверх) ----- */
+.vfm-right{
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column-reverse;   /* рисуем снизу вверх */
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 4px;
+}
+
+/* Пластинка (самая нижняя) */
 .vfm-vinyl{
-    width: 56px; height: 56px; flex-shrink: 0;
+    width: 50px; height: 50px;
     border-radius: 50%;
     background: #111;
     display: flex; align-items: center; justify-content: center;
@@ -2008,10 +2263,10 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
     pointer-events: none;
 }
 .vfm-vinyl-cover{
-    width: 22px; height: 22px; border-radius: 50%;
+    width: 20px; height: 20px; border-radius: 50%;
     background: linear-gradient(135deg,#ffd60a,#ff375f);
     display: flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 800; color: #fff;
+    font-size: 9px; font-weight: 800; color: #fff;
     overflow: hidden;
     position: relative; z-index: 1;
     box-shadow: 0 0 0 2px #000;
@@ -2020,99 +2275,108 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 
 @keyframes vfmVinylSpin{ to{ transform: rotate(360deg) } }
 
-/* ===== ЯРУС 2: ЛАЙК / КОММЕНТ / РЕПОСТ / ШАРА ===== */
-.vfm-actions-row{
-    display: flex; align-items: center; gap: 22px;
-}
+/* Кнопки-иконки в правом столбике */
 .vfm-act{
-    display: inline-flex; align-items: center; gap: 6px;
-    background: transparent; border: none; color: #fff;
-    font-size: 13px; font-weight: 700; padding: 0;
-    cursor: pointer; text-shadow: 0 1px 5px rgba(0,0,0,.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0;
+    cursor: pointer;
     transition: color .18s, transform .18s;
 }
 .vfm-act svg{
-    width: 26px; height: 26px; stroke-width: 1.9;
-    filter: drop-shadow(0 1px 3px rgba(0,0,0,.6));
+    width: 30px;
+    height: 30px;
+    stroke-width: 1.9;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,.7));
     transition: fill .2s, stroke .2s;
 }
 .vfm-act.liked{ color: var(--red-pink) }
-.vfm-act.liked svg{
-    fill: var(--red-pink);
-    stroke: var(--red-pink);
-}
-.vfm-act.reposted{ color: var(--green) }
-.vfm-act.reposted svg{
-    fill: none;
-    stroke: var(--green);
-}
+.vfm-act.liked svg{ fill: var(--red-pink); stroke: var(--red-pink) }
+.vfm-act.reposted{ color: #ff8a00 }
+.vfm-act.reposted svg{ fill: none; stroke: #ff8a00 }
 .vfm-act:active{ transform: scale(.9) }
 .vfm-act .vfm-act-count{
-    font-weight: 800; font-variant-numeric: tabular-nums; color: currentColor;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
 }
-.vfm-author-name-row{
-    display: flex; align-items: center; gap: 10px;
-}
-.vfm-author-name{
-    font-size: 15px; font-weight: 700; color: #fff;
-    text-shadow: 0 1px 5px rgba(0,0,0,.6);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    flex: 1; min-width: 0;
-}
-/* ===== ЯРУС 3: АВТОР ===== */
-.vfm-author-row{
-    display: flex; align-items: center; gap: 10px;
-}
+
+/* Аватар + статус (обёртка с position:relative!) */
 .vfm-author-ava-wrap{
-    position: relative; flex-shrink: 0;
-    width: 36px; height: 36px;
-    margin-right: 4px;                /* чтобы не прилипала к лайку */
+    position: relative;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    margin-bottom: 2px;
 }
 .vfm-author-ava{
-    width: 36px; height: 36px; border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
     overflow: hidden;
-    background: transparent;
-    /* border убран */
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: 800; color: #fff;
+    background: linear-gradient(135deg, var(--yellow), var(--red-pink));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 15px;
+    color: #fff;
     cursor: pointer;
     box-shadow: 0 2px 10px rgba(0,0,0,.55);
 }
-.vfm-author-ava img{ width: 100%; height: 100%; object-fit: cover; border-radius: 50% }
+.vfm-author-ava img{ width: 100%; height: 100%; object-fit: cover }
+/* Статус — уголок аватарки */
 .vfm-author-status{
-    position: absolute; right: -4px; bottom: -4px;
-    font-size: 14px; line-height: 1;
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    font-size: 14px;
+    line-height: 1;
     filter: drop-shadow(0 1px 3px rgba(0,0,0,.65));
-    animation: statusBob 2.6s ease-in-out infinite;
     pointer-events: none;
     z-index: 2;
+    background: rgba(0,0,0,.4);
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
 }
-.vfm-author-sub{
-    padding: 4px 12px;
-    height: 28px;
-    border-radius: 8px;                 /* прямоугольная */
-    background: transparent;            /* без фона */
+.vfm-author-status:empty{ display: none }
+
+/* Кнопка подписки (человек с плюсом) */
+.vfm-follow-btn{
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--red-pink);
     color: #fff;
-    border: 1.5px solid #fff;           /* белая обводка */
-    font-size: 12px; font-weight: 700;
-    display: inline-flex; align-items: center; justify-content: center;
-    cursor: pointer; flex-shrink: 0;
-    transition: opacity .2s, background-color .2s;
-    white-space: nowrap;
-    text-shadow: 0 1px 4px rgba(0,0,0,.55);
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(255,55,95,.55), inset 0 1px 0 rgba(255,255,255,.35);
+    transition: background-color .2s, scale .2s var(--spring);
 }
-.vfm-author-sub.hidden{ display: none }
-.vfm-author-sub:active{ scale: .94 }
-.vfm-author-sub.subscribed{
-    opacity: .75;                       /* «Вы подписаны» — приглушённая */
-    border-color: rgba(255,255,255,.6);
+.vfm-follow-btn.hidden{ display: none }
+.vfm-follow-btn:active{ scale: .88 }
+.vfm-follow-btn svg{
+    width: 16px; height: 16px; display: block;
+    stroke: currentColor;
 }
-.vfm-author-name{
-    font-size: 14px; font-weight: 600;              /* было 700 */
-    color: #fff;
-    text-shadow: 0 1px 5px rgba(0,0,0,.6);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    flex: 1; min-width: 0;
+.vfm-follow-btn.following{
+    background: rgba(48,209,88,.92);
+    box-shadow: 0 2px 10px rgba(48,209,88,.55), inset 0 1px 0 rgba(255,255,255,.35);
 }
 
 /* ---------- ПРОГРЕСС ---------- */
@@ -2156,13 +2420,9 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 }
 
 @media (max-width: 480px){
-
-
-    .vfm-actions-row{
-        display: flex; align-items: center; gap: 12px;
-    }
-    .vfm-vinyl{ width: 48px; height: 48px; }
-    .vfm-vinyl-cover{ width: 18px; height: 18px; font-size: 9px; }
+    .vfm-right .vfm-vinyl{ width: 44px; height: 44px }
+    .vfm-vinyl-cover{ width: 16px; height: 16px; font-size: 8px }
+    .vfm-right{ gap: 12px }
 }
 /* ===== DIRECT: pull-to-reply ===== */
 .dr-row{position:relative;touch-action:pan-y}
@@ -3904,12 +4164,7 @@ html[data-theme="light"] #home-new-thread svg{
 }
 
 /* --- VFM: видеоплеер как TikTok — заполняет экран от верха до прогресса --- */
-.vfm-video{
-    object-fit: cover !important;
-    object-position: center center !important;
-    width: 100% !important;
-    height: 100% !important;
-}
+
 /* оставляем прогресс-бар поверх, но видео не выходит за него */
 .vfm-progress{
     bottom: calc(var(--nav-height) + var(--safe-bottom)) !important;
@@ -4213,65 +4468,7 @@ html[data-theme="light"] #home-new-thread svg{
 .nav-btn.nav-btn-new::after{
     background: #ff8a00;
 }
-/* ============================================================
-   iOS PWA / FULLSCREEN FIX
-   Убирает пустоту под bottom-nav при первом рендере в PWA
-============================================================ */
 
-/* 1. Стабилизируем высоту html — добавляем -webkit-fill-available для iOS */
-html {
-    min-height: 100vh;
-    min-height: 100dvh;
-    min-height: -webkit-fill-available;
-    background-color: var(--bg);
-}
-
-/* 2. Body гарантированно заполняет viewport */
-body {
-    min-height: 100vh;
-    min-height: 100dvh;
-    min-height: -webkit-fill-available;
-    background-color: var(--bg);
-    overscroll-behavior-y: none;
-}
-
-/* 3. Контейнер приложения */
-.app {
-    min-height: 100vh;
-    min-height: 100dvh;
-    min-height: -webkit-fill-available;
-    background-color: var(--bg);
-}
-
-/* 4. Главный экран */
-.main-app {
-    min-height: 100vh;
-    min-height: 100dvh;
-    min-height: -webkit-fill-available;
-}
-
-/* 5. Подстраховка: сплошная подложка в самом низу экрана —
-   если даже при первом рендере dvh посчитается неверно,
-   пользователь не увидит белую/пустую полосу,
-   т.к. фон под bottom-nav будет правильного цвета */
-body::after {
-    content: '';
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: calc(var(--nav-height) + var(--safe-bottom) + 120px);
-    background: var(--bg);
-    z-index: -1;
-    pointer-events: none;
-}
-
-/* 6. Fallback для старых браузеров без dvh */
-@supports not (min-height: 100dvh) {
-    html, body, .app, .main-app {
-        min-height: 100vh;
-    }
-}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
