@@ -854,11 +854,21 @@ function switchScreen(name){
 document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
     const s = b.dataset.screen
     if(s === 'direct'){
-        // подсветить вкладку direct и показать палочку сверху
-        document.querySelectorAll('.nav-btn').forEach(x =>
-            x.classList.toggle('active', x.dataset.screen === 'direct')
-        )
-        openDirectTab()
+        // Вызываем openDirectTab первым, чтобы его внутренние манипуляции
+        // с DOM не затирали нашу подсветку
+        try { openDirectTab() } catch(e){ console.warn('[direct]', e) }
+
+        // Форсим .active на кнопке direct — несколько раз,
+        // потому что openDirectTab может быть async
+        const forceDirectActive = () => {
+            document.querySelectorAll('.nav-btn').forEach(x => {
+                x.classList.toggle('active', x.dataset.screen === 'direct')
+            })
+        }
+        forceDirectActive()
+        requestAnimationFrame(forceDirectActive)
+        setTimeout(forceDirectActive, 60)
+        setTimeout(forceDirectActive, 250)
         return
     }
     if(s === 'profile'){ state.currentProfileViewId = null; state.viewingOwnProfile = true }
@@ -1691,6 +1701,8 @@ function attachHandlersToCard(card, userId){
         e.stopPropagation(); e.preventDefault()
         followAuthor(btn.dataset.plusUid)
     }))
+    card.querySelectorAll('.feed-footer-avatar[data-uid]').forEach(a =>
+        a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
     card.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
     card.querySelectorAll('.feed-post-image').forEach(img => {
         img.style.cursor = 'zoom-in'
@@ -1991,7 +2003,11 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const followBtn = (myId && !isMine)
         ? `<button class="feed-follow-text ${following ? 'subscribed' : ''}" data-plus-uid="${post.author_id}">${following ? 'Вы подписаны' : 'Подписаться'}</button>`
         : ''
+    const footerAvatar = (myId && !isMine)
+        ? `<div class="feed-footer-avatar" data-uid="${post.author_id}" title="${escapeHtml(name)}">${av}</div>`
+        : ''
     const footer = `<div class="feed-post-footer">
+      ${footerAvatar}
       ${followBtn}
       <button class="feed-action ${isLiked ? 'liked' : ''}" data-like="${post.id}">${isLiked ? ICONS.heartFill : ICONS.heart}<span class="feed-count" data-like-count="${post.id}">${lc}</span></button>
       <button class="feed-action ${isReposted ? 'reposted' : ''}" data-repost="${post.id}" ${isReposted ? 'style="color:#ff8a00"' : ''}>${ICONS.repost}<span class="feed-count" data-repost-count="${post.id}">${rc}</span></button>
@@ -2285,7 +2301,10 @@ async function openCommentsSheet(postId){
       <button class="ch-comment-send" id="comment-sheet-send">${ICONS.send}</button>
     </div>
   `
-    actionsheet.classList.add('open'); actionsheetBackdrop.classList.remove('hidden')
+    actionsheet.classList.remove('hidden')
+    actionsheetBackdrop.classList.remove('hidden')
+    void actionsheet.offsetHeight
+    requestAnimationFrame(() => actionsheet.classList.add('open'))
     $('comment-sheet-send')?.addEventListener('click', async () => {
         const inp = $('comment-sheet-input')
         const text = inp.value.trim(); if(!text) return
@@ -5670,14 +5689,64 @@ function vfmBuildOverlay(){
   </div>
 
     <!-- ============ НИЖНИЙ БЛОК ============ -->
-  <div class="vfm-bottom">
+  <!-- ============ НИЖНИЙ БЛОК ============ -->
+<div class="vfm-bottom">
 
-        <!-- ЯРУС 1: АВАТАР + ПОДПИСАТЬСЯ + ЛАЙК / КОММЕНТ / РЕПОСТ / ПОДАРОК / ШАРА -->
-    <div class="vfm-actions-row" id="vfm-actions">
-      <div class="vfm-author-ava-wrap">
-        <div class="vfm-author-ava" id="vfm-author-ava">A</div>
-        <span class="vfm-author-status" id="vfm-author-status"></span>
+  <div class="vfm-content-area">
+    <!-- Левая колонка: автор → описание → панель обсуждения -->
+    <div class="vfm-left">
+      <div class="vfm-desc-row">
+        <span class="vfm-desc-author" id="vfm-desc-author"></span>
+        <span class="vfm-desc-text" id="vfm-desc"></span>
+        <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
       </div>
+
+      <div class="vfm-comment-bar" id="vfm-comment-bar">
+        <!-- популярный комментарий (по умолчанию) -->
+        <div class="vfm-comment-state vfm-comment-popular" id="vfm-cpop">
+          <div class="vfm-cpop-head">
+            <span class="vfm-cpop-ava" id="vfm-cpop-ava">?</span>
+            <span class="vfm-cpop-name" id="vfm-cpop-name">@user</span>
+          </div>
+          <div class="vfm-cpop-body" id="vfm-cpop-body">Пока нет комментариев — напишите первым</div>
+          <div class="vfm-cpop-actions">
+            <button class="vfm-cpop-like" id="vfm-cpop-like" aria-label="Нравится">❤ <span id="vfm-cpop-likes">0</span></button>
+            <span class="vfm-cpop-total" id="vfm-cpop-total">0</span>
+            <span class="vfm-cpop-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- поле ввода (появляется после середины видео) -->
+        <div class="vfm-comment-state vfm-comment-input hidden" id="vfm-cinput">
+          <span class="vfm-cinput-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <input type="text" id="vfm-cinput-field" placeholder="что думаете?" maxlength="300" autocomplete="off">
+          <button class="vfm-cinput-send hidden" id="vfm-cinput-send" aria-label="Отправить">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Правая колонка: пластинка → share → repost → like → автор -->
+    <div class="vfm-right">
+      <div class="vfm-vinyl" id="vfm-vinyl">
+        <div class="vfm-vinyl-disc">
+          <div class="vfm-vinyl-cover" id="vfm-vinyl-cover">K</div>
+        </div>
+      </div>
+      <button class="vfm-act" data-vfm="share" aria-label="Поделиться">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+      </button>
+      <button class="vfm-act" data-vfm="repost" aria-label="Репост">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span class="vfm-act-count" data-vfm-count="repost">0</span>
+      </button>
+      <button class="vfm-act" data-vfm="like" aria-label="Нравится">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <span class="vfm-act-count" data-vfm-count="like">0</span>
+      </button>
       <button class="vfm-follow-btn hidden" id="vfm-follow-btn" aria-label="Подписаться">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="9" cy="7" r="4"/>
@@ -5685,42 +5754,12 @@ function vfmBuildOverlay(){
           <path d="M17 11h6M20 8v6"/>
         </svg>
       </button>
-      <button class="vfm-act" data-vfm="like" aria-label="Нравится">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        <span class="vfm-act-count" data-vfm-count="like">0</span>
-      </button>
-      <button class="vfm-act" data-vfm="comment" aria-label="Комментарии">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <span class="vfm-act-count" data-vfm-count="comment">0</span>
-      </button>
-      <button class="vfm-act" data-vfm="repost" aria-label="Репост">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-        <span class="vfm-act-count" data-vfm-count="repost">0</span>
-      </button>
-      
-      <button class="vfm-act" data-vfm="share" aria-label="Поделиться">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-      </button>
+      <div class="vfm-author-ava" id="vfm-author-ava">A</div>
+      <span class="vfm-author-status" id="vfm-author-status"></span>
     </div>
-
-    <!-- ЯРУС 2: ОПИСАНИЕ (с именем автора) + БЕГУЩАЯ СТРОКА + ПЛАСТИНКА -->
-    <div class="vfm-tier1">
-      <div class="vfm-desc-col">
-        <div class="vfm-desc-line">
-          <span class="vfm-desc-author" id="vfm-desc-author"></span>
-          <span class="vfm-desc-text" id="vfm-desc"></span>
-          <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
-        </div>
-        <div class="vfm-marquee" id="vfm-marquee"></div>
-      </div>
-      <div class="vfm-vinyl" id="vfm-vinyl">
-        <div class="vfm-vinyl-disc">
-          <div class="vfm-vinyl-cover" id="vfm-vinyl-cover">K</div>
-        </div>
-      </div>
-    </div>
-
   </div>
+
+</div>
 
   <div class="vfm-progress" id="vfm-progress"><div class="vfm-progress-fill" id="vfm-progress-fill"></div></div>
 
@@ -5863,6 +5902,107 @@ function vfmBuildOverlay(){
     })
 
     initVfmSwipe(el)
+
+    /* ============ ПАНЕЛЬ ОБСУЖДЕНИЯ ПОД ВИДЕО ============ */
+    const cpop        = el.querySelector('#vfm-cpop')
+    const cinput      = el.querySelector('#vfm-cinput')
+    const cinputField = el.querySelector('#vfm-cinput-field')
+    const cinputSend  = el.querySelector('#vfm-cinput-send')
+    let __commentState = 'popular'
+
+    async function loadTopComment(){
+        const item = VFM.list[VFM.index]; if(!item) return
+        const { data } = await supabase.from('comments')
+            .select('id, text, profiles:user_id ( id, username, full_name, avatar_url )')
+            .eq('post_id', item.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+        const c = data?.[0]
+        const avaEl  = el.querySelector('#vfm-cpop-ava')
+        const nameEl = el.querySelector('#vfm-cpop-name')
+        const bodyEl = el.querySelector('#vfm-cpop-body')
+        const likesEl = el.querySelector('#vfm-cpop-likes')
+        if(!c){
+            avaEl.textContent = '?'
+            nameEl.textContent = '@никто'
+            bodyEl.textContent = 'Пока нет комментариев — напишите первым'
+            likesEl.textContent = '0'
+            return
+        }
+        const p = c.profiles || {}
+        const nm = p.full_name || p.username || 'user'
+        if(p.avatar_url) avaEl.innerHTML = `<img src="${p.avatar_url}" alt="">`
+        else avaEl.textContent = nm.charAt(0).toUpperCase()
+        nameEl.textContent = '@' + (p.username || 'user')
+        bodyEl.textContent = c.text || ''
+        likesEl.textContent = '0'
+    }
+
+    function setCommentState(state){
+        if(__commentState === state) return
+        __commentState = state
+        if(state === 'input'){
+            cpop.classList.add('flying-up')
+            setTimeout(() => {
+                cpop.classList.add('hidden')
+                cpop.classList.remove('flying-up')
+                cinput.classList.remove('hidden')
+                cinput.classList.add('sliding-in')
+                cinputField.focus({ preventScroll: true })
+                setTimeout(() => cinput.classList.remove('sliding-in'), 400)
+            }, 260)
+        } else {
+            cinput.classList.add('hidden')
+            cpop.classList.remove('hidden')
+            cpop.classList.remove('flying-up')
+            cpop.classList.add('sliding-in')
+            setTimeout(() => cpop.classList.remove('sliding-in'), 400)
+            loadTopComment()
+        }
+    }
+
+    cpop.querySelector('#vfm-cpop-like').addEventListener('click', e => {
+        e.stopPropagation()
+        const n = el.querySelector('#vfm-cpop-likes')
+        n.textContent = String((parseInt(n.textContent) || 0) + 1)
+    })
+
+    cpop.querySelector('.vfm-cpop-arrow').addEventListener('click', e => {
+        e.stopPropagation()
+        const item = VFM.list[VFM.index]; if(!item) return
+        openCommentsSheet(item.id)
+    })
+
+    cinputField.addEventListener('input', () => {
+        cinputSend.classList.toggle('hidden', !cinputField.value.trim())
+    })
+    cinputSend.addEventListener('click', async () => {
+        const text = cinputField.value.trim(); if(!text) return
+        const item = VFM.list[VFM.index]; if(!item) return
+        const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+        cinputField.value = ''; cinputSend.classList.add('hidden')
+        try {
+            await supabase.from('comments').insert({ user_id: user.id, post_id: item.id, text })
+            showToast('success', 'Комментарий добавлен', { icon: '✓' })
+            loadTopComment()
+        } catch(err){ showToast('error', 'Не удалось: ' + err.message) }
+    })
+
+    // popular → input при переходе через середину видео
+    VFM.video.addEventListener('timeupdate', () => {
+        if(!VFM.video.duration) return
+        const mid = VFM.video.duration / 2
+        if(VFM.video.currentTime < mid) setCommentState('popular')
+        else                            setCommentState('input')
+    })
+    VFM.video.addEventListener('seeking', () => {
+        if(!VFM.video.duration) return
+        setCommentState(VFM.video.currentTime < VFM.video.duration / 2 ? 'popular' : 'input')
+    })
+    VFM.video.addEventListener('ended', () => setCommentState('popular'))
+
+    setTimeout(loadTopComment, 400)
+
     return el
 }
 
@@ -6075,6 +6215,31 @@ function renderVfmSlide(){
     el.querySelector('#vfm-progress-fill').style.width = '0%'
 
     syncVfmMeta()
+    // перезагрузить популярный комментарий под новый пост
+    setTimeout(() => {
+        if(!VFM.el || !VFM.list[VFM.index]) return
+        const itemId = VFM.list[VFM.index].id
+        supabase.from('comments')
+            .select('id, text, profiles:user_id ( id, username, full_name, avatar_url )')
+            .eq('post_id', itemId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .then(({ data }) => {
+                const c = data?.[0]
+                const el2 = VFM.el
+                const avaEl  = el2.querySelector('#vfm-cpop-ava')
+                const nameEl = el2.querySelector('#vfm-cpop-name')
+                const bodyEl = el2.querySelector('#vfm-cpop-body')
+                if(!c){ avaEl.textContent='?'; nameEl.textContent='@никто'; bodyEl.textContent='Пока нет комментариев'; return }
+                const p = c.profiles || {}
+                const nm = p.full_name || p.username || 'user'
+                if(p.avatar_url) avaEl.innerHTML = `<img src="${p.avatar_url}" alt="">`
+                else avaEl.textContent = nm.charAt(0).toUpperCase()
+                nameEl.textContent = '@' + (p.username || 'user')
+                bodyEl.textContent = c.text || ''
+            })
+    }, 200)
+    // убрать «конец ленты»
 
     // убрать «конец ленты»
     el.querySelector('.vfm-end')?.remove()
@@ -8890,4 +9055,42 @@ window.__ltOpenRegisterLanding = function(){
     }
     reset();
     setTimeout(reset, 300);
+})();
+/* ============================================================
+   iOS PWA VIEWPORT FIX
+   Принудительно пересчитывает viewport после первой загрузки,
+   чтобы убрать пустое место под bottom-nav в PWA/fullscreen
+============================================================ */
+;(function pwaViewportFix(){
+    function recalc(){
+        // Чтение innerHeight принудительно запускает
+        // пересчёт viewport-единиц (dvh/vh) в браузере
+        void window.innerHeight;
+        void window.innerWidth;
+
+        // Принудительный reflow — заставляет браузер
+        // пересчитать layout всех элементов
+        void document.documentElement.offsetHeight;
+        void document.body.offsetHeight;
+
+        // Если по какой-то причине страница «съехала» вниз — вернуть наверх
+        if(window.scrollY !== 0) window.scrollTo(0, 0);
+    }
+
+    if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', recalc);
+    } else {
+        recalc();
+    }
+
+    // Основные события, когда браузер может неправильно посчитать viewport
+    window.addEventListener('load', recalc);
+    window.addEventListener('pageshow', recalc);
+    window.addEventListener('orientationchange', recalc);
+
+    // iOS PWA — viewport «догоняет» с задержкой. Несколько повторов:
+    setTimeout(recalc, 100);
+    setTimeout(recalc, 500);
+    setTimeout(recalc, 1500);
+    setTimeout(recalc, 3000);
 })();
