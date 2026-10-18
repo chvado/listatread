@@ -1470,29 +1470,171 @@ async function renderLiveNow(){
     row.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser()
-        const { data:mySubs } = await supabase.from('subscriptions').select('channel_id').eq('follower_id', user.id)
-        const subIds = (mySubs || []).map(s => s.channel_id)
-        const { data:myChannels } = await supabase.from('channels').select('id').eq('owner_id', user.id)
-        const myIds = (myChannels || []).map(c => c.id)
-        const allIds = [...new Set([...subIds, ...myIds])]
-        let query = supabase.from('lives').select('id, title, type, channels:channel_id ( id, name, avatar_url )').eq('is_active', true).order('created_at', { ascending:false }).limit(10)
-        if(allIds.length) query = query.in('channel_id', allIds)
-        const { data:lives } = await query
-        if(lives && lives.length){
-            row.innerHTML = lives.map(l => {
-                const ch = l.channels || {}
-                const name = ch.name || 'Канал'
-                const av = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
-                return `<div class="live-avatar-wrap" data-live="${l.id}"><div class="live-avatar"><div class="live-avatar-top">LIVE</div><div class="live-avatar-inner">${av}<div class="live-bars"><span></span><span></span><span></span></div></div></div><div class="live-avatar-name">${escapeHtml(name)}</div></div>`
-            }).join('')
-            row.querySelectorAll('.live-avatar-wrap[data-live]').forEach(el => el.addEventListener('click', () => openLiveRoom(el.dataset.live)))
-        } else {
-            const regionObj = COUNTRIES.find(c => c.code === state.data.region)
-            const regionLabel = regionObj ? regionObj.name : 'ваш регион'
-            row.innerHTML = `<button class="live-now-card empty" id="live-now-empty"><div class="live-now-card-bars"><span></span><span></span><span></span></div><span class="live-now-pill">LIVE</span><div><div class="live-now-title">Пока нет live</div><div class="live-now-sub">Присоединитесь к лайв чату · ${escapeHtml(regionLabel)}</div></div></button>`
-            $('live-now-empty')?.addEventListener('click', () => openLiveChat('region', regionObj ? `${regionObj.flag} ${regionObj.name}` : 'Регион'))
+        if(!user){ row.innerHTML = ''; return }
+
+        // Подписки + свои каналы
+        const [{ data: subs }, { data: owned }] = await Promise.all([
+            supabase.from('subscriptions')
+                .select('channel_id, channels:channel_id ( id, name, avatar_url )')
+                .eq('follower_id', user.id),
+            supabase.from('channels').select('id, name, avatar_url').eq('owner_id', user.id)
+        ])
+
+        const channelMap = new Map()
+        ;(subs  || []).forEach(s => { if(s.channels) channelMap.set(s.channels.id, s.channels) })
+        ;(owned || []).forEach(c => { if(c) channelMap.set(c.id, c) })
+        const channels = [...channelMap.values()]
+
+        if(!channels.length){
+            row.innerHTML = `<p class="empty small" style="padding:20px 4px;font-size:12px;white-space:nowrap;color:var(--text-tertiary)">Подпишитесь на каналы</p>`
+            return
         }
-    } catch { row.innerHTML = '<p class="empty small">Ошибка</p>' }
+
+        const channelIds = channels.map(c => c.id)
+
+        // Последние посты + активные live + количество подписчиков
+        const [{ data: recentPosts }, { data: activeLives }, { data: allSubs }] = await Promise.all([
+            supabase.from('posts')
+                .select('id, channel_id, media_url, poll, created_at')
+                .in('channel_id', channelIds)
+                .order('created_at', { ascending:false })
+                .limit(200),
+            supabase.from('lives')
+                .select('id, channel_id, created_at')
+                .in('channel_id', channelIds)
+                .eq('is_active', true)
+                .order('created_at', { ascending:false }),
+            supabase.from('subscriptions')
+                .select('channel_id')
+                .in('channel_id', channelIds)
+        ])
+
+        const subCounts = {}
+        ;(allSubs || []).forEach(s => {
+            subCounts[s.channel_id] = (subCounts[s.channel_id] || 0) + 1
+        })
+
+        // Собираем последнюю активность по каждому каналу
+        const latestByChannel = {}
+        ;(recentPosts || []).forEach(p => {
+            const cur = latestByChannel[p.channel_id]
+            if(!cur || new Date(p.created_at) > new Date(cur.created_at)){
+                latestByChannel[p.channel_id] = { type:'post', post:p, created_at:p.created_at }
+            }
+        })
+        ;(activeLives || []).forEach(l => {
+            const cur = latestByChannel[l.channel_id]
+            if(!cur || new Date(l.created_at) > new Date(cur.created_at)){
+                latestByChannel[l.channel_id] = { type:'live', live:l, created_at:l.created_at }
+            }
+        })
+
+        const seenKey = id => `lt_channel_seen_${id}`
+        const isNew = (channelId, at) => {
+            try {
+                const seen = localStorage.getItem(seenKey(channelId))
+                if(!seen) return true
+                return new Date(at) > new Date(seen)
+            } catch { return true }
+        }
+
+        const getInfo = (channelId, act) => {
+            if(!act) return { label:null, isNew:false, type:'none' }
+            if(act.type === 'live'){
+                return { label:'Новый live >', isNew:isNew(channelId, act.created_at), type:'live' }
+            }
+            const p = act.post
+            const isNewFlag = isNew(channelId, act.created_at)
+            if(isVideoUrl(p.media_url))  return { label:'Новое видео >', isNew:isNewFlag, type:'video' }
+            if(p.poll)                    return { label:'Новый опрос >', isNew:isNewFlag, type:'poll' }
+            if(p.media_url && isImageUrl(p.media_url))
+                return { label:'Новое фото >', isNew:isNewFlag, type:'photo' }
+            return { label:'Новый тред >', isNew:isNewFlag, type:'text' }
+        }
+
+        const items = channels.map(c => {
+            const act = latestByChannel[c.id] || null
+            return {
+                channel: c,
+                act,
+                info: getInfo(c.id, act),
+                sortTime: act ? new Date(act.created_at).getTime() : 0,
+                subs: subCounts[c.id] || 0
+            }
+        }).sort((a, b) => b.sortTime - a.sortTime)
+
+        row.innerHTML = items.map(it => {
+            const c = it.channel
+            const name = c.name || 'Канал'
+            const av = c.avatar_url
+                ? `<img src="${c.avatar_url}" alt="">`
+                : escapeHtml(name.charAt(0).toUpperCase())
+            const statusText = it.info.isNew && it.info.label
+                ? it.info.label
+                : `${it.subs} подписчиков`
+            const avaClass  = it.info.isNew ? 'has-new' : ''
+            const statClass = it.info.isNew ? 'has-new' : ''
+            return `<button class="channel-live-chip"
+                    data-ch="${c.id}"
+                    data-activity-type="${it.info.type}"
+                    data-post-id="${it.act?.post?.id || ''}"
+                    data-live-id="${it.act?.live?.id || ''}">
+                <div class="channel-live-ava ${avaClass}">${av}</div>
+                <div class="channel-live-name">${escapeHtml(name)}</div>
+                <div class="channel-live-status ${statClass}">${escapeHtml(statusText)}</div>
+            </button>`
+        }).join('')
+
+        row.querySelectorAll('.channel-live-chip').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const chId = btn.dataset.ch
+                const type = btn.dataset.activityType
+                const postId = btn.dataset.postId
+                const liveId = btn.dataset.liveId
+
+                try { localStorage.setItem(seenKey(chId), new Date().toISOString()) } catch {}
+
+                if(type === 'live' && liveId){
+                    openLiveRoom(liveId)
+                    return
+                }
+                await openChannel(chId)
+
+                if(type === 'video' && postId){
+                    // ждём появления карточки в канале
+                    const card = await new Promise(resolve => {
+                        const start = Date.now()
+                        const tick = () => {
+                            const el = document.querySelector(`#ch-posts-list .feed-post[data-pid="${postId}"]`)
+                            if(el) return resolve(el)
+                            if(Date.now() - start > 3000) return resolve(null)
+                            setTimeout(tick, 120)
+                        }
+                        tick()
+                    })
+                    if(card && card.classList.contains('feed-post-video')){
+                        openVideoFeed(card, 'channel')
+                        return
+                    }
+                }
+
+                if(postId){
+                    setTimeout(() => {
+                        const card = document.querySelector(`#ch-posts-list .feed-post[data-pid="${postId}"]`)
+                        if(!card) return
+                        card.scrollIntoView({ behavior:'smooth', block:'center' })
+                        const prev = card.style.boxShadow
+                        card.style.transition = 'box-shadow .4s'
+                        card.style.boxShadow = '0 0 0 3px var(--blue), 0 8px 32px rgba(10,132,255,.35)'
+                        setTimeout(() => { card.style.boxShadow = prev }, 2200)
+                    }, 700)
+                }
+            })
+        })
+    } catch(e){
+        console.warn('[live-now]', e.message)
+        row.innerHTML = ''
+    }
 }
 
 /* ============================================================
@@ -5844,9 +5986,14 @@ function vfmBuildOverlay(){
     VFM.video.addEventListener('timeupdate', () => {
         if(!VFM.video.duration) return
         fill.style.width = (VFM.video.currentTime / VFM.video.duration * 100) + '%'
-        // Переключение popular ↔ input по 50%
         const half = VFM.video.duration / 2
-        const target = VFM.video.currentTime < half ? 'popular' : 'input'
+        const hasComments = vfmCurrentPostComments.total > 0 && !!vfmCurrentPostComments.popular
+        let target
+        if(VFM.video.currentTime < half){
+            target = hasComments ? 'popular' : 'empty'   // ← если нет комментов → «Обсуждение»
+        } else {
+            target = 'input'                              // ← если ≥50% → «что думаете?»
+        }
         if(vfmCommentState !== target) setVfmCommentState(target)
     })
 

@@ -4501,6 +4501,136 @@ html[data-theme="light"] #home-new-thread svg{
     margin-bottom: 12px;
 }
 /* ============================================================
+   FIX v5 — VFM, статусы, live-now чипы, direct
+============================================================ */
+
+/* 1. VFM: убираем ДВОЙНОЙ отступ (bottom + padding-bottom) → контент прижат к низу */
+.vfm-bottom{
+    position: absolute !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: calc(var(--nav-height) + var(--safe-bottom) + 10px) !important;
+    background: transparent !important;
+    transform: none !important;
+    height: auto !important;
+    padding: 0 16px !important;
+    gap: 0 !important;
+    justify-content: flex-end !important;
+    max-height: none !important;
+}
+
+/* 2. Статус автора в VFM: БЕЗ фона, живая анимация */
+.vfm-author-status{
+    position: absolute !important;
+    right: -4px !important;
+    bottom: -4px !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    pointer-events: none;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent !important;
+    border-radius: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,.75));
+    animation: vfmStatusPulse 2.2s ease-in-out infinite !important;
+    will-change: scale, rotate;
+}
+.vfm-right .vfm-author-status{
+    right: 0 !important;
+    bottom: 0 !important;
+    translate: 30% 20% !important;
+    transform: none !important;
+}
+@keyframes vfmStatusPulse{
+    0%, 100% { scale: 1;   rotate: 0deg; }
+    25%      { scale: 1.2; rotate: -8deg; }
+    75%      { scale: 1.2; rotate: 8deg; }
+}
+
+/* 3. Discussion input: убираем лайк, число лайков и стрелку */
+#vfm-cinput .vfm-cinput-like,
+#vfm-cinput .vfm-cinput-count,
+#vfm-cinput .vfm-cinput-arrow{
+    display: none !important;
+}
+
+/* 4. Direct: кнопка «Новый чат» больше не прячется за шапкой на телефоне */
+#screen-direct .new-chat-btn{
+    margin-top: calc(100px + var(--safe-top)) !important;
+}
+#screen-direct #direct-body .new-chat-btn{
+    margin-top: 16px !important;
+}
+
+/* 5. Баннеры каналов в Live Now */
+.channel-live-chip{
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    width: 82px;
+    padding: 10px 6px 8px;
+    background: rgba(0,0,0,.82);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.12);
+    cursor: pointer;
+    font-family: inherit;
+    transition: scale .18s var(--ease-out), background-color .2s;
+}
+html[data-theme="dark"] .channel-live-chip{
+    background: var(--glass);
+}
+.channel-live-chip:active{ scale: .96 }
+
+.channel-live-ava{
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--yellow), var(--red-pink));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 800; color: #fff;
+    overflow: hidden; flex-shrink: 0;
+    border: 2px solid rgba(128,128,128,.35);
+    transition: border-color .25s, box-shadow .25s;
+}
+.channel-live-ava.has-new{
+    border-color: #ff6b35;
+    animation: channelNewGlow 1.8s ease-in-out infinite;
+}
+@keyframes channelNewGlow{
+    0%, 100% { box-shadow: 0 0 0 2px rgba(255,107,53,.25); }
+    50%      { box-shadow: 0 0 0 4px rgba(255,107,53,.45); }
+}
+.channel-live-ava img{
+    width: 100%; height: 100%; object-fit: cover; border-radius: 10px;
+}
+.channel-live-name{
+    font-size: 11px; font-weight: 700; color: #fff;
+    max-width: 100%; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; line-height: 1.15;
+}
+.channel-live-status{
+    font-size: 9.5px; font-weight: 600;
+    color: rgba(255,255,255,.65);
+    max-width: 100%; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; line-height: 1.15;
+}
+.channel-live-status.has-new{
+    color: #ff8a5b; font-weight: 700;
+}
+html[data-theme="dark"] .channel-live-name{ color: var(--text); }
+html[data-theme="dark"] .channel-live-status{ color: var(--text-secondary); }
+html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
+/* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
 @media (max-width:767px){
