@@ -68,7 +68,7 @@
     --safe-top:env(safe-area-inset-top,0px);
     --safe-bottom:env(safe-area-inset-bottom,0px);
     --nav-height:68px;
-    --mini-player-offset:-8px;
+    --mini-player-offset:8px;
     color-scheme:light;
 }
 html[data-theme="dark"]{
@@ -1838,11 +1838,15 @@ body.vfm-active .mini-player{ opacity: 0; pointer-events: none }
 /* ============ VFM STACK — TikTok swipe ============ */
 .vfm-stack{
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--nav-height) + var(--safe-bottom));
     will-change: transform;
     z-index: 0;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+    overflow: hidden;
 }
 
 .vfm-video{
@@ -4786,6 +4790,16 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
 .channel-live-status.has-new{
     color: #ff6b35 !important;
     font-weight: 600;
+}
+/* === FIX: кнопка «Новый чат» в директе ниже фиксированной шапки === */
+#screen-direct .new-chat-btn,
+#screen-direct #direct-body .new-chat-btn{
+    margin-top: calc(110px + var(--safe-top, 0px)) !important;
+    position: relative;
+    z-index: 10;
+}
+#screen-direct #direct-body{
+    padding-top: calc(28px + var(--safe-top, 0px)) !important;
 }
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION

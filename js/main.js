@@ -5892,16 +5892,21 @@ function vfmBuildOverlay(){
     VFM.videoNext = el.querySelector('#vfm-video-next')
     VFM.stack     = el.querySelector('#vfm-stack')
 
-    VFM.video.addEventListener('loadedmetadata', () => {
-        const v = VFM.video;
+    const applyVideoFit = (v) => {
         const vw = v.videoWidth, vh = v.videoHeight;
         if(!vw || !vh) return;
-        const elW = v.clientWidth  || window.innerWidth;
-        const elH = v.clientHeight || window.innerHeight;
-        const videoAspect = vw / vh;
-        const fillRatio = (elW / videoAspect) / elH;
-        v.style.objectPosition = (fillRatio >= 0.6) ? 'center top' : 'center center';
-    });
+        if (vh > vw) {
+            // Портретное (длинное по Y) — заполняет область до прогресс-бара
+            v.style.objectFit = 'cover';
+            v.style.objectPosition = 'center center';
+        } else {
+            // Горизонтальное / квадратное — по центру, без растягивания
+            v.style.objectFit = 'contain';
+            v.style.objectPosition = 'center center';
+        }
+    };
+    VFM.video.addEventListener('loadedmetadata', () => applyVideoFit(VFM.video));
+    VFM.videoNext.addEventListener('loadedmetadata', () => applyVideoFit(VFM.videoNext));
 
     /* ---- Связываем все обработчики ---- */
     el.querySelector('#vfm-back').addEventListener('click', () => closeVideoFeed())
@@ -6350,7 +6355,7 @@ function initVfmSwipe(el){
     let startTime = 0
     let lastY = 0, lastTime = 0, velocity = 0
 
-    const H = () => window.innerHeight
+    const H = () => stack.offsetHeight || window.innerHeight
 
     // ── запрет кликов после свайпа (иначе «тап на видео» срабатывает при drag) ──
     window.__vfmSuppressClick = false
@@ -6933,7 +6938,8 @@ async function vfmNext(animate = true){
         const stack = VFM.stack
         if(stack){
             stack.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1)'
-            stack.style.transform  = `translate3d(0, -${window.innerHeight}px, 0)`
+            const stackH = stack.offsetHeight || window.innerHeight;
+            stack.style.transform  = `translate3d(0, -${stackH}px, 0)`
             VFM.el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
                 n.style.transition = 'opacity .3s ease'
                 n.style.opacity = '0'
@@ -9088,6 +9094,34 @@ window.__lt = {
     }
 }
 window.followAuthor = followAuthor
+    /* ============================================================
+       FIX: подсветка Direct в нижнем меню при выходе из чата
+    ============================================================ */
+    (function fixDirectNav(){
+        const applyActive = () => {
+            const directScreen = document.getElementById('screen-direct');
+            if (directScreen?.classList.contains('active')) {
+                document.querySelectorAll('.nav-btn').forEach(x => {
+                    x.classList.toggle('active', x.dataset.screen === 'direct');
+                });
+            }
+        };
+        window.__ltFixDirectNav = applyActive;
+
+        const observeRoom = room => {
+            if (!room || room.__ltNavObserved) return;
+            room.__ltNavObserved = true;
+            new MutationObserver(() => {
+                if (room.classList.contains('hidden')) {
+                    setTimeout(applyActive, 10);
+                }
+            }).observe(room, { attributes: true, attributeFilter: ['class'] });
+        };
+
+        const scan = () => observeRoom(document.getElementById('direct-room'));
+        new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
+        scan();
+    })();
 boot()
 setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
