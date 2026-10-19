@@ -8,10 +8,6 @@
    — Связь с VFM через window.__ltSetChatTitle
 ============================================================ */
 import { supabase } from './supabase.js'
-import {
-    DirectCache, ConnectionState,
-    fetchWithRetry, renderConnBanner, diffChats
-} from './directCache.js';
 
 const $ = id => document.getElementById(id)
 const esc = t => { const d = document.createElement('div'); d.textContent = t ?? ''; return d.innerHTML }
@@ -778,7 +774,7 @@ export function openDirectTab(){
     if(D.refreshTimer) clearInterval(D.refreshTimer)
     D.refreshTimer = setInterval(() => {
         if($('screen-direct')?.classList.contains('active') && !D.currentChat) loadDirectChats(true)
-    }, 30_000)   // 30 сек вместо 5
+    }, 5000)
     loadDirectChats()
     window.scrollTo(0,0)
 }
@@ -848,177 +844,89 @@ async function deleteSelectedChats(){
 ============================================================ */
 async function loadDirectChats(silent = false){
     const box = $('direct-list'); if(!box) return
+    if(!silent){ renderSkeletons() }
 
-    /* ═══ 1. МГНОВЕННЫЙ РЕНДЕР ИЗ КЭША ═══ */
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user){ box.innerHTML = '<p class="empty">Не удалось подключиться</p>'; setHeaderReady(); return }
+    D.currentUser = user
+
     try {
-        const cached = await DirectCache.getChats()
-        if(cached.length){
-            D.chats = cached.map(c => ({
-                peerId: c.peer_id,
-                profile: c.profile || {
-                    full_name: c.peer_name,
-                    username: c.peer_username,
-                    avatar_url: c.peer_avatar,
-                },
-                lastMsg: c.lastMsg || {
-                    content: c.last_message || '',
-                    from_id: c.last_from_me ? D.currentUser?.id : c.peer_id,
-                    created_at: new Date(c.last_message_at || Date.now()).toISOString(),
-                    is_read: true,
-                },
-                unread: c.unread || 0,
-            }))
-            D.prefs = {}
-            cached.forEach(c => {
-                if(c.pinned) D.prefs[c.peer_id] = { pinned: true, pinned_at: c.pinned_at }
-            })
-            renderChats()
-            setHeaderReady()
-        } else if(!silent){
-            renderSkeletons()
-        }
-    } catch(e){ console.warn('[cache chats]', e) }
+        const { data:prof } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle()
+        D.isAdmin = !!prof?.is_admin
+    } catch {}
 
-    /* ═══ 2. ФОНОВОЕ ОБНОВЛЕНИЕ С СЕРВЕРА ═══ */
     try {
-        const { data:{ user } } = await supabase.auth.getUser()
-        if(!user){
-            if(!D.chats.length) box.innerHTML = '<p class="empty">Не удалось подключиться</p>'
-            setHeaderReady()
-            return
-        }
-        D.currentUser = user
+        const { data:prefs } = await supabase.from('direct_chat_prefs')
+            .select('peer_id, pinned, pinned_at, muted, wallpaper').eq('user_id', user.id)
+        D.prefs = {}
+        ;(prefs||[]).forEach(p => { D.prefs[p.peer_id] = p })
+    } catch { D.prefs = {} }
 
-        // профиль / is_admin
-        try {
-            const { data:prof } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle()
-            D.isAdmin = !!prof?.is_admin
-        } catch {}
+    const { data: msgs, error } = await supabase.from('direct_messages')
+        .select('id, from_id, to_id, content, media_url, media_type, is_read, created_at')
+        .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
+        .order('created_at', { ascending:false }).limit(500)
 
-        // prefs
-        try {
-            const { data:prefs } = await supabase.from('direct_chat_prefs')
-                .select('peer_id, pinned, pinned_at, muted, wallpaper').eq('user_id', user.id)
-            D.prefs = {}
-            ;(prefs||[]).forEach(p => { D.prefs[p.peer_id] = p })
-        } catch { D.prefs = {} }
-
-        // сообщения
-        const { data: msgs, error } = await supabase.from('direct_messages')
-            .select('id, from_id, to_id, content, media_url, media_type, is_read, created_at')
-            .or(`from_id.eq.${user.id},to_id.eq.${user.id}`)
-            .order('created_at', { ascending:false }).limit(500)
-
-        if(error) throw error
-
-        const byPeer = new Map()
-        for(const m of (msgs || [])){
-            const peerId = m.from_id === user.id ? m.to_id : m.from_id
-            if(!byPeer.has(peerId)) byPeer.set(peerId, { peerId, lastMsg: m, unread: 0 })
-            if(m.to_id === user.id && !m.is_read) byPeer.get(peerId).unread++
-        }
-
-        // requests
-        let reqs = []
-        try {
-            const { data:cr } = await supabase.from('chat_requests')
-                .select('id, from_user, first_message, created_at')
-                .eq('to_user', user.id).eq('status', 'pending')
-                .order('created_at', { ascending:false }).limit(30)
-            reqs = cr || []
-            const ids = reqs.map(r => r.from_user)
-            if(ids.length){
-                const { data:profs } = await supabase.from('profiles')
-                    .select('id, username, full_name, avatar_url, status, status_emoji, last_seen').in('id', ids)
-                const pm = Object.fromEntries((profs||[]).map(p => [p.id, p]))
-                reqs = reqs.map(r => ({ ...r, profile: pm[r.from_user] || {} }))
-            }
-        } catch {}
-
-        // профили пиров
-        const ids = [...byPeer.keys()]
-        let pm = {}
-        if(ids.length){
-            const { data: profs } = await supabase.from('profiles')
-                .select('id, username, full_name, avatar_url, status, status_emoji, is_admin, last_seen')
-                .in('id', ids)
-            pm = Object.fromEntries((profs||[]).map(p => [p.id, p]))
-        }
-
-        const prevChats = D.chats
-
-        D.chats = ids.map(id => ({ ...byPeer.get(id), profile: pm[id] || {} }))
-
-        const unreadTotal = D.chats.reduce((s, c) => s + (c.unread || 0), 0) + reqs.length
-        D.unreadTotal = unreadTotal
-        updateHomeBadge(unreadTotal)
-
-        D.requests = reqs
-        renderRequests()
-
-        D.chats.sort((a,b) => {
-            const pa = D.prefs[a.peerId]?.pinned ? 1 : 0
-            const pb = D.prefs[b.peerId]?.pinned ? 1 : 0
-            if(pa !== pb) return pb - pa
-            if(pa && pb){
-                const ta = new Date(D.prefs[a.peerId]?.pinned_at || 0).getTime()
-                const tb = new Date(D.prefs[b.peerId]?.pinned_at || 0).getTime()
-                if(ta !== tb) return tb - ta
-            }
-            return new Date(b.lastMsg.created_at) - new Date(a.lastMsg.created_at)
-        })
-
-        /* ═══ 3. СОХРАНЯЕМ В КЭШ ═══ */
-        try {
-            const previewOf = (m) => {
-                if(m.media_type === 'video') return 'Видео'
-                if(m.media_type === 'audio') return 'Аудио'
-                if(m.media_type === 'image') return 'Фото'
-                return contentLabel(m.content)
-            }
-            await DirectCache.putChats(D.chats.map(c => ({
-                peer_id: c.peerId,
-                peer_name: c.profile?.full_name || c.profile?.username || 'user',
-                peer_username: c.profile?.username || null,
-                peer_avatar: c.profile?.avatar_url || null,
-                profile: c.profile,
-                lastMsg: c.lastMsg,
-                last_message: previewOf(c.lastMsg),
-                last_message_at: new Date(c.lastMsg.created_at).getTime(),
-                last_from_me: c.lastMsg.from_id === user.id,
-                unread: c.unread,
-                pinned: !!D.prefs[c.peerId]?.pinned,
-                pinned_at: D.prefs[c.peerId]?.pinned_at || null,
-            })))
-        } catch(e){ console.warn('[cache save]', e) }
-
-        /* ═══ 4. Точечный дифф вместо полного рендера ═══ */
-        const { added, removed, changed } = diffChats(
-            prevChats.map(c => ({
-                peer_id: c.peerId,
-                last_message_at: new Date(c.lastMsg.created_at).getTime(),
-                unread: c.unread,
-                peer_name: c.profile?.full_name,
-            })),
-            D.chats.map(c => ({
-                peer_id: c.peerId,
-                last_message_at: new Date(c.lastMsg.created_at).getTime(),
-                unread: c.unread,
-                peer_name: c.profile?.full_name,
-            }))
-        )
-        setHeaderReady()
-        if(added.length || removed.length || changed.length || !prevChats.length){
-            renderChats()
-        }
-    } catch(e){
-        console.warn('[loadDirectChats]', e.message)
-        if(!D.chats.length){
-            box.innerHTML = `<p class="empty">Ошибка: ${esc(e.message)}</p>`
-        }
-        ConnectionState.set(navigator.onLine ? 'reconnecting' : 'offline')
-        setHeaderReady()
+    if(error){
+        box.innerHTML = `<p class="empty">Ошибка: ${esc(error.message)}</p>`
+        setHeaderReady(); return
     }
+
+    const byPeer = new Map()
+    for(const m of (msgs || [])){
+        const peerId = m.from_id === user.id ? m.to_id : m.from_id
+        if(!byPeer.has(peerId)) byPeer.set(peerId, { peerId, lastMsg: m, unread: 0 })
+        if(m.to_id === user.id && !m.is_read) byPeer.get(peerId).unread++
+    }
+
+    let reqs = []
+    try {
+        const { data:cr } = await supabase.from('chat_requests')
+            .select('id, from_user, first_message, created_at')
+            .eq('to_user', user.id).eq('status', 'pending')
+            .order('created_at', { ascending:false }).limit(30)
+        reqs = cr || []
+        const ids = reqs.map(r => r.from_user)
+        if(ids.length){
+            const { data:profs } = await supabase.from('profiles')
+                .select('id, username, full_name, avatar_url, status, status_emoji, last_seen').in('id', ids)
+            const pm = Object.fromEntries((profs||[]).map(p => [p.id, p]))
+            reqs = reqs.map(r => ({ ...r, profile: pm[r.from_user] || {} }))
+        }
+    } catch {}
+
+    const ids = [...byPeer.keys()]
+    let pm = {}
+    if(ids.length){
+        const { data: profs } = await supabase.from('profiles')
+            .select('id, username, full_name, avatar_url, status, status_emoji, is_admin, last_seen')
+            .in('id', ids)
+        pm = Object.fromEntries((profs||[]).map(p => [p.id, p]))
+    }
+
+    D.chats = ids.map(id => ({ ...byPeer.get(id), profile: pm[id] || {} }))
+
+    const unreadTotal = D.chats.reduce((s, c) => s + (c.unread || 0), 0) + reqs.length
+    D.unreadTotal = unreadTotal
+    updateHomeBadge(unreadTotal)
+
+    D.requests = reqs
+    renderRequests()
+
+    D.chats.sort((a,b) => {
+        const pa = D.prefs[a.peerId]?.pinned ? 1 : 0
+        const pb = D.prefs[b.peerId]?.pinned ? 1 : 0
+        if(pa !== pb) return pb - pa
+        if(pa && pb){
+            const ta = new Date(D.prefs[a.peerId]?.pinned_at || 0).getTime()
+            const tb = new Date(D.prefs[b.peerId]?.pinned_at || 0).getTime()
+            if(ta !== tb) return tb - ta
+        }
+        return new Date(b.lastMsg.created_at) - new Date(a.lastMsg.created_at)
+    })
+
+    setHeaderReady()
+    renderChats()
 }
 
 function updateHomeBadge(n){
@@ -1518,7 +1426,7 @@ function renderChatRoom(){
     if(D.refreshTimer) clearInterval(D.refreshTimer)
     D.refreshTimer = setInterval(() => {
         if($('direct-room') && !$('direct-room').classList.contains('hidden')) loadMessages(true)
-    }, 15_000)
+    }, 3000)
 
     if(D.typingTimer) clearInterval(D.typingTimer)
     D.typingTimer = setInterval(() => {
@@ -1560,95 +1468,21 @@ async function pushMessage(payload){
     if(!user || !D.currentChat) return
     const { peerId } = D.currentChat
 
+    // === reply_to ===
     if(D.replyTo && D.replyTo.id && payload.content !== undefined){
         payload.reply_to = D.replyTo.id
     }
 
-    /* ═══ 1. ОПТИМИСТИЧНЫЙ РЕНДЕР (мгновенно, без ожидания сервера) ═══ */
-    const tempId = 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2,8)
-    const optimisticMsg = {
-        id: tempId,
-        from_id: user.id,
-        to_id: peerId,
-        content: payload.content || '',
-        media_url: payload.media_url || null,
-        media_type: payload.media_type || null,
-        created_at: new Date().toISOString(),
-        is_read: false,
-        reactions: {},
-        reply_to: payload.reply_to || null,
-    }
-
-    const box = $('direct-messages')
-    let newRow = null
-    if(box){
-        const { data:myProf } = await supabase.from('profiles')
-            .select('full_name, username, avatar_url').eq('id', user.id).maybeSingle()
-        const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100
-        box.insertAdjacentHTML('beforeend', renderMessage(
-            optimisticMsg, null, user.id, myProf || {},
-            D.currentChat.peerProfile, getTheme()
-        ))
-        newRow = box.lastElementChild
-        if(newRow){
-            newRow.classList.add('pending')
-            attachMsgMenu(newRow)
-        }
-        if(nearBottom) box.scrollTop = box.scrollHeight
-    }
-
-    // Сохраняем в кэш как pending
     try {
-        await DirectCache.putMessage({
-            id: tempId, chat_id: peerId,
-            from_id: user.id, to_id: peerId,
-            content: payload.content || '',
-            media_url: payload.media_url,
-            created_at: Date.now(),
-            read: false, pending: true,
+        const { error } = await supabase.from('direct_messages').insert({
+            from_id: user.id, to_id: peerId, ...payload
         })
-    } catch {}
-
-    /* ═══ 2. ОТПРАВЛЯЕМ НА СЕРВЕР ═══ */
-    try {
-        const { data: sent, error } = await supabase.from('direct_messages')
-            .insert({ from_id: user.id, to_id: peerId, ...payload })
-            .select().single()
         if(error) throw error
 
-        // Сброс reply
+        // сброс reply после отправки
         D.replyTo = null
         $('dr-reply-banner')?.classList.add('hidden')
 
-        // Кэш: удаляем temp, добавляем реальный
-        await DirectCache.deleteMessage(tempId).catch(() => {})
-        await DirectCache.putMessage({
-            id: sent.id, chat_id: peerId,
-            from_id: user.id, to_id: peerId,
-            content: sent.content || '',
-            media_url: sent.media_url,
-            media_type: sent.media_type,
-            created_at: new Date(sent.created_at).getTime(),
-            read: false,
-            reactions: {},
-        })
-
-        // DOM: обновляем data-mid и убираем pending
-        if(newRow){
-            newRow.dataset.mid = sent.id
-            newRow.classList.remove('pending')
-        }
-
-        // Обновляем last_message в кэше
-        const chat = await DirectCache.getChat(peerId)
-        if(chat){
-            chat.last_message = payload.content || '📎 Медиа'
-            chat.last_message_at = Date.now()
-            chat.last_from_me = true
-            await DirectCache.putChat(chat)
-        }
-
-        // Существующая логика chat_requests
         const { isMutual } = D.currentChat
         const peerAdmin = !!D.currentChat.peerProfile?.is_admin
         if(!isMutual && !D.isAdmin && !peerAdmin && payload.content){
@@ -1665,20 +1499,10 @@ async function pushMessage(payload){
                 } catch {}
             }
         }
-
-        // ⚠️ НЕ вызываем loadMessages() — оптимистичный рендер уже всё показал
         _lastMsgSig = ''
+        loadMessages()
         loadDirectChats(true)
     } catch(e){
-        // Провал — помечаем как failed и кладём в очередь
-        if(newRow){
-            newRow.classList.remove('pending')
-            newRow.classList.add('failed')
-        }
-        try {
-            await DirectCache.removePending(tempId).catch(() => {})
-            await DirectCache.addPending({ ...optimisticMsg, peer_id: peerId })
-        } catch {}
         window.showToast?.('error','Не удалось отправить')
     }
 }
@@ -1693,53 +1517,6 @@ async function loadMessages(silent = false){
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user) return
 
-    /* ═══ 1. МГНОВЕННЫЙ РЕНДЕР ИЗ КЭША (только при первом открытии) ═══ */
-    if(!silent){
-        try {
-            const cachedMsgs = await DirectCache.getMessages(peerId, 100)
-            const box0 = $('direct-messages')
-            if(cachedMsgs.length && box0 && !box0.children.length){
-                const { data:myProf0 } = await supabase.from('profiles')
-                    .select('full_name, username, avatar_url').eq('id', user.id).maybeSingle()
-                const theme = getTheme()
-                let html = ''
-                let lastDay = ''
-                cachedMsgs.forEach((m, i) => {
-                    const dayKey = new Date(m.created_at).toLocaleDateString('ru-RU')
-                    if(dayKey !== lastDay){
-                        html += `<div class="dr-date-sep">${formatDateSep(m.created_at)}</div>`
-                        lastDay = dayKey
-                    }
-                    const prev = cachedMsgs[i-1]
-                    html += renderMessage({
-                        id: m.id, from_id: m.from_id, to_id: m.to_id,
-                        content: m.content || '',
-                        media_url: m.media_url,
-                        media_type: m.media_type,
-                        created_at: m.created_at,
-                        is_read: m.read,
-                        reactions: m.reactions || {},
-                        pinned_at: m.pinned_at,
-                        reply_to: m.reply_to,
-                    }, prev ? {
-                        from_id: prev.from_id,
-                        created_at: prev.created_at,
-                    } : null, user.id, myProf0 || {}, peerProfile, theme)
-                })
-                box0.innerHTML = html
-                bindShareCards(box0)
-                box0.querySelectorAll('[data-react]').forEach(ch => ch.addEventListener('click', e => {
-                    e.stopPropagation()
-                    toggleReaction(ch.closest('.dr-row').dataset.mid, ch.dataset.react)
-                }))
-                box0.querySelectorAll('.dr-row').forEach(row => attachMsgMenu(row))
-                box0.scrollTop = box0.scrollHeight
-                _lastMsgSig = ''
-            }
-        } catch(e){ console.warn('[cache msgs]', e) }
-    }
-
-    /* ═══ 2. ФЕТЧ С СЕРВЕРА ═══ */
     const { data:msgs, error } = await supabase.from('direct_messages')
         .select('*')
         .or(`and(from_id.eq.${user.id},to_id.eq.${peerId}),and(from_id.eq.${peerId},to_id.eq.${user.id})`)
@@ -1756,27 +1533,10 @@ async function loadMessages(silent = false){
         }
     }
 
-    /* ═══ 3. СОХРАНЯЕМ В КЭШ ═══ */
-    try {
-        await DirectCache.putMessages(visible.map(m => ({
-            id: m.id,
-            chat_id: peerId,
-            from_id: m.from_id,
-            to_id: m.to_id,
-            content: m.content || '',
-            media_url: m.media_url,
-            media_type: m.media_type,
-            created_at: new Date(m.created_at).getTime(),
-            read: !!m.is_read,
-            reactions: m.reactions || {},
-            pinned_at: m.pinned_at,
-            reply_to: m.reply_to,
-        })))
-    } catch(e){ console.warn('[cache save msgs]', e) }
-
     const pinned = visible.filter(m => m.pinned_at)
     renderPinnedBar(pinned)
 
+    // === подтянем родительские сообщения для reply_to ===
     const replyIds = [...new Set(visible.filter(m => m.reply_to).map(m => m.reply_to))]
     let replyMap = {}
     if(replyIds.length){
@@ -2776,112 +2536,3 @@ async function clearChat(peerId){
 ============================================================ */
 window.openDirectChat = openDirectChat
 window.openDirectTab = openDirectTab
-
-/* ═══════════════════════════════════════════════════════════
-   МОСТ МЕЖДУ main.js (Realtime) и UI — точечные обновления
-   ═══════════════════════════════════════════════════════════ */
-
-document.addEventListener('lt-direct:update-item', (e) => {
-    const { peerId, last_message, last_message_at, from_me, unread } = e.detail
-    const chat = D.chats.find(c => c.peerId === peerId)
-    if(!chat) return
-    if(last_message !== undefined){
-        chat.lastMsg = {
-            ...chat.lastMsg,
-            content: last_message,
-            from_id: from_me ? D.currentUser?.id : peerId,
-        }
-    }
-    if(last_message_at !== undefined){
-        chat.lastMsg.created_at = new Date(last_message_at).toISOString()
-    }
-    if(unread !== undefined) chat.unread = unread
-    if($('screen-direct')?.classList.contains('active')) renderChats()
-})
-
-document.addEventListener('lt-direct:new-message', async (e) => {
-    const m = e.detail
-    const box = $('direct-messages')
-    if(!box || !D.currentChat) return
-    if(box.querySelector(`[data-mid="${m.id}"]`)) return
-
-    _lastMsgSig = ''
-    const { peerId, peerProfile } = D.currentChat
-    const { data:{ user } } = await supabase.auth.getUser()
-    if(!user) return
-
-    try {
-        await DirectCache.putMessage({
-            id: m.id, chat_id: peerId,
-            from_id: m.from_id, to_id: m.to_id,
-            content: m.content || '',
-            media_url: m.media_url,
-            created_at: new Date(m.created_at).getTime(),
-            read: false,
-        })
-    } catch {}
-
-    const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100
-    const { data:myProf } = await supabase.from('profiles')
-        .select('full_name, username, avatar_url').eq('id', user.id).maybeSingle()
-    box.insertAdjacentHTML('beforeend', renderMessage({
-        ...m,
-        created_at: m.created_at,
-        reactions: m.reactions || {},
-    }, null, user.id, myProf || {}, peerProfile, getTheme()))
-    const newRow = box.lastElementChild
-    if(newRow) attachMsgMenu(newRow)
-    if(nearBottom) box.scrollTop = box.scrollHeight
-})
-
-document.addEventListener('lt-direct:msg-updated', (e) => {
-    const m = e.detail
-    const row = document.querySelector(`.dr-row[data-mid="${m.id}"]`)
-    if(!row) return
-    row.classList.remove('pending', 'failed')
-})
-
-/* ═══ FLUSH pending при возврате онлайна ═══ */
-window.addEventListener('online', async () => {
-    try {
-        const pending = await DirectCache.getPending()
-        if(pending.length){
-            const { data:{ user } } = await supabase.auth.getUser()
-            if(!user) return
-            for(const p of pending){
-                try {
-                    const { data: sent, error } = await supabase.from('direct_messages')
-                        .insert({ from_id: user.id, to_id: p.peer_id, content: p.content })
-                        .select().single()
-                    if(error) throw error
-                    await DirectCache.removePending(p.id)
-                    await DirectCache.deleteMessage(p.id).catch(() => {})
-                    await DirectCache.putMessage({
-                        id: sent.id, chat_id: p.peer_id,
-                        from_id: user.id, to_id: p.peer_id,
-                        content: sent.content || '',
-                        created_at: new Date(sent.created_at).getTime(),
-                        read: false,
-                    })
-                } catch(err){ console.warn('[flush pending]', err) }
-            }
-        }
-        if(D.currentChat){
-            _lastMsgSig = ''
-            await loadMessages()
-        }
-        await loadDirectChats(true)
-    } catch(e){ console.warn('[online flush]', e) }
-})
-
-/* ═══ Баннер соединения ═══ */
-document.addEventListener('lt-conn-state', () => {
-    const body = $('direct-body')
-    if(body) renderConnBanner(body)
-})
-
-/* При открытии таба — показать баннер если оффлайн */
-;(function initConnBanner(){
-    const body = $('direct-body')
-    if(body) renderConnBanner(body)
-})()

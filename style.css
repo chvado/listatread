@@ -4803,59 +4803,7 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
     position: relative;
     z-index: 10;
 }
-/* ===== Direct: баннер соединения ===== */
-.lt-conn-banner{
-    display:flex; align-items:center; gap:8px;
-    padding:8px 14px; margin:0 8px 6px;
-    border-radius:12px; font-size:12.5px; font-weight:600;
-    animation:slideDown .25s var(--ease-out) both;
-}
-.lt-conn-banner.hidden{ display:none }
-.lt-conn-banner.connecting  { background:rgba(10,132,255,.12); color:var(--blue); }
-.lt-conn-banner.reconnecting{ background:rgba(255,159,10,.14); color:#d97706; }
-.lt-conn-banner.offline     { background:rgba(120,120,128,.16); color:var(--text-secondary); }
-.lt-conn-icon{ font-size:15px; line-height:1; display:inline-flex; align-items:center; justify-content:center; min-width:16px; }
-.lt-conn-banner.connecting .lt-conn-icon  { animation:spin 1s linear infinite; }
-.lt-conn-banner.reconnecting .lt-conn-icon{ animation:spin 1.6s linear infinite; }
-.lt-conn-banner.offline .lt-conn-icon     { color:var(--text-tertiary); }
 
-/* Пендинг-сообщения */
-.dr-row.pending .direct-bubble{ opacity:.55 }
-.dr-row.failed  .direct-bubble{ box-shadow:0 0 0 1.5px rgba(255,59,48,.5) }
-.dr-row.pending .direct-bubble-foot::after{
-    content:'◌'; margin-left:4px; font-size:10px; opacity:.7;
-    animation:spin 1s linear infinite; display:inline-block;
-}
-
-/* Плавное появление нового сообщения без мигания */
-.dr-row.appended{ animation:msgIn .22s var(--ease-out) both }
-
-/* Скелетон только если реально нечего показать */
-.direct-list .direct-skeleton{
-    background:linear-gradient(90deg,var(--sk-a) 25%,var(--sk-b) 50%,var(--sk-a) 75%);
-    background-size:200% 100%; animation:shimmer 1.4s linear infinite;
-    border-radius:16px; height:64px; margin:6px 10px;
-}
-/* ═══════════════════════════════════════════════════════════
-   Не даём браузеру тратить CPU на анимации скрытых экранов
-   ═══════════════════════════════════════════════════════════ */
-.app-screen:not(.active) *,
-.app-screen:not(.active) *::before,
-.app-screen:not(.active) *::after{
-    animation-play-state: paused !important;
-    transition: none !important;
-}
-
-/* Каналы: тяжёлые hero-анимации только пока экран активен */
-#screen-channels:not(.active) .chan-fly{
-    animation: none !important;
-    display: none !important;
-}
-
-/* Прячем жирные dekor-круги на неактивных экранах auth/boot */
-.screen.hidden .loading-circles .lc{
-    animation: none !important;
-}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

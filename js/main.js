@@ -371,27 +371,17 @@ function learnFromPost(postId, weight){
     const c = document.querySelector(`.feed-post[data-pid="${postId}"]`)
     if(c) recordSignal(cardMeta(c), weight)
 }
-let _followCacheAt = 0
-let _followCachePromise = null
-async function refreshFollowCache(force = false){
-    // 30-секундный кэш — избегаем повторных запросов при каждом экране
-    if(!force && Date.now() - _followCacheAt < 30_000) return
-    if(_followCachePromise) return _followCachePromise
-    _followCachePromise = (async () => {
-        try {
-            const { data:{ user } } = await supabase.auth.getUser()
-            if(!user) return
-            const [{ data:f }, { data:s }] = await Promise.all([
-                supabase.from('follows').select('following_id').eq('follower_id', user.id),
-                supabase.from('subscriptions').select('channel_id').eq('follower_id', user.id)
-            ])
-            state.myFollows = new Set((f||[]).map(x => x.following_id))
-            state.myChannelSubs = new Set((s||[]).map(x => x.channel_id))
-            _followCacheAt = Date.now()
-        } catch {}
-    })()
-    try { await _followCachePromise }
-    finally { _followCachePromise = null }
+async function refreshFollowCache(){
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user) return
+        const [{ data:f }, { data:s }] = await Promise.all([
+            supabase.from('follows').select('following_id').eq('follower_id', user.id),
+            supabase.from('subscriptions').select('channel_id').eq('follower_id', user.id)
+        ])
+        state.myFollows = new Set((f||[]).map(x => x.following_id))
+        state.myChannelSubs = new Set((s||[]).map(x => x.channel_id))
+    } catch {}
 }
 
 function renderMedia(url, cls = 'feed-post-image', meta = {}){
@@ -678,101 +668,34 @@ function showSlideNotif({ name, avatar, text, peerId }){
 }
 
 /* Realtime — новые сообщения в direct_messages */
-/* ═══════════════════════════════════════════════════════════
-   Realtime — Direct
-   Пишем в IndexedDB + точечно обновляем UI, БЕЗ полного refetch
-   ═══════════════════════════════════════════════════════════ */
-import('./directCache.js').then(({ DirectCache, ConnectionState, renderConnBanner }) => {
-    let _channel = null;
-    let _lastReconnect = 0;
+try {
+    supabase.channel('direct:realtime')
+        .on('postgres_changes', { event:'INSERT', schema:'public', table:'direct_messages' }, async payload => {
+            const m = payload.new
+            const { data:{ user } } = await supabase.auth.getUser()
+            if(!user || m.to_id !== user.id) return
 
-    const startRealtime = () => {
-        if(_channel){ try { supabase.removeChannel(_channel); } catch {} }
-        _channel = supabase.channel('direct:realtime:v2')
-            .on('postgres_changes',
-                { event:'INSERT', schema:'public', table:'direct_messages' },
-                async payload => {
-                    const m = payload.new;
-                    const { data:{ user } } = await supabase.auth.getUser();
-                    if(!user) return;
-                    if(m.from_id !== user.id && m.to_id !== user.id) return;
-
-                    // 1) Пишем в кэш (моментально)
-                    const peerId = m.from_id === user.id ? m.to_id : m.from_id;
-                    try {
-                        await DirectCache.putMessage({
-                            id: m.id, chat_id: peerId,
-                            from_id: m.from_id, to_id: m.to_id,
-                            content: m.content || '',
-                            created_at: new Date(m.created_at).getTime(),
-                            read: !!m.read_at,
-                        });
-                        // Обновляем last_message в кэше чата
-                        const ch = await DirectCache.getChat(peerId);
-                        if(ch){
-                            ch.last_message = m.content || '📎 Медиа';
-                            ch.last_message_at = new Date(m.created_at).getTime();
-                            ch.last_from_me = m.from_id === user.id;
-                            if(m.from_id !== user.id && m.to_id === user.id) ch.unread = (ch.unread || 0) + 1;
-                            await DirectCache.putChat(ch);
-                        }
-                    } catch(e){ console.warn('[cache rt]', e); }
-
-                    // 2) Точечно обновляем DOM, если открыт директ
-                    const room = document.getElementById('direct-room');
-                    const directScreen = document.getElementById('screen-direct');
-                    if(room && !room.classList.contains('hidden')){
-                        const curPeer = room.dataset.peerId;
-                        if(curPeer === peerId){
-                            document.dispatchEvent(new CustomEvent('lt-direct:new-message', { detail: m }));
-                        }
-                    }
-                    if(directScreen?.classList.contains('active')){
-                        document.dispatchEvent(new CustomEvent('lt-direct:update-item', {
-                            detail: { peerId, last_message: m.content, last_message_at: m.created_at, from_me: m.from_id === user.id }
-                        }));
-                    } else if(m.to_id === user.id) {
-                        // слайд-уведомление
-                        const { data:p } = await supabase.from('profiles')
-                            .select('username, full_name, avatar_url').eq('id', m.from_id).maybeSingle();
-                        const name = p?.full_name || p?.username || 'user';
-                        showSlideNotif({
-                            name, avatar: p?.avatar_url,
-                            text: (m.content || '📎 Медиа').slice(0, 80),
-                            peerId: m.from_id,
-                        });
-                    }
+            // Если это текущий открытый чат — просто обновим
+            const room = document.getElementById('direct-room')
+            if(room && !room.classList.contains('hidden')){
+                // Обновит loadMessages сам, но не будем слать уведомление
+            } else {
+                // Слайд
+                const { data:p } = await supabase.from('profiles')
+                    .select('username, full_name, avatar_url').eq('id', m.from_id).maybeSingle()
+                const name = p?.full_name || p?.username || 'user'
+                showSlideNotif({
+                    name, avatar: p?.avatar_url, text: (m.content || '📎 Медиа').slice(0, 80), peerId: m.from_id
                 })
-            .on('postgres_changes',
-                { event:'UPDATE', schema:'public', table:'direct_messages' },
-                async payload => {
-                    const m = payload.new;
-                    document.dispatchEvent(new CustomEvent('lt-direct:msg-updated', { detail: m }));
-                });
-
-        _channel.subscribe((status) => {
-            if(status === 'SUBSCRIBED')   ConnectionState.set('online');
-            if(status === 'CHANNEL_ERROR')ConnectionState.set('reconnecting');
-            if(status === 'TIMED_OUT')    ConnectionState.set('reconnecting');
-        });
-    };
-
-    startRealtime();
-
-    // Пере-подписка при возврате онлайна (Supabase иногда теряет сокет)
-    window.addEventListener('online', () => {
-        if(Date.now() - _lastReconnect < 2000) return;
-        _lastReconnect = Date.now();
-        setTimeout(startRealtime, 400);
-    });
-    document.addEventListener('lt-direct:resubscribe', startRealtime);
-
-    // Очистка старых сообщений раз в сутки (не блокирует UI)
-    const lastCleanup = localStorage.getItem('lt_direct_cleanup') || '0';
-    if(Date.now() - +lastCleanup > 86400_000){
-        setTimeout(() => DirectCache.cleanupOld(30).then(() => localStorage.setItem('lt_direct_cleanup', String(Date.now()))), 5000);
-    }
-}).catch(e => console.warn('[directCache load]', e));
+            }
+            // Обновляем бейджи в директе, если открыт
+            const screen = document.getElementById('screen-direct')
+            if(screen?.classList.contains('active')){
+                // Перерисуем через 300ms
+            }
+        })
+        .subscribe()
+} catch(e){ console.warn('[direct realtime]', e.message) }
 /* ============================================================
    CODE MODAL
 ============================================================ */
@@ -895,73 +818,38 @@ function switchScreen(name){
     document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'))
     const t = document.getElementById('screen-' + name)
     if(t) t.classList.add('active')
-    document.querySelectorAll('.nav-btn').forEach(b =>
-        b.classList.toggle('active', b.dataset.screen === name)
-    )
-    state.screen = name
-    window.scrollTo(0, 0)
-
-    // ═══ ЛЕНИВО: грузим данные ТОЛЬКО для экрана, куда идём ═══
-    if(name === 'home'){
-        renderHomeFeed(false)
-        lazyStoriesAndLiveNow()      // 🔥 вместо renderStories + renderLiveNow
-    }
-    if(name === 'inbox')            renderEventsScreen()
-    if(name === 'channels')         renderChannels()
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === name))
+    state.screen = name; window.scrollTo(0, 0)
+    if(name === 'inbox') renderEventsScreen()
     if(name === 'profile'){
         if(state.currentProfileViewId) loadProfile(state.currentProfileViewId)
         else { state.viewingOwnProfile = true; loadProfile() }
     }
-    if(name === 'settings')         loadSettings()
-
-    if(name !== 'livechat' && livechatRefreshTimer){
-        clearInterval(livechatRefreshTimer)
-        livechatRefreshTimer = null
+    if(name !== 'direct'){
+        document.querySelectorAll('.nav-btn').forEach(b =>
+            b.classList.toggle('active', b.dataset.screen === name)
+        )
     }
 
-    setTimeout(() => { try { updatePlayIcons(); syncFullPlayer() } catch {} }, 50)
-}
-/* ═══════════════════════════════════════════════════════════
-   ЛЕНИВАЯ ЗАГРУЗКА: stories + live-now
-   Грузятся только когда реально попадают во viewport
-   ═══════════════════════════════════════════════════════════ */
-let _storiesLoadedAt = 0
-let _liveNowLoadedAt = 0
-
-function lazyStoriesAndLiveNow(){
-    const storiesEl = document.getElementById('stories-row')
-    const liveEl    = document.getElementById('live-now-row')
-
-    const runStories = () => {
-        if(Date.now() - _storiesLoadedAt < 60_000 && storiesEl?.children.length > 1) return
-        _storiesLoadedAt = Date.now()
-        try { renderStories() } catch(e){ console.warn('[stories]', e.message) }
+    if(name === 'settings') loadSettings()
+    if(name === 'home'){
+        renderLiveNow()
+        renderStories()
+        // лента кешируется сама — форс только если таб сменился
+        renderHomeFeed(false)
     }
-    const runLive = () => {
-        if(Date.now() - _liveNowLoadedAt < 60_000 && liveEl?.children.length > 1) return
-        _liveNowLoadedAt = Date.now()
-        try { renderLiveNow() } catch(e){ console.warn('[live-now]', e.message) }
-    }
-
-    if(storiesEl && 'IntersectionObserver' in window){
-        const obs = new IntersectionObserver(es => {
-            if(es.some(e => e.isIntersecting)){ obs.disconnect(); runStories() }
-        }, { rootMargin: '100px' })
-        obs.observe(storiesEl)
-        setTimeout(() => { obs.disconnect(); runStories() }, 2500)
-    } else {
-        setTimeout(runStories, 200)
-    }
-
-    if(liveEl && 'IntersectionObserver' in window){
-        const obs = new IntersectionObserver(es => {
-            if(es.some(e => e.isIntersecting)){ obs.disconnect(); runLive() }
-        }, { rootMargin: '150px' })
-        obs.observe(liveEl)
-        setTimeout(() => { obs.disconnect(); runLive() }, 4000)
-    } else {
-        setTimeout(runLive, 600)
-    }
+    if(name === 'channels') renderChannels()
+    if(name !== 'livechat' && livechatRefreshTimer){ clearInterval(livechatRefreshTimer); livechatRefreshTimer = null }
+    setTimeout(() => { updatePlayIcons(); syncFullPlayer(); }, 50)
+    refreshFollowCache().then(() => {
+        document.querySelectorAll('.feed-sub-btn').forEach(btn => {
+            const isSub = state.myChannelSubs.has(btn.dataset.chid)
+            btn.classList.toggle('subscribed', isSub)
+            btn.innerHTML = isSub
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12l5 5 9-11"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
+        })
+    })
 }
 document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
     const s = b.dataset.screen
@@ -1751,41 +1639,13 @@ async function renderLiveNow(){
 /* ============================================================
    HOME FEED
 ============================================================ */
-let _feedRenderToken = 0
 async function renderHomeFeed(force = false){
-    const token = ++_feedRenderToken
     const list = $('feed-list'); if(!list) return
-
-    const tab = state.feedTab
-    const cacheKey = 'lt_feed_cache_' + tab + '_' + (state.currentUser?.id || 'anon')
-
-    /* ═══ CACHE-FIRST: показываем вчерашние посты моментально ═══ */
-    if(!force && !list.children.length){
-        try {
-            const raw = localStorage.getItem(cacheKey)
-            if(raw){
-                const { html, at } = JSON.parse(raw)
-                if(Date.now() - at < 5 * 60 * 1000){   // 5 минут
-                    list.innerHTML = html
-                    list.dataset.renderedFor = tab
-                    list.dataset.renderedAt = String(at)
-                    list.querySelectorAll('.feed-post').forEach(card => {
-                        delete card.dataset.handlersBound
-                        attachHandlersToCard(card, state.currentUser?.id)
-                    })
-                    setTimeout(initTrackObserver, 100)
-                    // Фоновое обновление — без скелетона
-                    setTimeout(() => { if(token === _feedRenderToken) renderHomeFeed(true) }, 400)
-                    return
-                }
-            }
-        } catch {}
+    if(!force && list.dataset.renderedFor === state.feedTab && list.children.length && list.dataset.renderedAt){
+        const age = Date.now() - (+list.dataset.renderedAt)
+        if(age < 15 * 60 * 1000) return  // 15 минут — живём
     }
-
-    // ... ВСЁ ОСТАЛЬНОЕ ОСТАВЬ КАК БЫЛО (начиная с teardownInfinite) ...
-
     teardownInfinite()
-    // ...
     list.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser()
@@ -1859,28 +1719,8 @@ async function renderHomeFeed(force = false){
         list.dataset.renderedFor = tab
         list.dataset.renderedAt = String(Date.now())
     }
-    setTimeout(() => prefetchUpcomingVideos(3), 800)
-    // ═══ СОХРАНЯЕМ В КЭШ ═══
-    try {
-        const cards = [...list.querySelectorAll('.feed-post')].slice(0, 8)
-        const html = cards.map(c => c.outerHTML).join('')
-        if(html.length < 400_000){
-            localStorage.setItem(cacheKey, JSON.stringify({ html, at: Date.now() }))
-        }
-    } catch {}
 }
-function prefetchUpcomingVideos(limit = 3){
-    const list = document.getElementById('feed-list')
-    if(!list) return
-    const videos = [...list.querySelectorAll('.feed-post.feed-post-video[data-video-src]')].slice(0, limit)
-    videos.forEach((card, i) => {
-        const src = card.dataset.videoSrc
-        if(!src) return
-        // первый — грузим полностью (preload=auto), остальные — только metadata
-        if(i === 0) __prefetchPool.prefetch(src)
-        else        __prefetchPool.prefetchMeta(src)
-    })
-}
+
 /* ============================================================
    БЕСКОНЕЧНАЯ ЛЕНТА РЕКОМЕНДАЦИЙ
 ============================================================ */
@@ -4235,22 +4075,13 @@ async function renderChannels(){
             mineBox.innerHTML = `<div class="empty small" style="padding:20px;text-align:center"><p style="margin-bottom:12px">Вы не вступили ни в один канал</p><button class="btn-primary" id="chan-create-empty">Создать</button></div>`
             $('chan-create-empty')?.addEventListener('click', () => openCreateChannel())
         } else {
-            // ── БАТЧ: один запрос вместо N+1 ──
-            const channelIds = unique.map(c => c.id)
-            const { data:allSubsForCount } = await supabase.from('subscriptions')
-                .select('channel_id').in('channel_id', channelIds)
-            const countsMap = {}
-            ;(allSubsForCount || []).forEach(s => {
-                countsMap[s.channel_id] = (countsMap[s.channel_id] || 0) + 1
-            })
-
-            mineBox.innerHTML = unique.map(c => {
+            mineBox.innerHTML = (await Promise.all(unique.map(async c => {
                 const av = c.avatar_url ? `<img src="${c.avatar_url}" alt="">` : (c.name || 'K').charAt(0).toUpperCase()
-                const subsCount = countsMap[c.id] || 0
+                const { count:subsCount } = await supabase.from('subscriptions').select('*', { count:'exact', head:true }).eq('channel_id', c.id)
                 const isOwner = c.owner_id === user.id
                 const subIcon = isOwner ? '' : `<span class="chan-sub-icon" style="margin-left:auto;color:var(--red);display:flex">${ICONS.checkSmall}</span>`
-                return `<button class="chan-item" data-ch="${c.id}"><div class="chan-item-icon">${av}</div><div class="chan-item-info"><div class="chan-item-name">${escapeHtml(c.name || 'Канал')}</div><div class="chan-item-sub">${escapeHtml(c.description || '')}</div><div class="chan-item-meta">${subsCount} подписчиков</div><div class="chan-item-role" style="${isOwner ? '' : 'color:var(--text-secondary)'}">${isOwner ? 'Владелец' : 'Участник'}</div></div>${subIcon}</button>`
-            }).join('')
+                return `<button class="chan-item" data-ch="${c.id}"><div class="chan-item-icon">${av}</div><div class="chan-item-info"><div class="chan-item-name">${escapeHtml(c.name || 'Канал')}</div><div class="chan-item-sub">${escapeHtml(c.description || '')}</div><div class="chan-item-meta">${subsCount || 0} подписчиков</div><div class="chan-item-role" style="${isOwner ? '' : 'color:var(--text-secondary)'}">${isOwner ? 'Владелец' : 'Участник'}</div></div>${subIcon}</button>`
+            }))).join('')
         }
         const exclude = new Set(unique.map(c => c.id))
         const { data:recs } = await supabase.from('channels').select('id, name, description, avatar_url').limit(20)
@@ -6832,40 +6663,12 @@ async function openVideoFeed(card, sourceHint){
     VFM.loadingMore = false
     VFM.cleanScreen = false
 
-    if(feedVideoObserver){ feedVideoObserver.disconnect() }
     document.querySelectorAll('.post-bg-video').forEach(v => { try { v.pause() } catch {} })
     document.body.classList.add('vfm-active')
     document.body.style.overflow = 'hidden'
 
     const el = vfmBuildOverlay()
 
-
-    // ═══════════════════════════════════════════════════════════
-    // ⚡ СТАРТ ЗАГРУЗКИ ДО АНИМАЦИИ
-    // Видео начинает качаться с первого кадра анимации,
-    // а не после её окончания (+550 мс к старту)
-    // ═══════════════════════════════════════════════════════════
-    {
-        const firstItem = VFM.list[VFM.index]
-        if(firstItem && firstItem.src){
-            const v = VFM.video
-            v.muted = true
-            v.preload = 'auto'
-            if(v.src !== firstItem.src){
-                v.src = firstItem.src
-                v.load()
-            }
-            v.play().catch(()=>{})
-            // Префетч следующего — пока идёт анимация
-            const secondItem = VFM.list[VFM.index + 1]
-            if(secondItem && secondItem.src){
-                __prefetchPool.prefetchMeta(secondItem.src)
-            }
-        }
-    }
-    /* ═══════════════════════════════════════════════════════════ */
-
-    // ... дальше существующая анимация входа ...
     // плавный вход
     const rect = card.getBoundingClientRect()
     const elRect = el.getBoundingClientRect()
@@ -7401,9 +7204,7 @@ async function closeVideoFeed(){
     VFM.index = 0
     VFM.originCard = null
     VFM.cleanScreen = false
-    if(feedVideoObserver && document.querySelector('.feed-post')){
-        setTimeout(initFeedVideoObserver, 200)
-    }
+
     document.body.classList.remove('vfm-active')
     document.body.style.overflow = ''
     document.dispatchEvent(new Event('vfm:closed'))
@@ -7774,9 +7575,6 @@ async function ensureQjnSub(userId){
 }
 
 async function enterApp(){
-    // ═══════════════════════════════════════════════════════════
-    // КРИТИЧЕСКИЙ ПУТЬ — только то, без чего нельзя показать экран
-    // ═══════════════════════════════════════════════════════════
     await checkAdminStatus()
 
     if(ADMIN_STATE.isBanned){
@@ -7787,47 +7585,51 @@ async function enterApp(){
     }
 
     showScreen('main')
-
-    // Один запрос профиля — используем для темы, статуса, chvad
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         if(user){
             const { data:prof } = await supabase.from('profiles')
-                .select('region, status, status_emoji, theme, chvad_active, chvad_until')
+                .select('region, status, status_emoji, theme')
                 .eq('id', user.id).maybeSingle()
             if(prof?.region) state.data.region = prof.region
             if(prof?.status_emoji || prof?.status) state.data.status = prof.status_emoji || prof.status
             if(prof?.theme) applyTheme(prof.theme)
             else applyTheme(getTheme())
-
-            // Автодеактивация chvad (fire & forget)
-            if(prof?.chvad_active && prof.chvad_until && new Date(prof.chvad_until) < new Date()){
-                supabase.from('profiles')
-                    .update({ chvad_active: false }).eq('id', user.id)
-                    .then(() => {}, () => {})
-            }
         }
     } catch {}
 
-    // ═══════════════════════════════════════════════════════════
-    // HOME — только лента. Всё остальное — отложено.
-    // ═══════════════════════════════════════════════════════════
+    await checkMainChannelSubscription()
+    await refreshFollowCache()
+
+    // ═══════════════════════════════════════════════════════════════
+    // [ПУНКТ 10] Автодеактивация истёкшего chvad — ДО loadProfile()
+    // ═══════════════════════════════════════════════════════════════
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(user){
+            const { data:p } = await supabase.from('profiles')
+                .select('chvad_active, chvad_until').eq('id', user.id).maybeSingle()
+            if(p?.chvad_active && p.chvad_until && new Date(p.chvad_until) < new Date()){
+                await supabase.from('profiles').update({ chvad_active: false }).eq('id', user.id)
+                console.log('[chvad] auto-deactivated (expired)')
+            }
+        }
+    } catch(e){ console.warn('[chvad expire]', e.message) }
+    // ═══════════════════════════════════════════════════════════════
+
     switchScreen('home')
-
     window.__ltSetChatTitle = (t) => { state.chatTitle = t }
+    renderLiveNow(); renderStories(); loadProfile(); loadStatus();
+    renderEventsScreen(); renderLiveFeed()
+    maybeSendDailyNotification()
+    heartbeat()
 
-    // ═══════════════════════════════════════════════════════════
-    // ОТЛОЖЕННОЕ — не мешает первому рендеру
-    // ═══════════════════════════════════════════════════════════
-    setTimeout(() => { try { loadStatus() } catch(e){} }, 2000)
-    setTimeout(() => { try { checkMainChannelSubscription() } catch(e){} }, 4000)
-    setTimeout(() => { try { autoCloseOldReports() } catch(e){} }, 6000)
-    setTimeout(() => { try { maybeSendDailyNotification() } catch(e){} }, 10000)
-    setTimeout(() => { try { initPush() } catch(e){} }, 15000)
+    // Подписка на QJN3G
+    try { const { data:{ user } } = await supabase.auth.getUser(); if(user) await ensureQjnSub(user.id) } catch {}
+    // Автозакрытие старых жалоб
+    try { autoCloseOldReports() } catch {}
 
-    // Heartbeat — интервал запускаем, но первый удар через минуту
-    setInterval(heartbeat, 60 * 1000)
-
+    setTimeout(() => { try { initPush() } catch(e){ console.warn('[push]', e.message) } }, 3000)
     await Router.resolve()
 }
 
