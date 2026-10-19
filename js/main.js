@@ -668,34 +668,101 @@ function showSlideNotif({ name, avatar, text, peerId }){
 }
 
 /* Realtime — новые сообщения в direct_messages */
-try {
-    supabase.channel('direct:realtime')
-        .on('postgres_changes', { event:'INSERT', schema:'public', table:'direct_messages' }, async payload => {
-            const m = payload.new
-            const { data:{ user } } = await supabase.auth.getUser()
-            if(!user || m.to_id !== user.id) return
+/* ═══════════════════════════════════════════════════════════
+   Realtime — Direct
+   Пишем в IndexedDB + точечно обновляем UI, БЕЗ полного refetch
+   ═══════════════════════════════════════════════════════════ */
+import('./directCache.js').then(({ DirectCache, ConnectionState, renderConnBanner }) => {
+    let _channel = null;
+    let _lastReconnect = 0;
 
-            // Если это текущий открытый чат — просто обновим
-            const room = document.getElementById('direct-room')
-            if(room && !room.classList.contains('hidden')){
-                // Обновит loadMessages сам, но не будем слать уведомление
-            } else {
-                // Слайд
-                const { data:p } = await supabase.from('profiles')
-                    .select('username, full_name, avatar_url').eq('id', m.from_id).maybeSingle()
-                const name = p?.full_name || p?.username || 'user'
-                showSlideNotif({
-                    name, avatar: p?.avatar_url, text: (m.content || '📎 Медиа').slice(0, 80), peerId: m.from_id
+    const startRealtime = () => {
+        if(_channel){ try { supabase.removeChannel(_channel); } catch {} }
+        _channel = supabase.channel('direct:realtime:v2')
+            .on('postgres_changes',
+                { event:'INSERT', schema:'public', table:'direct_messages' },
+                async payload => {
+                    const m = payload.new;
+                    const { data:{ user } } = await supabase.auth.getUser();
+                    if(!user) return;
+                    if(m.from_id !== user.id && m.to_id !== user.id) return;
+
+                    // 1) Пишем в кэш (моментально)
+                    const peerId = m.from_id === user.id ? m.to_id : m.from_id;
+                    try {
+                        await DirectCache.putMessage({
+                            id: m.id, chat_id: peerId,
+                            from_id: m.from_id, to_id: m.to_id,
+                            content: m.content || '',
+                            created_at: new Date(m.created_at).getTime(),
+                            read: !!m.read_at,
+                        });
+                        // Обновляем last_message в кэше чата
+                        const ch = await DirectCache.getChat(peerId);
+                        if(ch){
+                            ch.last_message = m.content || '📎 Медиа';
+                            ch.last_message_at = new Date(m.created_at).getTime();
+                            ch.last_from_me = m.from_id === user.id;
+                            if(m.from_id !== user.id && m.to_id === user.id) ch.unread = (ch.unread || 0) + 1;
+                            await DirectCache.putChat(ch);
+                        }
+                    } catch(e){ console.warn('[cache rt]', e); }
+
+                    // 2) Точечно обновляем DOM, если открыт директ
+                    const room = document.getElementById('direct-room');
+                    const directScreen = document.getElementById('screen-direct');
+                    if(room && !room.classList.contains('hidden')){
+                        const curPeer = room.dataset.peerId;
+                        if(curPeer === peerId){
+                            document.dispatchEvent(new CustomEvent('lt-direct:new-message', { detail: m }));
+                        }
+                    }
+                    if(directScreen?.classList.contains('active')){
+                        document.dispatchEvent(new CustomEvent('lt-direct:update-item', {
+                            detail: { peerId, last_message: m.content, last_message_at: m.created_at, from_me: m.from_id === user.id }
+                        }));
+                    } else if(m.to_id === user.id) {
+                        // слайд-уведомление
+                        const { data:p } = await supabase.from('profiles')
+                            .select('username, full_name, avatar_url').eq('id', m.from_id).maybeSingle();
+                        const name = p?.full_name || p?.username || 'user';
+                        showSlideNotif({
+                            name, avatar: p?.avatar_url,
+                            text: (m.content || '📎 Медиа').slice(0, 80),
+                            peerId: m.from_id,
+                        });
+                    }
                 })
-            }
-            // Обновляем бейджи в директе, если открыт
-            const screen = document.getElementById('screen-direct')
-            if(screen?.classList.contains('active')){
-                // Перерисуем через 300ms
-            }
-        })
-        .subscribe()
-} catch(e){ console.warn('[direct realtime]', e.message) }
+            .on('postgres_changes',
+                { event:'UPDATE', schema:'public', table:'direct_messages' },
+                async payload => {
+                    const m = payload.new;
+                    document.dispatchEvent(new CustomEvent('lt-direct:msg-updated', { detail: m }));
+                });
+
+        _channel.subscribe((status) => {
+            if(status === 'SUBSCRIBED')   ConnectionState.set('online');
+            if(status === 'CHANNEL_ERROR')ConnectionState.set('reconnecting');
+            if(status === 'TIMED_OUT')    ConnectionState.set('reconnecting');
+        });
+    };
+
+    startRealtime();
+
+    // Пере-подписка при возврате онлайна (Supabase иногда теряет сокет)
+    window.addEventListener('online', () => {
+        if(Date.now() - _lastReconnect < 2000) return;
+        _lastReconnect = Date.now();
+        setTimeout(startRealtime, 400);
+    });
+    document.addEventListener('lt-direct:resubscribe', startRealtime);
+
+    // Очистка старых сообщений раз в сутки (не блокирует UI)
+    const lastCleanup = localStorage.getItem('lt_direct_cleanup') || '0';
+    if(Date.now() - +lastCleanup > 86400_000){
+        setTimeout(() => DirectCache.cleanupOld(30).then(() => localStorage.setItem('lt_direct_cleanup', String(Date.now()))), 5000);
+    }
+}).catch(e => console.warn('[directCache load]', e));
 /* ============================================================
    CODE MODAL
 ============================================================ */
@@ -1719,8 +1786,20 @@ async function renderHomeFeed(force = false){
         list.dataset.renderedFor = tab
         list.dataset.renderedAt = String(Date.now())
     }
+    setTimeout(() => prefetchUpcomingVideos(3), 800)
 }
-
+function prefetchUpcomingVideos(limit = 3){
+    const list = document.getElementById('feed-list')
+    if(!list) return
+    const videos = [...list.querySelectorAll('.feed-post.feed-post-video[data-video-src]')].slice(0, limit)
+    videos.forEach((card, i) => {
+        const src = card.dataset.videoSrc
+        if(!src) return
+        // первый — грузим полностью (preload=auto), остальные — только metadata
+        if(i === 0) __prefetchPool.prefetch(src)
+        else        __prefetchPool.prefetchMeta(src)
+    })
+}
 /* ============================================================
    БЕСКОНЕЧНАЯ ЛЕНТА РЕКОМЕНДАЦИЙ
 ============================================================ */
@@ -5722,7 +5801,56 @@ const VFM = {
     cleanScreen:false,
     _drag:null,
 }
+/* ============================================================
+   PREFETCH POOL — TikTok-style трёхуровневый префетч
+   ============================================================ */
+const __prefetchPool = {
+    elements: [],
+    loaded: new Set(),
 
+    // Загрузить видео в фоне (preload=auto → скачивается полностью)
+    prefetch(src){
+        if(!src || this.loaded.has(src)) return;
+        this.loaded.add(src);
+        const v = document.createElement('video');
+        v.preload = 'auto';
+        v.muted = true;
+        v.src = src;
+        v.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none';
+        document.body.appendChild(v);
+        this.elements.push(v);
+        // Ограничиваем пул до 6 элементов, старые удаляем
+        while(this.elements.length > 6){
+            const old = this.elements.shift();
+            try { old.removeAttribute('src'); old.load(); old.remove() } catch {}
+            // src из loaded НЕ удаляем — браузер держит его в HTTP cache
+        }
+    },
+
+    // Загрузить ТОЛЬКО метаданные (первый кадр, размер, длительность)
+    prefetchMeta(src){
+        if(!src) return;
+        const key = 'meta:' + src;
+        if(this.loaded.has(key)) return;
+        this.loaded.add(key);
+        const v = document.createElement('video');
+        v.preload = 'metadata';
+        v.muted = true;
+        v.src = src;
+        v.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none';
+        document.body.appendChild(v);
+        this.elements.push(v);
+        while(this.elements.length > 6){
+            const old = this.elements.shift();
+            try { old.removeAttribute('src'); old.load(); old.remove() } catch {}
+        }
+    },
+
+    clear(){
+        this.elements.forEach(v => { try { v.removeAttribute('src'); v.load(); v.remove() } catch {} });
+        this.elements.length = 0;
+    }
+};
 function vfmFeedLabel(){
     switch(VFM.source){
         case 'home':    return 'Рекомендации';
@@ -5752,8 +5880,11 @@ function vfmBuildOverlay(){
     el.className = 'vfm'
     el.innerHTML = `
       <div class="vfm-stack" id="vfm-stack">
-    <video class="vfm-video vfm-current" id="vfm-video-current" playsinline preload="auto" crossorigin="anonymous"></video>
-    <video class="vfm-video vfm-next" id="vfm-video-next" playsinline preload="auto" muted></video>
+    <!-- СТАЛО -->
+<video class="vfm-video vfm-current" id="vfm-video-current"
+       playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+<video class="vfm-video vfm-next" id="vfm-video-next"
+       playsinline webkit-playsinline preload="auto" muted></video>
   </div>
 
   <!-- ВЕРХНИЙ УРОВЕНЬ -->
@@ -5890,17 +6021,14 @@ function vfmBuildOverlay(){
     VFM.el = el
     VFM.video     = el.querySelector('#vfm-video-current')
     VFM.videoNext = el.querySelector('#vfm-video-next')
-    VFM.stack     = el.querySelector('#vfm-stack')
-
+    /* ─── ВИДЕО: размер под экран ─── */
     const applyVideoFit = (v) => {
         const vw = v.videoWidth, vh = v.videoHeight;
         if(!vw || !vh) return;
         if (vh > vw) {
-            // Портретное (длинное по Y) — заполняет область до прогресс-бара
             v.style.objectFit = 'cover';
             v.style.objectPosition = 'center center';
         } else {
-            // Горизонтальное / квадратное — по центру, без растягивания
             v.style.objectFit = 'contain';
             v.style.objectPosition = 'center center';
         }
@@ -5908,7 +6036,7 @@ function vfmBuildOverlay(){
     VFM.video.addEventListener('loadedmetadata', () => applyVideoFit(VFM.video));
     VFM.videoNext.addEventListener('loadedmetadata', () => applyVideoFit(VFM.videoNext));
 
-    /* ---- Связываем все обработчики ---- */
+    /* ─── Связываем все обработчики ─── */
     el.querySelector('#vfm-back').addEventListener('click', () => closeVideoFeed())
 
     el.querySelector('#vfm-ch-ava').addEventListener('click', () => {
@@ -5931,7 +6059,6 @@ function vfmBuildOverlay(){
         try {
             if(nowSub) await supabase.from('subscriptions').insert({ follower_id: user.id, channel_id: chId })
             else await supabase.from('subscriptions').delete().eq('follower_id', user.id).eq('channel_id', chId)
-            showToast('success', nowSub ? 'Вы подписаны' : 'Отписка', { icon: nowSub ? '✓' : '👋' })
         } catch(err){
             applySubState(chId, wasSub)
             if(wasSub) state.myChannelSubs.add(chId); else state.myChannelSubs.delete(chId)
@@ -5941,7 +6068,7 @@ function vfmBuildOverlay(){
 
     el.querySelector('#vfm-top-more').addEventListener('click', openVfmMoreMenu)
 
-    /* ---- Кнопки: share / repost / like ---- */
+    /* ─── Кнопки: share / repost / like ─── */
     el.querySelectorAll('[data-vfm]').forEach(b => b.addEventListener('click', async e => {
         e.stopPropagation()
         const item = VFM.list[VFM.index]; if(!item) return
@@ -5955,14 +6082,14 @@ function vfmBuildOverlay(){
         }
     }))
 
-    /* ---- Автор: клик на аватарку ---- */
+    /* ─── Автор: аватар ─── */
     el.querySelector('#vfm-author-ava').addEventListener('click', () => {
         const item = VFM.list[VFM.index]; if(!item || !item.card) return
         const authorId = item.card.querySelector('.feed-post-avatar[data-uid]')?.dataset.uid
         if(authorId){ closeVideoFeed(); setTimeout(() => openUserProfile(authorId), 300) }
     })
 
-    /* ---- Подписаться ---- */
+    /* ─── Подписаться на автора ─── */
     el.querySelector('#vfm-follow-btn').addEventListener('click', async e => {
         const item = VFM.list[VFM.index]; if(!item || !item.card) return
         const authorId = item.card.querySelector('.feed-post-avatar[data-uid]')?.dataset.uid
@@ -5974,8 +6101,8 @@ function vfmBuildOverlay(){
         setTimeout(syncVfmMeta, 260)
     })
 
-    /* ---- Прогресс ---- */
-    const bar = el.querySelector('#vfm-progress')
+    /* ─── Прогресс ─── */
+    const bar  = el.querySelector('#vfm-progress')
     const fill = el.querySelector('#vfm-progress-fill')
     const setSeek = clientX => {
         const r = bar.getBoundingClientRect()
@@ -5987,55 +6114,67 @@ function vfmBuildOverlay(){
     bar.addEventListener('pointermove', e => { if(dragging){ e.stopPropagation(); setSeek(e.clientX) } })
     bar.addEventListener('pointerup',   e => { e.stopPropagation(); dragging = false; bar.classList.remove('dragging') })
 
-    VFM.video.addEventListener('timeupdate', () => {
-        if(!VFM.video.duration) return
-        fill.style.width = (VFM.video.currentTime / VFM.video.duration * 100) + '%'
-        const half = VFM.video.duration / 2
-        const hasComments = vfmCurrentPostComments.total > 0 && !!vfmCurrentPostComments.popular
-        let target
-        if(VFM.video.currentTime < half){
-            target = hasComments ? 'popular' : 'empty'   // ← если нет комментов → «Обсуждение»
-        } else {
-            target = 'input'                              // ← если ≥50% → «что думаете?»
-        }
-        if(vfmCommentState !== target) setVfmCommentState(target)
-    })
-
-    /* ---- Пауза ---- */
-    const pauseOverlay = el.querySelector('#vfm-pause-overlay')
-    VFM.video.addEventListener('click', e => {
-        // если только что был свайп — не переключаем play/pause
-        if(window.__vfmSuppressClick) return
-        e.stopPropagation()
-        if(VFM.video.paused){
-            VFM.video.play().catch(()=>{})
+    /* ═══════════════════════════════════════════════════════════
+       ✅ КЛЮЧЕВОЙ ФИКС: навешиваем события на ОБА видео с проверкой
+       "я ли текущий". Это позволяет безопасно менять VFM.video ↔ VFM.videoNext
+       без перепривязки слушателей.
+       ═══════════════════════════════════════════════════════════ */
+    const pauseOverlay = el.querySelector('#vfm-pause-overlay');
+    const bindVideo = (videoEl) => {
+        videoEl.addEventListener('timeupdate', () => {
+            if(videoEl !== VFM.video) return
+            if(!videoEl.duration) return
+            fill.style.width = (videoEl.currentTime / videoEl.duration * 100) + '%'
+            const half = videoEl.duration / 2
+            const hasComments = vfmCurrentPostComments.total > 0 && !!vfmCurrentPostComments.popular
+            let target
+            if(videoEl.currentTime < half){
+                target = hasComments ? 'popular' : 'empty'
+            } else {
+                target = 'input'
+            }
+            if(vfmCommentState !== target) setVfmCommentState(target)
+        })
+        videoEl.addEventListener('play', () => {
+            if(videoEl !== VFM.video) return
             pauseOverlay.classList.remove('show')
-        } else {
-            VFM.video.pause()
-            pauseOverlay.classList.add('show')
-        }
-    })
-    VFM.video.addEventListener('play',  () => {
-        pauseOverlay.classList.remove('show')
-        el.querySelector('.vfm-vinyl')?.classList.add('playing')
-    })
-    VFM.video.addEventListener('pause', () => {
-        if(!VFM.video.ended && !VFM.cleanScreen) pauseOverlay.classList.add('show')
-        el.querySelector('.vfm-vinyl')?.classList.remove('playing')
-    })
-    VFM.video.addEventListener('ended', () => {
-        if(VFM.autoplay){ vfmNext(); return }
-        try { VFM.video.currentTime = 0; VFM.video.play().catch(()=>{}) } catch {}
-    })
+            el.querySelector('.vfm-vinyl')?.classList.add('playing')
+        })
+        videoEl.addEventListener('pause', () => {
+            if(videoEl !== VFM.video) return
+            if(!videoEl.ended && !VFM.cleanScreen) pauseOverlay.classList.add('show')
+            el.querySelector('.vfm-vinyl')?.classList.remove('playing')
+        })
+        videoEl.addEventListener('ended', () => {
+            if(videoEl !== VFM.video) return
+            if(VFM.autoplay){ vfmNext(); return }
+            try { videoEl.currentTime = 0; videoEl.play().catch(()=>{}) } catch {}
+        })
+        videoEl.addEventListener('click', e => {
+            if(videoEl !== VFM.video) return
+            if(window.__vfmSuppressClick) return
+            e.stopPropagation()
+            if(videoEl.paused){
+                videoEl.play().catch(()=>{})
+                pauseOverlay.classList.remove('show')
+            } else {
+                videoEl.pause()
+                pauseOverlay.classList.add('show')
+            }
+        })
+    }
+    bindVideo(VFM.video)
+    bindVideo(VFM.videoNext)
+    /* ═══════════════════════════════════════════════════════════ */
 
-    /* ---- Описание: раскрыть «ещё» ---- */
+    /* ─── Описание: раскрыть «ещё» ─── */
     el.querySelector('#vfm-desc-more').addEventListener('click', e => {
         e.stopPropagation()
         el.querySelector('#vfm-desc').classList.add('expanded')
         e.currentTarget.classList.add('hidden')
     })
 
-    /* ---- Обсуждение: переключение состояний и события ---- */
+    /* ─── Обсуждение ─── */
     initVfmCommentBar(el)
 
     initVfmSwipe(el)
@@ -6603,12 +6742,40 @@ async function openVideoFeed(card, sourceHint){
     VFM.loadingMore = false
     VFM.cleanScreen = false
 
+    if(feedVideoObserver){ feedVideoObserver.disconnect() }
     document.querySelectorAll('.post-bg-video').forEach(v => { try { v.pause() } catch {} })
     document.body.classList.add('vfm-active')
     document.body.style.overflow = 'hidden'
 
     const el = vfmBuildOverlay()
 
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ СТАРТ ЗАГРУЗКИ ДО АНИМАЦИИ
+    // Видео начинает качаться с первого кадра анимации,
+    // а не после её окончания (+550 мс к старту)
+    // ═══════════════════════════════════════════════════════════
+    {
+        const firstItem = VFM.list[VFM.index]
+        if(firstItem && firstItem.src){
+            const v = VFM.video
+            v.muted = true
+            v.preload = 'auto'
+            if(v.src !== firstItem.src){
+                v.src = firstItem.src
+                v.load()
+            }
+            v.play().catch(()=>{})
+            // Префетч следующего — пока идёт анимация
+            const secondItem = VFM.list[VFM.index + 1]
+            if(secondItem && secondItem.src){
+                __prefetchPool.prefetchMeta(secondItem.src)
+            }
+        }
+    }
+    /* ═══════════════════════════════════════════════════════════ */
+
+    // ... дальше существующая анимация входа ...
     // плавный вход
     const rect = card.getBoundingClientRect()
     const elRect = el.getBoundingClientRect()
@@ -6644,64 +6811,137 @@ function renderVfmSlide(){
     if(!item){ closeVideoFeed(); return }
 
     const el     = VFM.el
-    const v      = VFM.video
-    const vNext  = VFM.videoNext
+    let v        = VFM.video
+    let vNext    = VFM.videoNext
     const stack  = VFM.stack
 
-    // ─── жёсткий сброс позиции стека без анимации ───
+    // ─── жёсткий сброс позиции стека ───
     stack.style.transition = 'none'
     stack.style.transform  = 'translate3d(0, 0, 0)'
     void stack.offsetHeight
     stack.style.transition = ''
 
-    // ─── сброс opacity у UI (на случай если был drag / fade) ───
+    // ─── сброс opacity у UI ───
     el.querySelectorAll('.vfm-topbar, .vfm-bottom, .vfm-progress').forEach(n => {
         n.style.transition = ''
         n.style.opacity    = '1'
     })
 
-    // ─── CURRENT ───
-    try { v.pause() } catch {}
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ SWAP-AWARE ВОСПРОИЗВЕДЕНИЕ
+    // Если vNext уже загрузил item.src (после префетча) — меняем
+    // элементы ролями. Никакой повторной загрузки, старт мгновенный.
+    // ═══════════════════════════════════════════════════════════
+    const currentInV     = v.src === item.src
+    const currentInVNext = vNext && vNext.src === item.src
 
-    // ═══ FIX: сброс scale/opacity от предыдущего свайпа ═══
-    // Иначе видео «застревает» на scale(.94) и с зазорами со всех сторон
-    v.style.transition = 'none';
-    v.style.transform  = 'translateZ(0) scale(1)';
-    v.style.opacity    = '1';
-    void v.offsetHeight;
-    v.style.transition = '';
-    // ═══════════════════════════════════════════════════════
+    if(currentInVNext && !currentInV){
+        // ── SWAP: vNext становится current, v — next ──
+        try { v.pause() } catch {}
 
-    v.src = item.src
-    v.muted = false
-    v.loop = false
-    try { v.currentTime = 0 } catch {}
-    v.play().catch(() => { v.muted = true; v.play().catch(()=>{}) })
+        // сброс стилей у того, что станет next (чтобы не мигал)
+        v.style.transition = 'none'
+        v.style.transform  = 'translateZ(0) scale(1)'
+        v.style.opacity    = '1'
+        void v.offsetHeight
+        v.style.transition = ''
 
-    // ─── NEXT (превью под текущим) ───
+        // меняем классы (CSS применяет top/z-index)
+        v.classList.remove('vfm-current')
+        v.classList.add('vfm-next')
+        vNext.classList.remove('vfm-next')
+        vNext.classList.add('vfm-current')
+
+        // меняем ID (на случай querySelector)
+        const tmpId = v.id; v.id = vNext.id; vNext.id = tmpId
+
+        // меняем ссылки
+        VFM.video     = vNext
+        VFM.videoNext = v
+        v     = VFM.video
+        vNext = VFM.videoNext
+
+        // ⚡ Мгновенный старт — src уже в буфере
+        v.muted = true
+        v.playsInline = true
+        try { v.currentTime = 0 } catch {}
+        const playPromise = v.play()
+        if(playPromise && playPromise.then){
+            playPromise.then(() => {
+                // включаем звук сразу после старта (пользователь уже в интерактиве)
+                setTimeout(() => { v.muted = false }, 60)
+            }).catch(() => {
+                el.querySelector('#vfm-pause-overlay')?.classList.add('show')
+            })
+        }
+    } else {
+        // ── ОБЫЧНЫЙ ПУТЬ (первое открытие или назад) ──
+        try { v.pause() } catch {}
+
+        // сброс scale/opacity от предыдущего свайпа
+        v.style.transition = 'none'
+        v.style.transform  = 'translateZ(0) scale(1)'
+        v.style.opacity    = '1'
+        void v.offsetHeight
+        v.style.transition = ''
+
+        v.muted = true          // ✅ muted СРАЗУ — без reject→retry
+        v.playsInline = true
+        v.preload = 'auto'
+        v.loop = false
+
+        if(v.src !== item.src || !v.src){
+            v.src = item.src
+            v.load()
+        }
+        const playPromise = v.play()
+        if(playPromise && playPromise.then){
+            playPromise.then(() => {
+                setTimeout(() => { v.muted = false }, 60)
+            }).catch(() => {
+                el.querySelector('#vfm-pause-overlay')?.classList.add('show')
+            })
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ ПРЕФЕТЧ 3 УРОВНЯ (TikTok-style):
+    //   v         — играет сейчас
+    //   vNext     — грузится полностью в фоне (preload=auto, БЕЗ play!)
+    //   pool      — следующий за ним, только metadata
+    // ═══════════════════════════════════════════════════════════
     const nextItem = VFM.list[VFM.index + 1]
     if(vNext){
-        try { vNext.pause() } catch {}
+        try { vNext.pause() } catch {}          // ❌ БЕЗ play() — не съедаем полосу
+        vNext.muted = true
+        vNext.playsInline = true
+        vNext.loop = true
+
         if(nextItem && nextItem.src){
             if(vNext.src !== nextItem.src){
+                vNext.preload = 'auto'
                 vNext.src = nextItem.src
                 vNext.load()
+                vNext.addEventListener('loadeddata', () => {
+                    try { vNext.currentTime = 0.04 } catch {}
+                }, { once: true })
             }
-            vNext.muted = true
-            // играем muted — так под текущим видео будет живой превью,
-            // как в TikTok. Если браузер блокирует autoplay — просто покажем 1-й кадр.
-            vNext.play().catch(() => {
-                try {
-                    vNext.addEventListener('loadeddata', () => {
-                        try { vNext.currentTime = 0.05 } catch {}
-                    }, { once: true })
-                } catch {}
-            })
+            // pool: грузим следующий за следующим — только metadata
+            const afterNext = VFM.list[VFM.index + 2]
+            if(afterNext && afterNext.src){
+                __prefetchPool.prefetchMeta(afterNext.src)
+            }
         } else {
             vNext.removeAttribute('src')
             try { vNext.load() } catch {}
         }
     }
+    /* ═══════════════════════════════════════════════════════════ */
+
+    // ─── сброс оверлея паузы ───
+    el.querySelector('#vfm-pause-overlay')?.classList.remove('show')
+    el.querySelector('#vfm-progress-fill').style.width = '0%'
+    // ... дальше идёт существующий код сброса комментария и syncVfmMeta() ...
 
     // ─── сброс оверлея паузы ───
     el.querySelector('#vfm-pause-overlay')?.classList.remove('show')
@@ -7071,7 +7311,9 @@ async function closeVideoFeed(){
     VFM.index = 0
     VFM.originCard = null
     VFM.cleanScreen = false
-
+    if(feedVideoObserver && document.querySelector('.feed-post')){
+        setTimeout(initFeedVideoObserver, 200)
+    }
     document.body.classList.remove('vfm-active')
     document.body.style.overflow = ''
     document.dispatchEvent(new Event('vfm:closed'))
