@@ -4803,7 +4803,34 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
     position: relative;
     z-index: 10;
 }
+/* ═══════════════════════════════════════════════════════════
+   ⚡ PERFORMANCE — оптимизация рендера
+   ═══════════════════════════════════════════════════════════ */
 
+/* Скрытые экраны не участвуют в layout/paint */
+.app-screen:not(.active){ content-visibility: hidden }
+
+/* Карточка поста изолирована — не перерисовывает соседей */
+.feed-post{ contain: layout style }
+
+/* Видео-пост тоже изолирован */
+.feed-post.feed-post-video{ contain: layout style paint }
+
+/* Аватары — фиксированные размеры, чтобы не было layout shift */
+.feed-post-avatar,
+.story-ring,
+.channel-live-ava,
+.direct-item-avatar{ contain: layout style paint }
+
+/* Стеклянные шапки — без множественного backdrop-filter */
+.topbar,
+.bottom-nav,
+.ch-page-header{ will-change: transform }
+
+/* Плавный скролл без рывков */
+.feed-list,
+.direct-messages,
+.lr-chat{ overscroll-behavior: contain }
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

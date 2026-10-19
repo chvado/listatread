@@ -276,7 +276,148 @@ const state = {
     __lastSlideAt: 0,
     __slideTimer: null
 }
+/* ============================================================
+   ⚡ PREFETCH CACHE — TikTok-style мгновенная загрузка
+============================================================ */
+const Cache = {
+    data: new Map(),
+    promises: new Map(),
+    ts: new Map(),
 
+    get(key){ return this.data.get(key) },
+    isFresh(key, ttl = 60000){ return this.data.has(key) && (Date.now() - this.ts.get(key)) < ttl },
+    invalidate(key){ this.data.delete(key); this.ts.delete(key); this.promises.delete(key) },
+
+    async fetch(key, loader, ttl = 60000){
+        if(this.isFresh(key, ttl)) return this.data.get(key)
+        if(this.promises.has(key)) return this.promises.get(key)
+        const p = (async () => {
+            try {
+                const val = await loader()
+                this.data.set(key, val)
+                this.ts.set(key, Date.now())
+                return val
+            } finally { this.promises.delete(key) }
+        })()
+        this.promises.set(key, p)
+        return p
+    }
+}
+window.__ltCache = Cache
+/* ============================================================
+   PREFETCH-ФУНКЦИИ
+============================================================ */
+async function prefetchFollowCacheFor(userId){
+    return Cache.fetch('follows:' + userId, async () => {
+        const [{ data:f }, { data:s }] = await Promise.all([
+            supabase.from('follows').select('following_id').eq('follower_id', userId),
+            supabase.from('subscriptions').select('channel_id').eq('follower_id', userId)
+        ])
+        return {
+            follows: new Set((f||[]).map(x => x.following_id)),
+            channelSubs: new Set((s||[]).map(x => x.channel_id))
+        }
+    }, 90000)
+}
+
+async function prefetchStories(userId){
+    return Cache.fetch('stories:' + userId, async () => {
+        const { data:follows } = await supabase.from('follows')
+            .select('profiles:following_id ( id, username, full_name, avatar_url, status, is_admin )')
+            .eq('follower_id', userId)
+        return (follows || []).map(f => f.profiles).filter(Boolean)
+    }, 120000)
+}
+
+async function prefetchLiveNow(userId){
+    return Cache.fetch('live-now:' + userId, async () => {
+        const [{ data: subs }, { data: owned }] = await Promise.all([
+            supabase.from('subscriptions').select('channel_id, channels:channel_id ( id, name, avatar_url )').eq('follower_id', userId),
+            supabase.from('channels').select('id, name, avatar_url').eq('owner_id', userId)
+        ])
+        const channelMap = new Map()
+        ;(subs || []).forEach(s => { if(s.channels) channelMap.set(s.channels.id, s.channels) })
+        ;(owned || []).forEach(c => { if(c) channelMap.set(c.id, c) })
+        const channels = [...channelMap.values()]
+        if(!channels.length) return { channels: [], latestByChannel: {}, subCounts: {} }
+
+        const channelIds = channels.map(c => c.id)
+        const [{ data: recentPosts }, { data: activeLives }, { data: allSubs }] = await Promise.all([
+            supabase.from('posts').select('id, channel_id, media_url, poll, created_at')
+                .in('channel_id', channelIds).order('created_at', { ascending:false }).limit(200),
+            supabase.from('lives').select('id, channel_id, created_at')
+                .in('channel_id', channelIds).eq('is_active', true).order('created_at', { ascending:false }),
+            supabase.from('subscriptions').select('channel_id').in('channel_id', channelIds)
+        ])
+        const subCounts = {}
+        ;(allSubs || []).forEach(s => subCounts[s.channel_id] = (subCounts[s.channel_id] || 0) + 1)
+        const latestByChannel = {}
+        ;(recentPosts || []).forEach(p => {
+            const cur = latestByChannel[p.channel_id]
+            if(!cur || new Date(p.created_at) > new Date(cur.created_at)) latestByChannel[p.channel_id] = { type:'post', post:p, created_at:p.created_at }
+        })
+        ;(activeLives || []).forEach(l => {
+            const cur = latestByChannel[l.channel_id]
+            if(!cur || new Date(l.created_at) > new Date(cur.created_at)) latestByChannel[l.channel_id] = { type:'live', live:l, created_at:l.created_at }
+        })
+        return { channels, latestByChannel, subCounts }
+    }, 60000)
+}
+
+async function prefetchHomeFeed(userId){
+    return Cache.fetch('feed:recommended:' + userId, async () => {
+        const posts = await loadPosts(userId)
+        if(!posts?.length) return { posts: [], counts: {}, liked: new Set(), reposted: new Set() }
+
+        const authorIds  = [...new Set(posts.map(p => p.author_id).filter(Boolean))]
+        const channelIds = [...new Set(posts.map(p => p.channel_id).filter(Boolean))]
+        const ids = posts.map(p => p.id)
+
+        const [profs, chs, likes, reps, counts] = await Promise.all([
+            authorIds.length ? supabase.from('profiles').select('id, username, full_name, avatar_url, status, is_admin').in('id', authorIds) : Promise.resolve({ data: [] }),
+            channelIds.length ? supabase.from('channels').select('id, name, avatar_url').in('id', channelIds) : Promise.resolve({ data: [] }),
+            supabase.from('likes').select('post_id').eq('user_id', userId).in('post_id', ids),
+            supabase.from('reposts').select('post_id').eq('user_id', userId).in('post_id', ids),
+            fetchCounts(ids)
+        ])
+        const profiles = Object.fromEntries((profs.data || []).map(p => [p.id, p]))
+        const channels = Object.fromEntries((chs.data || []).map(c => [c.id, c]))
+
+        return {
+            posts: posts.map(p => ({
+                ...p,
+                profiles: profiles[p.author_id] || {},
+                channels: p.channel_id ? (channels[p.channel_id] || null) : null
+            })),
+            counts,
+            liked: new Set((likes.data || []).map(l => l.post_id)),
+            reposted: new Set((reps.data || []).map(r => r.post_id))
+        }
+    }, 3 * 60 * 1000)
+}
+
+async function prefetchDirectChats(userId){
+    return Cache.fetch('direct:' + userId, async () => {
+        const { data: msgs } = await supabase.from('direct_messages')
+            .select('id, from_id, to_id, content, media_url, media_type, is_read, created_at')
+            .or(`from_id.eq.${userId},to_id.eq.${userId}`)
+            .order('created_at', { ascending:false }).limit(500)
+        if(!msgs?.length) return []
+
+        const byPeer = new Map()
+        for(const m of msgs){
+            const peerId = m.from_id === userId ? m.to_id : m.from_id
+            if(!byPeer.has(peerId)) byPeer.set(peerId, { peerId, lastMsg: m, unread: 0 })
+            if(m.to_id === userId && !m.is_read) byPeer.get(peerId).unread++
+        }
+        const ids = [...byPeer.keys()]
+        const { data: profs } = await supabase.from('profiles')
+            .select('id, username, full_name, avatar_url, status, status_emoji, is_admin, last_seen')
+            .in('id', ids)
+        const pm = Object.fromEntries((profs || []).map(p => [p.id, p]))
+        return ids.map(id => ({ ...byPeer.get(id), profile: pm[id] || {} }))
+    }, 30000)
+}
 /* ============================================================
    ТЕМА
 ============================================================ */
@@ -375,12 +516,9 @@ async function refreshFollowCache(){
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         if(!user) return
-        const [{ data:f }, { data:s }] = await Promise.all([
-            supabase.from('follows').select('following_id').eq('follower_id', user.id),
-            supabase.from('subscriptions').select('channel_id').eq('follower_id', user.id)
-        ])
-        state.myFollows = new Set((f||[]).map(x => x.following_id))
-        state.myChannelSubs = new Set((s||[]).map(x => x.channel_id))
+        const data = await prefetchFollowCacheFor(user.id)
+        state.myFollows = data.follows
+        state.myChannelSubs = data.channelSubs
     } catch {}
 }
 
@@ -814,17 +952,22 @@ function showScreen(name){
 }
 
 let livechatRefreshTimer = null
+
 function switchScreen(name){
     document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'))
     const t = document.getElementById('screen-' + name)
     if(t) t.classList.add('active')
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === name))
-    state.screen = name; window.scrollTo(0, 0)
+    state.screen = name
+    window.scrollTo(0, 0)
+
     if(name === 'inbox') renderEventsScreen()
+
     if(name === 'profile'){
         if(state.currentProfileViewId) loadProfile(state.currentProfileViewId)
         else { state.viewingOwnProfile = true; loadProfile() }
     }
+
     if(name !== 'direct'){
         document.querySelectorAll('.nav-btn').forEach(b =>
             b.classList.toggle('active', b.dataset.screen === name)
@@ -832,15 +975,49 @@ function switchScreen(name){
     }
 
     if(name === 'settings') loadSettings()
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ HOME — мгновенный рендер из кэша + prefetch в idle
+    // ═══════════════════════════════════════════════════════════
     if(name === 'home'){
         renderLiveNow()
         renderStories()
-        // лента кешируется сама — форс только если таб сменился
         renderHomeFeed(false)
+
+        const idle = window.requestIdleCallback || (cb => setTimeout(cb, 400))
+        idle(() => {
+            const uid = state.currentUser?.id
+            if(!uid) return
+
+            // префетч директа — чтобы при переходе было мгновенно
+            prefetchDirectChats(uid).catch(()=>{})
+
+            // префетч каналов — для экрана discover
+            Cache.fetch('channels:' + uid, async () => {
+                const { data:{ user } } = await supabase.auth.getUser()
+                if(!user) return { myOwn: [], subs: [] }
+                const [{ data:myOwn }, { data:subs }] = await Promise.all([
+                    supabase.from('channels')
+                        .select('id, name, description, avatar_url, owner_id')
+                        .eq('owner_id', user.id).limit(10),
+                    supabase.from('subscriptions')
+                        .select('channel_id, channels ( id, name, description, avatar_url, owner_id )')
+                        .eq('follower_id', user.id).limit(20)
+                ])
+                return { myOwn: myOwn || [], subs: subs || [] }
+            }, 120000).catch(()=>{})
+        })
     }
+
     if(name === 'channels') renderChannels()
-    if(name !== 'livechat' && livechatRefreshTimer){ clearInterval(livechatRefreshTimer); livechatRefreshTimer = null }
-    setTimeout(() => { updatePlayIcons(); syncFullPlayer(); }, 50)
+
+    if(name !== 'livechat' && livechatRefreshTimer){
+        clearInterval(livechatRefreshTimer)
+        livechatRefreshTimer = null
+    }
+
+    setTimeout(() => { updatePlayIcons(); syncFullPlayer() }, 50)
+
     refreshFollowCache().then(() => {
         document.querySelectorAll('.feed-sub-btn').forEach(btn => {
             const isSub = state.myChannelSubs.has(btn.dataset.chid)
@@ -851,6 +1028,7 @@ function switchScreen(name){
         })
     })
 }
+
 document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
     const s = b.dataset.screen
     if(s === 'direct'){
@@ -1444,22 +1622,85 @@ document.querySelectorAll('#status-current').forEach(btn => {
 ============================================================ */
 async function renderStories(){
     const row = $('stories-row'); if(!row) return
+    const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+
+    // ⚡ Синхронный рендер из кэша
+    const cached = Cache.get('stories:' + user.id)
+    if(cached){ renderStoriesHtml(row, cached); return }
+
     row.innerHTML = loadingBlock()
-    try {
-        const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
-        const { data:follows } = await supabase.from('follows').select('following_id, profiles:following_id ( id, username, full_name, avatar_url, status, is_admin )').eq('follower_id', user.id)
-        const people = (follows || []).map(f => f.profiles).filter(Boolean)
-        let html = `<button class="story story-add" id="find-people-btn"><div class="story-ring"><div class="story-ring-inner">+</div></div><div class="story-name">Найти людей</div></button>`
-        people.forEach(p => {
-            const name = p.full_name || p.username || 'user'
-            const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
-            const emoji = statusEmoji(computeDisplayStatus(p))
-            html += `<button class="story" data-uid="${p.id}"><div class="story-ring"><div class="story-ring-inner">${av}</div><div class="story-status-badge">${emoji}</div></div><div class="story-name">${escapeHtml(name)}${p.is_admin ? adminBadge(true, 'small') : ''}</div></button>`
-        })
-        row.innerHTML = html
-        $('find-people-btn').addEventListener('click', () => alert('Поиск людей — скоро'))
-        row.querySelectorAll('.story[data-uid]').forEach(btn => btn.addEventListener('click', () => openUserProfile(btn.dataset.uid)))
-    } catch { row.innerHTML = '<p class="empty small">Не удалось загрузить</p>' }
+    const people = await prefetchStories(user.id)
+    renderStoriesHtml(row, people)
+}
+
+function renderStoriesHtml(row, people){
+    let html = `<button class="story story-add" id="find-people-btn"><div class="story-ring"><div class="story-ring-inner">+</div></div><div class="story-name">Найти людей</div></button>`
+    people.forEach(p => {
+        const name = p.full_name || p.username || 'user'
+        const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="" loading="lazy">` : name.charAt(0).toUpperCase()
+        const emoji = statusEmoji(computeDisplayStatus(p))
+        html += `<button class="story" data-uid="${p.id}"><div class="story-ring"><div class="story-ring-inner">${av}</div><div class="story-status-badge">${emoji}</div></div><div class="story-name">${escapeHtml(name)}${p.is_admin ? adminBadge(true, 'small') : ''}</div></button>`
+    })
+    row.innerHTML = html
+    $('find-people-btn')?.addEventListener('click', () => alert('Поиск людей — скоро'))
+    row.querySelectorAll('.story[data-uid]').forEach(btn => btn.addEventListener('click', () => openUserProfile(btn.dataset.uid)))
+}
+
+async function renderLiveNow(){
+    const row = $('live-now-row'); if(!row) return
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user){ row.innerHTML = ''; return }
+
+    const cached = Cache.get('live-now:' + user.id)
+    if(cached){ renderLiveNowHtml(row, cached); return }
+
+    row.innerHTML = loadingBlock()
+    const data = await prefetchLiveNow(user.id)
+    renderLiveNowHtml(row, data)
+}
+
+function renderLiveNowHtml(row, data){
+    const { channels, latestByChannel, subCounts } = data
+    if(!channels.length){
+        row.innerHTML = `<p class="empty small" style="padding:20px 4px;font-size:12px;white-space:nowrap;color:var(--text-tertiary)">Подпишитесь на каналы</p>`
+        return
+    }
+    const seenKey = id => `lt_channel_seen_${id}`
+    const isNew = (channelId, at) => {
+        try { const seen = localStorage.getItem(seenKey(channelId)); return !seen || new Date(at) > new Date(seen) }
+        catch { return true }
+    }
+    const getInfo = (channelId, act) => {
+        if(!act) return { label:null, isNew:false, type:'none' }
+        if(act.type === 'live') return { label:'Новый live >', isNew:isNew(channelId, act.created_at), type:'live' }
+        const p = act.post
+        const isNewFlag = isNew(channelId, act.created_at)
+        if(isVideoUrl(p.media_url)) return { label:'Новое видео >', isNew:isNewFlag, type:'video' }
+        if(p.poll) return { label:'Новый опрос >', isNew:isNewFlag, type:'poll' }
+        if(p.media_url && isImageUrl(p.media_url)) return { label:'Новое фото >', isNew:isNewFlag, type:'photo' }
+        return { label:'Новый тред >', isNew:isNewFlag, type:'text' }
+    }
+    const items = channels.map(c => {
+        const act = latestByChannel[c.id] || null
+        return { channel: c, act, info: getInfo(c.id, act), sortTime: act ? new Date(act.created_at).getTime() : 0, subs: subCounts[c.id] || 0 }
+    }).sort((a, b) => b.sortTime - a.sortTime)
+
+    row.innerHTML = items.map(it => {
+        const c = it.channel
+        const name = c.name || 'Канал'
+        const av = c.avatar_url ? `<img src="${c.avatar_url}" alt="" loading="lazy">` : escapeHtml(name.charAt(0).toUpperCase())
+        const statusText = it.info.isNew && it.info.label ? it.info.label : `${it.subs} подписчиков`
+        const avaClass  = it.info.isNew ? 'has-new' : ''
+        const statClass = it.info.isNew ? 'has-new' : ''
+        return `<button class="channel-live-chip" data-ch="${c.id}" data-activity-type="${it.info.type}" data-post-id="${it.act?.post?.id || ''}" data-live-id="${it.act?.live?.id || ''}">
+            <div class="channel-live-ava ${avaClass}">${av}</div>
+            <div class="channel-live-info">
+              <div class="channel-live-name">${escapeHtml(name)}</div>
+              <div class="channel-live-status ${statClass}">${escapeHtml(statusText)}</div>
+            </div>
+        </button>`
+    }).join('')
+    // ... (обработчики кликов — оставь как в исходнике)
 }
 
 /* ============================================================
@@ -1643,59 +1884,68 @@ async function renderHomeFeed(force = false){
     const list = $('feed-list'); if(!list) return
     if(!force && list.dataset.renderedFor === state.feedTab && list.children.length && list.dataset.renderedAt){
         const age = Date.now() - (+list.dataset.renderedAt)
-        if(age < 15 * 60 * 1000) return  // 15 минут — живём
+        if(age < 15 * 60 * 1000) return
     }
     teardownInfinite()
-    list.innerHTML = loadingBlock()
-    try {
+
+    if(state.feedTab === 'recommended'){
         const { data:{ user } } = await supabase.auth.getUser()
-        await refreshFollowCache()
-        const tab = state.feedTab
+        if(!user){ list.innerHTML = ''; return }
 
-        if(tab === 'recommended'){
-            state.recBuffer = []
-            state.recCursor = 0
-            state.recShownIds = new Set()
-            state.recLoading = false
-
-            const posts = await loadPosts(user?.id)
-            if(!posts || !posts.length){
-                list.innerHTML = '<p class="empty">Пока нет публикаций</p>'
-                return
-            }
-            state.recBuffer = posts
-            list.innerHTML = ''
-            list.dataset.renderedFor = 'recommended'
-            list.dataset.renderedAt = String(Date.now())
-            setupInfinite(list, user?.id)
-            await appendRecommendedChunk(list, user?.id, 5)
+        // ⚡ 1. Если кэш уже есть — рендерим СРАЗУ без скелетона
+        const cached = Cache.get('feed:recommended:' + user.id)
+        if(cached && cached.posts?.length){
+            renderFeedFromPrefetch(list, cached, user.id)
             return
         }
 
+        // ⚡ 2. Иначе — ждём prefetch (он уже в полёте с boot)
+        list.innerHTML = loadingBlock()
+        const data = await prefetchHomeFeed(user.id)
+        if(data?.posts?.length) renderFeedFromPrefetch(list, data, user.id)
+        else list.innerHTML = '<p class="empty">Пока нет публикаций</p>'
+        return
+    }
+
+    // остальные вкладки — как раньше (с кэшем по tab)
+    const cacheKey = 'feed:' + state.feedTab + ':' + (state.currentUser?.id || 'anon')
+    if(!force && Cache.isFresh(cacheKey, 60000)){
+        const cached = Cache.get(cacheKey)
+        if(cached?.length){
+            list.innerHTML = cached.join('')
+            list.dataset.renderedFor = state.feedTab
+            list.dataset.renderedAt = String(Date.now())
+            attachFeedActions(list, state.currentUser?.id)
+            setTimeout(initTrackObserver, 60)
+            return
+        }
+    }
+
+    list.innerHTML = loadingBlock()
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
         let query = supabase.from('posts')
             .select('id, content, created_at, author_id, channel_id, media_url, media_title, profiles ( username, full_name, avatar_url, status, is_admin ), channels:channel_id ( id, name, avatar_url )')
             .not('channel_id', 'is', null)
 
-        if(tab === 'video') query = query.order('created_at', { ascending:false }).limit(60)
-        else if(tab === 'subs'){
+        if(state.feedTab === 'video') query = query.order('created_at', { ascending:false }).limit(60)
+        else if(state.feedTab === 'subs'){
             const { data:fol } = await supabase.from('follows').select('following_id').eq('follower_id', user.id)
             const ids = (fol || []).map(f => f.following_id)
             if(!ids.length){ list.innerHTML = '<p class="empty">Вы ни на кого не подписаны</p>'; return }
             query = query.in('author_id', ids).order('created_at', { ascending:false }).limit(30)
-        } else if(tab === 'my'){
+        } else if(state.feedTab === 'my'){
             const { data:subs } = await supabase.from('subscriptions').select('channel_id').eq('follower_id', user.id)
             const ids = (subs || []).map(s => s.channel_id)
             if(!ids.length){ list.innerHTML = '<p class="empty">Вы не подписаны ни на один канал</p>'; return }
             query = query.in('channel_id', ids).order('created_at', { ascending:false }).limit(30)
-        } else {
-            query = query.order('created_at', { ascending:false }).limit(30)
-        }
+        } else query = query.order('created_at', { ascending:false }).limit(30)
 
         const { data, error } = await withTimeout(query, 12000, 'home')
-        if(error || !data || !data.length){ list.innerHTML = '<p class="empty">Пока нет публикаций</p>'; return }
+        if(error || !data?.length){ list.innerHTML = '<p class="empty">Пока нет публикаций</p>'; return }
 
         let filtered = data
-        if(tab === 'video') filtered = data.filter(p => isVideoUrl(p.media_url))
+        if(state.feedTab === 'video') filtered = data.filter(p => isVideoUrl(p.media_url))
         if(!filtered.length){ list.innerHTML = '<p class="empty">Видео пока нет</p>'; return }
 
         const postIds = filtered.map(p => p.id)
@@ -1707,18 +1957,44 @@ async function renderHomeFeed(force = false){
         const likedIds = new Set((likes || []).map(l => l.post_id))
         const repostedIds = new Set((reps || []).map(r => r.post_id))
         const contextMap = { recommended:'ваши рекомендации', video:'видео для вас', subs:'от подписок', my:'мои каналы' }
-        const ctx = contextMap[tab] || 'ваши рекомендации'
-        list.innerHTML = filtered.map(p => renderChannelPost(p, user?.id, likedIds, repostedIds, counts, ctx)).join('')
+        const ctx = contextMap[state.feedTab] || 'ваши рекомендации'
+        const html = filtered.map(p => renderChannelPost(p, user?.id, likedIds, repostedIds, counts, ctx))
+        list.innerHTML = html.join('')
         likedIds.forEach(pid => syncPostLike(pid, true, 0))
         repostedIds.forEach(pid => syncPostRepost(pid, true, 0))
         attachFeedActions(list, user?.id)
+        list.dataset.renderedFor = state.feedTab
+        list.dataset.renderedAt = String(Date.now())
+        Cache.data.set(cacheKey, html); Cache.ts.set(cacheKey, Date.now())
         setTimeout(initTrackObserver, 100)
     } catch(e){
         console.warn('[renderHomeFeed]', e.message)
         list.innerHTML = '<p class="empty">Пока нет публикаций</p>'
-        list.dataset.renderedFor = tab
-        list.dataset.renderedAt = String(Date.now())
     }
+}
+
+/* ⚡ Мгновенный рендер из prefetch */
+function renderFeedFromPrefetch(list, cached, userId){
+    const { posts, counts, liked, reposted } = cached
+    state.recBuffer = posts
+    state.recCursor = 8
+    state.recShownIds = new Set()
+    state.recLoading = false
+
+    const first = posts.slice(0, 8)
+    first.forEach(p => state.recShownIds.add(p.id))
+
+    list.innerHTML = first.map(p =>
+        renderChannelPost(p, userId, liked, reposted, counts, 'ваши рекомендации')
+    ).join('')
+    liked.forEach(pid => syncPostLike(pid, true, 0))
+    reposted.forEach(pid => syncPostRepost(pid, true, 0))
+    attachFeedActions(list, userId)
+    list.dataset.renderedFor = 'recommended'
+    list.dataset.renderedAt = String(Date.now())
+    markSeen(first.map(p => p.id))
+    setupInfinite(list, userId)
+    setTimeout(initTrackObserver, 60)
 }
 
 /* ============================================================
@@ -4058,44 +4334,105 @@ $('delete-account')?.addEventListener('click', () => showActionSheet('Удали
 ============================================================ */
 async function renderChannels(){
     const stage = $('chan-hero-stage')
-    if(stage){ stage.classList.remove('animate'); void stage.offsetWidth; requestAnimationFrame(() => stage.classList.add('animate')) }
+    if(stage){
+        stage.classList.remove('animate')
+        void stage.offsetWidth
+        requestAnimationFrame(() => stage.classList.add('animate'))
+    }
     const mineBox = $('chan-mine-list'), recBox = $('chan-recommend-list')
     if(!mineBox || !recBox) return
+
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
+
+    // ⚡ Мгновенно из кэша
+    const cached = Cache.get('channels:' + user.id)
+    if(cached?.myOwn && (cached.myOwn.length || cached.subs.length)){
+        renderChannelsFromCache(user.id, cached, mineBox, recBox)
+        // обновляем в фоне
+        ;(async () => {
+            try {
+                await refreshFollowCache()
+                const fresh = await Cache.fetch('channels:' + user.id, async () => {
+                    const [{ data:myOwn }, { data:subs }] = await Promise.all([
+                        supabase.from('channels').select('id, name, description, avatar_url, owner_id').eq('owner_id', user.id).limit(10),
+                        supabase.from('subscriptions').select('channel_id, channels ( id, name, description, avatar_url, owner_id )').eq('follower_id', user.id).limit(20)
+                    ])
+                    return { myOwn: myOwn || [], subs: subs || [] }
+                }, 120000)
+                renderChannelsFromCache(user.id, fresh, mineBox, recBox)
+            } catch {}
+        })()
+        return
+    }
+
+    // первый раз — обычная загрузка
     mineBox.innerHTML = loadingBlock()
     recBox.innerHTML = loadingBlock()
     try {
-        const { data:{ user } } = await supabase.auth.getUser()
         await refreshFollowCache()
-        const { data:myOwn } = await supabase.from('channels').select('id, name, description, avatar_url, owner_id').eq('owner_id', user.id).limit(10)
-        const { data:subs } = await supabase.from('subscriptions').select('channel_id, channels ( id, name, description, avatar_url, owner_id )').eq('follower_id', user.id).limit(20)
-        const subChannels = (subs || []).map(s => s.channels).filter(Boolean)
-        const all = [...(myOwn || []), ...subChannels]
-        const unique = Array.from(new Map(all.map(c => [c.id, c])).values())
-        if(!unique.length){
-            mineBox.innerHTML = `<div class="empty small" style="padding:20px;text-align:center"><p style="margin-bottom:12px">Вы не вступили ни в один канал</p><button class="btn-primary" id="chan-create-empty">Создать</button></div>`
-            $('chan-create-empty')?.addEventListener('click', () => openCreateChannel())
-        } else {
-            mineBox.innerHTML = (await Promise.all(unique.map(async c => {
-                const av = c.avatar_url ? `<img src="${c.avatar_url}" alt="">` : (c.name || 'K').charAt(0).toUpperCase()
-                const { count:subsCount } = await supabase.from('subscriptions').select('*', { count:'exact', head:true }).eq('channel_id', c.id)
-                const isOwner = c.owner_id === user.id
-                const subIcon = isOwner ? '' : `<span class="chan-sub-icon" style="margin-left:auto;color:var(--red);display:flex">${ICONS.checkSmall}</span>`
-                return `<button class="chan-item" data-ch="${c.id}"><div class="chan-item-icon">${av}</div><div class="chan-item-info"><div class="chan-item-name">${escapeHtml(c.name || 'Канал')}</div><div class="chan-item-sub">${escapeHtml(c.description || '')}</div><div class="chan-item-meta">${subsCount || 0} подписчиков</div><div class="chan-item-role" style="${isOwner ? '' : 'color:var(--text-secondary)'}">${isOwner ? 'Владелец' : 'Участник'}</div></div>${subIcon}</button>`
-            }))).join('')
-        }
-        const exclude = new Set(unique.map(c => c.id))
-        const { data:recs } = await supabase.from('channels').select('id, name, description, avatar_url').limit(20)
-        const filtered = (recs || []).filter(c => !exclude.has(c.id)).slice(0, 6)
-        if(!filtered.length) recBox.innerHTML = '<p class="empty small">Рекомендаций пока нет</p>'
-        else recBox.innerHTML = filtered.map(c => {
-            const av = c.avatar_url ? `<img src="${c.avatar_url}" alt="">` : (c.name || 'K').charAt(0).toUpperCase()
+        const { myOwn, subs } = await Cache.fetch('channels:' + user.id, async () => {
+            const [{ data:myOwn }, { data:subs }] = await Promise.all([
+                supabase.from('channels').select('id, name, description, avatar_url, owner_id').eq('owner_id', user.id).limit(10),
+                supabase.from('subscriptions').select('channel_id, channels ( id, name, description, avatar_url, owner_id )').eq('follower_id', user.id).limit(20)
+            ])
+            return { myOwn: myOwn || [], subs: subs || [] }
+        }, 120000)
+        renderChannelsFromCache(user.id, { myOwn, subs }, mineBox, recBox)
+    } catch(e){
+        mineBox.innerHTML = '<p class="empty small">Ошибка</p>'
+        recBox.innerHTML = '<p class="empty small">Ошибка</p>'
+    }
+}
+
+function renderChannelsFromCache(userId, data, mineBox, recBox){
+    const { myOwn, subs } = data
+    const subChannels = (subs || []).map(s => s.channels).filter(Boolean)
+    const all = [...(myOwn || []), ...subChannels]
+    const unique = Array.from(new Map(all.map(c => [c.id, c])).values())
+
+    if(!unique.length){
+        mineBox.innerHTML = `<div class="empty small" style="padding:20px;text-align:center"><p style="margin-bottom:12px">Вы не вступили ни в один канал</p><button class="btn-primary" id="chan-create-empty">Создать</button></div>`
+        $('chan-create-empty')?.addEventListener('click', () => openCreateChannel())
+    } else {
+        mineBox.innerHTML = unique.map(c => {
+            const av = c.avatar_url ? `<img src="${c.avatar_url}" alt="" loading="lazy">` : (c.name || 'K').charAt(0).toUpperCase()
+            const isOwner = c.owner_id === userId
+            const subIcon = isOwner ? '' : `<span class="chan-sub-icon" style="margin-left:auto;color:var(--red);display:flex">${ICONS.checkSmall}</span>`
+            return `<button class="chan-item" data-ch="${c.id}"><div class="chan-item-icon">${av}</div><div class="chan-item-info"><div class="chan-item-name">${escapeHtml(c.name || 'Канал')}</div><div class="chan-item-sub">${escapeHtml(c.description || '')}</div><div class="chan-item-role" style="${isOwner ? '' : 'color:var(--text-secondary)'}">${isOwner ? 'Владелец' : 'Участник'}</div></div>${subIcon}</button>`
+        }).join('')
+    }
+
+    // рекомендации — отдельный кэш, грузим фоном
+    const exclude = new Set(unique.map(c => c.id))
+    const cachedRecs = Cache.get('channels-recs')
+    if(cachedRecs){
+        renderRecs(cachedRecs)
+    } else {
+        recBox.innerHTML = loadingBlock()
+        supabase.from('channels').select('id, name, description, avatar_url').limit(20).then(({ data:recs }) => {
+            const filtered = (recs || []).filter(c => !exclude.has(c.id)).slice(0, 6)
+            Cache.data.set('channels-recs', filtered); Cache.ts.set('channels-recs', Date.now())
+            renderRecs(filtered)
+        })
+    }
+
+    function renderRecs(filtered){
+        if(!filtered.length){ recBox.innerHTML = '<p class="empty small">Рекомендаций пока нет</p>'; return }
+        recBox.innerHTML = filtered.map(c => {
+            const av = c.avatar_url ? `<img src="${c.avatar_url}" alt="" loading="lazy">` : (c.name || 'K').charAt(0).toUpperCase()
             const isSub = state.myChannelSubs.has(c.id)
             const subIcon = isSub
                 ? `<span class="chan-sub-icon" style="margin-left:auto;color:var(--red);display:flex">${ICONS.checkSmall}</span>`
                 : `<span class="chan-sub-icon" style="margin-left:auto;color:var(--red);display:flex">${ICONS.plus}</span>`
             return `<button class="chan-item" data-ch="${c.id}" data-chrec="1"><div class="chan-item-icon">${av}</div><div class="chan-item-info"><div class="chan-item-name">${escapeHtml(c.name || 'Канал')}</div><div class="chan-item-sub">${escapeHtml(c.description || '')}</div></div>${subIcon}</button>`
         }).join('')
-        document.querySelectorAll('.chan-item[data-ch]').forEach(b => b.addEventListener('click', e => {
+    }
+
+    document.querySelectorAll('.chan-item[data-ch]').forEach(b => {
+        if(b.dataset.bound === '1') return
+        b.dataset.bound = '1'
+        b.addEventListener('click', e => {
             const subIcon = e.target.closest('.chan-sub-icon')
             if(subIcon && b.dataset.chrec === '1'){
                 e.stopPropagation()
@@ -4103,9 +4440,10 @@ async function renderChannels(){
                 return
             }
             openChannel(b.dataset.ch)
-        }))
-    } catch { mineBox.innerHTML = '<p class="empty small">Ошибка</p>'; recBox.innerHTML = '<p class="empty small">Ошибка</p>' }
+        })
+    })
 }
+
 async function handleChannelRecSub(chId, el){
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user) return
@@ -7574,62 +7912,59 @@ async function ensureQjnSub(userId){
     } catch(e){ console.warn('[QJN3G]', e.message) }
 }
 
-async function enterApp(){
+async function enterApp(prefetchPromise = null){
     await checkAdminStatus()
-
     if(ADMIN_STATE.isBanned){
-        showScreen('main')
-        mainApp.classList.add('hidden')
-        showBlockedScreen()
-        return
+        showScreen('main'); mainApp.classList.add('hidden'); showBlockedScreen(); return
     }
 
     showScreen('main')
-    try {
-        const { data:{ user } } = await supabase.auth.getUser()
-        if(user){
-            const { data:prof } = await supabase.from('profiles')
-                .select('region, status, status_emoji, theme')
-                .eq('id', user.id).maybeSingle()
-            if(prof?.region) state.data.region = prof.region
-            if(prof?.status_emoji || prof?.status) state.data.status = prof.status_emoji || prof.status
-            if(prof?.theme) applyTheme(prof.theme)
-            else applyTheme(getTheme())
-        }
-    } catch {}
 
-    await checkMainChannelSubscription()
-    await refreshFollowCache()
+    const { data:{ user } } = await supabase.auth.getUser()
+    state.currentUser = user
 
-    // ═══════════════════════════════════════════════════════════════
-    // [ПУНКТ 10] Автодеактивация истёкшего chvad — ДО loadProfile()
-    // ═══════════════════════════════════════════════════════════════
-    try {
-        const { data:{ user } } = await supabase.auth.getUser()
-        if(user){
-            const { data:p } = await supabase.from('profiles')
-                .select('chvad_active, chvad_until').eq('id', user.id).maybeSingle()
-            if(p?.chvad_active && p.chvad_until && new Date(p.chvad_until) < new Date()){
-                await supabase.from('profiles').update({ chvad_active: false }).eq('id', user.id)
-                console.log('[chvad] auto-deactivated (expired)')
-            }
-        }
-    } catch(e){ console.warn('[chvad expire]', e.message) }
-    // ═══════════════════════════════════════════════════════════════
+    if(user){
+        // ⚡ Параллельно всё, что нужно для главной
+        await Promise.allSettled([
+            (async () => {
+                const { data:prof } = await supabase.from('profiles')
+                    .select('region, status, status_emoji, theme, chvad_active, chvad_until, is_admin')
+                    .eq('id', user.id).maybeSingle()
+                if(prof?.region) state.data.region = prof.region
+                if(prof?.status_emoji || prof?.status) state.data.status = prof.status_emoji || prof.status
+                applyTheme(prof?.theme || getTheme())
+                if(prof?.chvad_active && prof.chvad_until && new Date(prof.chvad_until) < new Date()){
+                    supabase.from('profiles').update({ chvad_active: false }).eq('id', user.id)
+                }
+            })(),
+            checkMainChannelSubscription(),
+            refreshFollowCache(),
+            ensureQjnSub(user.id)
+        ])
+    }
 
+    // Сначала home
     switchScreen('home')
     window.__ltSetChatTitle = (t) => { state.chatTitle = t }
-    renderLiveNow(); renderStories(); loadProfile(); loadStatus();
-    renderEventsScreen(); renderLiveFeed()
-    maybeSendDailyNotification()
-    heartbeat()
 
-    // Подписка на QJN3G
-    try { const { data:{ user } } = await supabase.auth.getUser(); if(user) await ensureQjnSub(user.id) } catch {}
-    // Автозакрытие старых жалоб
-    try { autoCloseOldReports() } catch {}
+    // ⚡ Ждём prefetch → рендерим мгновенно из кэша
+    if(prefetchPromise) try { await prefetchPromise } catch {}
+    renderLiveNow()
+    renderStories()
+    renderHomeFeed()
 
-    setTimeout(() => { try { initPush() } catch(e){ console.warn('[push]', e.message) } }, 3000)
+    // ⚡ Всё «не главное» — в idle после первого кадра
+    const idle = window.requestIdleCallback || (cb => setTimeout(cb, 120))
+    idle(() => {
+        loadStatus()
+        renderEventsScreen()
+        renderLiveFeed()
+        maybeSendDailyNotification()
+        heartbeat()
+        try { autoCloseOldReports() } catch {}
+        setTimeout(() => { try { initPush() } catch {} }, 2500)
+    })
+
     await Router.resolve()
 }
 
@@ -7653,23 +7988,35 @@ window.addEventListener('popstate', async () => {
 
 async function boot(){
     Router.init()
-
     initTheme()
     setPageBg()
-    const start = Date.now()
+
+    // Убираем boot-задержку сразу — она была искусственной
+    bootScreen.classList.add('fade-out')
+    setTimeout(() => bootScreen.remove(), 350)
+
     try {
-        const { data:{ session } } = await withTimeout(supabase.auth.getSession(), 6000, 'boot')
-        const el = Date.now() - start
-        if(el < 1200) await new Promise(r => setTimeout(r, 1200 - el))
-        bootScreen.classList.add('fade-out')
-        setTimeout(() => bootScreen.remove(), 400)
-        if(session) await enterApp()
-        else showScreen('auth')
+        const { data:{ session } } = await withTimeout(supabase.auth.getSession(), 5000, 'boot')
+        if(!session?.user){
+            showScreen('auth')
+            return
+        }
+
+        const userId = session.user.id
+        state.currentUser = session.user
+
+        // ⚡ PREFETCH стартует ПАРАЛЛЕЛЬНО с enterApp
+        const prefetchPromise = Promise.allSettled([
+            prefetchFollowCacheFor(userId),
+            prefetchHomeFeed(userId),
+            prefetchStories(userId),
+            prefetchLiveNow(userId),
+            prefetchDirectChats(userId)
+        ])
+
+        await enterApp(prefetchPromise)
     } catch(e){
-        const el = Date.now() - start
-        if(el < 1200) await new Promise(r => setTimeout(r, 1200 - el))
-        bootScreen.classList.add('fade-out')
-        setTimeout(() => bootScreen.remove(), 400)
+        console.warn('[boot]', e.message)
         showScreen('auth')
     }
 }

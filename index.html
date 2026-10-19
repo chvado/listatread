@@ -5,6 +5,21 @@
     <!-- Preconnect — DNS+TLS к Supabase прогреваются до первого запроса -->
     <link rel="preconnect" href="https://api.listatread.online" crossorigin>
     <link rel="dns-prefetch" href="https://api.listatread.online">
+    <!-- ⚡ Preconnect к Storage — видео пойдут быстрее -->
+    <link rel="preconnect" href="https://api.listatread.online/storage/v1" crossorigin>
+    <link rel="dns-prefetch" href="https://api.listatread.online/storage/v1">
+
+    <!-- ⚡ Preload логотипа (boot, auth, topbar) -->
+    <link rel="preload" as="image" href="/logo.jpeg" fetchpriority="high">
+
+    <!-- ⚡ Modulepreload — граф модулей парсится параллельно -->
+    <link rel="modulepreload" href="js/supabase.js">
+    <link rel="modulepreload" href="js/feed.js">
+    <link rel="modulepreload" href="js/admin.js">
+    <link rel="modulepreload" href="js/direct.js">
+    <link rel="modulepreload" href="js/offline.js">
+    <link rel="modulepreload" href="js/push.js">
+    <link rel="modulepreload" href="js/main.js?v=45">
     <link rel="preconnect" href="https://api.qrserver.com">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#ffffff">

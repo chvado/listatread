@@ -844,12 +844,61 @@ async function deleteSelectedChats(){
 ============================================================ */
 async function loadDirectChats(silent = false){
     const box = $('direct-list'); if(!box) return
-    if(!silent){ renderSkeletons() }
+    if(!silent) renderSkeletons()
 
     const { data:{ user } } = await supabase.auth.getUser()
-    if(!user){ box.innerHTML = '<p class="empty">Не удалось подключиться</p>'; setHeaderReady(); return }
+    if(!user){
+        box.innerHTML = '<p class="empty">Не удалось подключиться</p>'
+        setHeaderReady()
+        return
+    }
     D.currentUser = user
 
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ МГНОВЕННЫЙ РЕНДЕР ИЗ PREFETCH-КЭША
+    // ═══════════════════════════════════════════════════════════
+    const cacheKey = 'direct:' + user.id
+    const cached = window.__ltCache?.get(cacheKey)
+    if(cached && cached.length && !silent){
+        D.chats = cached
+
+        // Догружаем prefs/requests в фоне — UI уже виден
+        ;(async () => {
+            try {
+                const { data:prefs } = await supabase.from('direct_chat_prefs')
+                    .select('peer_id, pinned, pinned_at, muted, wallpaper').eq('user_id', user.id)
+                D.prefs = {}
+                ;(prefs||[]).forEach(p => { D.prefs[p.peer_id] = p })
+                sortAndRenderChats()
+            } catch {}
+
+            try {
+                const { data:cr } = await supabase.from('chat_requests')
+                    .select('id, from_user, first_message, created_at')
+                    .eq('to_user', user.id).eq('status', 'pending')
+                    .order('created_at', { ascending:false }).limit(30)
+                let reqs = cr || []
+                const ids = reqs.map(r => r.from_user)
+                if(ids.length){
+                    const { data:profs } = await supabase.from('profiles')
+                        .select('id, username, full_name, avatar_url, status, status_emoji, last_seen').in('id', ids)
+                    const pm = Object.fromEntries((profs||[]).map(p => [p.id, p]))
+                    reqs = reqs.map(r => ({ ...r, profile: pm[r.from_user] || {} }))
+                }
+                D.requests = reqs
+                renderRequests()
+                updateHomeBadge(D.chats.reduce((s,c) => s + (c.unread||0), 0) + reqs.length)
+            } catch {}
+        })()
+
+        setHeaderReady()
+        sortAndRenderChats()
+        return
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ПОЛНАЯ ЗАГРУЗКА (первый раз или форс)
+    // ═══════════════════════════════════════════════════════════
     try {
         const { data:prof } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle()
         D.isAdmin = !!prof?.is_admin
@@ -869,7 +918,8 @@ async function loadDirectChats(silent = false){
 
     if(error){
         box.innerHTML = `<p class="empty">Ошибка: ${esc(error.message)}</p>`
-        setHeaderReady(); return
+        setHeaderReady()
+        return
     }
 
     const byPeer = new Map()
@@ -879,21 +929,24 @@ async function loadDirectChats(silent = false){
         if(m.to_id === user.id && !m.is_read) byPeer.get(peerId).unread++
     }
 
+    // requests параллельно с профилями
     let reqs = []
-    try {
-        const { data:cr } = await supabase.from('chat_requests')
-            .select('id, from_user, first_message, created_at')
-            .eq('to_user', user.id).eq('status', 'pending')
-            .order('created_at', { ascending:false }).limit(30)
-        reqs = cr || []
-        const ids = reqs.map(r => r.from_user)
-        if(ids.length){
-            const { data:profs } = await supabase.from('profiles')
-                .select('id, username, full_name, avatar_url, status, status_emoji, last_seen').in('id', ids)
-            const pm = Object.fromEntries((profs||[]).map(p => [p.id, p]))
-            reqs = reqs.map(r => ({ ...r, profile: pm[r.from_user] || {} }))
-        }
-    } catch {}
+    const reqPromise = (async () => {
+        try {
+            const { data:cr } = await supabase.from('chat_requests')
+                .select('id, from_user, first_message, created_at')
+                .eq('to_user', user.id).eq('status', 'pending')
+                .order('created_at', { ascending:false }).limit(30)
+            reqs = cr || []
+            const ids = reqs.map(r => r.from_user)
+            if(ids.length){
+                const { data:profs } = await supabase.from('profiles')
+                    .select('id, username, full_name, avatar_url, status, status_emoji, last_seen').in('id', ids)
+                const pm = Object.fromEntries((profs||[]).map(p => [p.id, p]))
+                reqs = reqs.map(r => ({ ...r, profile: pm[r.from_user] || {} }))
+            }
+        } catch {}
+    })()
 
     const ids = [...byPeer.keys()]
     let pm = {}
@@ -904,15 +957,31 @@ async function loadDirectChats(silent = false){
         pm = Object.fromEntries((profs||[]).map(p => [p.id, p]))
     }
 
+    await reqPromise
+
     D.chats = ids.map(id => ({ ...byPeer.get(id), profile: pm[id] || {} }))
+
+    // ⚡ Складываем в общий кэш — следующий вход будет мгновенным
+    if(window.__ltCache){
+        window.__ltCache.data.set(cacheKey, D.chats)
+        window.__ltCache.ts.set(cacheKey, Date.now())
+    }
+
+    D.requests = reqs
+    renderRequests()
 
     const unreadTotal = D.chats.reduce((s, c) => s + (c.unread || 0), 0) + reqs.length
     D.unreadTotal = unreadTotal
     updateHomeBadge(unreadTotal)
 
-    D.requests = reqs
-    renderRequests()
+    setHeaderReady()
+    sortAndRenderChats()
+}
 
+/* ═══════════════════════════════════════════════════════════
+   ⚡ Сортировка + рендер (вынесено, чтобы вызывать из кэша)
+   ═══════════════════════════════════════════════════════════ */
+function sortAndRenderChats(){
     D.chats.sort((a,b) => {
         const pa = D.prefs[a.peerId]?.pinned ? 1 : 0
         const pb = D.prefs[b.peerId]?.pinned ? 1 : 0
@@ -924,8 +993,6 @@ async function loadDirectChats(silent = false){
         }
         return new Date(b.lastMsg.created_at) - new Date(a.lastMsg.created_at)
     })
-
-    setHeaderReady()
     renderChats()
 }
 
