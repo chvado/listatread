@@ -6662,6 +6662,16 @@ function renderVfmSlide(){
 
     // ─── CURRENT ───
     try { v.pause() } catch {}
+
+    // ═══ FIX: сброс scale/opacity от предыдущего свайпа ═══
+    // Иначе видео «застревает» на scale(.94) и с зазорами со всех сторон
+    v.style.transition = 'none';
+    v.style.transform  = 'translateZ(0) scale(1)';
+    v.style.opacity    = '1';
+    void v.offsetHeight;
+    v.style.transition = '';
+    // ═══════════════════════════════════════════════════════
+
     v.src = item.src
     v.muted = false
     v.loop = false
