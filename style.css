@@ -4646,7 +4646,9 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
     left: 0 !important;
     right: 0 !important;
     bottom: calc(var(--nav-height) + var(--safe-bottom) + 10px) !important;
-    padding: 0 16px !important;
+    padding: 0 4px 0 16px !important;
+
+
     gap: 0 !important;
     justify-content: flex-end !important;
     max-height: none !important;
@@ -4791,14 +4793,13 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
     color: #ff6b35 !important;
     font-weight: 600;
 }
-/* === FIX: кнопка «Новый чат» в директе ниже фиксированной шапки === */
 /* === FIX: кнопка «Новый чат» вплотную под фиксированной шапкой === */
 #screen-direct #direct-body{
-    padding-top: calc(74px + var(--safe-top, 0px)) !important;
+    padding-top: calc(66px + var(--safe-top, 0px)) !important;
 }
 #screen-direct .new-chat-btn,
 #screen-direct #direct-body .new-chat-btn{
-    margin-top: 8px !important;
+    margin-top: 4px !important;
     position: relative;
     z-index: 10;
 }
