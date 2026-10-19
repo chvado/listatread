@@ -9093,36 +9093,38 @@ window.__lt = {
         else { await supabase.from('saved_tracks').insert({ user_id:user.id, post_id:pid }); showToast('success', 'Сохранено в профиль', { icon:'🔖' }) }
     }
 }
-window.followAuthor = followAuthor
-    /* ============================================================
-       FIX: подсветка Direct в нижнем меню при выходе из чата
-    ============================================================ */
-    (function fixDirectNav(){
-        const applyActive = () => {
-            const directScreen = document.getElementById('screen-direct');
-            if (directScreen?.classList.contains('active')) {
-                document.querySelectorAll('.nav-btn').forEach(x => {
-                    x.classList.toggle('active', x.dataset.screen === 'direct');
-                });
+window.followAuthor = followAuthor;
+
+/* ============================================================
+   FIX: подсветка Direct в нижнем меню при выходе из чата
+============================================================ */
+(function fixDirectNav(){
+    const applyActive = () => {
+        const directScreen = document.getElementById('screen-direct');
+        if (directScreen?.classList.contains('active')) {
+            document.querySelectorAll('.nav-btn').forEach(x => {
+                x.classList.toggle('active', x.dataset.screen === 'direct');
+            });
+        }
+    };
+    window.__ltFixDirectNav = applyActive;
+
+    const observeRoom = room => {
+        if (!room || room.__ltNavObserved) return;
+        room.__ltNavObserved = true;
+        new MutationObserver(() => {
+            if (room.classList.contains('hidden')) {
+                setTimeout(applyActive, 10);
             }
-        };
-        window.__ltFixDirectNav = applyActive;
+        }).observe(room, { attributes: true, attributeFilter: ['class'] });
+    };
 
-        const observeRoom = room => {
-            if (!room || room.__ltNavObserved) return;
-            room.__ltNavObserved = true;
-            new MutationObserver(() => {
-                if (room.classList.contains('hidden')) {
-                    setTimeout(applyActive, 10);
-                }
-            }).observe(room, { attributes: true, attributeFilter: ['class'] });
-        };
+    const scan = () => observeRoom(document.getElementById('direct-room'));
+    new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
+    scan();
+})();
 
-        const scan = () => observeRoom(document.getElementById('direct-room'));
-        new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
-        scan();
-    })();
-boot()
+boot();
 setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
 window.addEventListener('focus', () => { heartbeat(); updatePlayIcons() })
