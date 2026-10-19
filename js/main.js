@@ -487,6 +487,19 @@ initTheme()
 const $ = id => document.getElementById(id)
 function withTimeout(p, ms, l){ return Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('Timeout: ' + l)), ms))]) }
 function escapeHtml(t){ const d = document.createElement('div'); d.textContent = t ?? ''; return d.innerHTML }
+/* Относительное время: "5 мин назад", "3 ч назад", "5 д назад", "5 нед назад" */
+function timeAgo(dateStr){
+    if(!dateStr) return '';
+    const d = new Date(dateStr);
+    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+    if(diff < 30)        return 'только что';
+    if(diff < 60)        return diff + ' сек назад';
+    if(diff < 3600)      return Math.floor(diff / 60) + ' мин назад';
+    if(diff < 86400)     return Math.floor(diff / 3600) + ' ч назад';
+    if(diff < 7 * 86400) return Math.floor(diff / 86400) + ' д назад';
+    if(diff < 30 * 86400) return Math.floor(diff / (7 * 86400)) + ' нед назад';
+    return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
 function computeDisplayStatus(p){ return p?.status || 'default' }
 function isVideoUrl(u){ return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u||'') }
 function isAudioUrl(u){ return /\.(mp3|wav|ogg|m4a|aac|flac|opus)(\?|$)/i.test(u||'') }
@@ -2275,7 +2288,7 @@ function attachVideoLoading(card){
 function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new Set(), counts = {}, contextLabel = 'ваши рекомендации'){
     const p = post.profiles || {}, ch = post.channels || {}
     const name = p.full_name || p.username || 'Канал'
-    const time = new Date(post.created_at).toLocaleString('ru-RU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+    const time = timeAgo(post.created_at)
     const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
     const emoji = statusEmoji(computeDisplayStatus(p))
     const isMine = myId && post.author_id === myId
@@ -2590,41 +2603,477 @@ async function attachFeedActions(list, myId){
     }))
 }
 
+/* ============================================================
+   COMMENTS — TikTok-style modal
+============================================================ */
+let _commentsPostId = null;
+let _commentsCache = null;
+let _commentsReplyTo = null;
+
+function ensureCommentsModal(){
+    let m = document.getElementById('comments-modal');
+    if(m) return m;
+    m = document.createElement('div');
+    m.id = 'comments-modal';
+    m.className = 'comments-modal hidden';
+    m.innerHTML = `
+        <div class="comments-modal-backdrop" id="comments-backdrop"></div>
+        <div class="comments-sheet" id="comments-sheet">
+            <div class="comments-header">
+                <button class="comments-back-btn" id="comments-back-btn" aria-label="Назад">‹</button>
+                <div class="comments-title" id="comments-title">Обсуждение треда</div>
+                <button class="comments-close-btn" id="comments-close-btn" aria-label="Закрыть">✕</button>
+            </div>
+            <div class="comments-body" id="comments-body"></div>
+            <div class="comments-picker" id="comments-picker"></div>
+            <div class="comments-reply-banner hidden" id="comments-reply-banner">
+                <span class="comments-reply-banner-text" id="comments-reply-banner-text"></span>
+                <button class="comments-reply-banner-close" id="comments-reply-banner-close">✕</button>
+            </div>
+            <div class="comments-composer">
+                <button class="comments-composer-btn" id="comments-sticker-btn" aria-label="Стикеры" title="Стикер">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+                </button>
+                <div class="comments-input-wrap">
+                    <input type="text" class="comments-input" id="comments-input" placeholder="Добавьте комментарий..." maxlength="500">
+                </div>
+                <button class="comments-composer-btn" id="comments-emoji-btn" aria-label="Эмодзи" title="Эмодзи">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="0.8" fill="currentColor"/><circle cx="15" cy="10" r="0.8" fill="currentColor"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+                </button>
+                <button class="comments-send-btn" id="comments-send-btn" aria-label="Отправить" disabled>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(m);
+
+    m.querySelector('#comments-backdrop').addEventListener('click', closeCommentsModal);
+    m.querySelector('#comments-back-btn').addEventListener('click', closeCommentsModal);
+    m.querySelector('#comments-close-btn').addEventListener('click', closeCommentsModal);
+
+    const input = m.querySelector('#comments-input');
+    const sendBtn = m.querySelector('#comments-send-btn');
+    input.addEventListener('input', () => { sendBtn.disabled = !input.value.trim(); });
+    input.addEventListener('keydown', e => {
+        if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendComment(); }
+    });
+    sendBtn.addEventListener('click', sendComment);
+
+    m.querySelector('#comments-sticker-btn').addEventListener('click', openCommentsStickerPicker);
+    m.querySelector('#comments-emoji-btn').addEventListener('click', openCommentsEmojiPicker);
+    m.querySelector('#comments-reply-banner-close').addEventListener('click', () => {
+        _commentsReplyTo = null;
+        m.querySelector('#comments-reply-banner').classList.add('hidden');
+    });
+
+    document.addEventListener('keydown', e => {
+        if(e.key === 'Escape' && !m.classList.contains('hidden')) closeCommentsModal();
+    });
+
+    return m;
+}
+
+function closeCommentsModal(){
+    const m = document.getElementById('comments-modal');
+    if(!m) return;
+    m.classList.add('hidden');
+    _commentsReplyTo = null;
+    _commentsPostId = null;
+    _commentsCache = null;
+}
+
 async function openCommentsSheet(postId){
-    const { data:{ user } } = await supabase.auth.getUser()
+    if(!postId) return;
+    _commentsPostId = postId;
+    _commentsReplyTo = null;
+
+    const modal = ensureCommentsModal();
+    modal.classList.remove('hidden');
+    modal.querySelector('#comments-reply-banner').classList.add('hidden');
+    modal.querySelector('#comments-picker').classList.remove('open');
+    modal.querySelector('#comments-input').value = '';
+    modal.querySelector('#comments-send-btn').disabled = true;
+
+    const body = modal.querySelector('#comments-body');
+    body.innerHTML = renderCommentsSkeleton();
+
+    await loadCommentsNew(postId);
+}
+
+function renderCommentsSkeleton(){
+    return Array(3).fill(0).map(() => `
+        <div class="comment-skeleton">
+            <div class="comment-skeleton-ava"></div>
+            <div class="comment-skeleton-body">
+                <div class="comment-skeleton-line short"></div>
+                <div class="comment-skeleton-line mid"></div>
+                <div class="comment-skeleton-line short"></div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function loadCommentsNew(postId){
     const { data:comments } = await supabase.from('comments')
-        .select('id, text, created_at, profiles:user_id ( id, username, full_name, avatar_url, is_admin )')
-        .eq('post_id', postId).order('created_at', { ascending:true }).limit(100)
-    actionsheetTitle.textContent = 'Комментарии'
-    actionsheetList.innerHTML = `
-    <div class="ch-comments-list" style="max-height:50vh;overflow-y:auto;padding:4px 0 12px">
-      ${(comments || []).length ? comments.map(c => {
-        const p = c.profiles || {}
-        const name = p.full_name || p.username || 'user'
-        const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
-        return `<div class="ch-comment"><div class="ch-comment-avatar">${av}</div><div class="ch-comment-text"><strong>${escapeHtml(name)}${p.is_admin ? adminBadge(true, 'small') : ''}</strong> ${escapeHtml(c.text)}</div></div>`
-    }).join('') : '<p class="empty small">Нет комментариев</p>'}
-    </div>
-    <div class="ch-comment-row">
-      <input type="text" id="comment-sheet-input" placeholder="Комментарий..." maxlength="200">
-      <button class="ch-comment-send" id="comment-sheet-send">${ICONS.send}</button>
-    </div>
-  `
-    actionsheet.classList.remove('hidden')
-    actionsheetBackdrop.classList.remove('hidden')
-    void actionsheet.offsetHeight
-    requestAnimationFrame(() => actionsheet.classList.add('open'))
-    $('comment-sheet-send')?.addEventListener('click', async () => {
-        const inp = $('comment-sheet-input')
-        const text = inp.value.trim(); if(!text) return
-        await supabase.from('comments').insert({ user_id:user.id, post_id:postId, text })
-        learnFromPost(postId, 2)
-        inp.value = ''
-        document.querySelectorAll(`.feed-count[data-comment-count="${postId}"]`).forEach(el => {
-            el.textContent = (parseInt(el.textContent) || 0) + 1
-        })
-        openCommentsSheet(postId)
-    })
+        .select('id, text, created_at, user_id, parent_comment_id, media_url, profiles:user_id ( username, full_name, avatar_url, is_admin )')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true })
+        .limit(300);
+
+    // Лайки
+    const likesByComment = {};
+    if(comments && comments.length){
+        const ids = comments.map(c => c.id);
+        const { data:likes } = await supabase.from('comment_likes')
+            .select('comment_id, user_id')
+            .in('comment_id', ids);
+        (likes || []).forEach(l => {
+            if(!likesByComment[l.comment_id]) likesByComment[l.comment_id] = { count:0, users:new Set() };
+            likesByComment[l.comment_id].count++;
+            likesByComment[l.comment_id].users.add(l.user_id);
+        });
+    }
+
+    const { data:{ user } } = await supabase.auth.getUser();
+    const myId = user?.id;
+
+    const enrich = c => {
+        const l = likesByComment[c.id];
+        return { ...c, _likes: l ? l.count : 0, _likedByMe: l ? l.users.has(myId) : false };
+    };
+
+    const topLevel = (comments || []).filter(c => !c.parent_comment_id).map(enrich);
+    const repliesByParent = {};
+    (comments || []).forEach(c => {
+        if(c.parent_comment_id){
+            if(!repliesByParent[c.parent_comment_id]) repliesByParent[c.parent_comment_id] = [];
+            repliesByParent[c.parent_comment_id].push(enrich(c));
+        }
+    });
+
+    _commentsCache = { topLevel, repliesByParent };
+    renderCommentsList();
+}
+
+function renderCommentsList(){
+    const body = document.getElementById('comments-body');
+    if(!body) return;
+    const data = _commentsCache;
+
+    if(!data || !data.topLevel.length){
+        body.innerHTML = `
+            <div class="comments-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>
+                </svg>
+                <div>Обсуждение еще не началось,<br>опубликуйте свое мнение первым!</div>
+            </div>`;
+        return;
+    }
+
+    body.innerHTML = data.topLevel.map(c =>
+        renderCommentCard(c, data.repliesByParent[c.id] || [])
+    ).join('');
+
+    bindCommentEvents(body);
+}
+
+function renderCommentCard(c, replies){
+    const p = c.profiles || {};
+    const name = p.full_name || p.username || 'user';
+    const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase();
+    const time = timeAgo(c.created_at);
+    const hasReplies = replies && replies.length > 0;
+
+    const stickerHtml = c.media_url ? `<img class="comment-sticker-img" src="${c.media_url}" alt="">` : '';
+    const textPart = c.text ? escapeHtml(c.text) : '';
+    const textHtml = (textPart || stickerHtml)
+        ? `<div class="comment-text">${textPart}${stickerHtml}</div>`
+        : '';
+
+    const lastReplies = (replies || []).slice(-3);
+    const replyAvas = lastReplies.map(r => {
+        const rp = r.profiles || {};
+        const rn = rp.full_name || rp.username || '?';
+        const rav = rp.avatar_url ? `<img src="${rp.avatar_url}" alt="">` : rn.charAt(0).toUpperCase();
+        return `<span class="reply-ava">${rav}</span>`;
+    }).join('');
+
+    return `
+        <div class="comment-card" data-cid="${c.id}">
+            <div class="comment-avatar">${av}</div>
+            <div class="comment-body">
+                <div class="comment-head">
+                    <div class="comment-author">${escapeHtml(name)}${p.is_admin ? adminBadge(true,'small') : ''}</div>
+                </div>
+                ${textHtml}
+                ${hasReplies ? `
+                    <div class="comment-replies-preview">
+                        <span class="comment-replies-avatars">${replyAvas}</span>
+                        <button class="comment-view-replies" data-comment-toggle="${c.id}">
+                            Посмотреть обсуждение (${replies.length}) ›
+                        </button>
+                    </div>` : ''}
+                <div class="comment-footer">
+                    <span class="comment-time">${time}</span>
+                    <button class="comment-btn" data-comment-reply="${c.id}" data-author="${escapeHtml(name)}">Ответить</button>
+                    <button class="comment-btn ${c._likedByMe?'liked':''}" data-comment-like="${c.id}">
+                        <svg viewBox="0 0 24 24" fill="${c._likedByMe?'currentColor':'none'}" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        <span>${c._likes||0}</span>
+                    </button>
+                </div>
+                <div class="comment-replies-list hidden" data-replies-for="${c.id}"></div>
+            </div>
+        </div>`;
+}
+
+function renderReplyCard(c){
+    const p = c.profiles || {};
+    const name = p.full_name || p.username || 'user';
+    const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase();
+    const time = timeAgo(c.created_at);
+    const stickerHtml = c.media_url ? `<img class="comment-sticker-img" src="${c.media_url}" alt="">` : '';
+    const textPart = c.text ? escapeHtml(c.text) : '';
+    const textHtml = (textPart || stickerHtml)
+        ? `<div class="comment-text">${textPart}${stickerHtml}</div>` : '';
+
+    return `
+        <div class="comment-card" data-cid="${c.id}">
+            <div class="comment-avatar">${av}</div>
+            <div class="comment-body">
+                <div class="comment-head">
+                    <div class="comment-author">${escapeHtml(name)}${p.is_admin ? adminBadge(true,'small') : ''}</div>
+                </div>
+                ${textHtml}
+                <div class="comment-footer">
+                    <span class="comment-time">${time}</span>
+                    <button class="comment-btn" data-comment-reply="${c.id}" data-author="${escapeHtml(name)}">Ответить</button>
+                    <button class="comment-btn ${c._likedByMe?'liked':''}" data-comment-like="${c.id}">
+                        <svg viewBox="0 0 24 24" fill="${c._likedByMe?'currentColor':'none'}" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        <span>${c._likes||0}</span>
+                    </button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function bindCommentEvents(root){
+    root.querySelectorAll('[data-comment-like]').forEach(btn => {
+        if(btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', () => toggleCommentLike(btn.dataset.commentLike, btn));
+    });
+    root.querySelectorAll('[data-comment-reply]').forEach(btn => {
+        if(btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', () => startReply(btn.dataset.commentReply, btn.dataset.author));
+    });
+    root.querySelectorAll('[data-comment-toggle]').forEach(btn => {
+        if(btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', () => toggleReplies(btn.dataset.commentToggle));
+    });
+}
+
+function toggleReplies(parentId){
+    const box = document.querySelector(`[data-replies-for="${parentId}"]`);
+    const toggleBtn = document.querySelector(`[data-comment-toggle="${parentId}"]`);
+    if(!box) return;
+
+    const replies = _commentsCache?.repliesByParent[parentId] || [];
+
+    if(box.classList.contains('hidden')){
+        const shown = replies.slice(0, 5);
+        const hasMore = replies.length > 5;
+        box.innerHTML = shown.map(renderReplyCard).join('') + (
+            hasMore
+                ? `<button class="comment-more-replies" data-comment-more="${parentId}">Ещё (${replies.length - 5}) ›</button>`
+                : `<button class="comment-more-replies" data-comment-more="${parentId}">Скрыть</button>`
+        );
+        bindCommentEvents(box);
+        box.querySelectorAll('[data-comment-more]').forEach(b => {
+            b.addEventListener('click', () => {
+                if(hasMore && b.textContent.startsWith('Ещё')){
+                    box.innerHTML = replies.map(renderReplyCard).join('') +
+                        `<button class="comment-more-replies" data-comment-more="${parentId}">Скрыть</button>`;
+                    bindCommentEvents(box);
+                    box.querySelectorAll('[data-comment-more]').forEach(bb => {
+                        bb.addEventListener('click', () => {
+                            box.classList.add('hidden');
+                            if(toggleBtn) toggleBtn.innerHTML = `Посмотреть обсуждение (${replies.length}) ›`;
+                        });
+                    });
+                } else {
+                    box.classList.add('hidden');
+                    if(toggleBtn) toggleBtn.innerHTML = `Посмотреть обсуждение (${replies.length}) ›`;
+                }
+            });
+        });
+        box.classList.remove('hidden');
+        if(toggleBtn) toggleBtn.innerHTML = `Скрыть обсуждение ›`;
+    } else {
+        box.classList.add('hidden');
+        if(toggleBtn) toggleBtn.innerHTML = `Посмотреть обсуждение (${replies.length}) ›`;
+    }
+}
+
+async function toggleCommentLike(commentId, btn){
+    const { data:{ user } } = await supabase.auth.getUser();
+    if(!user){ showToast('error', 'Войдите в аккаунт', { icon:'⚠️' }); return; }
+
+    const wasLiked = btn.classList.contains('liked');
+    const nowLiked = !wasLiked;
+    const countEl = btn.querySelector('span');
+    const svg = btn.querySelector('svg');
+    const cur = parseInt(countEl?.textContent || '0');
+
+    btn.classList.toggle('liked', nowLiked);
+    if(countEl) countEl.textContent = Math.max(0, cur + (nowLiked ? 1 : -1));
+    if(svg) svg.setAttribute('fill', nowLiked ? 'currentColor' : 'none');
+
+    try {
+        if(nowLiked){
+            const { error } = await supabase.from('comment_likes').insert({ user_id: user.id, comment_id: commentId });
+            if(error) throw error;
+        } else {
+            const { error } = await supabase.from('comment_likes').delete().eq('user_id', user.id).eq('comment_id', commentId);
+            if(error) throw error;
+        }
+        // Обновляем кэш
+        if(_commentsCache){
+            const all = [..._commentsCache.topLevel, ...Object.values(_commentsCache.repliesByParent).flat()];
+            const c = all.find(x => x.id === commentId);
+            if(c){ c._likedByMe = nowLiked; c._likes = Math.max(0, (c._likes||0) + (nowLiked?1:-1)); }
+        }
+    } catch(e){
+        btn.classList.toggle('liked', wasLiked);
+        if(countEl) countEl.textContent = cur;
+        if(svg) svg.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
+        showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' });
+    }
+}
+
+function startReply(commentId, authorName){
+    _commentsReplyTo = { commentId, authorName };
+    const m = document.getElementById('comments-modal');
+    if(!m) return;
+    m.querySelector('#comments-reply-banner-text').textContent = `Ответ на комментарий @${authorName}`;
+    m.querySelector('#comments-reply-banner').classList.remove('hidden');
+    m.querySelector('#comments-input').focus();
+}
+
+async function sendComment(){
+    if(!_commentsPostId) return;
+    const input = document.getElementById('comments-input');
+    const text = (input?.value || '').trim();
+    if(!text) return;
+
+    const { data:{ user } } = await supabase.auth.getUser();
+    if(!user){ showToast('error', 'Войдите в аккаунт', { icon:'⚠️' }); return; }
+
+    const payload = { user_id: user.id, post_id: _commentsPostId, text };
+    if(_commentsReplyTo?.commentId) payload.parent_comment_id = _commentsReplyTo.commentId;
+
+    input.value = '';
+    document.getElementById('comments-send-btn').disabled = true;
+
+    try {
+        const { error } = await supabase.from('comments').insert(payload);
+        if(error) throw error;
+
+        _commentsReplyTo = null;
+        document.getElementById('comments-reply-banner')?.classList.add('hidden');
+
+        document.querySelectorAll(`.feed-count[data-comment-count="${_commentsPostId}"]`).forEach(el => {
+            el.textContent = (parseInt(el.textContent) || 0) + 1;
+        });
+
+        await loadCommentsNew(_commentsPostId);
+    } catch(e){
+        showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' });
+        if(input) input.value = text;
+    }
+}
+
+function openCommentsEmojiPicker(){
+    const picker = document.getElementById('comments-picker');
+    if(!picker) return;
+    if(picker.classList.contains('open') && picker.dataset.mode === 'emoji'){
+        picker.classList.remove('open'); return;
+    }
+    picker.dataset.mode = 'emoji';
+    picker.innerHTML = `<div class="comments-picker-emoji">${EMOJI_LIST.map(e => `<button type="button" data-emoji="${e}">${e}</button>`).join('')}</div>`;
+    picker.classList.add('open');
+
+    const input = document.getElementById('comments-input');
+    picker.querySelectorAll('[data-emoji]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if(input){
+                input.value += btn.dataset.emoji;
+                document.getElementById('comments-send-btn').disabled = false;
+                input.focus();
+            }
+        });
+    });
+}
+
+async function openCommentsStickerPicker(){
+    const picker = document.getElementById('comments-picker');
+    if(!picker) return;
+    if(picker.classList.contains('open') && picker.dataset.mode === 'sticker'){
+        picker.classList.remove('open'); return;
+    }
+    picker.dataset.mode = 'sticker';
+    picker.innerHTML = `<div class="comments-picker-stickers-empty">Загрузка...</div>`;
+    picker.classList.add('open');
+
+    const { data:{ user } } = await supabase.auth.getUser();
+    if(!user){ picker.innerHTML = `<div class="comments-picker-stickers-empty">Войдите в аккаунт</div>`; return; }
+
+    const { data:packs } = await supabase.from('sticker_packs').select('stickers').eq('user_id', user.id);
+    const stickers = [];
+    (packs || []).forEach(p => (p.stickers || []).forEach(s => stickers.push(s)));
+
+    if(!stickers.length){
+        picker.innerHTML = `<div class="comments-picker-stickers-empty">Нет стикеров — создайте их в директе</div>`;
+        return;
+    }
+
+    picker.innerHTML = `<div class="comments-picker-stickers">${stickers.map(s => `<button type="button" data-sticker="${s}"><img src="${s}" alt=""></button>`).join('')}</div>`;
+    picker.querySelectorAll('[data-sticker]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            picker.classList.remove('open');
+            if(!_commentsPostId) return;
+
+            const input = document.getElementById('comments-input');
+            const caption = (input?.value || '').trim();
+
+            const { data:{ user:u } } = await supabase.auth.getUser();
+            if(!u) return;
+
+            const payload = {
+                user_id: u.id,
+                post_id: _commentsPostId,
+                text: caption || '',
+                media_url: btn.dataset.sticker
+            };
+            if(_commentsReplyTo?.commentId) payload.parent_comment_id = _commentsReplyTo.commentId;
+
+            try {
+                const { error } = await supabase.from('comments').insert(payload);
+                if(error) throw error;
+                if(input) input.value = '';
+                document.getElementById('comments-send-btn').disabled = true;
+                _commentsReplyTo = null;
+                document.getElementById('comments-reply-banner')?.classList.add('hidden');
+                document.querySelectorAll(`.feed-count[data-comment-count="${_commentsPostId}"]`).forEach(el => {
+                    el.textContent = (parseInt(el.textContent) || 0) + 1;
+                });
+                await loadCommentsNew(_commentsPostId);
+            } catch(e){ showToast('error', 'Не удалось: ' + e.message, { icon:'⚠️' }); }
+        });
+    });
 }
 /* ============================================================
    PHOTO VIEWER — клик по фото раскрывает его
@@ -2992,7 +3441,7 @@ function renderLivePost(post, myId, postsMap, counts = {}, likedSet = new Set(),
     const p = post.profiles || {}
     const name = p.full_name || p.username || 'Пользователь'
     const uname = p.username || 'user'
-    const time = new Date(post.created_at).toLocaleString('ru-RU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+    const time = timeAgo(post.created_at)
     const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
     const emoji = statusEmoji(computeDisplayStatus(p))
     const isMine = myId && post.author_id === myId
@@ -3526,7 +3975,7 @@ async function renderProfileTracks(userId){
         const ch = p.channels || {}
         const name = prof.full_name || prof.username || 'user'
         const avContent = prof.avatar_url ? `<img src="${prof.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
-        const time = new Date(p.created_at).toLocaleString('ru-RU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+        const time = timeAgo(p.created_at)
         let sourceLine = ''
         if(p.channel_id && ch.id){
             const chName = ch.name || 'Канал'
@@ -6154,8 +6603,9 @@ function vfmBuildOverlay(){
   </div>
 `;
     document.body.appendChild(el)
-    document.body.appendChild(el)
+
     VFM.el = el
+    VFM.stack     = el.querySelector('#vfm-stack')
     VFM.video     = el.querySelector('#vfm-video-current')
     VFM.videoNext = el.querySelector('#vfm-video-next')
     /* ─── ВИДЕО: размер под экран ─── */
@@ -7428,7 +7878,7 @@ async function closeVideoFeed(){
 }
 
 /* Совместимость со старыми вызовами */
-function enterVideoFS(src, postId){
+async function enterVideoFS(src, postId){
     let card = null
     if(postId) card = document.querySelector(`.feed-post.feed-post-video[data-pid="${postId}"]`)
     if(!card && src){
@@ -7437,7 +7887,6 @@ function enterVideoFS(src, postId){
     }
     if(card){ openVideoFeed(card); return }
 
-    // одиночный фолбэк — БЕЗ рекомендаций
     const box = document.getElementById('feed-list') || document.body
     const fake = document.createElement('article')
     fake.className = 'feed-post feed-post-video'
@@ -7449,15 +7898,13 @@ function enterVideoFS(src, postId){
     fake.style.pointerEvents = 'none'
     box.appendChild(fake)
 
-    // ═══ ЗАГРУЖАЕМ РЕАЛЬНЫЕ ДАННЫЕ ПОСТА В ФЕЙКОВУЮ КАРТОЧКУ ═══
-    // (чтобы VFM показал правильные счётчики, аватар, канал, статус)
+    // ⭐ ЖДЁМ загрузку данных, а не запускаем в фоне
     if(postId){
-        (async () => {
-            try {
-                const { data: post } = await supabase.from('posts')
-                    .select('id, content, media_url, author_id, channel_id, profiles:author_id ( username, full_name, avatar_url, status, is_admin ), channels:channel_id ( id, name, avatar_url )')
-                    .eq('id', postId).maybeSingle()
-                if(!post) return
+        try {
+            const { data: post } = await supabase.from('posts')
+                .select('id, content, media_url, author_id, channel_id, profiles:author_id ( username, full_name, avatar_url, status, is_admin ), channels:channel_id ( id, name, avatar_url )')
+                .eq('id', postId).maybeSingle()
+            if(post){
                 const p = post.profiles || {}, ch = post.channels || {}
                 const name = p.full_name || p.username || 'user'
                 const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
@@ -7475,11 +7922,11 @@ function enterVideoFS(src, postId){
                     <span class="feed-action" data-like="${post.id}"><span class="feed-count" data-like-count="${post.id}">0</span></span>
                     <span class="feed-action" data-repost="${post.id}"><span class="feed-count" data-repost-count="${post.id}">0</span></span>
                 `
-            } catch(e){ console.warn('[enterVideoFS fallback]', e.message) }
-        })()
+            }
+        } catch(e){ console.warn('[enterVideoFS fallback]', e.message) }
     }
 
-    openVideoFeed(fake)
+    openVideoFeed(fake)                       // ⭐ теперь fake уже с данными
     const cleanup = () => { try { fake.remove() } catch {} }
     document.addEventListener('vfm:closed', cleanup, { once: true })
 }
