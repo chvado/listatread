@@ -1703,7 +1703,7 @@ function renderLiveNowHtml(row, data){
     // ═══════════════════════════════════════════════════════════
     // ⚡ Обработчики кликов (перенесены из удалённой старой версии)
     // ═══════════════════════════════════════════════════════════
-    const seenKey = id => `lt_channel_seen_${id}`
+
 
     row.querySelectorAll('.channel-live-chip').forEach(btn => {
         btn.addEventListener('click', async () => {
