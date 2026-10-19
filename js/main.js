@@ -371,17 +371,27 @@ function learnFromPost(postId, weight){
     const c = document.querySelector(`.feed-post[data-pid="${postId}"]`)
     if(c) recordSignal(cardMeta(c), weight)
 }
-async function refreshFollowCache(){
-    try {
-        const { data:{ user } } = await supabase.auth.getUser()
-        if(!user) return
-        const [{ data:f }, { data:s }] = await Promise.all([
-            supabase.from('follows').select('following_id').eq('follower_id', user.id),
-            supabase.from('subscriptions').select('channel_id').eq('follower_id', user.id)
-        ])
-        state.myFollows = new Set((f||[]).map(x => x.following_id))
-        state.myChannelSubs = new Set((s||[]).map(x => x.channel_id))
-    } catch {}
+let _followCacheAt = 0
+let _followCachePromise = null
+async function refreshFollowCache(force = false){
+    // 30-секундный кэш — избегаем повторных запросов при каждом экране
+    if(!force && Date.now() - _followCacheAt < 30_000) return
+    if(_followCachePromise) return _followCachePromise
+    _followCachePromise = (async () => {
+        try {
+            const { data:{ user } } = await supabase.auth.getUser()
+            if(!user) return
+            const [{ data:f }, { data:s }] = await Promise.all([
+                supabase.from('follows').select('following_id').eq('follower_id', user.id),
+                supabase.from('subscriptions').select('channel_id').eq('follower_id', user.id)
+            ])
+            state.myFollows = new Set((f||[]).map(x => x.following_id))
+            state.myChannelSubs = new Set((s||[]).map(x => x.channel_id))
+            _followCacheAt = Date.now()
+        } catch {}
+    })()
+    try { await _followCachePromise }
+    finally { _followCachePromise = null }
 }
 
 function renderMedia(url, cls = 'feed-post-image', meta = {}){
@@ -885,38 +895,73 @@ function switchScreen(name){
     document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'))
     const t = document.getElementById('screen-' + name)
     if(t) t.classList.add('active')
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === name))
-    state.screen = name; window.scrollTo(0, 0)
-    if(name === 'inbox') renderEventsScreen()
+    document.querySelectorAll('.nav-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.screen === name)
+    )
+    state.screen = name
+    window.scrollTo(0, 0)
+
+    // ═══ ЛЕНИВО: грузим данные ТОЛЬКО для экрана, куда идём ═══
+    if(name === 'home'){
+        renderHomeFeed(false)
+        lazyStoriesAndLiveNow()      // 🔥 вместо renderStories + renderLiveNow
+    }
+    if(name === 'inbox')            renderEventsScreen()
+    if(name === 'channels')         renderChannels()
     if(name === 'profile'){
         if(state.currentProfileViewId) loadProfile(state.currentProfileViewId)
         else { state.viewingOwnProfile = true; loadProfile() }
     }
-    if(name !== 'direct'){
-        document.querySelectorAll('.nav-btn').forEach(b =>
-            b.classList.toggle('active', b.dataset.screen === name)
-        )
+    if(name === 'settings')         loadSettings()
+
+    if(name !== 'livechat' && livechatRefreshTimer){
+        clearInterval(livechatRefreshTimer)
+        livechatRefreshTimer = null
     }
 
-    if(name === 'settings') loadSettings()
-    if(name === 'home'){
-        renderLiveNow()
-        renderStories()
-        // лента кешируется сама — форс только если таб сменился
-        renderHomeFeed(false)
+    setTimeout(() => { try { updatePlayIcons(); syncFullPlayer() } catch {} }, 50)
+}
+/* ═══════════════════════════════════════════════════════════
+   ЛЕНИВАЯ ЗАГРУЗКА: stories + live-now
+   Грузятся только когда реально попадают во viewport
+   ═══════════════════════════════════════════════════════════ */
+let _storiesLoadedAt = 0
+let _liveNowLoadedAt = 0
+
+function lazyStoriesAndLiveNow(){
+    const storiesEl = document.getElementById('stories-row')
+    const liveEl    = document.getElementById('live-now-row')
+
+    const runStories = () => {
+        if(Date.now() - _storiesLoadedAt < 60_000 && storiesEl?.children.length > 1) return
+        _storiesLoadedAt = Date.now()
+        try { renderStories() } catch(e){ console.warn('[stories]', e.message) }
     }
-    if(name === 'channels') renderChannels()
-    if(name !== 'livechat' && livechatRefreshTimer){ clearInterval(livechatRefreshTimer); livechatRefreshTimer = null }
-    setTimeout(() => { updatePlayIcons(); syncFullPlayer(); }, 50)
-    refreshFollowCache().then(() => {
-        document.querySelectorAll('.feed-sub-btn').forEach(btn => {
-            const isSub = state.myChannelSubs.has(btn.dataset.chid)
-            btn.classList.toggle('subscribed', isSub)
-            btn.innerHTML = isSub
-                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12l5 5 9-11"/></svg>'
-                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
-        })
-    })
+    const runLive = () => {
+        if(Date.now() - _liveNowLoadedAt < 60_000 && liveEl?.children.length > 1) return
+        _liveNowLoadedAt = Date.now()
+        try { renderLiveNow() } catch(e){ console.warn('[live-now]', e.message) }
+    }
+
+    if(storiesEl && 'IntersectionObserver' in window){
+        const obs = new IntersectionObserver(es => {
+            if(es.some(e => e.isIntersecting)){ obs.disconnect(); runStories() }
+        }, { rootMargin: '100px' })
+        obs.observe(storiesEl)
+        setTimeout(() => { obs.disconnect(); runStories() }, 2500)
+    } else {
+        setTimeout(runStories, 200)
+    }
+
+    if(liveEl && 'IntersectionObserver' in window){
+        const obs = new IntersectionObserver(es => {
+            if(es.some(e => e.isIntersecting)){ obs.disconnect(); runLive() }
+        }, { rootMargin: '150px' })
+        obs.observe(liveEl)
+        setTimeout(() => { obs.disconnect(); runLive() }, 4000)
+    } else {
+        setTimeout(runLive, 600)
+    }
 }
 document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
     const s = b.dataset.screen
@@ -1706,13 +1751,41 @@ async function renderLiveNow(){
 /* ============================================================
    HOME FEED
 ============================================================ */
+let _feedRenderToken = 0
 async function renderHomeFeed(force = false){
+    const token = ++_feedRenderToken
     const list = $('feed-list'); if(!list) return
-    if(!force && list.dataset.renderedFor === state.feedTab && list.children.length && list.dataset.renderedAt){
-        const age = Date.now() - (+list.dataset.renderedAt)
-        if(age < 15 * 60 * 1000) return  // 15 минут — живём
+
+    const tab = state.feedTab
+    const cacheKey = 'lt_feed_cache_' + tab + '_' + (state.currentUser?.id || 'anon')
+
+    /* ═══ CACHE-FIRST: показываем вчерашние посты моментально ═══ */
+    if(!force && !list.children.length){
+        try {
+            const raw = localStorage.getItem(cacheKey)
+            if(raw){
+                const { html, at } = JSON.parse(raw)
+                if(Date.now() - at < 5 * 60 * 1000){   // 5 минут
+                    list.innerHTML = html
+                    list.dataset.renderedFor = tab
+                    list.dataset.renderedAt = String(at)
+                    list.querySelectorAll('.feed-post').forEach(card => {
+                        delete card.dataset.handlersBound
+                        attachHandlersToCard(card, state.currentUser?.id)
+                    })
+                    setTimeout(initTrackObserver, 100)
+                    // Фоновое обновление — без скелетона
+                    setTimeout(() => { if(token === _feedRenderToken) renderHomeFeed(true) }, 400)
+                    return
+                }
+            }
+        } catch {}
     }
+
+    // ... ВСЁ ОСТАЛЬНОЕ ОСТАВЬ КАК БЫЛО (начиная с teardownInfinite) ...
+
     teardownInfinite()
+    // ...
     list.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser()
@@ -1787,6 +1860,14 @@ async function renderHomeFeed(force = false){
         list.dataset.renderedAt = String(Date.now())
     }
     setTimeout(() => prefetchUpcomingVideos(3), 800)
+    // ═══ СОХРАНЯЕМ В КЭШ ═══
+    try {
+        const cards = [...list.querySelectorAll('.feed-post')].slice(0, 8)
+        const html = cards.map(c => c.outerHTML).join('')
+        if(html.length < 400_000){
+            localStorage.setItem(cacheKey, JSON.stringify({ html, at: Date.now() }))
+        }
+    } catch {}
 }
 function prefetchUpcomingVideos(limit = 3){
     const list = document.getElementById('feed-list')
@@ -4154,13 +4235,22 @@ async function renderChannels(){
             mineBox.innerHTML = `<div class="empty small" style="padding:20px;text-align:center"><p style="margin-bottom:12px">Вы не вступили ни в один канал</p><button class="btn-primary" id="chan-create-empty">Создать</button></div>`
             $('chan-create-empty')?.addEventListener('click', () => openCreateChannel())
         } else {
-            mineBox.innerHTML = (await Promise.all(unique.map(async c => {
+            // ── БАТЧ: один запрос вместо N+1 ──
+            const channelIds = unique.map(c => c.id)
+            const { data:allSubsForCount } = await supabase.from('subscriptions')
+                .select('channel_id').in('channel_id', channelIds)
+            const countsMap = {}
+            ;(allSubsForCount || []).forEach(s => {
+                countsMap[s.channel_id] = (countsMap[s.channel_id] || 0) + 1
+            })
+
+            mineBox.innerHTML = unique.map(c => {
                 const av = c.avatar_url ? `<img src="${c.avatar_url}" alt="">` : (c.name || 'K').charAt(0).toUpperCase()
-                const { count:subsCount } = await supabase.from('subscriptions').select('*', { count:'exact', head:true }).eq('channel_id', c.id)
+                const subsCount = countsMap[c.id] || 0
                 const isOwner = c.owner_id === user.id
                 const subIcon = isOwner ? '' : `<span class="chan-sub-icon" style="margin-left:auto;color:var(--red);display:flex">${ICONS.checkSmall}</span>`
-                return `<button class="chan-item" data-ch="${c.id}"><div class="chan-item-icon">${av}</div><div class="chan-item-info"><div class="chan-item-name">${escapeHtml(c.name || 'Канал')}</div><div class="chan-item-sub">${escapeHtml(c.description || '')}</div><div class="chan-item-meta">${subsCount || 0} подписчиков</div><div class="chan-item-role" style="${isOwner ? '' : 'color:var(--text-secondary)'}">${isOwner ? 'Владелец' : 'Участник'}</div></div>${subIcon}</button>`
-            }))).join('')
+                return `<button class="chan-item" data-ch="${c.id}"><div class="chan-item-icon">${av}</div><div class="chan-item-info"><div class="chan-item-name">${escapeHtml(c.name || 'Канал')}</div><div class="chan-item-sub">${escapeHtml(c.description || '')}</div><div class="chan-item-meta">${subsCount} подписчиков</div><div class="chan-item-role" style="${isOwner ? '' : 'color:var(--text-secondary)'}">${isOwner ? 'Владелец' : 'Участник'}</div></div>${subIcon}</button>`
+            }).join('')
         }
         const exclude = new Set(unique.map(c => c.id))
         const { data:recs } = await supabase.from('channels').select('id, name, description, avatar_url').limit(20)
@@ -7684,6 +7774,9 @@ async function ensureQjnSub(userId){
 }
 
 async function enterApp(){
+    // ═══════════════════════════════════════════════════════════
+    // КРИТИЧЕСКИЙ ПУТЬ — только то, без чего нельзя показать экран
+    // ═══════════════════════════════════════════════════════════
     await checkAdminStatus()
 
     if(ADMIN_STATE.isBanned){
@@ -7694,51 +7787,47 @@ async function enterApp(){
     }
 
     showScreen('main')
+
+    // Один запрос профиля — используем для темы, статуса, chvad
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         if(user){
             const { data:prof } = await supabase.from('profiles')
-                .select('region, status, status_emoji, theme')
+                .select('region, status, status_emoji, theme, chvad_active, chvad_until')
                 .eq('id', user.id).maybeSingle()
             if(prof?.region) state.data.region = prof.region
             if(prof?.status_emoji || prof?.status) state.data.status = prof.status_emoji || prof.status
             if(prof?.theme) applyTheme(prof.theme)
             else applyTheme(getTheme())
+
+            // Автодеактивация chvad (fire & forget)
+            if(prof?.chvad_active && prof.chvad_until && new Date(prof.chvad_until) < new Date()){
+                supabase.from('profiles')
+                    .update({ chvad_active: false }).eq('id', user.id)
+                    .then(() => {}, () => {})
+            }
         }
     } catch {}
 
-    await checkMainChannelSubscription()
-    await refreshFollowCache()
-
-    // ═══════════════════════════════════════════════════════════════
-    // [ПУНКТ 10] Автодеактивация истёкшего chvad — ДО loadProfile()
-    // ═══════════════════════════════════════════════════════════════
-    try {
-        const { data:{ user } } = await supabase.auth.getUser()
-        if(user){
-            const { data:p } = await supabase.from('profiles')
-                .select('chvad_active, chvad_until').eq('id', user.id).maybeSingle()
-            if(p?.chvad_active && p.chvad_until && new Date(p.chvad_until) < new Date()){
-                await supabase.from('profiles').update({ chvad_active: false }).eq('id', user.id)
-                console.log('[chvad] auto-deactivated (expired)')
-            }
-        }
-    } catch(e){ console.warn('[chvad expire]', e.message) }
-    // ═══════════════════════════════════════════════════════════════
-
+    // ═══════════════════════════════════════════════════════════
+    // HOME — только лента. Всё остальное — отложено.
+    // ═══════════════════════════════════════════════════════════
     switchScreen('home')
+
     window.__ltSetChatTitle = (t) => { state.chatTitle = t }
-    renderLiveNow(); renderStories(); loadProfile(); loadStatus();
-    renderEventsScreen(); renderLiveFeed()
-    maybeSendDailyNotification()
-    heartbeat()
 
-    // Подписка на QJN3G
-    try { const { data:{ user } } = await supabase.auth.getUser(); if(user) await ensureQjnSub(user.id) } catch {}
-    // Автозакрытие старых жалоб
-    try { autoCloseOldReports() } catch {}
+    // ═══════════════════════════════════════════════════════════
+    // ОТЛОЖЕННОЕ — не мешает первому рендеру
+    // ═══════════════════════════════════════════════════════════
+    setTimeout(() => { try { loadStatus() } catch(e){} }, 2000)
+    setTimeout(() => { try { checkMainChannelSubscription() } catch(e){} }, 4000)
+    setTimeout(() => { try { autoCloseOldReports() } catch(e){} }, 6000)
+    setTimeout(() => { try { maybeSendDailyNotification() } catch(e){} }, 10000)
+    setTimeout(() => { try { initPush() } catch(e){} }, 15000)
 
-    setTimeout(() => { try { initPush() } catch(e){ console.warn('[push]', e.message) } }, 3000)
+    // Heartbeat — интервал запускаем, но первый удар через минуту
+    setInterval(heartbeat, 60 * 1000)
+
     await Router.resolve()
 }
 

@@ -778,7 +778,7 @@ export function openDirectTab(){
     if(D.refreshTimer) clearInterval(D.refreshTimer)
     D.refreshTimer = setInterval(() => {
         if($('screen-direct')?.classList.contains('active') && !D.currentChat) loadDirectChats(true)
-    }, 5000)
+    }, 30_000)   // 30 сек вместо 5
     loadDirectChats()
     window.scrollTo(0,0)
 }
@@ -1518,7 +1518,7 @@ function renderChatRoom(){
     if(D.refreshTimer) clearInterval(D.refreshTimer)
     D.refreshTimer = setInterval(() => {
         if($('direct-room') && !$('direct-room').classList.contains('hidden')) loadMessages(true)
-    }, 3000)
+    }, 15_000)
 
     if(D.typingTimer) clearInterval(D.typingTimer)
     D.typingTimer = setInterval(() => {

@@ -4836,6 +4836,26 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
     background-size:200% 100%; animation:shimmer 1.4s linear infinite;
     border-radius:16px; height:64px; margin:6px 10px;
 }
+/* ═══════════════════════════════════════════════════════════
+   Не даём браузеру тратить CPU на анимации скрытых экранов
+   ═══════════════════════════════════════════════════════════ */
+.app-screen:not(.active) *,
+.app-screen:not(.active) *::before,
+.app-screen:not(.active) *::after{
+    animation-play-state: paused !important;
+    transition: none !important;
+}
+
+/* Каналы: тяжёлые hero-анимации только пока экран активен */
+#screen-channels:not(.active) .chan-fly{
+    animation: none !important;
+    display: none !important;
+}
+
+/* Прячем жирные dekor-круги на неактивных экранах auth/boot */
+.screen.hidden .loading-circles .lc{
+    animation: none !important;
+}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
