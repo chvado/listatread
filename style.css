@@ -4956,13 +4956,14 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
     inset: 0;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-end;        /* ✅ всё внизу */
+    gap: 14px;                        /* ✅ отступ между инфо и кнопками */
     padding: 16px;
     background: linear-gradient(180deg,
-    rgba(0,0,0,.45) 0%,
-    transparent 28%,
-    transparent 48%,
-    rgba(0,0,0,.82) 100%);
+    rgba(0,0,0,.25) 0%,
+    transparent 22%,
+    transparent 38%,
+    rgba(0,0,0,.85) 100%);
     color: #fff;
     text-align: left;
 }
@@ -5013,18 +5014,18 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
     gap: 4px;
     padding: 10px 4px;
     border-radius: 14px;
-    border: none;
-    background: rgba(28,28,30,.92);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
-    backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.12);   /* тонкий контур */
+    background: rgba(20,20,22,.42);            /* ✅ полупрозрачный матовый фон */
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
     color: #fff;
     font-family: inherit;
     font-size: 11px;
     font-weight: 700;
     line-height: 1.1;
     cursor: pointer;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
-    transition: scale .18s var(--spring), filter .2s;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.15);
+    transition: scale .18s var(--spring), background-color .2s, filter .2s;
     will-change: scale;
 }
 .ch-action-btn:active{ scale: .95 }
@@ -5035,12 +5036,18 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
     stroke: currentColor;
 }
 .ch-action-btn.primary{
-    background: linear-gradient(180deg, #ff4d6a, var(--red-pink));
-    box-shadow: 0 4px 14px rgba(255,55,95,.4), inset 0 1px 0 rgba(255,255,255,.3);
+    background: rgba(255,55,95,.72);            /* ✅ полупрозрачный красный */
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+    border-color: rgba(255,255,255,.2);
+    box-shadow: 0 4px 14px rgba(255,55,95,.35), inset 0 1px 0 rgba(255,255,255,.35);
 }
 .ch-action-btn.live{
-    background: linear-gradient(180deg, #ff4da6, #e6007a);
-    box-shadow: 0 4px 14px rgba(230,0,122,.45), inset 0 1px 0 rgba(255,255,255,.3);
+    background: rgba(230,0,122,.72);            /* ✅ полупрозрачный розовый */
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+    border-color: rgba(255,255,255,.2);
+    box-shadow: 0 4px 14px rgba(230,0,122,.4), inset 0 1px 0 rgba(255,255,255,.35);
 }
 
 /* О канале */
