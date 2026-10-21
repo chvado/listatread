@@ -34,14 +34,14 @@
     <!-- Open Graph (Telegram, VK, WhatsApp превью) -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="listatread">
-    <meta property="og:title" content="listatread — search a trend & list a tred">
+    <meta property="og:title" content="listatread — search a trend & list a tread">
     <meta property="og:description" content="В listatread доступен бесплатный плеер музыки, а также лента и каналы работают как единое целое благодаря умной адаптации контента, любой тред автора мгновенно могут найди в бесконечной ленте рекомендаций, тем самым собирая аудиторию, собирая единомышленников, а также выходите в listalive, глобальный чат, собирайте подарки от поклонников, общайтесь в удобном чате и кастомизируйте свой профиль как хотите!">
     <meta property="og:image" content="https://listatread.online/logo.jpeg">
     <meta property="og:url" content="https://listatread.online/">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="listatread — search a trend & list a tred">
+    <meta name="twitter:title" content="listatread — search a trend & list a tread">
     <meta name="twitter:description" content="В listatread доступен бесплатный плеер музыки, а также лента и каналы работают как единое целое благодаря умной адаптации контента, любой тред автора мгновенно могут найди в бесконечной ленте рекомендаций, тем самым собирая аудиторию, собирая единомышленников, а также выходите в listalive, глобальный чат, собирайте подарки от поклонников, общайтесь в удобном чате и кастомизируйте свой профиль как хотите!">
     <meta name="twitter:image" content="https://listatread.online/logo.jpeg">
 
@@ -323,8 +323,8 @@
             </div>
             <div class="feed-tabs">
                 <button class="feed-tab active" data-tab="recommended">For you</button>
-                <button class="feed-tab" data-tab="lista">Tredless</button>
-                <button class="feed-tab" data-tab="subs">Deeptred's</button>
+                <button class="feed-tab" data-tab="lista">Treadless</button>
+                <button class="feed-tab" data-tab="subs">Deeptread's</button>
                 <button class="feed-tab" data-tab="my">Friendly</button>
                 <button class="feed-tab" data-tab="my">Focus ></button>
             </div>
@@ -367,6 +367,7 @@
                 <button class="inbox-tab" data-itab="comments">Комментарии</button>
                 <button class="inbox-tab" data-itab="likes">Лайки</button>
                 <button class="inbox-tab" data-itab="reposts">Репосты</button>
+
                 <button class="inbox-tab" data-itab="invites">Приглашения</button>
             </div>
             <div class="inbox-list" id="inbox-list"></div>
@@ -405,11 +406,11 @@
             <div class="profile-loader hidden" id="profile-loader"><div class="profile-loader-spinner"></div><p class="profile-loader-text">Загрузка профиля…</p></div>
             <div id="profile-body">
                 <div class="profile-hero"><div class="profile-avatar-lg" id="profile-avatar">ℓ</div><h2 class="profile-name" id="profile-name">Пользователь</h2><p class="profile-username" id="profile-username">@username</p><p class="profile-bio" id="profile-bio"></p></div>
-                <div class="profile-stats"><div class="stat"><strong id="stat-followers">0</strong><span>подписчики</span></div><div class="stat"><strong id="stat-posts">0</strong><span>посты</span></div><div class="stat"><strong id="stat-subs">0</strong><span>подписки</span></div></div>
+                <div class="profile-stats"><div class="stat"><strong id="stat-followers">0</strong><span>подписчики</span></div><div class="stat"><strong id="stat-posts">0</strong><span>Треды</span></div><div class="stat"><strong id="stat-subs">0</strong><span>подписки</span></div></div>
                 <div id="profile-actions"></div>
-                <div class="profile-tabs" id="profile-tabs"><button class="profile-tab active" data-ptab="reposts">Репосты</button><button class="profile-tab" data-ptab="posts">Посты</button><button class="profile-tab" data-ptab="gifts">Подарки</button><button class="profile-tab" data-ptab="tracks">Треки</button><button class="profile-tab" data-ptab="channels">Каналы</button><button class="profile-tab" data-ptab="shop">Магазин</button><button class="profile-tab" data-ptab="liked">Понравилось</button></div>
+                <div class="profile-tabs" id="profile-tabs"><button class="profile-tab active" data-ptab="reposts">Репосты</button><button class="profile-tab" data-ptab="posts">Треды</button><button class="profile-tab" data-ptab="gifts">Подарки</button><button class="profile-tab" data-ptab="tracks">Треки</button><button class="profile-tab" data-ptab="channels">Каналы</button><button class="profile-tab" data-ptab="shop">Магазин</button><button class="profile-tab" data-ptab="liked">Понравилось</button></div>
                 <div class="profile-content" id="profile-content"></div>
-                <div class="new-post-btn-wrap hidden" id="new-post-wrap"><button class="new-post-btn" id="new-post-btn"><span class="new-post-btn-bg"></span><span class="new-post-btn-content"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Новый пост</span></button></div>
+                <div class="new-post-btn-wrap hidden" id="new-post-wrap"><button class="new-post-btn" id="new-post-btn"><span class="new-post-btn-bg"></span><span class="new-post-btn-content"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Новый тред</span></button></div>
             </div>
         </section>
 
@@ -445,7 +446,7 @@
                 <div class="settings-panel" data-panel="privacy">
                     <div class="settings-group">
                         <h3 class="settings-group-title">Приватность профиля</h3>
-                        <label class="toggle-row"><span>Скрывать посты</span><input type="checkbox" class="toggle" data-priv="hide_posts"></label>
+                        <label class="toggle-row"><span>Скрывать мои треды</span><input type="checkbox" class="toggle" data-priv="hide_posts"></label>
                         <label class="toggle-row"><span>Скрывать репосты</span><input type="checkbox" class="toggle" data-priv="hide_reposts"></label>
                         <label class="toggle-row"><span>Скрывать мои лайки</span><input type="checkbox" class="toggle" data-priv="hide_likes"></label>
                         <label class="toggle-row"><span>Скрывать каналы, в которых я состою</span><input type="checkbox" class="toggle" data-priv="hide_channels"></label>
@@ -907,7 +908,7 @@
             <div class="share-video-meta">
                 <div class="share-video-title" id="share-video-title">—</div>
                 <div class="share-video-sub">
-                    <span>пост</span>
+                    <span>тред</span>
                     <span class="share-mini-ava" id="share-video-user-ava">?</span>
                     <span id="share-video-user-name">@user</span>
                     <span class="share-from">from</span>

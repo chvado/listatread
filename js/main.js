@@ -369,28 +369,36 @@ async function prefetchHomeFeed(userId){
         const posts = await loadPosts(userId)
         if(!posts?.length) return { posts: [], counts: {}, liked: new Set(), reposted: new Set() }
 
-        const authorIds  = [...new Set(posts.map(p => p.author_id).filter(Boolean))]
-        const channelIds = [...new Set(posts.map(p => p.channel_id).filter(Boolean))]
-        const ids = posts.map(p => p.id)
+        // ⚡ Загружаем данные только для первых постов.
+        //    Остальные подтянутся по мере скролла через appendRecommendedChunk.
+        //    ЭТО ЖЕ решает баг с нулями у первых видео: .in() с сотней ID
+        //    молча падает по длине URL — здесь ID всего 30, всё проходит.
+        const INITIAL_COUNT = 30
+        const initialPosts = posts.slice(0, INITIAL_COUNT)
+        const initialIds   = initialPosts.map(p => p.id)
+
+        const authorIds  = [...new Set(initialPosts.map(p => p.author_id).filter(Boolean))]
+        const channelIds = [...new Set(initialPosts.map(p => p.channel_id).filter(Boolean))]
 
         const [profs, chs, likes, reps, counts] = await Promise.all([
-            authorIds.length ? supabase.from('profiles').select('id, username, full_name, avatar_url, status, is_admin').in('id', authorIds) : Promise.resolve({ data: [] }),
+            authorIds.length  ? supabase.from('profiles').select('id, username, full_name, avatar_url, status, is_admin').in('id', authorIds)  : Promise.resolve({ data: [] }),
             channelIds.length ? supabase.from('channels').select('id, name, avatar_url').in('id', channelIds) : Promise.resolve({ data: [] }),
-            supabase.from('likes').select('post_id').eq('user_id', userId).in('post_id', ids),
-            supabase.from('reposts').select('post_id').eq('user_id', userId).in('post_id', ids),
-            fetchCounts(ids)
+            supabase.from('likes').select('post_id').eq('user_id', userId).in('post_id', initialIds),
+            supabase.from('reposts').select('post_id').eq('user_id', userId).in('post_id', initialIds),
+            fetchCounts(initialIds)
         ])
+
         const profiles = Object.fromEntries((profs.data || []).map(p => [p.id, p]))
         const channels = Object.fromEntries((chs.data || []).map(c => [c.id, c]))
 
         return {
             posts: posts.map(p => ({
                 ...p,
-                profiles: profiles[p.author_id] || {},
-                channels: p.channel_id ? (channels[p.channel_id] || null) : null
+                profiles: profiles[p.author_id] || p.profiles || {},
+                channels: p.channel_id ? (channels[p.channel_id] || p.channels || null) : (p.channels || null)
             })),
             counts,
-            liked: new Set((likes.data || []).map(l => l.post_id)),
+            liked:    new Set((likes.data || []).map(l => l.post_id)),
             reposted: new Set((reps.data || []).map(r => r.post_id))
         }
     }, 3 * 60 * 1000)
@@ -500,6 +508,21 @@ function timeAgo(dateStr){
     if(diff < 30 * 86400) return Math.floor(diff / (7 * 86400)) + ' нед назад';
     return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
 }
+function animateCount(el, from, to, duration = 600){
+    if(!el) return;
+    el.classList.add('bump');
+    setTimeout(() => el.classList.remove('bump'), 350);
+    const start = performance.now();
+    const diff = to - from;
+    const step = now => {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = Math.round(from + diff * eased);
+        if(t < 1) requestAnimationFrame(step);
+        else el.textContent = to;
+    };
+    requestAnimationFrame(step);
+}
 function computeDisplayStatus(p){ return p?.status || 'default' }
 function isVideoUrl(u){ return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u||'') }
 function isAudioUrl(u){ return /\.(mp3|wav|ogg|m4a|aac|flac|opus)(\?|$)/i.test(u||'') }
@@ -568,27 +591,40 @@ async function fetchCounts(postIds){
     postIds.forEach(id => out[id] = { likes:0, comments:0, reposts:0, commenters:[] })
     if(!postIds.length) return out
     try {
-        const [{ data:likes }, { data:comments }, { data:reposts }] = await Promise.all([
-                supabase.from('likes').select('post_id').in('post_id', postIds),
+        // ⚡ БАТЧИНГ: при большом массиве ID Supabase .in() молча возвращает пустоту.
+        //    Разбиваем на куски по 80 — так URL всегда в пределах лимита.
+        const BATCH = 80
+        const chunks = []
+        for(let i = 0; i < postIds.length; i += BATCH){
+            chunks.push(postIds.slice(i, i + BATCH))
+        }
+
+        const results = await Promise.all(chunks.map(chunk =>
+            Promise.all([
+                supabase.from('likes').select('post_id').in('post_id', chunk),
                 supabase.from('comments')
                     .select('post_id, user_id, created_at, profiles:user_id ( username, full_name, avatar_url )')
-                    .in('post_id', postIds).order('created_at', { ascending:false }),
-                supabase.from('reposts').select('post_id').in('post_id', postIds)
+                    .in('post_id', chunk).order('created_at', { ascending:false }),
+                supabase.from('reposts').select('post_id').in('post_id', chunk)
             ])
-        ;(likes || []).forEach(l => { if(out[l.post_id]) out[l.post_id].likes++ })
-        ;(comments || []).forEach(c => {
-            const o = out[c.post_id]; if(!o) return
-            o.comments++
-            if(o.commenters.length < 3 && !o.commenters.some(x => x.uid === c.user_id)){
-                const pr = c.profiles || {}
-                o.commenters.push({
-                    uid: c.user_id,
-                    avatar: pr.avatar_url || null,
-                    initial: (pr.full_name || pr.username || '?').charAt(0).toUpperCase()
-                })
-            }
+        ))
+
+        results.forEach(([likesRes, commentsRes, repostsRes]) => {
+            ;(likesRes.data || []).forEach(l => { if(out[l.post_id]) out[l.post_id].likes++ })
+            ;(commentsRes.data || []).forEach(c => {
+                const o = out[c.post_id]; if(!o) return
+                o.comments++
+                if(o.commenters.length < 3 && !o.commenters.some(x => x.uid === c.user_id)){
+                    const pr = c.profiles || {}
+                    o.commenters.push({
+                        uid: c.user_id,
+                        avatar: pr.avatar_url || null,
+                        initial: (pr.full_name || pr.username || '?').charAt(0).toUpperCase()
+                    })
+                }
+            })
+            ;(repostsRes.data || []).forEach(r => { if(out[r.post_id]) out[r.post_id].reposts++ })
         })
-        ;(reposts || []).forEach(r => { if(out[r.post_id]) out[r.post_id].reposts++ })
     } catch(e){ console.warn('[counts]', e.message) }
     return out
 }
@@ -2685,6 +2721,18 @@ function closeCommentsModal(){
 
 async function openCommentsSheet(postId){
     if(!postId) return;
+
+    // проверяем, не отключили ли обсуждение в канале этого треда
+    try {
+        const { data: post } = await supabase.from('posts').select('channel_id').eq('id', postId).maybeSingle();
+        if (post?.channel_id) {
+            const { data: ch } = await supabase.from('channels').select('allow_discussions').eq('id', post.channel_id).maybeSingle();
+            if (ch && ch.allow_discussions === false) {
+                showToast('info', 'В этом канале ограничили обсуждение тредов', { icon:'🔒', duration: 3500 });
+                return;
+            }
+        }
+    } catch(e){ /* колонка может отсутствовать — считаем разрешено */ }
     _commentsPostId = postId;
     _commentsReplyTo = null;
 
@@ -4737,8 +4785,14 @@ function renderChannelsFromCache(userId, data, mineBox, recBox){
         renderRecs(cachedRecs)
     } else {
         recBox.innerHTML = loadingBlock()
-        supabase.from('channels').select('id, name, description, avatar_url').limit(20).then(({ data:recs }) => {
-            const filtered = (recs || []).filter(c => !exclude.has(c.id)).slice(0, 6)
+        supabase.from('channels').select('id, name, description, avatar_url, channel_type').limit(20).then(({ data:recs }) => {
+            const filtered = (recs || [])
+                .filter(c =>
+                    !exclude.has(c.id)
+                    && c.channel_type !== 'private'
+                    && c.channel_type !== 'bycode'
+                )
+                .slice(0, 6)
             Cache.data.set('channels-recs', filtered); Cache.ts.set('channels-recs', Date.now())
             renderRecs(filtered)
         })
@@ -5118,13 +5172,18 @@ async function openChannel(channelId){
     if(!screen){ screen = document.createElement('div'); screen.id = 'channel-screen'; screen.className = 'hidden'; document.body.appendChild(screen) }
     screen.classList.remove('hidden')
     screen.innerHTML = loadingBlock()
+
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         await refreshFollowCache()
         const { data:ch } = await supabase.from('channels').select('*').eq('id', channelId).maybeSingle()
-        state.chatTitle = ch.name || 'Канал'  // для VFM
+        state.chatTitle = ch?.name || 'Канал'
         if(!ch){ screen.innerHTML = '<p class="empty">Канал не найден</p>'; return }
+
         const isOwner = ch.owner_id === user.id
+        const currentType = ch.channel_type === 'bycode' ? 'private' : (ch.channel_type || 'public')
+        const isCommunity = currentType === 'community'
+
         const { data:subRow } = await supabase.from('subscriptions').select('id').eq('follower_id', user.id).eq('channel_id', channelId).maybeSingle()
         const isSub = !!subRow
         const canPost = isOwner || (isSub && ch.can_members_post)
@@ -5133,30 +5192,39 @@ async function openChannel(channelId){
             supabase.from('subscriptions').select('*', { count:'exact', head:true }).eq('channel_id', channelId),
             supabase.from('posts').select('*', { count:'exact', head:true }).eq('channel_id', channelId)
         ])
-        let marksCount = 0
-        try {
-            const { data:postsIds } = await supabase.from('posts').select('id').eq('channel_id', channelId)
-            const ids = (postsIds || []).map(p => p.id)
-            if(ids.length){
-                const [l, c, r] = await Promise.all([
-                    supabase.from('likes').select('*', { count:'exact', head:true }).in('post_id', ids),
-                    supabase.from('comments').select('*', { count:'exact', head:true }).in('post_id', ids),
-                    supabase.from('reposts').select('*', { count:'exact', head:true }).in('post_id', ids)
-                ])
-                marksCount = (l.count || 0) + (c.count || 0) + (r.count || 0)
-            }
-            const { data:livesIds } = await supabase.from('lives').select('id').eq('channel_id', channelId)
-            const liveIds = (livesIds || []).map(x => x.id)
-            if(liveIds.length){
-                const { count:ll } = await supabase.from('live_likes').select('*', { count:'exact', head:true }).in('live_id', liveIds)
-                marksCount += (ll || 0)
-            }
-        } catch {}
-        const avContent = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : (ch.name || 'K').charAt(0).toUpperCase()
-        const avatarHtml = activeLive
-            ? `<div class="ch-ig-avatar" style="background:conic-gradient(from 0deg,#ff375f,#ff9f0a,#ff375f);padding:3px"><div style="width:100%;height:100%;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#fff">${avContent}</div></div>`
-            : `<div class="ch-ig-avatar">${avContent}</div>`
-        const showStarBtn = !isOwner
+        const subsCount  = subsRes.count  || 0
+        const postsCount = postsRes.count || 0
+
+        const avContent = ch.avatar_url
+            ? `<img src="${ch.avatar_url}" alt="">`
+            : (ch.name || 'K').charAt(0).toUpperCase()
+
+        const I = {
+            follow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>',
+            leave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M22 11l-6 6M16 11l6 6"/></svg>',
+            gift:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg>',
+            share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>',
+            more:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+            live:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2s4 3 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s-3 2-3 6a6 6 0 0 0 12 0c0-5-6-11-6-11z"/></svg>',
+            edit:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>'
+        }
+
+        let actionsBar = ''
+        if(isOwner){
+            actionsBar = `
+                <button class="ch-action-btn live" id="ch-live-btn">${I.live}<span>LIVE</span></button>
+                <button class="ch-action-btn" id="ch-edit-btn">${I.edit}<span>Изменить</span></button>
+                <button class="ch-action-btn" id="ch-share-btn">${I.share}<span>Поделиться</span></button>
+                <button class="ch-action-btn" id="ch-more-btn">${I.more}<span>Ещё</span></button>
+            `
+        } else {
+            actionsBar = `
+                <button class="ch-action-btn primary" id="ch-follow-btn">${isSub ? I.leave : I.follow}<span>${isSub ? 'Покинуть' : 'Подписаться'}</span></button>
+                <button class="ch-action-btn" id="ch-gift-btn">${I.gift}<span>Подарок</span></button>
+                <button class="ch-action-btn" id="ch-share-btn">${I.share}<span>Поделиться</span></button>
+                <button class="ch-action-btn" id="ch-more-btn">${I.more}<span>Ещё</span></button>
+            `
+        }
 
         state.channelFilters = { type:'all', author:null }
         state.channelPosts = []
@@ -5165,78 +5233,144 @@ async function openChannel(channelId){
         state.channelCounts = {}
 
         screen.innerHTML = `
-      <div class="ch-page-header">
-        <button class="topbar-btn" id="ch-back"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
-        <div class="topbar-logo-static">канал</div>
-        <div style="display:flex;gap:4px;align-items:center">
-          <button class="topbar-btn" id="ch-filter-btn" title="Фильтры" style="color:var(--text)">${ICONS.filter}</button>
-          <button class="topbar-btn" id="ch-dots-btn" title="Действия" style="color:var(--text)">${ICONS.dots}</button>
-        </div>
-      </div>
-      <div class="ch-ig-header">${avatarHtml}<div class="ch-ig-info"><div class="ch-ig-name">${escapeHtml(ch.name || 'Канал')}</div><div class="ch-ig-desc">${escapeHtml(ch.description || '')}</div><div class="ch-ig-stats"><div class="ch-ig-stat"><strong id="ch-subs-count">${subsRes.count || 0}</strong> подписчики</div><div class="ch-ig-stat"><strong>${postsRes.count || 0}</strong> посты</div><div class="ch-ig-stat"><strong>${marksCount}</strong> отметки</div></div></div></div>
-      <div class="ch-ig-actions">
-        ${isOwner ? `<button class="ch-live-btn" id="ch-live-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M12 2s4 3 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s-3 2-3 6a6 6 0 0 0 12 0c0-5-6-11-6-11z"/></svg>LIVE</button>` : ''}
-        <button class="btn-follow ${isSub && !isOwner ? 'following' : ''}" id="ch-follow-btn" style="${isOwner ? 'background:var(--surface-2);color:var(--text)' : ''}">${isOwner ? 'Изменить' : (isSub ? 'Отписаться' : 'Подписаться')}</button>
-        ${showStarBtn ? `<button class="btn-icon-round btn-star-round" id="ch-star-btn" title="storr">${ICONS.star}</button>` : ''}
-        <button class="btn-add-people" id="ch-add-people"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="8" r="4"/><path d="M2 21c0-4.4 3.6-8 8-8 2 0 3.8.7 5.2 1.8M19 14v6M16 17h6"/></svg></button>
-      </div>
-      ${activeLive ? `<div class="active-live-card" data-live="${activeLive.id}" style="margin:0 0 16px"><div class="active-live-pill">LIVE NOW</div><div class="active-live-row"><div class="active-live-ava">${avContent}</div><div class="active-live-info"><div class="active-live-title">${escapeHtml(ch.name)}</div><div class="active-live-sub">Идёт трансляция</div></div><div class="active-live-bars"><span></span><span></span><span></span></div></div></div>` : ''}
-      <div class="ch-page-tabs"><button class="ch-page-tab active" data-chtab="posts">Посты</button><button class="ch-page-tab" data-chtab="live">Live</button><button class="ch-page-tab" data-chtab="gifts">Подарки</button></div>
-      <div class="ch-page-content" id="ch-content"></div>
-    `
+            <div class="ch-page-header">
+                <button class="topbar-btn" id="ch-back"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+                <div class="topbar-logo-static">канал</div>
+                <div style="display:flex;gap:4px;align-items:center">
+                    <button class="topbar-btn" id="ch-filter-btn" title="Фильтры" style="color:var(--text)">${ICONS.filter}</button>
+                </div>
+            </div>
+
+            <div class="ch-full-avatar-wrap">
+                <div class="ch-full-avatar">
+                    ${avContent}
+                    <div class="ch-full-avatar-overlay">
+                        <div class="ch-full-avatar-top">
+                            <div class="ch-full-avatar-name">${escapeHtml(ch.name || 'Канал')}</div>
+                            <div class="ch-full-avatar-stats">
+                                <span class="ch-subs-count-anim" id="ch-subs-count">${subsCount}</span> подписчиков<span class="ch-full-avatar-dot">·</span><span id="ch-posts-count">${postsCount}</span> тредов
+                            </div>
+                        </div>
+                        <div class="ch-actions-bar">${actionsBar}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ch-description-block">
+                <div class="ch-description-title">О канале</div>
+                <div class="ch-description-text" id="ch-desc-text">${escapeHtml(ch.description || 'Описание пока не добавлено')}</div>
+                <button class="ch-description-more hidden" id="ch-desc-more">Ещё</button>
+            </div>
+
+            <div class="ch-page-tabs">
+                <button class="ch-page-tab active" data-chtab="posts">Треды</button>
+                <button class="ch-page-tab" data-chtab="gifts">Подарки</button>
+                <button class="ch-page-tab" data-chtab="live">Live</button>
+            </div>
+
+            <div class="ch-page-content" id="ch-content"></div>
+        `
+
+        // «Ещё» в описании
+        requestAnimationFrame(() => {
+            const descEl = $('ch-desc-text'), moreBtn = $('ch-desc-more')
+            if(!descEl || !moreBtn) return
+            if(descEl.scrollHeight > descEl.clientHeight + 4){
+                moreBtn.classList.remove('hidden')
+                moreBtn.onclick = () => {
+                    const expanded = descEl.classList.toggle('expanded')
+                    moreBtn.textContent = expanded ? 'Свернуть' : 'Ещё'
+                }
+            }
+        })
+
         $('ch-back').addEventListener('click', () => {
             screen.classList.add('hidden')
             switchScreen('channels')
         })
-        $('ch-filter-btn').addEventListener('click', openChannelFilterMenu)
-        $('ch-dots-btn').addEventListener('click', () => {
-            const items = []
-            items.push({ label:'Скопировать ссылку', icon:ICONS.link, onClick: () => navigator.clipboard?.writeText(`${location.origin}${urlFor('channel', ch.join_code || channelId)}`) })
-            if(!isOwner) items.push({ label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => openReportModal({
-                    targetType:'channel', targetId: channelId,
-                    author: { username: null, full_name: ch.name, avatar_url: ch.avatar_url },
-                    text: ch.description, media: ch.avatar_url
-                }) })
-            showActionSheet('Действия', items)
+        $('ch-filter-btn')?.addEventListener('click', openChannelFilterMenu)
+
+        // ─── Подписка / Отписка с плавным счётчиком ───
+        $('ch-follow-btn')?.addEventListener('click', async () => {
+            const btn = $('ch-follow-btn')
+            if(!btn || btn.disabled) return
+            const counterEl = $('ch-subs-count')
+            const oldCount  = parseInt(counterEl.textContent) || subsCount
+            const wasSub = state.myChannelSubs.has(channelId)
+            const nowSub = !wasSub
+
+            btn.disabled = true
+            applySubState(channelId, nowSub)
+            if(nowSub) state.myChannelSubs.add(channelId); else state.myChannelSubs.delete(channelId)
+
+            // Плавный счётчик + смена кнопки
+            animateCount(counterEl, oldCount, Math.max(0, oldCount + (nowSub ? 1 : -1)), 550)
+            btn.innerHTML = (nowSub ? I.leave : I.follow) + `<span>${nowSub ? 'Покинуть' : 'Подписаться'}</span>`
+
+            try {
+                if(nowSub) await supabase.from('subscriptions').insert({ follower_id: user.id, channel_id: channelId })
+                else       await supabase.from('subscriptions').delete().eq('follower_id', user.id).eq('channel_id', channelId)
+                showToast('success', nowSub ? 'Вы подписались' : 'Вы покинули канал', { icon: nowSub ? '✓' : '👋' })
+            } catch(e){
+                // откат
+                applySubState(channelId, wasSub)
+                if(wasSub) state.myChannelSubs.add(channelId); else state.myChannelSubs.delete(channelId)
+                animateCount(counterEl, oldCount + (nowSub ? 1 : -1), oldCount, 550)
+                btn.innerHTML = (wasSub ? I.leave : I.follow) + `<span>${wasSub ? 'Покинуть' : 'Подписаться'}</span>`
+                showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon:'⚠️' })
+            } finally {
+                btn.disabled = false
+            }
         })
+
+        // ─── Подарок (с проверкой allow_gifts) ───
+        $('ch-gift-btn')?.addEventListener('click', async () => {
+            try {
+                const { data:chData } = await supabase.from('channels').select('allow_gifts').eq('id', channelId).maybeSingle()
+                if(chData && chData.allow_gifts === false){
+                    showToast('error', 'Канал не принимает подарки', { icon:'🎁', duration: 3500 })
+                    return
+                }
+            } catch(e){ /* колонка может отсутствовать — считаем разрешено */ }
+            openPrioriti()
+        })
+
+        // ─── Поделиться ───
+        $('ch-share-btn')?.addEventListener('click', async () => {
+            const url = `${location.origin}${urlFor('channel', ch.join_code || channelId)}`
+            if(navigator.share){
+                try { await navigator.share({ title: ch.name || 'Канал', url }) }
+                catch { /* отмена */ }
+            } else {
+                navigator.clipboard?.writeText(url)
+                showToast('success', 'Ссылка скопирована', { icon:'✓' })
+            }
+        })
+
+        // ─── Ещё (пока пусто) ───
+        $('ch-more-btn')?.addEventListener('click', () => {
+            showToast('info', 'Скоро', { icon:'⏳' })
+        })
+
+        // ─── Кнопки владельца ───
         $('ch-live-btn')?.addEventListener('click', () => {
             if(activeLive) openLiveRoom(activeLive.id)
-            else showActionSheet('Начать трансляцию', [{ label:'Live chat', icon:ICONS.send, onClick: () => openCreateLive(channelId, 'live') }, { label:'Rave', icon:ICONS.gift, onClick: () => openCreateLive(channelId, 'rave') }])
+            else showActionSheet('Начать трансляцию', [
+                { label:'Live chat', icon:ICONS.send, onClick: () => openCreateLive(channelId, 'live') },
+                { label:'Rave', icon:ICONS.gift, onClick: () => openCreateLive(channelId, 'rave') }
+            ])
         })
-        $('ch-follow-btn').addEventListener('click', async () => {
-            if(isOwner){
-                openChannelSettings(channelId, 'general')
-                return
-            }
-            const btn = $('ch-follow-btn')
-            const wasSub = btn.classList.contains('following')
-            const nowSub = !wasSub
-            btn.classList.toggle('following', nowSub)
-            btn.textContent = nowSub ? 'Отписаться' : 'Подписаться'
-            applySubState(channelId, nowSub)
-            if(nowSub) state.myChannelSubs.add(channelId)
-            else state.myChannelSubs.delete(channelId)
-            try {
-                if(nowSub) await supabase.from('subscriptions').insert({ follower_id:user.id, channel_id:channelId })
-                else await supabase.from('subscriptions').delete().eq('follower_id', user.id).eq('channel_id', channelId)
-                showToast('success', nowSub ? 'Вы подписаны' : 'Отписка', { icon: nowSub ? '✓' : '👋' })
-            } catch(e){
-                btn.classList.toggle('following', wasSub)
-                btn.textContent = wasSub ? 'Отписаться' : 'Подписаться'
-                applySubState(channelId, wasSub)
-                if(wasSub) state.myChannelSubs.add(channelId)
-                else state.myChannelSubs.delete(channelId)
-                showToast('error', 'Не удалось: ' + e.message)
-            }
-        })
-        $('ch-star-btn')?.addEventListener('click', () => openPrioriti())
-        $('ch-add-people').addEventListener('click', () => openInviteMenu(ch, user.id))
-        screen.querySelectorAll('.active-live-card[data-live]').forEach(el => el.addEventListener('click', () => openLiveRoom(el.dataset.live)))
+        $('ch-edit-btn')?.addEventListener('click', () => openChannelSettings(channelId, 'general'))
+
+        // ─── Табы ───
         screen.querySelectorAll('.ch-page-tab').forEach(tab => tab.addEventListener('click', () => {
             screen.querySelectorAll('.ch-page-tab').forEach(t => t.classList.remove('active'))
             tab.classList.add('active')
+            const filterBtn = $('ch-filter-btn')
+            if(filterBtn) filterBtn.style.visibility = tab.dataset.chtab === 'posts' ? 'visible' : 'hidden'
             loadChContent(channelId, tab.dataset.chtab, canPost)
         }))
+
         loadChContent(channelId, 'posts', canPost)
     } catch(e){ screen.innerHTML = `<p class="empty">Ошибка: ${e.message}</p>` }
 }
@@ -5330,6 +5464,7 @@ async function openInviteMenu(ch, myId){
 
 async function loadChContent(channelId, tab, canPost = false){
     const box = $('ch-content'); box.innerHTML = loadingBlock()
+
     if(tab === 'live'){
         const { data:lives } = await supabase.from('lives').select('id, title, type, is_active, created_at').eq('channel_id', channelId).order('created_at', { ascending:false }).limit(20)
         if(!lives || !lives.length){ box.innerHTML = '<p class="empty small">Пока нет live</p>'; return }
@@ -5361,7 +5496,9 @@ async function loadChContent(channelId, tab, canPost = false){
       <div id="ch-posts-list"></div>
     `
         setupChannelComposer(channelId, canPost)
-    } else box.innerHTML = '<div id="ch-posts-list"></div>'
+    } else {
+        box.innerHTML = '<div id="ch-posts-list"></div>'
+    }
     loadChannelPosts(channelId, canPost)
 }
 
@@ -8700,9 +8837,11 @@ async function searchAllByTerm(query, filter = 'all'){
             .then(r => out.people = r.data || [])
     )
     if(wantChannels) jobs.push(
-        supabase.from('channels').select('id, name, description, avatar_url')
+        supabase.from('channels').select('id, name, description, avatar_url, channel_type')
             .or(`name.ilike.${term},description.ilike.${term}`).limit(20)
-            .then(r => out.channels = r.data || [])
+            .then(r => out.channels = (r.data || []).filter(c =>
+                c.channel_type !== 'private' && c.channel_type !== 'bycode'
+            ))
     )
     if(wantPosts){
         jobs.push(
@@ -8863,7 +9002,9 @@ function renderChannelSettings(){
     const ch = chSetState.channel
     const tab = chSetState.tab
     const currentType = ch.channel_type === 'bycode' ? 'private' : (ch.channel_type || 'public')
-    const typeLabel = currentType === 'private' ? 'Частный' : (currentType === 'community' ? 'Общественный' : 'Публичный')
+    const isCommunity = currentType === 'community'
+    chSetState._selectedType = currentType
+    const typeLabel = currentType === 'private' ? 'Частный' : (isCommunity ? 'Общественный' : 'Публичный')
 
     screen.innerHTML = `
         <div class="reg-topbar">
@@ -8873,7 +9014,7 @@ function renderChannelSettings(){
         </div>
         <div class="settings-tabs">
             <button class="settings-tab ${tab==='general'?'active':''}" data-stab="general">Общие</button>
-            <button class="settings-tab ${tab==='privacy'?'active':''}" data-stab="privacy">Приватность</button>
+            <button class="settings-tab ${tab==='privacy'?'active':''}" data-stab="privacy">Настройки</button>
             <button class="settings-tab ${tab==='additional'?'active':''}" data-stab="additional">Дополнительно</button>
         </div>
 
@@ -8903,11 +9044,32 @@ function renderChannelSettings(){
 
         <div class="settings-panel ${tab==='privacy'?'active':''}" data-panel="privacy">
             <div class="settings-group">
-                <h3 class="settings-group-title">Видимость канала</h3>
-                <label class="toggle-row"><span>Показывать в рекомендациях</span><input type="checkbox" class="toggle" data-chset="recommend" ${currentType==='public'?'checked':''}></label>
-                <label class="toggle-row"><span>Показывать в профилях</span><input type="checkbox" class="toggle" data-chset="profile" ${currentType==='public'?'checked':''}></label>
-                <label class="toggle-row"><span>Показывать в listatread awards</span><input type="checkbox" class="toggle" data-chset="awards" ${currentType==='public'?'checked':''}></label>
+                <h3 class="settings-group-title">Тип канала</h3>
+                <div class="ch-type-switch">
+                    <button class="ch-type-option ${currentType === 'public' ? 'active' : ''}" data-ctype="public" ${isCommunity ? 'disabled' : ''}>Публичный</button>
+                    <button class="ch-type-option ${currentType === 'private' ? 'active' : ''}" data-ctype="private" ${isCommunity ? 'disabled' : ''}>Частный</button>
+                </div>
+                <p class="ch-type-hint" id="ch-type-hint">
+                    ${isCommunity
+        ? 'Общественный канал нельзя сменить на другой тип.'
+        : currentType === 'private'
+            ? 'Частный канал — виден только по ссылке или коду. Не появляется в поиске и рекомендациях.'
+            : 'Публичный канал — виден всем, появляется в рекомендациях и поиске.'}
+                </p>
             </div>
+
+            <div class="settings-group">
+                <h3 class="settings-group-title">Взаимодействие</h3>
+                <label class="toggle-row">
+                    <span>Разрешить обсуждение</span>
+                    <input type="checkbox" class="toggle" id="ch-allow-discussions" ${ch.allow_discussions !== false ? 'checked' : ''}>
+                </label>
+                <label class="toggle-row">
+                    <span>Разрешить подарки</span>
+                    <input type="checkbox" class="toggle" id="ch-allow-gifts" ${ch.allow_gifts !== false ? 'checked' : ''}>
+                </label>
+            </div>
+
             <button class="btn-primary settings-save" id="chs-save-privacy">Сохранить</button>
         </div>
 
@@ -8915,7 +9077,7 @@ function renderChannelSettings(){
             <div class="settings-section">
                 <div class="settings-section-header">Информация</div>
                 <div class="info-row"><span>Код</span><strong>${escapeHtml(ch.join_code || '—')}</strong></div>
-                <div class="info-row"><span>Тип</span><strong>${typeLabel}</strong></div>
+                <div class="info-row"><span>Тип</span><strong id="chs-type-label">${typeLabel}</strong></div>
                 <div class="info-row"><span>Создан</span><strong>${new Date(ch.created_at).toLocaleDateString('ru-RU')}</strong></div>
             </div>
             <button class="settings-row danger" id="chs-delete-channel">
@@ -8937,7 +9099,23 @@ function renderChannelSettings(){
         })
         $('chs-save-general')?.addEventListener('click', saveChannelGeneral)
     }
-    if(tab === 'privacy') $('chs-save-privacy')?.addEventListener('click', saveChannelPrivacy)
+
+    if(tab === 'privacy'){
+        screen.querySelectorAll('.ch-type-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if(isCommunity) return
+                const t = btn.dataset.ctype
+                chSetState._selectedType = t
+                screen.querySelectorAll('.ch-type-option').forEach(b => b.classList.toggle('active', b === btn))
+                $('ch-type-hint').textContent = t === 'private'
+                    ? 'Частный канал — виден только по ссылке или коду. Не появляется в поиске и рекомендациях.'
+                    : 'Публичный канал — виден всем, появляется в рекомендациях и поиске.'
+                const lbl = $('chs-type-label'); if(lbl) lbl.textContent = t === 'private' ? 'Частный' : 'Публичный'
+            })
+        })
+        $('chs-save-privacy')?.addEventListener('click', saveChannelPrivacy)
+    }
+
     if(tab === 'additional'){
         $('chs-delete-channel')?.addEventListener('click', async () => {
             if(!confirm('Удалить канал навсегда?')) return
@@ -8956,21 +9134,41 @@ function closeChannelSettings(){
 
 async function saveChannelPrivacy(){
     const chId = chSetState.channelId
-    const getToggle = (key, dflt=false) => {
-        const el = document.querySelector(`[data-chset="${key}"]`)
-        return el ? el.checked : dflt
+    const allowDiscussions = $('ch-allow-discussions')?.checked !== false
+    const allowGifts       = $('ch-allow-gifts')?.checked !== false
+    const selectedType     = chSetState._selectedType
+    const currentType = chSetState.channel.channel_type === 'bycode' ? 'private' : (chSetState.channel.channel_type || 'public')
+    const isCommunity = currentType === 'community'
+    const btn = $('chs-save-privacy')
+    if(btn){ btn.disabled = true; btn.textContent = 'Сохранение...' }
+
+    const update = { allow_discussions: allowDiscussions, allow_gifts: allowGifts }
+    if(!isCommunity && selectedType && selectedType !== currentType){
+        update.channel_type = selectedType
     }
-    const membersPost = getToggle('members_post')
-    const isPublicVis = getToggle('recommend', true) || getToggle('profile', true) || getToggle('awards', true)
 
     try {
-        await supabase.from('channels').update({
-            can_members_post: membersPost,
-            is_public: isPublicVis,
-            channel_type: membersPost ? 'community' : (isPublicVis ? 'public' : 'private')
-        }).eq('id', chId)
-        showToast('success', 'Настройки сохранены', { icon:'✓' })
-    } catch(e){ showToast('error', 'Ошибка: ' + e.message) }
+        const { error } = await supabase.from('channels').update(update).eq('id', chId)
+        if(error){
+            // Если колонки allow_* отсутствуют в БД — сохраняем хотя бы тип
+            console.warn('[channel settings save]', error.message)
+            if(update.channel_type){
+                const { error:err2 } = await supabase.from('channels').update({ channel_type: update.channel_type }).eq('id', chId)
+                if(err2) throw err2
+                showToast('warning', 'Тип сохранён, остальные настройки требуют миграции БД', { icon:'⚠️', duration:4000 })
+            } else {
+                throw error
+            }
+        } else {
+            showToast('success', 'Настройки сохранены', { icon:'✓' })
+        }
+        // обновляем локально
+        chSetState.channel = { ...chSetState.channel, ...update }
+    } catch(e){
+        showToast('error', 'Ошибка: ' + (e.message || ''), { icon:'⚠️' })
+    } finally {
+        if(btn){ btn.disabled = false; btn.textContent = 'Сохранить' }
+    }
 }
 
 async function saveChannelGeneral(){
