@@ -2603,8 +2603,8 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const rc = counts[post.id]?.reposts || 0
     const commenters = counts[post.id]?.commenters || []
     const isVideo = isVideoUrl(post.media_url)
-    const isPhoto = !!post.media_url && !isVideo && !isAudioUrl(post.media_url) && !isStickerMedia
     const isStickerMedia = post.media_url && /\/stickers\//.test(post.media_url)
+    const isPhoto = !!post.media_url && !isVideo && !isAudioUrl(post.media_url) && !isStickerMedia
     const adminMark = p.is_admin ? adminBadge(true) : ''
 
     const plusHtml = (myId && post.author_id !== myId && !state.myFollows.has(post.author_id))
@@ -3940,7 +3940,7 @@ function renderLivePost(post, myId, postsMap, counts = {}, likedSet = new Set(),
         <div class="post-bg-overlay"></div>
         <div class="feed-post-video-hint" style="white-space:nowrap">нажмите чтобы посмотреть</div>
         ${replyBlock}
-        <div class="feed-post-header">${avatarBlock}<div class="feed-pos<div class="feed-post-name"><span class="feed-post-name-text">${escapeHtml(name)}${adminMark}</span></div><div class="feed-post-name">${escapeHtml(name)}${adminMark}</div><div class="feed-post-time">${time}</div></div></div>
+    <div class="feed-post-header">${avatarBlock}<div class="feed-post-info"><div class="feed-post-name"><span class="feed-post-name-text">${escapeHtml(name)}${adminMark}</span></div>${buildMetaRow(time, 'live chat', post)}</div></div>
         <div class="feed-post-content">${escapeHtml(post.content || '')}</div>
         ${footer}
     </article>`
@@ -5577,12 +5577,23 @@ async function openChannel(channelId){
         const isSub = !!subRow
         const canPost = isOwner || (isSub && ch.can_members_post)
         const { data:activeLive } = await supabase.from('lives').select('id').eq('channel_id', channelId).eq('is_active', true).order('created_at', { ascending:false }).limit(1).maybeSingle()
-        const [subsRes, postsRes] = await Promise.all([
+        const [subsRes, postsRes, ownerProfRes] = await Promise.all([
             supabase.from('subscriptions').select('*', { count:'exact', head:true }).eq('channel_id', channelId),
-            supabase.from('posts').select('*', { count:'exact', head:true }).eq('channel_id', channelId)
+            supabase.from('posts').select('*', { count:'exact', head:true }).eq('channel_id', channelId),
+            ch.owner_id
+                ? supabase.from('profiles').select('is_admin').eq('id', ch.owner_id).maybeSingle()
+                : Promise.resolve({ data: null })
         ])
         const subsCount  = subsRes.count  || 0
         const postsCount = postsRes.count || 0
+
+// ── Бейдж: админ → фиолетовый енот, public → синяя галочка, иначе пусто ──
+        const ownerIsAdmin = !!ownerProfRes.data?.is_admin
+        const headerBadge = ownerIsAdmin
+            ? `<span class="ch-verify-badge chvad" title="">🦝</span>`
+            : (currentType === 'public'
+                ? `<span class="ch-verify-badge" title="">✓</span>`
+                : '')
 
         const avContent = ch.avatar_url
             ? `<img src="${ch.avatar_url}" alt="">`
@@ -5623,12 +5634,15 @@ async function openChannel(channelId){
 
         screen.innerHTML = `
             <div class="ch-page-header">
-                <button class="topbar-btn" id="ch-back"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
-                <div class="topbar-logo-static">канал</div>
-                <div style="display:flex;gap:4px;align-items:center">
-                    <button class="topbar-btn" id="ch-filter-btn" title="Фильтры" style="color:var(--text)">${ICONS.filter}</button>
-                </div>
-            </div>
+    <button class="topbar-btn" id="ch-back">...</button>
+    <div class="ch-header-title-wrap">
+        <div class="topbar-logo-static">канал</div>
+        ${headerBadge}
+    </div>
+    <div style="display:flex;gap:4px;align-items:center">
+        <button class="topbar-btn" id="ch-filter-btn" title="Фильтры" style="color:var(--text)">${ICONS.filter}</button>
+    </div>
+</div>
 
             <div class="ch-full-avatar-wrap">
                 <div class="ch-full-avatar">
@@ -5637,8 +5651,6 @@ async function openChannel(channelId){
                         <div class="ch-full-avatar-top">
 <div class="ch-full-avatar-name">
     ${escapeHtml(ch.name || 'Канал')}
-    ${isOwner && ADMIN_STATE.isAdmin ? `<span class="ch-verify-badge chvad" title="Администратор">🦝 admin</span>` : ''}
-    ${!isOwner && ch.channel_type === 'public' ? `<span class="ch-verify-badge">✓ verified</span>` : ''}
     ${activeLive ? `<span class="ch-verify-badge live">● LIVE</span>` : ''}
 </div>
                             <div class="ch-full-avatar-stats">
