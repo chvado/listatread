@@ -5149,6 +5149,50 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
     line-height: 1.5;
     color: var(--text-secondary);
 }
+/* ===== МЕДИА-ИНФО В ACTIONSHEET ===== */
+.actionsheet-item.info-item{
+    background: var(--surface-2);
+    border-radius: 12px;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: default;
+    opacity: 0.95;
+    padding: 11px 14px;
+}
+.actionsheet-item.info-item span{ color: var(--text-secondary); }
+
+/* ===== ЛИМИТ ПУБЛИКАЦИИ (баннер в composer) ===== */
+.limit-banner{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    background: rgba(255, 59, 48, .10);
+    border: 1px solid rgba(255, 59, 48, .28);
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--red-pink);
+    margin: 8px 0;
+    line-height: 1.35;
+}
+.limit-banner.hidden{ display: none !important; }
+.limit-banner > span{ flex: 1; min-width: 0; }
+.limit-banner button{
+    background: transparent;
+    border: none;
+    color: var(--blue);
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: underline;
+    white-space: nowrap;
+    padding: 0;
+    flex-shrink: 0;
+    font-family: inherit;
+}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

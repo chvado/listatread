@@ -499,50 +499,50 @@ async function fetchReportTarget(r){
     return null
 }
 
-async function handleReportAction(reportId, action){
-    const { data:{ user } } = await supabase.auth.getUser()
-    if(!user) return
+async function handleReportAction(reportId, action) {
+    const {data: {user}} = await supabase.auth.getUser()
+    if (!user) return
 
-    const { data: report } = await supabase.from('reports').select('*').eq('id', reportId).maybeSingle()
-    if(!report) return
+    const {data: report} = await supabase.from('reports').select('*').eq('id', reportId).maybeSingle()
+    if (!report) return
 
     const target = await fetchReportTarget(report)
     const targetAuthorId = target?.authorId
 
-    if(action === 'reject'){
+    if (action === 'reject') {
         await supabase.from('reports').update({
             status: 'rejected',
             resolved_at: new Date().toISOString(),
             resolved_by: user.id
         }).eq('id', reportId)
 
-        if(report.reporter_id && target?.author){
+        if (report.reporter_id && target?.author) {
             const author = target.author
             await supabase.from('notifications').insert({
                 user_id: report.reporter_id,
                 type: 'report_rejected',
                 title: 'Жалоба рассмотрена',
                 body: `Мы не нашли нарушений по вашему запросу проверки аккаунта @${author.username || 'user'}.`,
-                meta: { reason: report.reason, target_username: author.username, status: 'rejected' }
+                meta: {reason: report.reason, target_username: author.username, status: 'rejected'}
             })
         }
-        if(typeof window.showToast === 'function') window.showToast('info', 'Жалоба отклонена', { icon:'✓' })
+        if (typeof window.showToast === 'function') window.showToast('info', 'Жалоба отклонена', {icon: '✓'})
         renderAdminReports()
         return
     }
 
-    if(action === 'warn' && targetAuthorId){
+    if (action === 'warn' && targetAuthorId) {
         const reason = prompt('Причина предупреждения:', report.reason) || report.reason
         const comment = prompt('Комментарий:', '') || ''
-        const { data:prof } = await supabase.from('profiles').select('warnings').eq('id', targetAuthorId).maybeSingle()
+        const {data: prof} = await supabase.from('profiles').select('warnings').eq('id', targetAuthorId).maybeSingle()
         const newWarn = (prof?.warnings || 0) + 1
-        await supabase.from('profiles').update({ warnings: newWarn }).eq('id', targetAuthorId)
+        await supabase.from('profiles').update({warnings: newWarn}).eq('id', targetAuthorId)
         await supabase.from('notifications').insert({
             user_id: targetAuthorId,
             type: 'warning',
             title: 'Предупреждение от администрации listatread',
             body: `Причина: ${reason}`,
-            meta: { reason, comment }
+            meta: {reason, comment}
         })
         await supabase.from('reports').update({
             status: 'resolved',
@@ -550,29 +550,34 @@ async function handleReportAction(reportId, action){
             resolved_by: user.id
         }).eq('id', reportId)
 
-        if(report.reporter_id && target?.author){
+        if (report.reporter_id && target?.author) {
             await supabase.from('notifications').insert({
                 user_id: report.reporter_id,
                 type: 'report_resolved',
                 title: 'Мы приняли меры по вашей жалобе',
                 body: `Мы приняли меры по отношению к пользователю @${target.author.username || 'user'} по вашей жалобе.`,
-                meta: { target_username: target.author.username, reason: report.reason, status: 'resolved' }
+                meta: {target_username: target.author.username, reason: report.reason, status: 'resolved'}
             })
         }
-        if(typeof window.showToast === 'function') window.showToast('success', 'Предупреждение выдано', { icon:'⚠️' })
+        if (typeof window.showToast === 'function') window.showToast('success', 'Предупреждение выдано', {icon: '⚠️'})
         renderAdminReports()
         return
     }
 
-    if(action === 'resolve' && targetAuthorId){
+    if (action === 'resolve' && targetAuthorId) {
         const reason = prompt('Причина блокировки:', report.reason) || report.reason
         const comment = prompt('Комментарий для пользователя:', '') || ''
         const dur = prompt('Длительность (24h, 3d, 7d, forever):', '7d') || '7d'
-        const durMap = { '24h': 24*60*60*1000, '3d': 3*24*60*60*1000, '7d': 7*24*60*60*1000 }
+        const durMap = {'24h': 24 * 60 * 60 * 1000, '3d': 3 * 24 * 60 * 60 * 1000, '7d': 7 * 24 * 60 * 60 * 1000}
         const ms = dur === 'forever' ? null : (durMap[dur] || durMap['7d'])
-        const update = { ban_reason: reason, ban_comment: comment, banned_at: new Date().toISOString() }
-        if(ms === null){ update.ban_permanent = true; update.ban_until = null }
-        else { update.ban_permanent = false; update.ban_until = new Date(Date.now() + ms).toISOString() }
+        const update = {ban_reason: reason, ban_comment: comment, banned_at: new Date().toISOString()}
+        if (ms === null) {
+            update.ban_permanent = true;
+            update.ban_until = null
+        } else {
+            update.ban_permanent = false;
+            update.ban_until = new Date(Date.now() + ms).toISOString()
+        }
         await supabase.from('profiles').update(update).eq('id', targetAuthorId)
 
         await supabase.from('notifications').insert({
@@ -580,7 +585,7 @@ async function handleReportAction(reportId, action){
             type: 'ban',
             title: 'Вы были заблокированы в сервисе listatread',
             body: `Ваш аккаунт заблокирован ${ms === null ? 'бессрочно' : 'до ' + formatBanUntil(update.ban_until)}.`,
-            meta: { reason, comment, until: update.ban_until, permanent: update.ban_permanent }
+            meta: {reason, comment, until: update.ban_until, permanent: update.ban_permanent}
         })
 
         await supabase.from('reports').update({
@@ -589,68 +594,75 @@ async function handleReportAction(reportId, action){
             resolved_by: user.id
         }).eq('id', reportId)
 
-        if(report.reporter_id && target?.author){
+        if (report.reporter_id && target?.author) {
             await supabase.from('notifications').insert({
                 user_id: report.reporter_id,
                 type: 'report_resolved',
                 title: 'Мы приняли меры по вашей жалобе',
                 body: `Мы приняли меры по отношению к пользователю @${target.author.username || 'user'} по вашей жалобе.`,
-                meta: { target_username: target.author.username, reason: report.reason, status: 'resolved' }
+                meta: {target_username: target.author.username, reason: report.reason, status: 'resolved'}
             })
         }
 
-        if(typeof window.showToast === 'function') window.showToast('success', 'Пользователь заблокирован', { icon:'🚫' })
+        if (typeof window.showToast === 'function') window.showToast('success', 'Пользователь заблокирован', {icon: '🚫'})
         renderAdminReports()
         return
     }
 
-    if(action === 'delete-post' && target?.postId){
+    if (action === 'delete-post' && target?.postId) {
         try {
-            const { error } = await supabase.from('posts').delete().eq('id', target.postId)
-            if(error) throw error
+            const {data: postInfo} = await supabase.from('posts')
+                .select('author_id, created_at, channel_id, channels:channel_id(name)')
+                .eq('id', target.postId).maybeSingle()
+
+            await Promise.allSettled([
+                supabase.from('likes').delete().eq('post_id', target.postId),
+                supabase.from('comments').delete().eq('post_id', target.postId),
+                supabase.from('reposts').delete().eq('post_id', target.postId),
+                supabase.from('saved_tracks').delete().eq('post_id', target.postId),
+            ])
+
+            const {error} = await supabase.from('posts')
+                .delete().eq('id', target.postId).select('id')
+            if (error) throw error
+
+            // Уведомление автору
+            if (postInfo?.author_id) {
+                const chName = postInfo.channels?.name || 'LIVE CHAT'
+                const dt = new Date(postInfo.created_at).toLocaleString('ru-RU', {
+                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                })
+                await supabase.from('notifications').insert({
+                    user_id: postInfo.author_id,
+                    type: 'post_deleted',
+                    title: 'Ваш тред был удалён за нарушения правил сообщества',
+                    body: `Тред, опубликованный ${dt} в канале «${chName}», был удалён модерацией.`,
+                    meta: {reason: 'Нарушение правил сообщества', created_at: postInfo.created_at, channel: chName}
+                })
+            }
 
             await supabase.from('reports').update({
-                status:'resolved',
-                resolved_at: new Date().toISOString(),
-                resolved_by: user.id
+                status: 'resolved', resolved_at: new Date().toISOString(), resolved_by: user.id
             }).eq('id', reportId)
 
-            if(report.reporter_id){
+            if (report.reporter_id) {
                 await supabase.from('notifications').insert({
                     user_id: report.reporter_id,
                     type: 'report_resolved',
                     title: 'Мы приняли меры по вашей жалобе',
                     body: 'Пост, на который вы пожаловались, был удалён.',
-                    meta: { status:'resolved' }
+                    meta: {status: 'resolved'}
                 })
             }
 
-            // Убираем карточку из DOM сразу
             document.querySelectorAll(`.feed-post[data-pid="${target.postId}"]`).forEach(el => el.remove())
-
-            if(typeof window.showToast === 'function') window.showToast('success', 'Пост удалён', { icon:'✓' })
+            if (typeof window.showToast === 'function') window.showToast('success', 'Пост удалён', {icon: '✓'})
             await renderAdminReports()
-        } catch(e){
+        } catch (e) {
             console.error('[delete-post]', e)
-            if(typeof window.showToast === 'function') window.showToast('error', 'Не удалось удалить: ' + (e.message || ''), { icon:'⚠️' })
+            if (typeof window.showToast === 'function') window.showToast('error', 'Не удалось удалить: ' + (e.message || ''), {icon: '⚠️'})
         }
         return
-    }
-
-    if(action === 'delete-channel' && target?.channelId){
-        await supabase.from('channels').delete().eq('id', target.channelId)
-        await supabase.from('reports').update({ status:'resolved', resolved_at:new Date().toISOString(), resolved_by:user.id }).eq('id', reportId)
-        if(report.reporter_id){
-            await supabase.from('notifications').insert({
-                user_id: report.reporter_id,
-                type: 'report_resolved',
-                title: 'Мы приняли меры по вашей жалобе',
-                body: `Канал, на который вы пожаловались, был удалён.`,
-                meta: { status:'resolved' }
-            })
-        }
-        if(typeof window.showToast === 'function') window.showToast('success', 'Канал удалён', { icon:'✓' })
-        renderAdminReports()
     }
 }
 

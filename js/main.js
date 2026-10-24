@@ -1298,14 +1298,182 @@ const ICONS = {
     thumbDown:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zM17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>',
     eyeOff:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>'
 }
+/* ============================================================
+   ЛИМИТЫ ПУБЛИКАЦИЙ (free / chvad)
+============================================================ */
+const LT_LIMITS = {
+    free:  { video:{ maxMB:15, maxSec:180 }, audio:{ maxMB:15, maxSec:240 }, photo:{ maxMB:15, maxSec:null } },
+    chvad: { video:{ maxMB:23, maxSec:480 }, audio:{ maxMB:23, maxSec:480 }, photo:{ maxMB:30, maxSec:null } }
+}
+let _myLimitsCache = null, _myLimitsCacheAt = 0
+async function getMyLimits(){
+    if(_myLimitsCache && Date.now() - _myLimitsCacheAt < 60000) return _myLimitsCache
+    try {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user) return (_myLimitsCache = LT_LIMITS.free, _myLimitsCacheAt = Date.now(), _myLimitsCache)
+        const { data:p } = await supabase.from('profiles')
+            .select('chvad_active, chvad_until').eq('id', user.id).maybeSingle()
+        const active = !!p?.chvad_active && (!p.chvad_until || new Date(p.chvad_until) > new Date())
+        _myLimitsCache = active ? LT_LIMITS.chvad : LT_LIMITS.free
+        _myLimitsCacheAt = Date.now()
+        return _myLimitsCache
+    } catch { return LT_LIMITS.free }
+}
+function formatMB(bytes){ return (bytes ? (bytes / 1024 / 1024).toFixed(1) : '?') + ' МБ' }
+function formatSec(s){ if(!isFinite(s) || s <= 0) return '0:00'; const m = Math.floor(s/60), sec = Math.floor(s%60); return m + ':' + String(sec).padStart(2,'0') }
 
+function getLocalMediaDuration(file, kind){
+    return new Promise(resolve => {
+        const el = document.createElement(kind === 'audio' ? 'audio' : 'video')
+        el.preload = 'metadata'; el.muted = true
+        const url = URL.createObjectURL(file)
+        el.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(el.duration || 0) }
+        el.onerror = () => { URL.revokeObjectURL(url); resolve(0) }
+        el.src = url
+        setTimeout(() => resolve(0), 5000)
+    })
+}
+async function headContentLength(url){
+    try { const r = await fetch(url, { method:'HEAD' }); return parseInt(r.headers.get('content-length') || '0', 10) }
+    catch { return 0 }
+}
+function getRemoteMediaDuration(url, kind){
+    return new Promise(resolve => {
+        const el = document.createElement(kind === 'audio' ? 'audio' : 'video')
+        el.preload = 'metadata'; el.muted = true; el.crossOrigin = 'anonymous'
+        el.onloadedmetadata = () => resolve(el.duration || 0)
+        el.onerror = () => resolve(0)
+        el.src = url
+        setTimeout(() => resolve(0), 4000)
+    })
+}
+
+/** Проверить файл: возвращает { ok, errors[], limits, kind } */
+async function checkFileLimits(file, kind /* 'video'|'audio'|'photo' */){
+    const limits = await getMyLimits()
+    const lim = limits[kind]
+    const mb  = file.size / 1024 / 1024
+    const errors = []
+    if(mb > lim.maxMB) errors.push(`${mb.toFixed(1)}/${lim.maxMB} МБ`)
+    if(lim.maxSec){
+        const dur = await getLocalMediaDuration(file, kind === 'audio' ? 'audio' : 'video')
+        if(dur > lim.maxSec) errors.push(`${formatSec(dur)}/${formatSec(lim.maxSec)}`)
+    }
+    return { ok: errors.length === 0, errors, limits, kind }
+}
+
+/** Показать баннер лимита в composer + открыть shop при «Подробнее...» */
+function showLimitBanner(bannerEl, textEl, moreBtn, msg){
+    if(!bannerEl) return
+    if(textEl) textEl.textContent = msg
+    bannerEl.classList.remove('hidden')
+    if(moreBtn){
+        moreBtn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openShopPage() }
+    }
+}
+function hideLimitBanner(bannerEl){
+    if(bannerEl) bannerEl.classList.add('hidden')
+}
+
+/** Медиа-инфо для меню 3 точки */
+async function buildMediaInfoItem(card){
+    const videoUrl = card.dataset.videoSrc
+    const trackCard = card.querySelector('.track-card')
+    const trackUrl = trackCard?.dataset.trackSrc
+    const imgUrl = card.querySelector('.feed-post-image')?.src
+    const text = card.querySelector('.feed-post-content')?.textContent || ''
+    try {
+        if(videoUrl){
+            const [size, dur] = await Promise.all([ headContentLength(videoUrl), getRemoteMediaDuration(videoUrl, 'video') ])
+            return { label:`🎬 Видео · ${formatMB(size)} · ${formatSec(dur)}`, icon:'', info:true, onClick:()=>{} }
+        }
+        if(trackUrl){
+            const [size, dur] = await Promise.all([ headContentLength(trackUrl), getRemoteMediaDuration(trackUrl, 'audio') ])
+            return { label:`🎵 Музыка · ${formatMB(size)} · ${formatSec(dur)}`, icon:'', info:true, onClick:()=>{} }
+        }
+        if(imgUrl){
+            const size = await headContentLength(imgUrl)
+            return { label:`🖼 Фото · ${formatMB(size)}`, icon:'', info:true, onClick:()=>{} }
+        }
+    } catch(e){ console.warn('[media-info]', e.message) }
+    return { label:`📝 Текст · ${text.length} символов`, icon:'', info:true, onClick:()=>{} }
+}
+
+/* ============================================================
+   УДАЛЕНИЕ ПОСТА С КАСКАДОМ И УВЕДОМЛЕНИЕМ АВТОРУ
+============================================================ */
+async function deletePostById(postId){
+    const { data:{ user: me } } = await supabase.auth.getUser()
+
+    // 1. Тянем информацию до удаления (для уведомления)
+    const { data: postInfo } = await supabase.from('posts')
+        .select('author_id, created_at, channel_id, channels:channel_id(name)')
+        .eq('id', postId).maybeSingle()
+
+    // 2. Пробуем простое удаление с подтверждением через .select()
+    let { data: del, error } = await supabase
+        .from('posts').delete().eq('id', postId).select('id')
+
+    // 3. Если FK-констрейнт — чистим дочерние таблицы и повторяем
+    if(error && error.code === '23503'){
+        await Promise.allSettled([
+            supabase.from('likes').delete().eq('post_id', postId),
+            supabase.from('comments').delete().eq('post_id', postId),
+            supabase.from('reposts').delete().eq('post_id', postId),
+            supabase.from('saved_tracks').delete().eq('post_id', postId),
+        ])
+        ;({ data: del, error } = await supabase
+            .from('posts').delete().eq('id', postId).select('id'))
+    }
+
+    if(error){
+        showToast('error', 'Не удалось удалить: ' + (error.message || 'ошибка'), { icon:'⚠️', duration:5000 })
+        return { ok:false }
+    }
+    if(!del || del.length === 0){
+        showToast('error',
+            'Нет прав на удаление этого поста. Нужна RLS-политика DELETE для admins/владельца.',
+            { icon:'⚠️', duration:7000 })
+        return { ok:false }
+    }
+
+    // 4. Уведомляем автора (если удаляет не он сам)
+    if(postInfo?.author_id && postInfo.author_id !== me?.id){
+        try {
+            const chName = postInfo.channels?.name || 'LIVE CHAT'
+            const dt = new Date(postInfo.created_at).toLocaleString('ru-RU', {
+                day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'
+            })
+            await supabase.from('notifications').insert({
+                user_id: postInfo.author_id,
+                type: 'post_deleted',
+                title: 'Ваш тред был удалён за нарушения правил сообщества',
+                body:  `Тред, опубликованный ${dt} в канале «${chName}», был удалён модерацией.`,
+                meta:  { reason:'Нарушение правил сообщества', created_at:postInfo.created_at, channel:chName }
+            })
+        } catch(e){ console.warn('[notify delete]', e.message) }
+    }
+
+    showToast('success', 'Пост удалён', { icon:'✓' })
+    return { ok:true }
+}
 function showActionSheet(title, items){
     actionsheetTitle.textContent = title
-    actionsheetList.innerHTML = items.map((it, i) => `<button class="actionsheet-item ${it.danger ? 'danger' : ''}" data-idx="${i}">${it.icon || ''}<span>${it.label}</span></button>`).join('')
+    actionsheetList.innerHTML = items.map((it, i) => {
+        const cls = 'actionsheet-item'
+            + (it.danger ? ' danger' : '')
+            + (it.info   ? ' info-item' : '')
+        const dis = it.info ? 'disabled' : ''
+        return `<button class="${cls}" data-idx="${i}" ${dis}>${it.icon || ''}<span>${it.label}</span></button>`
+    }).join('')
+
     actionsheetList.querySelectorAll('.actionsheet-item').forEach(btn => {
+        const it = items[+btn.dataset.idx]
+        if(it?.info) return                       // инфо-строки не кликаются
         btn.addEventListener('click', () => {
-            const it = items[+btn.dataset.idx]; closeActionSheet()
-            if(it.onClick) setTimeout(it.onClick, 100)
+            const item = items[+btn.dataset.idx]
+            closeActionSheet()
+            if(item?.onClick) setTimeout(item.onClick, 100)
         })
     })
     actionsheetBackdrop.classList.remove('hidden')
@@ -2096,16 +2264,21 @@ async function showPostMoreMenu(btn, card, userId){
     const onHome = state.screen === 'home'
 
     let amAdmin = false
-    if(chId){ const { data:ch } = await supabase.from('channels').select('owner_id').eq('id', chId).maybeSingle(); if(ch && ch.owner_id === userId) amAdmin = true }
+    if(chId){
+        const { data:ch } = await supabase.from('channels').select('owner_id').eq('id', chId).maybeSingle()
+        if(ch && ch.owner_id === userId) amAdmin = true
+    }
 
     const items = []
+
+    // ─── МЕДИА-ИНФО (некликабельно, шапка меню) ───
+    const mediaInfo = await buildMediaInfoItem(card)
+    if(mediaInfo) items.push(mediaInfo)
 
     if(authorId){
         const avEl = card.querySelector('.feed-post-avatar')
         let avHtml = ''
-        if(avEl){
-            avHtml = avEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'')
-        }
+        if(avEl) avHtml = avEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'')
         items.push({
             label:`Профиль @${btn.dataset.author || 'user'}`,
             icon:`<span class="feed-more-menu-avatar">${avHtml || '?'}</span>`,
@@ -2114,65 +2287,93 @@ async function showPostMoreMenu(btn, card, userId){
     }
 
     if(onHome && !isMine){
-        items.push({
-            label:'Неинтересно',
-            icon:ICONS.thumbDown,
-            onClick: () => { hidePostLocally(pid); showToast('info', 'Будем показывать меньше такого', { icon:'👋' }) }
+        items.push({ label:'Неинтересно', icon:ICONS.thumbDown, onClick: () => {
+                hidePostLocally(pid); showToast('info','Будем показывать меньше такого',{icon:'👋'})
+            }})
+        items.push({ label:'Интересно — больше такого', icon:ICONS.thumbUp, onClick: () => {
+                boostPostLocally(pid); showToast('success','Учли!',{icon:'✓'})
+            }})
+        if(chId) items.push({ label:'Не рекомендовать с этого канала', icon:ICONS.flag,
+            onClick: async () => { await hideChannelLocally(chId); showToast('info','Канал скрыт') }
         })
-        items.push({
-            label:'Интересно — больше такого',
-            icon:ICONS.thumbUp,
-            onClick: () => { boostPostLocally(pid); showToast('success', 'Учли!', { icon:'✓' }) }
-        })
-        if(chId) items.push({
-            label:'Не рекомендовать с этого канала',
-            icon:ICONS.flag,
-            onClick: async () => { await hideChannelLocally(chId); showToast('info', 'Канал скрыт из рекомендаций') }
-        })
-        if(authorId) items.push({
-            label:'Не рекомендовать этого автора',
-            icon:ICONS.flag,
-            onClick: async () => { await hideAuthorLocally(authorId); showToast('info', 'Автор скрыт из рекомендаций') }
+        if(authorId) items.push({ label:'Не рекомендовать автора', icon:ICONS.flag,
+            onClick: async () => { await hideAuthorLocally(authorId); showToast('info','Автор скрыт') }
         })
     }
 
-    if(videoSrc) items.push({ label:'Полноэкранный режим', icon:ICONS.fullscreen, onClick: () => enterVideoFS(videoSrc, pid) })
+    if(videoSrc) items.push({ label:'Полноэкранный режим', icon:ICONS.fullscreen,
+        onClick: () => enterVideoFS(videoSrc, pid) })
+
     items.push({ label:'Поделиться', icon:ICONS.share, onClick: () => {
             const content = card.querySelector('.feed-post-content')?.textContent || ''
             openShareSheet({ type:'post', postId:pid, src:videoSrc, title:content, content })
-        } })
+        }})
+
+    // ─── РЕДАКТИРОВАНИЕ (только платформенный админ) ───
+    const iAmAdmin = ADMIN_STATE.isAdmin
+    if(iAmAdmin){
+        const contentEl = card.querySelector('.feed-post-content')
+        if(contentEl){
+            items.push({
+                label:'✎ Редактировать описание поста',
+                icon: ICONS.edit || ICONS.reply,
+                onClick: async () => {
+                    const cur = contentEl.textContent || ''
+                    const newText = prompt('Описание поста:', cur)
+                    if(newText === null || newText === cur) return
+                    const { error } = await supabase.from('posts').update({ content: newText }).eq('id', pid)
+                    if(error){ showToast('error','Не удалось: ' + error.message); return }
+                    contentEl.textContent = newText
+                    showToast('success','Описание обновлено',{icon:'✓'})
+                }
+            })
+        }
+        const trackTitleEl = card.querySelector('.track-title')
+        if(trackTitleEl){
+            items.push({
+                label:'✎ Редактировать название трека',
+                icon: ICONS.music,
+                onClick: async () => {
+                    const cur = trackTitleEl.textContent || ''
+                    const newTitle = prompt('Название трека:', cur)
+                    if(newTitle === null || newTitle === cur) return
+                    const { error } = await supabase.from('posts').update({ media_title: newTitle }).eq('id', pid)
+                    if(error){ showToast('error','Не удалось: ' + error.message); return }
+                    trackTitleEl.textContent = newTitle
+                    showToast('success','Название обновлено',{icon:'✓'})
+                }
+            })
+        }
+    }
 
     if(!isMine){
         items.push({ label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => {
                 const authorEl = card.querySelector('.feed-post-avatar[data-uid]')
-                const authorData = authorEl ? { id: authorEl.dataset.uid, username: btn.dataset.author, full_name: btn.dataset.author } : null
+                const authorData = authorEl ? { id:authorEl.dataset.uid, username:btn.dataset.author, full_name:btn.dataset.author } : null
                 const media = card.dataset.videoSrc || card.querySelector('.feed-post-image')?.src || null
                 const text = card.querySelector('.feed-post-content')?.textContent || ''
-                openReportModal({
-                    targetType: card.dataset.videoSrc ? 'video' : 'post',
-                    targetId: pid,
-                    authorId: authorData?.id,
-                    author: authorData,
-                    media, text
-                })
-            } })
+                openReportModal({ targetType: card.dataset.videoSrc ? 'video' : 'post',
+                    targetId: pid, authorId: authorData?.id, author: authorData, media, text })
+            }})
     }
 
-    const iAmAdmin = ADMIN_STATE.isAdmin
     if(isMine || amAdmin || iAmAdmin){
         items.push({
             label: iAmAdmin && !isMine ? 'Удалить (админ)' : 'Удалить',
-            icon: ICONS.trash,
-            danger: true,
+            icon: ICONS.trash, danger:true,
             onClick: async () => {
                 if(!confirm('Удалить пост?')) return
-                await supabase.from('posts').delete().eq('id', pid)
-                card.remove()
+                const res = await deletePostById(pid)
+                if(res.ok){
+                    card.style.transition = 'opacity .25s, transform .25s'
+                    card.style.opacity = '0'; card.style.transform = 'scale(.95)'
+                    setTimeout(() => card.remove(), 260)
+                }
             }
         })
     }
 
-    if(!items.length) items.push({ label:'Нет действий', onClick: () => {} })
+    if(!items.length) items.push({ label:'Нет действий', onClick:() => {} })
     showActionSheet(isMine ? 'Ваш пост' : (amAdmin ? 'Действия (админ)' : 'Действия'), items)
 }
 
@@ -3337,17 +3538,25 @@ $('livechat-back')?.addEventListener('click', () => switchScreen('inbox'))
 /* ============================================================
    COMPOSER (LIVE-CHAT)
 ============================================================ */
-const photoInput = $('photo-input'), audioInput = $('audio-input'), videoInput = $('video-input')
+/* ============================================================
+   COMPOSER (LIVE-CHAT) — с проверкой лимитов
+============================================================ */
+const photoInput = $('photo-input')
+const audioInput = $('audio-input')
+const videoInput = $('video-input')
 const photoPreview = $('photo-preview')
 
 function resetComposerPreview(){
     state.attachedPhoto = null
     state.attachedVideo = false
-    state.attachedKind = null
+    state.attachedKind  = null
     if(photoPreview){ photoPreview.classList.add('hidden'); photoPreview.innerHTML = '' }
     if(photoInput) photoInput.value = ''
     if(audioInput) audioInput.value = ''
     if(videoInput) videoInput.value = ''
+    $('live-limit-banner')?.classList.add('hidden')
+    const postBtn = $('post-btn')
+    if(postBtn){ postBtn.disabled = false; postBtn.style.opacity = '' }
 }
 
 function renderComposerPreview(file, kind){
@@ -3355,27 +3564,107 @@ function renderComposerPreview(file, kind){
     const url = URL.createObjectURL(file)
     photoPreview.classList.remove('hidden')
     if(kind === 'audio'){
-        photoPreview.innerHTML = `<audio controls src="${url}" style="width:100%;border-radius:var(--radius-md)"></audio>
+        photoPreview.innerHTML = `
+            <audio controls src="${url}" style="width:100%;border-radius:var(--radius-md)"></audio>
             <button class="photo-preview-remove" id="photo-preview-remove-dyn">✕</button>`
     } else if(kind === 'video'){
-        photoPreview.innerHTML = `<video src="${url}" muted playsinline style="width:100%;border-radius:var(--radius-md);display:block;max-height:200px;object-fit:cover"></video>
+        photoPreview.innerHTML = `
+            <video src="${url}" controls muted playsinline
+                   style="width:100%;border-radius:var(--radius-md);display:block;max-height:200px;object-fit:cover"></video>
             <button class="photo-preview-remove" id="photo-preview-remove-dyn">✕</button>`
     } else {
-        photoPreview.innerHTML = `<img src="${url}" alt="">
+        photoPreview.innerHTML = `
+            <img src="${url}" alt="">
             <button class="photo-preview-remove" id="photo-preview-remove-dyn">✕</button>`
     }
-    document.getElementById('photo-preview-remove-dyn')?.addEventListener('click', resetComposerPreview)
+    document.getElementById('photo-preview-remove-dyn')
+        ?.addEventListener('click', resetComposerPreview)
 }
 
+/** Лимит-баннер для composer live-chat */
+function ensureLiveLimitBanner(){
+    let banner = $('live-limit-banner')
+    if(banner) return banner
+    banner = document.createElement('div')
+    banner.id = 'live-limit-banner'
+    banner.className = 'limit-banner hidden'
+    banner.innerHTML = `
+        <span id="live-limit-banner-text"></span>
+        <button type="button" id="live-limit-banner-more">Подробнее...</button>
+    `
+    const anchor = $('photo-preview') || $('reply-banner')
+    if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(banner, anchor)
+    else $('post-content')?.parentNode?.insertBefore(banner, $('post-content'))
+    return banner
+}
+
+function showLiveLimitBanner(msg){
+    const banner = ensureLiveLimitBanner()
+    banner.classList.remove('hidden')
+    const txt  = $('live-limit-banner-text')
+    const more = $('live-limit-banner-more')
+    if(txt) txt.textContent = msg
+    if(more){
+        more.onclick = e => {
+            e.preventDefault()
+            e.stopPropagation()
+            openShopPage()
+        }
+    }
+    const postBtn = $('post-btn')
+    if(postBtn){ postBtn.disabled = true; postBtn.style.opacity = '.5' }
+}
+
+function hideLiveLimitBanner(){
+    $('live-limit-banner')?.classList.add('hidden')
+    const postBtn = $('post-btn')
+    if(postBtn){ postBtn.disabled = false; postBtn.style.opacity = '' }
+}
+
+/** Универсальная обработка выбранного файла */
+async function attachComposerFile(file, kind /* 'photo' | 'audio' | 'video' */){
+    if(!file) return
+
+    const check = await checkFileLimits(file, kind)
+
+    if(!check.ok){
+        const lim = check.limits[kind]
+        const errTxt =
+            `Превышен лимит размера публикации — ${check.errors.join(', ')}. ` +
+            `Лимит: ${lim.maxMB} МБ${lim.maxSec ? ' / ' + formatSec(lim.maxSec) : ''}. ` +
+            `С подпиской listatread chvad лимиты выше.`
+        showLiveLimitBanner(errTxt)
+        showToast('error', 'Превышен лимит файла', { icon:'⚠️', duration:3500 })
+        // Сброс input, чтобы можно было выбрать тот же файл снова после уменьшения
+        try { (kind === 'audio' ? audioInput : kind === 'video' ? videoInput : photoInput).value = '' } catch {}
+        return
+    }
+
+    hideLiveLimitBanner()
+    state.attachedPhoto = file
+    state.attachedKind  = kind === 'photo' ? 'image' : kind
+    state.attachedVideo = (kind === 'video')
+    renderComposerPreview(file, state.attachedKind)
+}
+
+/* ---- Привязка кнопки «фото» и всех трёх input'ов ---- */
 if(photoInput){
     $('attach-photo')?.addEventListener('click', () => photoInput.click())
-    photoInput.addEventListener('change', e => {
-        const f = e.target.files?.[0]; if(!f) return
-        state.attachedPhoto = f; state.attachedVideo = false; state.attachedKind = 'image'
-        renderComposerPreview(f, 'image')
-    })
+    photoInput.addEventListener('change', e => attachComposerFile(e.target.files?.[0], 'photo'))
+}
+if(audioInput){
+    audioInput.addEventListener('change', e => attachComposerFile(e.target.files?.[0], 'audio'))
+}
+if(videoInput){
+    videoInput.addEventListener('change', e => attachComposerFile(e.target.files?.[0], 'video'))
 }
 
+/* ---- Экспорт: если где-то есть кнопки «добавить видео/музыку» — дёргаем input ---- */
+window.__ltAttachPhoto = () => photoInput?.click()
+window.__ltAttachAudio = () => audioInput?.click()
+window.__ltAttachVideo = () => videoInput?.click()
+$('attach-video')?.addEventListener('click', () => videoInput?.click())
+$('attach-audio')?.addEventListener('click', () => audioInput?.click())
 const emojiPicker = $('emoji-picker')
 if(emojiPicker){
     emojiPicker.innerHTML = EMOJI_LIST.map(e => `<button type="button">${e}</button>`).join('')
@@ -3464,7 +3753,11 @@ async function renderLiveFeed(silent = false){
                     if(c) openVideoFeed(c); else enterVideoFS(videoSrc, pid)
                 } })
             items.push({ label:'Поделиться', icon:ICONS.share, onClick: () => openShareSheet({ type:'post', postId:pid, src:videoSrc, title: card?.querySelector('.feed-post-content')?.textContent || '' }) })
-            if(isMine) items.push({ label:'Удалить', icon:ICONS.trash, danger:true, onClick: async () => { if(!confirm('Удалить?')) return; await supabase.from('posts').delete().eq('id', pid); renderLiveFeed() } })
+            if(isMine) items.push({ label:'Удалить', icon:ICONS.trash, danger:true, onClick: async () => {
+                    if(!confirm('Удалить?')) return
+                    const res = await deletePostById(pid)
+                    if(res.ok) renderLiveFeed()
+                }})
             else {
                 items.push({ label:'Ответить', icon:ICONS.reply, onClick: () => replyToUser(pid, author) })
                 items.push({ label:'Репост', icon:ICONS.repost, onClick: async () => { await toggleRepostGlobal(pid) } })
@@ -5348,8 +5641,25 @@ async function openChannel(channelId){
         })
 
         // ─── Ещё (пока пусто) ───
-        $('ch-more-btn')?.addEventListener('click', () => {
-            showToast('info', 'Скоро', { icon:'⏳' })
+        $('ch-more-btn')?.addEventListener('click', async () => {
+            const items = []
+            if(ADMIN_STATE.isAdmin){
+                items.push({
+                    label:'✎ Редактировать описание канала',
+                    icon: ICONS.edit || ICONS.reply,
+                    onClick: async () => {
+                        const cur = ch.description || ''
+                        const newDesc = prompt('Описание канала:', cur)
+                        if(newDesc === null || newDesc === cur) return
+                        const { error } = await supabase.from('channels').update({ description: newDesc }).eq('id', channelId)
+                        if(error){ showToast('error','Не удалось: ' + error.message); return }
+                        const descEl = $('ch-desc-text'); if(descEl) descEl.textContent = newDesc
+                        showToast('success','Описание обновлено',{icon:'✓'})
+                    }
+                })
+            }
+            if(!items.length) items.push({ label:'Скоро', onClick:()=>{} })
+            showActionSheet('Действия', items)
         })
 
         // ─── Кнопки владельца ───
@@ -5505,9 +5815,29 @@ async function loadChContent(channelId, tab, canPost = false){
 function setupChannelComposer(channelId, canPost){
     const photoInput = $('ch-new-photo-input'), videoInput = $('ch-new-video-input'), audioInput = $('ch-new-audio-input')
     const mediaBox = $('ch-new-media-box'), textArea = $('ch-new-text'), publishBtn = $('ch-new-publish')
+
+    // ─── Баннер лимитов ───
+    let limitBanner = $('ch-limit-banner')
+    if(!limitBanner){
+        limitBanner = document.createElement('div')
+        limitBanner.id = 'ch-limit-banner'
+        limitBanner.className = 'limit-banner hidden'
+        limitBanner.innerHTML = `<span id="ch-limit-banner-text"></span>
+            <button type="button" id="ch-limit-banner-more">Подробнее...</button>`
+        mediaBox.parentNode.insertBefore(limitBanner, mediaBox.nextSibling)
+    }
+    const limitText = $('ch-limit-banner-text'), limitMore = $('ch-limit-banner-more')
+
     let attachedFile = null, attachedKind = null
     let pollMode = 'vote'
     let pollOptions = [{text:''},{text:''}]
+
+    function setBlocked(blocked){
+        if(!publishBtn) return
+        publishBtn.disabled = blocked
+        publishBtn.style.opacity = blocked ? '.5' : ''
+    }
+    function clearLimitAndUnblock(){ hideLimitBanner(limitBanner); setBlocked(false) }
 
     function renderPreview(){
         if(!attachedFile){
@@ -5515,19 +5845,44 @@ function setupChannelComposer(channelId, canPost){
             return
         }
         const url = URL.createObjectURL(attachedFile)
-        if(attachedKind === 'audio') mediaBox.innerHTML = `<audio controls src="${url}"></audio><input type="text" id="ch-new-track-title" placeholder="Название песни" maxlength="80" style="width:100%;margin-top:8px;padding:12px 14px;font-size:14px;border-radius:10px;border:1px solid var(--border);background:#fff;">`
+        if(attachedKind === 'audio')
+            mediaBox.innerHTML = `<audio controls src="${url}"></audio>
+                <input type="text" id="ch-new-track-title" placeholder="Название песни" maxlength="80"
+                style="width:100%;margin-top:8px;padding:12px 14px;font-size:14px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text)">`
         else if(attachedKind === 'video') mediaBox.innerHTML = `<video controls playsinline src="${url}"></video>`
         else mediaBox.innerHTML = `<img src="${url}" alt="">`
     }
 
-    $('ch-new-photo').addEventListener('click', () => photoInput.click())
-    photoInput.addEventListener('change', e => { const f = e.target.files?.[0]; if(!f) return; attachedFile = f; attachedKind = 'image'; removePollBuilder(); renderPreview() })
+    async function handleFileSelect(file, kind){
+        if(!file) return
+        const check = await checkFileLimits(file, kind)
+        if(!check.ok){
+            const lim = check.limits[kind]
+            const errTxt = `Превышен лимит размера публикации — ${check.errors.join(', ')}. `
+                + `Лимит: ${lim.maxMB} МБ${lim.maxSec ? ' / ' + formatSec(lim.maxSec) : ''}. `
+                + `С listatread chvad лимиты выше.`
+            showLimitBanner(limitBanner, limitText, limitMore, errTxt)
+            setBlocked(true)
+            showToast('error', 'Превышен лимит. Нажмите «Подробнее...» в баннере.', { icon:'⚠️', duration:4000 })
+            return
+        }
+        clearLimitAndUnblock()
+        attachedFile = file
+        attachedKind = kind
+        removePollBuilder()
+        renderPreview()
+    }
 
-    $('ch-new-video').addEventListener('click', () => videoInput.click())
-    videoInput.addEventListener('change', e => { const f = e.target.files?.[0]; if(!f) return; attachedFile = f; attachedKind = 'video'; removePollBuilder(); renderPreview() })
+    $('ch-new-photo')?.addEventListener('click', () => photoInput.click())
+    photoInput?.addEventListener('change', e => handleFileSelect(e.target.files?.[0], 'photo'))
 
-    $('ch-new-audio').addEventListener('click', () => audioInput.click())
-    audioInput.addEventListener('change', e => { const f = e.target.files?.[0]; if(!f) return; attachedFile = f; attachedKind = 'audio'; removePollBuilder(); renderPreview() })
+    $('ch-new-video')?.addEventListener('click', () => videoInput.click())
+    videoInput?.addEventListener('change', e => handleFileSelect(e.target.files?.[0], 'video'))
+
+    $('ch-new-audio')?.addEventListener('click', () => audioInput.click())
+    audioInput?.addEventListener('change', e => handleFileSelect(e.target.files?.[0], 'audio'))
+
+
 
     $('ch-new-emoji').addEventListener('click', () => showActionSheet('Смайлы', EMOJI_LIST.slice(0, 24).map(em => ({ label:em, onClick: () => { textArea.value += em; textArea.focus() } }))))
 
@@ -6410,7 +6765,11 @@ document.getElementById('full-more')?.addEventListener('click', async () => {
         const { data:{ user } } = await supabase.auth.getUser()
         const { data:post } = await supabase.from('posts').select('author_id').eq('id', music.postId).maybeSingle()
         const isMine = post?.author_id === user.id
-        if(isMine) items.push({ label:'Удалить', icon:ICONS.trash, danger:true, onClick: async () => { if(!confirm('Удалить пост?')) return; await supabase.from('posts').delete().eq('id', music.postId); pauseTrack(); closeFullPlayer(); if(state.screen === 'home') renderHomeFeed() } })
+        if(isMine) items.push({ label:'Удалить', icon:ICONS.trash, danger:true, onClick: async () => {
+                if(!confirm('Удалить пост?')) return
+                const res = await deletePostById(music.postId)
+                if(res.ok){ pauseTrack(); closeFullPlayer(); if(state.screen === 'home') renderHomeFeed() }
+            }})
         if(!isMine) items.push({ label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => openReportModal({
                 targetType: music.src && isAudioUrl(music.src) ? 'music' : 'video',
                 targetId: music.postId,
