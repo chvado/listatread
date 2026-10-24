@@ -5194,6 +5194,296 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
     font-family: inherit;
 }
 /* ============================================================
+   FIX v7 — статусы, бейджи канала, лимиты, стикеры, edit-модал
+============================================================ */
+
+/* 1. Статус автора НИКОГДА не прячется за аватаром */
+.feed-post-avatar.avatar-with-status{
+    overflow: visible !important;
+    z-index: 2;
+    position: relative;
+}
+.feed-post-avatar.avatar-with-status .story-status-badge{
+    z-index: 100 !important;
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+    pointer-events: none;
+}
+.feed-avatar-wrap{
+    overflow: visible !important;
+}
+.story-status-badge{
+    z-index: 10 !important;
+}
+
+/* 2. Кнопки на странице канала — обычный вес шрифта */
+.ch-action-btn,
+.ch-action-btn.primary,
+.ch-action-btn.live{
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+}
+.ch-action-btn span{
+    font-weight: 500 !important;
+}
+
+/* 3. Убираем затемнение снизу у большой аватарки канала */
+.ch-full-avatar-overlay{
+    background: linear-gradient(
+            180deg,
+            rgba(0,0,0,.42) 0%,
+            transparent 26%,
+            transparent 100%
+    ) !important;
+}
+
+/* 4. Бейдж рядом с названием канала */
+.ch-full-avatar-name{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.ch-verify-badge{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    padding: 0 8px;
+    background: rgba(10,132,255,.92);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(10,132,255,.4);
+    backdrop-filter: blur(8px);
+}
+.ch-verify-badge.chvad{
+    background: linear-gradient(135deg,#ff9f0a,#ff375f);
+    box-shadow: 0 2px 8px rgba(255,55,95,.4);
+}
+.ch-verify-badge.live{
+    background: linear-gradient(135deg,#ff375f,#ff3b30);
+    animation: pulseIcon 1.6s ease-in-out infinite;
+}
+
+/* 5. Превью стикера в composer канала */
+.ch-sticker-attach{
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    background: var(--surface-2);
+    border-radius: 16px;
+    margin-top: 8px;
+    max-width: 148px;
+}
+.ch-sticker-attach img{
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    display: block;
+}
+.ch-sticker-attach-remove{
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.6);
+    color: #fff;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 6. Стикер как медиа в посте канала */
+.feed-post-sticker{
+    display: block;
+    max-width: 140px;
+    max-height: 140px;
+    object-fit: contain;
+    margin: 10px 0 0;
+}
+
+/* 7. Picker стикеров канала */
+.sticker-picker-modal{
+    position: fixed; inset: 0;
+    z-index: 9650;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+.sticker-picker-backdrop{
+    position: absolute; inset: 0;
+    background: var(--scrim);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    animation: fadeIn .25s var(--ease) both;
+}
+.sticker-picker-sheet{
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    max-height: 78dvh;
+    background: var(--glass-strong);
+    -webkit-backdrop-filter: var(--blur-strong);
+    backdrop-filter: var(--blur-strong);
+    border-radius: 24px 24px 0 0;
+    padding-bottom: calc(18px + var(--safe-bottom));
+    display: flex;
+    flex-direction: column;
+    animation: sheetUp .35s var(--ease-out) both;
+    overflow: hidden;
+}
+.sticker-picker-tabs{
+    display: flex; gap: 6px;
+    padding: 12px 16px 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.sticker-picker-tab{
+    flex: 1;
+    padding: 9px;
+    border: none;
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    border-radius: 100px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+}
+.sticker-picker-tab.active{ background: var(--text); color: var(--bg); }
+.sticker-picker-packs{
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+}
+.sticker-picker-packs::-webkit-scrollbar{ display: none; }
+.sp-pack{
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    border: 2px solid transparent;
+    background: var(--surface-2);
+    padding: 0; overflow: hidden;
+    flex-shrink: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color .2s;
+}
+.sp-pack.active{ border-color: var(--blue); }
+.sp-pack img{ width: 100%; height: 100%; object-fit: cover; }
+.sticker-picker-grid{
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 12px 16px;
+    overflow-y: auto;
+    flex: 1; min-height: 0;
+}
+.sp-sticker{
+    aspect-ratio: 1;
+    background: var(--surface-2);
+    border: none;
+    border-radius: 12px;
+    padding: 6px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .12s;
+}
+.sp-sticker:active{ transform: scale(.92); }
+.sp-sticker img{ width: 100%; height: 100%; object-fit: contain; }
+
+/* 8. Модалка редактирования (выезжающая, красивая) */
+.lt-edit-modal{
+    position: fixed; inset: 0;
+    z-index: 9700;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+.lt-edit-modal.hidden{ display: none !important; }
+.lt-edit-backdrop{
+    position: absolute; inset: 0;
+    background: var(--scrim);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    animation: fadeIn .25s var(--ease) both;
+}
+.lt-edit-sheet{
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    background: var(--glass-strong);
+    -webkit-backdrop-filter: var(--blur-strong);
+    backdrop-filter: var(--blur-strong);
+    border-radius: 24px 24px 0 0;
+    padding: 0 20px calc(20px + var(--safe-bottom));
+    animation: sheetUp .35s var(--ease-out) both;
+}
+.lt-edit-header{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0 14px;
+}
+.lt-edit-icon{
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff9f0a, #ff375f);
+    color: #fff;
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(255,55,95,.4);
+}
+.lt-edit-title{
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--text);
+}
+.lt-edit-input{
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1.5px solid transparent;
+    border-radius: 14px;
+    outline: none;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 48px;
+    line-height: 1.45;
+    box-sizing: border-box;
+}
+textarea.lt-edit-input{ min-height: 110px; }
+.lt-edit-input:focus{
+    background: var(--bg);
+    border-color: var(--blue);
+    box-shadow: 0 0 0 4px rgba(10,132,255,.15);
+}
+.lt-edit-actions{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+}
+/* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
 @media (max-width:767px){

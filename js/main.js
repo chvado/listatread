@@ -1327,10 +1327,17 @@ function getLocalMediaDuration(file, kind){
         const el = document.createElement(kind === 'audio' ? 'audio' : 'video')
         el.preload = 'metadata'; el.muted = true
         const url = URL.createObjectURL(file)
-        el.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(el.duration || 0) }
-        el.onerror = () => { URL.revokeObjectURL(url); resolve(0) }
+        let done = false
+        const finish = v => {
+            if(done) return
+            done = true
+            try { URL.revokeObjectURL(url) } catch {}
+            resolve(v)
+        }
+        el.onloadedmetadata = () => finish(el.duration || 0)
+        el.onerror = () => finish(-1)         // не удалось прочитать
         el.src = url
-        setTimeout(() => resolve(0), 5000)
+        setTimeout(() => finish(-2), 12000)   // таймаут 12 сек
     })
 }
 async function headContentLength(url){
@@ -1349,16 +1356,49 @@ function getRemoteMediaDuration(url, kind){
 }
 
 /** Проверить файл: возвращает { ok, errors[], limits, kind } */
-async function checkFileLimits(file, kind /* 'video'|'audio'|'photo' */){
+/* Авто-определение типа файла (защита от «видео через фото-кнопку») */
+function detectFileKind(file){
+    if(!file) return null
+    const mime = (file.type || '').toLowerCase()
+    if(mime.startsWith('video/')) return 'video'
+    if(mime.startsWith('audio/')) return 'audio'
+    if(mime.startsWith('image/')) return 'photo'
+    const ext = (file.name.split('.').pop() || '').toLowerCase()
+    if(['mp4','webm','mov','m4v','mkv','avi'].includes(ext)) return 'video'
+    if(['mp3','wav','ogg','m4a','aac','flac','opus','weba'].includes(ext)) return 'audio'
+    if(['jpg','jpeg','png','webp','gif','heic','heif'].includes(ext)) return 'photo'
+    return null
+}
+
+async function checkFileLimits(file, kindHint){
+    if(!file) return { ok:false, errors:['нет файла'], limits: await getMyLimits(), kind:kindHint }
+
     const limits = await getMyLimits()
-    const lim = limits[kind]
-    const mb  = file.size / 1024 / 1024
+    // ⚡ Тип определяем по самому файлу — игнорируем «какую кнопку нажали»
+    const kind = detectFileKind(file) || kindHint || 'photo'
+    const lim  = limits[kind]
+
+    const mb = file.size / 1024 / 1024
     const errors = []
+
+    // 1. Абсолютный предохранитель (на случай «глючного» file.size или подмены)
+    const ABS_MAX_MB = 200
+    if(mb > ABS_MAX_MB) errors.push(`файл слишком большой (${mb.toFixed(0)} МБ)`)
+
+    // 2. Лимит размера
     if(mb > lim.maxMB) errors.push(`${mb.toFixed(1)}/${lim.maxMB} МБ`)
-    if(lim.maxSec){
-        const dur = await getLocalMediaDuration(file, kind === 'audio' ? 'audio' : 'video')
-        if(dur > lim.maxSec) errors.push(`${formatSec(dur)}/${formatSec(lim.maxSec)}`)
+
+    // 3. Лимит длительности (только для видео/аудио)
+    if(lim.maxSec && (kind === 'video' || kind === 'audio')){
+        const dur = await getLocalMediaDuration(file, kind)
+        if(dur < 0){
+            // Не смогли прочитать — не пропускаем файлы от 5 МБ
+            if(mb > 5) errors.push('не удалось проверить длительность файла')
+        } else if(dur > lim.maxSec){
+            errors.push(`${formatSec(dur)}/${formatSec(lim.maxSec)}`)
+        }
     }
+
     return { ok: errors.length === 0, errors, limits, kind }
 }
 
@@ -1405,16 +1445,15 @@ async function buildMediaInfoItem(card){
 async function deletePostById(postId){
     const { data:{ user: me } } = await supabase.auth.getUser()
 
-    // 1. Тянем информацию до удаления (для уведомления)
+    // 1. Забираем данные ДО удаления (для уведомления + чистки storage)
     const { data: postInfo } = await supabase.from('posts')
-        .select('author_id, created_at, channel_id, channels:channel_id(name)')
+        .select('author_id, created_at, channel_id, media_url, channels:channel_id(name)')
         .eq('id', postId).maybeSingle()
 
-    // 2. Пробуем простое удаление с подтверждением через .select()
+    // 2. Удаляем пост с проверкой
     let { data: del, error } = await supabase
         .from('posts').delete().eq('id', postId).select('id')
 
-    // 3. Если FK-констрейнт — чистим дочерние таблицы и повторяем
     if(error && error.code === '23503'){
         await Promise.allSettled([
             supabase.from('likes').delete().eq('post_id', postId),
@@ -1437,7 +1476,29 @@ async function deletePostById(postId){
         return { ok:false }
     }
 
-    // 4. Уведомляем автора (если удаляет не он сам)
+    // 3. ⚡ Удаляем файл из Storage (чтобы не засорять бакет)
+    if(postInfo?.media_url){
+        try {
+            const u = new URL(postInfo.media_url)
+            const m = u.pathname.match(/\/object\/public\/([^/]+)\/(.+)$/)
+            if(m){
+                const bucket = m[1]
+                const path = decodeURIComponent(m[2])
+                await supabase.storage.from(bucket).remove([path])
+            }
+        } catch(e){ console.warn('[storage cleanup]', e.message) }
+    }
+
+    // 4. ⚡ Чистим DM — сообщения с share-карточкой этого поста
+    //    Формат в БД: [share:%7B...%22pid%22%3A%22<postId>%22...%7D]
+    try {
+        await supabase.from('direct_messages')
+            .delete()
+            .like('content', '%[share:%')
+            .like('content', `%${postId}%`)
+    } catch(e){ console.warn('[dm cleanup]', e.message) }
+
+    // 5. Уведомление автору
     if(postInfo?.author_id && postInfo.author_id !== me?.id){
         try {
             const chName = postInfo.channels?.name || 'LIVE CHAT'
@@ -2311,37 +2372,44 @@ async function showPostMoreMenu(btn, card, userId){
 
     // ─── РЕДАКТИРОВАНИЕ (только платформенный админ) ───
     const iAmAdmin = ADMIN_STATE.isAdmin
-    if(iAmAdmin){
+    const canEdit = iAmAdmin || isMine           // ⚡ автор тоже может редактировать
+    if(canEdit){
         const contentEl = card.querySelector('.feed-post-content')
         if(contentEl){
             items.push({
-                label:'✎ Редактировать описание поста',
+                label: '✎ Редактировать тред',
                 icon: ICONS.edit || ICONS.reply,
-                onClick: async () => {
-                    const cur = contentEl.textContent || ''
-                    const newText = prompt('Описание поста:', cur)
-                    if(newText === null || newText === cur) return
-                    const { error } = await supabase.from('posts').update({ content: newText }).eq('id', pid)
-                    if(error){ showToast('error','Не удалось: ' + error.message); return }
-                    contentEl.textContent = newText
-                    showToast('success','Описание обновлено',{icon:'✓'})
-                }
+                onClick: () => openEditFieldModal({
+                    title: 'Редактировать тред',
+                    currentValue: contentEl.textContent || '',
+                    placeholder: 'Текст треда...',
+                    multiline: true,
+                    onSave: async (newText) => {
+                        const { error } = await supabase.from('posts').update({ content: newText }).eq('id', pid)
+                        if(error) throw error
+                        contentEl.textContent = newText
+                        showToast('success', 'Тред обновлён', { icon:'✓' })
+                    }
+                })
             })
         }
         const trackTitleEl = card.querySelector('.track-title')
         if(trackTitleEl){
             items.push({
-                label:'✎ Редактировать название трека',
+                label: '✎ Редактировать название трека',
                 icon: ICONS.music,
-                onClick: async () => {
-                    const cur = trackTitleEl.textContent || ''
-                    const newTitle = prompt('Название трека:', cur)
-                    if(newTitle === null || newTitle === cur) return
-                    const { error } = await supabase.from('posts').update({ media_title: newTitle }).eq('id', pid)
-                    if(error){ showToast('error','Не удалось: ' + error.message); return }
-                    trackTitleEl.textContent = newTitle
-                    showToast('success','Название обновлено',{icon:'✓'})
-                }
+                onClick: () => openEditFieldModal({
+                    title: 'Название трека',
+                    currentValue: trackTitleEl.textContent || '',
+                    placeholder: 'Название...',
+                    multiline: false,
+                    onSave: async (newTitle) => {
+                        const { error } = await supabase.from('posts').update({ media_title: newTitle }).eq('id', pid)
+                        if(error) throw error
+                        trackTitleEl.textContent = newTitle
+                        showToast('success', 'Название обновлено', { icon:'✓' })
+                    }
+                })
             })
         }
     }
@@ -2535,7 +2603,8 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const rc = counts[post.id]?.reposts || 0
     const commenters = counts[post.id]?.commenters || []
     const isVideo = isVideoUrl(post.media_url)
-    const isPhoto = !!post.media_url && !isVideo && !isAudioUrl(post.media_url)
+    const isPhoto = !!post.media_url && !isVideo && !isAudioUrl(post.media_url) && !isStickerMedia
+    const isStickerMedia = post.media_url && /\/stickers\//.test(post.media_url)
     const adminMark = p.is_admin ? adminBadge(true) : ''
 
     const plusHtml = (myId && post.author_id !== myId && !state.myFollows.has(post.author_id))
@@ -2593,11 +2662,13 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const textHtml = post.content ? `<div class="feed-post-content">${escapeHtml(post.content)}</div>` : ''
 
     if(!isVideo){
-        const media = renderMedia(post.media_url, 'feed-post-image', {
-            title: post.media_title || post.title,
-            postId: post.id,
-            username: p.username || 'user'
-        })
+        const media = isStickerMedia
+            ? `<img class="feed-post-sticker" src="${post.media_url}" alt="">`
+            : renderMedia(post.media_url, 'feed-post-image', {
+                title: post.media_title || post.title,
+                postId: post.id,
+                username: p.username || 'user'
+            })
         // фото: фото → кнопки → текст; текст/музыка: текст → (трек) → кнопки
         const body = isPhoto
             ? `${media}${pollHtml}${footer}${textHtml}`
@@ -3622,8 +3693,11 @@ function hideLiveLimitBanner(){
 }
 
 /** Универсальная обработка выбранного файла */
-async function attachComposerFile(file, kind /* 'photo' | 'audio' | 'video' */){
+async function attachComposerFile(file, kindHint /* 'photo'|'audio'|'video' */){
     if(!file) return
+
+    // ⚡ Тип определяем по файлу, а не по кнопке
+    const kind = detectFileKind(file) || kindHint || 'photo'
 
     const check = await checkFileLimits(file, kind)
 
@@ -3635,8 +3709,11 @@ async function attachComposerFile(file, kind /* 'photo' | 'audio' | 'video' */){
             `С подпиской listatread chvad лимиты выше.`
         showLiveLimitBanner(errTxt)
         showToast('error', 'Превышен лимит файла', { icon:'⚠️', duration:3500 })
-        // Сброс input, чтобы можно было выбрать тот же файл снова после уменьшения
-        try { (kind === 'audio' ? audioInput : kind === 'video' ? videoInput : photoInput).value = '' } catch {}
+        try {
+            if(kind === 'audio') audioInput.value = ''
+            else if(kind === 'video') videoInput.value = ''
+            else photoInput.value = ''
+        } catch {}
         return
     }
 
@@ -3673,6 +3750,25 @@ if(emojiPicker){
 }
 
 $('post-btn')?.addEventListener('click', async () => {
+    // ⚡ Повторная проверка лимита перед отправкой
+    if(state.attachedPhoto){
+        const k = detectFileKind(state.attachedPhoto) || (state.attachedKind === 'image' ? 'photo' : state.attachedKind)
+        const chk = await checkFileLimits(state.attachedPhoto, k)
+        if(!chk.ok){
+            showLiveLimitBanner('Превышен лимит размера публикации — ' + chk.errors.join(', '))
+            return
+        }
+    }
+    if(state.attachedPhoto){
+        const ext = state.attachedPhoto.name.split('.').pop() || 'bin'
+        const path = `${user.id}/${Date.now()}.${ext}`
+        const { error:upErr } = await supabase.storage.from('posts').upload(path, state.attachedPhoto, { contentType:state.attachedPhoto.type })
+        if(upErr){
+            throw new Error('Ошибка загрузки: ' + upErr.message + ' (возможно, превышен лимит бакета Supabase)')
+        }
+        const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
+        mediaUrl = pub.publicUrl
+    }
     const since = Date.now() - state.lastPostAt
     if(since < 15000){ alert(`Подождите ${Math.ceil((15000 - since) / 1000)} сек.`); return }
     const text = $('post-content').value.trim()
@@ -5539,7 +5635,12 @@ async function openChannel(channelId){
                     ${avContent}
                     <div class="ch-full-avatar-overlay">
                         <div class="ch-full-avatar-top">
-                            <div class="ch-full-avatar-name">${escapeHtml(ch.name || 'Канал')}</div>
+<div class="ch-full-avatar-name">
+    ${escapeHtml(ch.name || 'Канал')}
+    ${isOwner && ADMIN_STATE.isAdmin ? `<span class="ch-verify-badge chvad" title="Администратор">🦝 admin</span>` : ''}
+    ${!isOwner && ch.channel_type === 'public' ? `<span class="ch-verify-badge">✓ verified</span>` : ''}
+    ${activeLive ? `<span class="ch-verify-badge live">● LIVE</span>` : ''}
+</div>
                             <div class="ch-full-avatar-stats">
                                 <span class="ch-subs-count-anim" id="ch-subs-count">${subsCount}</span> подписчиков<span class="ch-full-avatar-dot">·</span><span id="ch-posts-count">${postsCount}</span> тредов
                             </div>
@@ -5771,7 +5872,159 @@ async function openInviteMenu(ch, myId){
     codeEl?.addEventListener('click', () => navigator.clipboard?.writeText(ch.join_code || ''))
     actionsheetList.querySelectorAll('.invite-list-item').forEach(btn => btn.addEventListener('click', async () => { try { await supabase.from('channel_invites').insert({ channel_id:ch.id, from_user_id:myId, to_user_id:btn.dataset.uid }); btn.style.opacity = '0.4'; btn.disabled = true } catch {} }))
 }
+async function openChannelStickerPicker(onSelect){
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user){ showToast('error', 'Войдите в аккаунт'); return }
 
+    const [ownRes, savedRes, pubRes] = await Promise.all([
+        supabase.from('sticker_packs').select('*').eq('user_id', user.id).order('created_at', { ascending:false }),
+        supabase.from('sticker_pack_saves')
+            .select('pack_id, sticker_packs(*)')
+            .eq('user_id', user.id),
+        supabase.from('sticker_packs').select('*').eq('is_public', true).limit(40)
+    ])
+
+    const myPacks = [
+        ...(ownRes.data || []),
+        ...((savedRes.data || []).map(s => s.sticker_packs).filter(Boolean))
+    ]
+    const myIds = new Set(myPacks.map(p => p.id))
+    const publicPacks = (pubRes.data || []).filter(p => !myIds.has(p.id) && p.user_id !== user.id)
+
+    if(!myPacks.length && !publicPacks.length){
+        showToast('info', 'Нет доступных стикеров', { icon:'🎨' })
+        return
+    }
+
+    const modal = document.createElement('div')
+    modal.className = 'sticker-picker-modal'
+    modal.innerHTML = `
+        <div class="sticker-picker-backdrop"></div>
+        <div class="sticker-picker-sheet">
+            <div class="lang-sheet-handle"></div>
+            <div class="sticker-picker-tabs">
+                <button class="sticker-picker-tab ${myPacks.length ? 'active' : ''}" data-tab="my">Мои · ${myPacks.length}</button>
+                <button class="sticker-picker-tab ${!myPacks.length ? 'active' : ''}" data-tab="public">Все · ${publicPacks.length}</button>
+            </div>
+            <div class="sticker-picker-packs" id="sp-packs"></div>
+            <div class="sticker-picker-grid" id="sp-grid"></div>
+        </div>
+    `
+    document.body.appendChild(modal)
+
+    let currentTab = myPacks.length ? 'my' : 'public'
+    let currentPack = currentTab === 'my' ? myPacks[0] : publicPacks[0]
+
+    const close = () => modal.remove()
+    modal.querySelector('.sticker-picker-backdrop').onclick = close
+
+    function render(){
+        const packs = currentTab === 'my' ? myPacks : publicPacks
+        if(!currentPack || !packs.find(p => p.id === currentPack.id)){
+            currentPack = packs[0]
+        }
+
+        // Паки
+        const packsBox = modal.querySelector('#sp-packs')
+        packsBox.innerHTML = packs.map(p => {
+            const cover = p.stickers?.[0]
+            return `<button class="sp-pack ${currentPack?.id === p.id ? 'active' : ''}" data-pid="${p.id}">
+                ${cover ? `<img src="${cover}" alt="">` : '?'}
+            </button>`
+        }).join('')
+        packsBox.querySelectorAll('.sp-pack').forEach(b => {
+            b.onclick = () => {
+                currentPack = packs.find(p => p.id === b.dataset.pid)
+                render()
+            }
+        })
+
+        // Стикеры
+        const grid = modal.querySelector('#sp-grid')
+        if(!currentPack || !currentPack.stickers?.length){
+            grid.innerHTML = '<p class="empty small" style="grid-column:1/-1;padding:20px;text-align:center;color:var(--text-tertiary)">Нет стикеров в этом паке</p>'
+            return
+        }
+        grid.innerHTML = currentPack.stickers.map(s => `
+            <button class="sp-sticker" data-url="${s}">
+                <img src="${s}" alt="">
+            </button>
+        `).join('')
+        grid.querySelectorAll('.sp-sticker').forEach(b => {
+            b.onclick = () => {
+                onSelect(b.dataset.url)
+                close()
+            }
+        })
+    }
+
+    modal.querySelectorAll('.sticker-picker-tab').forEach(t => {
+        t.onclick = () => {
+            currentTab = t.dataset.tab
+            modal.querySelectorAll('.sticker-picker-tab').forEach(x =>
+                x.classList.toggle('active', x === t))
+            render()
+        }
+    })
+
+    render()
+}
+function openEditFieldModal({ title, currentValue, placeholder, multiline, onSave }){
+    let modal = document.getElementById('lt-edit-modal')
+    if(!modal){
+        modal = document.createElement('div')
+        modal.id = 'lt-edit-modal'
+        modal.className = 'lt-edit-modal hidden'
+        modal.innerHTML = `
+            <div class="lt-edit-backdrop"></div>
+            <div class="lt-edit-sheet">
+                <div class="lang-sheet-handle"></div>
+                <div class="lt-edit-header">
+                    <div class="lt-edit-icon">✎</div>
+                    <div class="lt-edit-title" id="lt-edit-title">Редактировать</div>
+                </div>
+                <div id="lt-edit-field-wrap"></div>
+                <div class="lt-edit-actions">
+                    <button class="btn-gray" id="lt-edit-cancel">Отмена</button>
+                    <button class="btn-primary" id="lt-edit-save">Сохранить</button>
+                </div>
+            </div>
+        `
+        document.body.appendChild(modal)
+        modal.querySelector('.lt-edit-backdrop').onclick = () => modal.classList.add('hidden')
+        modal.querySelector('#lt-edit-cancel').onclick = () => modal.classList.add('hidden')
+    }
+
+    modal.querySelector('#lt-edit-title').textContent = title || 'Редактировать'
+
+    // Пересоздаём поле нужного типа
+    const wrap = modal.querySelector('#lt-edit-field-wrap')
+    const tag = multiline ? 'textarea' : 'input'
+    wrap.innerHTML = `<${tag} class="lt-edit-input" id="lt-edit-input"
+        placeholder="${placeholder || ''}"
+        ${multiline ? '' : 'type="text"'}></${tag}>`
+    const input = modal.querySelector('#lt-edit-input')
+    input.value = currentValue || ''
+    setTimeout(() => { input.focus(); if(!multiline) input.select() }, 120)
+
+    const saveBtn = modal.querySelector('#lt-edit-save')
+    saveBtn.disabled = false
+    saveBtn.textContent = 'Сохранить'
+    saveBtn.onclick = async () => {
+        const val = input.value.trim()
+        saveBtn.disabled = true; saveBtn.textContent = 'Сохранение...'
+        try {
+            await onSave(val)
+            modal.classList.add('hidden')
+        } catch(e){
+            showToast('error', e.message || 'Не удалось сохранить', { icon:'⚠️' })
+        } finally {
+            saveBtn.disabled = false; saveBtn.textContent = 'Сохранить'
+        }
+    }
+
+    modal.classList.remove('hidden')
+}
 async function loadChContent(channelId, tab, canPost = false){
     const box = $('ch-content'); box.innerHTML = loadingBlock()
 
@@ -5792,20 +6045,22 @@ async function loadChContent(channelId, tab, canPost = false){
         <textarea id="ch-new-text" class="ch-new-post-text" placeholder="Текст" rows="3"></textarea>
         <div class="ch-new-post-media-box" id="ch-new-media-box"></div>
         <div class="ch-new-post-tools">
-          <button class="tool-btn" id="ch-new-photo" title="Фото"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg></button>
-          <button class="tool-btn" id="ch-new-video" title="Видео"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M22 8l-6 4 6 4z"/></svg></button>
-          <button class="tool-btn" id="ch-new-audio" title="Трек (MP3)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></button>
-          <button class="tool-btn" id="ch-new-poll" title="Опрос"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4v8H3zM10 6h4v14h-4zM17 9h4v11h-4z"/></svg></button>
-          <button class="tool-btn" id="ch-new-emoji" title="Смайл"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="0.8" fill="currentColor"/><circle cx="15" cy="10" r="0.8" fill="currentColor"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg></button>
-          <input type="file" id="ch-new-photo-input" accept="image/*" hidden>
-          <input type="file" id="ch-new-video-input" accept="video/*" hidden>
-          <input type="file" id="ch-new-audio-input" accept="audio/mpeg,audio/mp3,audio/*" hidden>
+          <button class="tool-btn" id="ch-new-emoji" title="Смайл">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="0.8" fill="currentColor"/><circle cx="15" cy="10" r="0.8" fill="currentColor"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+          </button>
+          <button class="tool-btn" id="ch-new-sticker" title="Стикер">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M14 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z"/><path d="M14 21v-4a3 3 0 0 1 3-3h4"/><circle cx="9" cy="10" r="0.9" fill="currentColor"/><circle cx="14" cy="10" r="0.9" fill="currentColor"/></svg>
+          </button>
         </div>
-        <div class="ch-new-post-footer"><small style="color:var(--text-secondary)">Пост канала</small><button class="btn-primary" id="ch-new-publish" style="width:auto;padding:10px 20px;font-size:14px">Опубликовать</button></div>
+        <div class="ch-new-post-footer">
+          <small style="color:var(--text-secondary)">Пост канала</small>
+          <button class="btn-primary" id="ch-new-publish" style="width:auto;padding:10px 20px;font-size:14px">Опубликовать</button>
+        </div>
       </div>
       <div id="ch-posts-list"></div>
     `
         setupChannelComposer(channelId, canPost)
+
     } else {
         box.innerHTML = '<div id="ch-posts-list"></div>'
     }
@@ -5813,168 +6068,64 @@ async function loadChContent(channelId, tab, canPost = false){
 }
 
 function setupChannelComposer(channelId, canPost){
-    const photoInput = $('ch-new-photo-input'), videoInput = $('ch-new-video-input'), audioInput = $('ch-new-audio-input')
     const mediaBox = $('ch-new-media-box'), textArea = $('ch-new-text'), publishBtn = $('ch-new-publish')
+    let attachedStickerUrl = null
 
-    // ─── Баннер лимитов ───
-    let limitBanner = $('ch-limit-banner')
-    if(!limitBanner){
-        limitBanner = document.createElement('div')
-        limitBanner.id = 'ch-limit-banner'
-        limitBanner.className = 'limit-banner hidden'
-        limitBanner.innerHTML = `<span id="ch-limit-banner-text"></span>
-            <button type="button" id="ch-limit-banner-more">Подробнее...</button>`
-        mediaBox.parentNode.insertBefore(limitBanner, mediaBox.nextSibling)
-    }
-    const limitText = $('ch-limit-banner-text'), limitMore = $('ch-limit-banner-more')
-
-    let attachedFile = null, attachedKind = null
-    let pollMode = 'vote'
-    let pollOptions = [{text:''},{text:''}]
-
-    function setBlocked(blocked){
-        if(!publishBtn) return
-        publishBtn.disabled = blocked
-        publishBtn.style.opacity = blocked ? '.5' : ''
-    }
-    function clearLimitAndUnblock(){ hideLimitBanner(limitBanner); setBlocked(false) }
-
-    function renderPreview(){
-        if(!attachedFile){
-            if(!document.getElementById('poll-builder-instance')) mediaBox.innerHTML = ''
-            return
-        }
-        const url = URL.createObjectURL(attachedFile)
-        if(attachedKind === 'audio')
-            mediaBox.innerHTML = `<audio controls src="${url}"></audio>
-                <input type="text" id="ch-new-track-title" placeholder="Название песни" maxlength="80"
-                style="width:100%;margin-top:8px;padding:12px 14px;font-size:14px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text)">`
-        else if(attachedKind === 'video') mediaBox.innerHTML = `<video controls playsinline src="${url}"></video>`
-        else mediaBox.innerHTML = `<img src="${url}" alt="">`
-    }
-
-    async function handleFileSelect(file, kind){
-        if(!file) return
-        const check = await checkFileLimits(file, kind)
-        if(!check.ok){
-            const lim = check.limits[kind]
-            const errTxt = `Превышен лимит размера публикации — ${check.errors.join(', ')}. `
-                + `Лимит: ${lim.maxMB} МБ${lim.maxSec ? ' / ' + formatSec(lim.maxSec) : ''}. `
-                + `С listatread chvad лимиты выше.`
-            showLimitBanner(limitBanner, limitText, limitMore, errTxt)
-            setBlocked(true)
-            showToast('error', 'Превышен лимит. Нажмите «Подробнее...» в баннере.', { icon:'⚠️', duration:4000 })
-            return
-        }
-        clearLimitAndUnblock()
-        attachedFile = file
-        attachedKind = kind
-        removePollBuilder()
-        renderPreview()
-    }
-
-    $('ch-new-photo')?.addEventListener('click', () => photoInput.click())
-    photoInput?.addEventListener('change', e => handleFileSelect(e.target.files?.[0], 'photo'))
-
-    $('ch-new-video')?.addEventListener('click', () => videoInput.click())
-    videoInput?.addEventListener('change', e => handleFileSelect(e.target.files?.[0], 'video'))
-
-    $('ch-new-audio')?.addEventListener('click', () => audioInput.click())
-    audioInput?.addEventListener('change', e => handleFileSelect(e.target.files?.[0], 'audio'))
-
-
-
-    $('ch-new-emoji').addEventListener('click', () => showActionSheet('Смайлы', EMOJI_LIST.slice(0, 24).map(em => ({ label:em, onClick: () => { textArea.value += em; textArea.focus() } }))))
-
-    $('ch-new-poll').addEventListener('click', () => {
-        if(document.getElementById('poll-builder-instance')) return
-        attachedFile = null; attachedKind = null
-        mediaBox.innerHTML = ''
-        const tpl = document.getElementById('tpl-poll-builder').content.cloneNode(true)
-        mediaBox.appendChild(tpl)
-        const builder = mediaBox.querySelector('.poll-builder')
-        builder.id = 'poll-builder-instance'
-        pollOptions = [{text:''},{text:''}]
-        renderPollOptions()
-        builder.querySelectorAll('.poll-mode-btn').forEach(b => b.addEventListener('click', () => {
-            pollMode = b.dataset.pollMode
-            builder.querySelectorAll('.poll-mode-btn').forEach(x => x.classList.toggle('active', x === b))
-            document.getElementById('poll-quiz-correct').style.display = pollMode === 'quiz' ? 'block' : 'none'
-        }))
-        builder.querySelector('.poll-mode-btn[data-poll-mode="vote"]').classList.add('active')
-        document.getElementById('poll-add-btn').addEventListener('click', () => {
-            if(pollOptions.length >= 5) return showToast('info', 'Максимум 5 пунктов')
-            pollOptions.push({ text:'' })
-            renderPollOptions()
+    function renderStickerPreview(){
+        if(!attachedStickerUrl){ mediaBox.innerHTML = ''; return }
+        mediaBox.innerHTML = `
+            <div class="ch-sticker-attach">
+                <img src="${attachedStickerUrl}" alt="">
+                <button class="ch-sticker-attach-remove" id="ch-sticker-attach-remove" type="button">✕</button>
+            </div>`
+        $('ch-sticker-attach-remove')?.addEventListener('click', () => {
+            attachedStickerUrl = null
+            renderStickerPreview()
         })
+    }
+
+    $('ch-new-emoji')?.addEventListener('click', () => {
+        showActionSheet('Смайлы', EMOJI_LIST.slice(0, 24).map(em => ({
+            label: em,
+            onClick: () => { textArea.value += em; textArea.focus() }
+        })))
     })
 
-    function renderPollOptions(){
-        const box = document.getElementById('poll-options'); if(!box) return
-        box.innerHTML = pollOptions.map((o, i) => `
-            <div class="poll-option-row">
-                <input type="text" maxlength="30" placeholder="Вариант ${i+1}" value="${escapeHtml(o.text)}" data-poll-idx="${i}">
-                ${pollOptions.length > 2 ? `<button type="button" class="poll-option-remove" data-poll-remove="${i}">✕</button>` : ''}
-            </div>
-        `).join('')
-        box.querySelectorAll('input[data-poll-idx]').forEach(inp => inp.addEventListener('input', () => {
-            pollOptions[+inp.dataset.pollIdx].text = inp.value
-            updateQuizSelect()
-        }))
-        box.querySelectorAll('[data-poll-remove]').forEach(b => b.addEventListener('click', () => {
-            pollOptions.splice(+b.dataset.pollRemove, 1); renderPollOptions()
-        }))
-        updateQuizSelect()
-    }
-    function updateQuizSelect(){
-        const sel = document.getElementById('poll-correct-select'); if(!sel) return
-        sel.innerHTML = pollOptions.map((o, i) => `<option value="${i}">${escapeHtml(o.text || 'Вариант ' + (i+1))}</option>`).join('')
-    }
-    function removePollBuilder(){
-        const b = document.getElementById('poll-builder-instance')
-        if(b) b.remove()
-    }
+    $('ch-new-sticker')?.addEventListener('click', () => {
+        openChannelStickerPicker(url => {
+            attachedStickerUrl = url          // ⚡ заменяет предыдущий
+            renderStickerPreview()
+        })
+    })
 
     publishBtn.addEventListener('click', async () => {
         try {
             const { data:{ user } } = await supabase.auth.getUser()
             if(!user) return
             const text = textArea.value.trim()
-            const hasPoll = !!document.getElementById('poll-builder-instance')
-            if(!text && !attachedFile && !hasPoll) return
-            publishBtn.disabled = true; publishBtn.textContent = 'Публикация...'
-            let mediaUrl = null
-            if(attachedFile){
-                const ext = attachedFile.name.split('.').pop() || 'bin'
-                const path = `${user.id}/channel-${Date.now()}.${ext}`
-                const { error:upErr } = await supabase.storage.from('posts').upload(path, attachedFile, { contentType:attachedFile.type })
-                if(!upErr){ const { data:pub } = supabase.storage.from('posts').getPublicUrl(path); mediaUrl = pub.publicUrl }
-            }
-            const payload = { content:text, author_id:user.id, channel_id:channelId }
-            if(mediaUrl) payload.media_url = mediaUrl
-            const trackTitle = document.getElementById('ch-new-track-title')?.value.trim()
-            if(trackTitle && attachedKind === 'audio') payload.media_title = trackTitle
+            if(!text && !attachedStickerUrl) return
 
-            if(hasPoll){
-                const filled = pollOptions.filter(o => o.text.trim())
-                if(filled.length < 2){ showToast('error','Минимум 2 пункта'); publishBtn.disabled = false; publishBtn.textContent = 'Опубликовать'; return }
-                const correctIdx = pollMode === 'quiz' ? +document.getElementById('poll-correct-select').value : null
-                payload.poll = {
-                    mode: pollMode,
-                    options: filled.map(o => o.text.trim().slice(0, 30)),
-                    correct: correctIdx,
-                    votes: filled.map(() => 0),
-                    voters: {}
-                }
-            }
+            publishBtn.disabled = true
+            publishBtn.textContent = 'Публикация...'
+
+            const payload = { content: text, author_id: user.id, channel_id: channelId }
+            // ⚡ Стикер кладём в media_url — но с URL из бакета stickers
+            if(attachedStickerUrl) payload.media_url = attachedStickerUrl
 
             const { error } = await supabase.from('posts').insert(payload)
             if(error) throw error
-            textArea.value = ''; mediaBox.innerHTML = ''; attachedFile = null; attachedKind = null
-            photoInput.value = ''; videoInput.value = ''; audioInput.value = ''
+
+            textArea.value = ''
+            mediaBox.innerHTML = ''
+            attachedStickerUrl = null
+
             loadChannelPosts(channelId, true)
-        } catch(err){ showToast('error', 'Ошибка: ' + err.message) }
-        finally { publishBtn.disabled = false; publishBtn.textContent = 'Опубликовать' }
+        } catch(err){
+            showToast('error', 'Ошибка: ' + err.message)
+        } finally {
+            publishBtn.disabled = false
+            publishBtn.textContent = 'Опубликовать'
+        }
     })
 }
 
