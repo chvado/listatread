@@ -5508,6 +5508,161 @@ textarea.lt-edit-input{ min-height: 110px; }
     margin-top: 14px;
 }
 /* ============================================================
+   FIX v8 — статусы, стикеры 3-в-ряд, камера tread, превью пака
+============================================================ */
+
+/* ─── 1. Статусы не обрезаются в видео-постах ─── */
+.feed-post.fp-new.feed-post-video{
+    overflow: visible !important;   /* было hidden — обрезало бейдж */
+    border-radius: var(--radius-lg);
+}
+.feed-post.fp-new.feed-post-video .post-bg-video,
+.feed-post.fp-new.feed-post-video .post-bg-overlay{
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+.post-bg-video{ border-radius: inherit; }
+
+/* ─── 2. Статусы в сторис — бейдж вне клипа ─── */
+.story-ring{ overflow: visible !important; }
+.story-ring .story-status-badge{
+    bottom: -2px;
+    right: -2px;
+    z-index: 10;
+}
+
+/* ─── 3. Стикеры 3 в ряд ─── */
+.sticker-picker-grid,
+.dr-stickers-grid,
+.spm-grid{
+    grid-template-columns: repeat(3, 1fr) !important;
+}
+.sticker-picker-sheet{ max-height: 82dvh; }
+.dr-panel.open{ max-height: 55vh; }
+.sp-sticker,
+.dr-sticker-item,
+.spm-grid .sp-sticker{
+    aspect-ratio: 1;
+    min-height: 0;
+}
+
+/* ─── 4. Камера Tread ─── */
+.tread-camera-view{
+    position: fixed; inset: 0; z-index: 9200;
+    background: #000; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+}
+.tread-camera-view.hidden{ display: none !important }
+.tread-camera-video{
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+}
+.tread-camera-back{
+    position: absolute;
+    top: calc(var(--safe-top) + 12px); left: 12px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(0,0,0,.38);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,.12);
+    color: #fff; cursor: pointer; z-index: 3;
+    display: flex; align-items: center; justify-content: center;
+}
+.tread-camera-record-wrap{
+    position: absolute;
+    bottom: calc(var(--safe-bottom) + 44px); left: 50%;
+    transform: translateX(-50%); z-index: 3;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.tread-camera-record{
+    width: 78px; height: 78px; border-radius: 50%;
+    border: 6px solid #fff; background: transparent; padding: 0;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 24px rgba(0,0,0,.4);
+    transition: transform .15s;
+}
+.tread-camera-record:active{ transform: scale(.95) }
+.tread-camera-record-inner{
+    width: 100%; height: 100%; border-radius: 50%;
+    background: #ff375f;
+    transition: border-radius .2s ease, transform .2s ease;
+}
+.tread-camera-record.recording .tread-camera-record-inner{
+    border-radius: 14%; transform: scale(.55);
+}
+.tread-camera-timer{
+    color: #fff; font-size: 14px; font-weight: 700;
+    padding: 4px 12px; border-radius: 100px;
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    font-variant-numeric: tabular-nums;
+    opacity: 0; transition: opacity .2s;
+}
+.tread-camera-timer.show{ opacity: 1 }
+
+/* ─── 5. Превью стикерпака ─── */
+.sticker-pack-modal{
+    position: fixed; inset: 0; z-index: 9500;
+    display: flex; align-items: flex-end; justify-content: center;
+}
+.sticker-pack-modal.hidden{ display: none !important }
+.spm-backdrop{
+    position: absolute; inset: 0;
+    background: var(--scrim);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    animation: fadeIn .25s var(--ease) both;
+}
+.spm-sheet{
+    position: relative;
+    width: 100%; max-width: 480px; max-height: 78dvh;
+    background: var(--glass-strong);
+    backdrop-filter: var(--blur-strong); -webkit-backdrop-filter: var(--blur-strong);
+    border-radius: 24px 24px 0 0;
+    padding: 0 16px calc(18px + var(--safe-bottom));
+    display: flex; flex-direction: column;
+    animation: sheetUp .35s var(--ease-out) both;
+    overflow: hidden;
+}
+.spm-handle{
+    width: 44px; height: 5px; border-radius: 100px;
+    background: var(--border-strong);
+    margin: 10px auto 12px; flex-shrink: 0;
+}
+.spm-header{
+    display: flex; align-items: center; gap: 12px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.spm-avatar{
+    width: 52px; height: 52px; border-radius: 14px;
+    background: var(--surface-2); overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 24px;
+}
+.spm-avatar img{ width: 100%; height: 100%; object-fit: cover }
+.spm-info{ flex: 1; min-width: 0 }
+.spm-name{ font-size: 16px; font-weight: 700; color: var(--text) }
+.spm-count{ font-size: 12px; color: var(--text-secondary); margin-top: 2px }
+.spm-more{
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: transparent; color: var(--text-secondary);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.spm-grid{
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px; padding: 12px 0;
+    overflow-y: auto; flex: 1; min-height: 0;
+}
+.spm-grid .sp-sticker{
+    aspect-ratio: 1; background: var(--surface-2);
+    border: none; border-radius: 12px; padding: 6px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .12s;
+}
+.spm-grid .sp-sticker:active{ transform: scale(.92) }
+.spm-grid .sp-sticker img{ width: 100%; height: 100%; object-fit: contain }
+/* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
 @media (max-width:767px){

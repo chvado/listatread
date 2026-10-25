@@ -347,7 +347,11 @@ html[data-theme="dark"] .ds-brand-mark{ background:#fff; color:#000 }
         .dr-sticker-pack:active{ transform:scale(.94) }
         .dr-sticker-pack img{ width:100%; height:100%; object-fit:cover }
         .dr-sticker-pack-add{ color:var(--text-secondary); font-size:24px; font-weight:300 }
-        .dr-stickers-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:10px 12px }
+        .dr-stickers-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:10px 12px }
+        .dr-sticker-tabs{
+    position:sticky; top:0; background:var(--bg); z-index:2;
+    border-bottom:1px solid var(--border);
+}
         .dr-sticker-item{ aspect-ratio:1; background:transparent; border:none; cursor:pointer; padding:4px; transition:transform .12s }
         .dr-sticker-item:active{ transform:scale(.9) }
         .dr-sticker-item img{ width:100%; height:100%; object-fit:contain }
@@ -1846,7 +1850,53 @@ function reactBurst(row, emoji){
 }
 
 function attachMsgMenu(row){
+    // ⚡ Если это стикер — long-press открывает пак
+    ;(async () => {
+        const msgId = row.dataset.mid
+        // найдём сообщение в последнем рендере
+        const all = document.querySelectorAll(`.dr-row[data-mid="${msgId}"]`)
+        // просто проверим по DOM: есть ли dr-sticker
+        const isSticker = !!row.querySelector('.dr-sticker img')
+        if(isSticker){
+            const stickerImg = row.querySelector('.dr-sticker img')
+            const stickerUrl = stickerImg?.getAttribute('src')
+            if(stickerUrl){
+                let tm = null, moved = false
+                const start = () => {
+                    moved = false
+                    tm = setTimeout(async () => {
+                        if(moved) return
+                        const { data:{ user } } = await supabase.auth.getUser()
+                        const { data:pack } = await supabase.from('sticker_packs')
+                            .select('id, user_id, name, stickers, is_public')
+                            .contains('stickers', [stickerUrl]).limit(1).maybeSingle()
+                        if(!pack){
+                            window.showToast?.('info', 'Пак не найден')
+                            return
+                        }
+                        const items = [
+                            { label:'Открыть пак', icon: I.sticker, onClick: () => openPackPreviewDM(pack) },
+                            { label:'Пожаловаться', icon: I.info, danger:true, onClick: () => window.openReportModal?.({
+                                    targetType:'sticker', targetId: pack.id, text: pack.name, media: stickerUrl
+                                })}
+                        ]
+                        window.showActionSheet?.('Стикер', items)
+                    }, 480)
+                }
+                const cancel = () => { if(tm){ clearTimeout(tm); tm = null } }
+                row.addEventListener('touchstart', start, { passive:true })
+                row.addEventListener('touchmove', () => { moved = true; cancel() }, { passive:true })
+                row.addEventListener('touchend', cancel)
+                row.addEventListener('contextmenu', e => { e.preventDefault(); start() })
+                return // не навешиваем стандартное меню на стикеры
+            }
+        }
+    })()
+
+    // ... остальной существующий код attachMsgMenu
     let pressTimer = null, longPressed = false, lastTap = 0
+    // ...
+
     const startPress = () => {
         longPressed = false
         row.classList.add('pressing')
@@ -2116,7 +2166,7 @@ async function sendSticker(url){
     registerStickerSend()
 }
 
-function renderStickersPanel(){
+async function renderStickersPanel(){
     const body = $('dr-panel-body'); if(!body) return
 
     if(!D._stickerPacksLoaded){
@@ -2125,65 +2175,138 @@ function renderStickersPanel(){
         return
     }
 
-    const myPacks  = getMyPacks()
-    const pubPacks = D.publicPacks
+    const myPacks = getMyPacks()
+    const savedPacks = D.savedPacks
+    const publicPacks = D.publicPacks
 
-    if(!myPacks.length && !pubPacks.length){
-        body.innerHTML = `
-          <div class="dr-sticker-empty">
-            <p>У вас пока нет стикеров</p>
-            <button class="dr-sticker-empty-btn" id="dr-new-pack">Создать стикерпак</button>
-          </div>`
-        body.querySelector('#dr-new-pack').addEventListener('click', openCreateStickerPack)
+    // Три вкладки
+    if(!D.packTab) D.packTab = 'personal'
+    if(!D._findOffset) D._findOffset = 0
+    const FIND_BATCH = 15, FIND_MORE = 3
+
+    const tabsHtml = `
+      <div class="dr-sticker-tabs" style="display:flex;gap:6px;padding:8px 10px 4px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none">
+        <button class="dr-panel-tab ${D.packTab==='personal'?'active':''}" data-packtab="personal">Личные</button>
+        <button class="dr-panel-tab ${D.packTab==='saved'?'active':''}" data-packtab="saved">Сохранённые · ${savedPacks.length}</button>
+        <button class="dr-panel-tab ${D.packTab==='find'?'active':''}" data-packtab="find">Найти</button>
+      </div>`
+
+    let visiblePacks, tabEmpty = false
+    if(D.packTab === 'personal'){ visiblePacks = myPacks; tabEmpty = !myPacks.length }
+    else if(D.packTab === 'saved'){ visiblePacks = savedPacks; tabEmpty = !savedPacks.length }
+    else {
+        visiblePacks = publicPacks.slice(0, FIND_BATCH + D._findOffset)
+        tabEmpty = !publicPacks.length
+    }
+
+    if(!visiblePacks.length && tabEmpty){
+        const emptyMsg = D.packTab === 'personal' ? 'У вас пока нет своих паков'
+            : D.packTab === 'saved' ? 'Нет сохранённых паков'
+                : 'Публичных паков пока нет'
+        body.innerHTML = tabsHtml + `<div class="dr-sticker-empty">
+            <p>${emptyMsg}</p>
+            ${D.packTab === 'personal' ? '<button class="dr-sticker-empty-btn" id="dr-new-pack">Создать стикерпак</button>' : ''}
+        </div>`
+        body.querySelector('#dr-new-pack')?.addEventListener('click', openCreateStickerPack)
+        body.querySelectorAll('[data-packtab]').forEach(t => t.addEventListener('click', () => {
+            D.packTab = t.dataset.packtab; D._findOffset = 0; renderStickersPanel()
+        }))
         return
     }
 
-    const allVisible = [...myPacks, ...pubPacks]
-    let activePack = allVisible.find(p => p.id === D.currentStickerPack)
-    if(!activePack){ activePack = myPacks[0] || pubPacks[0]; D.currentStickerPack = activePack?.id }
-
-    const stickers   = activePack?.stickers || []
-    const isOwn      = activePack && isOwnPack(activePack.id)
-    const isSaved    = activePack && isSavedPack(activePack.id)
+    let activePack = visiblePacks.find(p => p.id === D.currentStickerPack) || visiblePacks[0]
+    if(activePack) D.currentStickerPack = activePack.id
+    const stickers = activePack?.stickers || []
+    const isOwn = activePack && myPacks.some(p => p.id === activePack.id)
+    const isSaved = activePack && savedPacks.some(p => p.id === activePack.id)
     const isPubOther = activePack && D.publicPacks.some(p => p.id === activePack.id)
 
     body.innerHTML = `
+      ${tabsHtml}
       <div class="dr-sticker-packs">
-        ${myPacks.map(p => `
+        ${visiblePacks.map(p => `
           <button class="dr-sticker-pack ${p.id === activePack.id ? 'active' : ''}" data-pack="${p.id}">
             ${p.stickers[0] ? `<img src="${esc(p.stickers[0])}" alt="">` : ''}
           </button>`).join('')}
-        <button class="dr-sticker-pack dr-sticker-pack-add" id="dr-new-pack" title="Создать стикерпак">${I.plus}</button>
-        ${pubPacks.length ? `<div class="dr-sticker-pack-sep" aria-hidden="true"></div>` : ''}
-        ${pubPacks.map(p => `
-          <button class="dr-sticker-pack dr-sticker-pack-pub ${p.id === activePack.id ? 'active' : ''}" data-pack="${p.id}">
-            ${p.stickers[0] ? `<img src="${esc(p.stickers[0])}" alt="">` : ''}
-          </button>`).join('')}
+        ${D.packTab === 'personal' ? `<button class="dr-sticker-pack dr-sticker-pack-add" id="dr-new-pack" title="Создать пак">${I.plus}</button>` : ''}
       </div>
-
+      ${D.packTab === 'find' && publicPacks.length > FIND_BATCH + D._findOffset
+        ? `<button class="dr-sticker-more" style="margin:8px 12px;padding:10px;background:var(--surface-2);border:none;border-radius:12px;font-family:inherit;font-size:13px;font-weight:600;color:var(--text);cursor:pointer">Показать ещё 3 пака</button>`
+        : ''}
       <div class="dr-sticker-pack-info">
-        <div class="dr-sticker-pack-name">${esc(activePack.name)}</div>
-        ${isPubOther ? `<button class="dr-sticker-save-btn" id="dr-save-pack" data-pack="${activePack.id}">Сохранить пак</button>` : ''}
-        ${isSaved    ? `<button class="dr-sticker-save-btn saved" disabled>Сохранён</button>` : ''}
+        <div class="dr-sticker-pack-name">${esc(activePack?.name || '')}</div>
+        ${isPubOther ? `<button class="dr-sticker-save-btn" id="dr-save-pack" data-pack="${activePack.id}">Сохранить</button>` : ''}
+        ${isSaved ? `<button class="dr-sticker-save-btn saved" disabled>Сохранён</button>` : ''}
       </div>
-
       <div class="dr-stickers-grid">
         ${stickers.map(s => `<button class="dr-sticker-item" data-sticker="${esc(s)}"><img src="${esc(s)}" alt=""></button>`).join('')}
-        ${isOwn ? `<button class="dr-sticker-item dr-sticker-add" id="dr-add-sticker" title="Добавить стикер">${I.plus}</button>` : ''}
+        ${isOwn ? `<button class="dr-sticker-item dr-sticker-add" id="dr-add-sticker" title="Добавить">${I.plus}</button>` : ''}
       </div>
-
       <input type="file" id="dr-add-sticker-file" accept="image/*" hidden>`
 
-    body.querySelectorAll('.dr-sticker-pack[data-pack]').forEach(b => b.addEventListener('click', () => {
-        D.currentStickerPack = b.dataset.pack
+    // Переключение паков
+    body.querySelectorAll('[data-packtab]').forEach(t => t.addEventListener('click', () => {
+        D.packTab = t.dataset.packtab
+        D._findOffset = 0
         renderStickersPanel()
     }))
-    body.querySelector('#dr-new-pack')?.addEventListener('click', openCreateStickerPack)
-    body.querySelectorAll('.dr-sticker-item[data-sticker]').forEach(b => b.addEventListener('click', () => sendSticker(b.dataset.sticker)))
+    body.querySelectorAll('.dr-sticker-pack[data-pack]').forEach(b => {
+        b.addEventListener('click', () => { D.currentStickerPack = b.dataset.pack; renderStickersPanel() })
+        // Long-press на пак → меню
+        let tm = null, moved = false
+        const start = () => {
+            moved = false
+            tm = setTimeout(() => {
+                if(moved) return
+                const pack = visiblePacks.find(p => p.id === b.dataset.pack)
+                if(pack) showDirectPackMenu(pack)
+            }, 480)
+        }
+        const cancel = () => { if(tm){ clearTimeout(tm); tm = null } }
+        b.addEventListener('touchstart', start, { passive:true })
+        b.addEventListener('touchmove', () => { moved = true; cancel() }, { passive:true })
+        b.addEventListener('touchend', cancel)
+        b.addEventListener('mousedown', start)
+        b.addEventListener('mouseup', cancel)
+        b.addEventListener('mouseleave', cancel)
+        b.addEventListener('contextmenu', e => {
+            e.preventDefault()
+            const pack = visiblePacks.find(p => p.id === b.dataset.pack)
+            if(pack) showDirectPackMenu(pack)
+        })
+    })
 
+    // Кнопка "Показать ещё"
+    body.querySelector('.dr-sticker-more')?.addEventListener('click', () => {
+        D._findOffset += FIND_MORE
+        renderStickersPanel()
+    })
+
+    body.querySelector('#dr-new-pack')?.addEventListener('click', openCreateStickerPack)
     body.querySelector('#dr-save-pack')?.addEventListener('click', e => savePublicPack(e.currentTarget.dataset.pack))
 
-    const addBtn   = body.querySelector('#dr-add-sticker')
+    // Клик и long-press на стикер
+    body.querySelectorAll('.dr-sticker-item[data-sticker]').forEach(b => {
+        b.addEventListener('click', () => sendSticker(b.dataset.sticker))
+        let tm = null, moved = false
+        const start = () => {
+            moved = false
+            tm = setTimeout(() => {
+                if(moved) return
+                showDirectPackMenu(activePack, b.dataset.sticker)
+            }, 480)
+        }
+        const cancel = () => { if(tm){ clearTimeout(tm); tm = null } }
+        b.addEventListener('touchstart', start, { passive:true })
+        b.addEventListener('touchmove', () => { moved = true; cancel() }, { passive:true })
+        b.addEventListener('touchend', cancel)
+        b.addEventListener('mousedown', start)
+        b.addEventListener('mouseup', cancel)
+        b.addEventListener('mouseleave', cancel)
+        b.addEventListener('contextmenu', e => { e.preventDefault(); showDirectPackMenu(activePack, b.dataset.sticker) })
+    })
+
+    const addBtn = body.querySelector('#dr-add-sticker')
     const addInput = body.querySelector('#dr-add-sticker-file')
     addBtn?.addEventListener('click', () => addInput?.click())
     addInput?.addEventListener('change', async e => {
@@ -2191,6 +2314,71 @@ function renderStickersPanel(){
         await addStickerToPack(activePack.id, f)
         addInput.value = ''
     })
+}
+
+// Меню пака в DM (long-press)
+function showDirectPackMenu(pack, stickerUrl){
+    if(!pack) return
+    const items = []
+    items.push({
+        label:'Открыть пак', icon: I.sticker,
+        onClick: () => openPackPreviewDM(pack)
+    })
+    items.push({
+        label:'Сохранить пак', icon: I.star,
+        onClick: async () => {
+            const { data:{ user } } = await supabase.auth.getUser()
+            if(!user) return
+            try {
+                await supabase.from('sticker_pack_saves').insert({ user_id: user.id, pack_id: pack.id })
+                if(!D.savedPacks.some(p => p.id === pack.id)) D.savedPacks.unshift(pack)
+                window.showToast?.('success', 'Пак сохранён', { icon: I.check })
+                renderStickersPanel()
+            } catch { window.showToast?.('info', 'Уже сохранён') }
+        }
+    })
+    items.push({
+        label:'Пожаловаться на пак', icon: I.info, danger:true,
+        onClick: () => window.openReportModal?.({
+            targetType:'sticker_pack', targetId: pack.id,
+            text: pack.name, media: pack.stickers?.[0]
+        })
+    })
+    if(stickerUrl){
+        const { data:{ user } } = supabase.auth.getUser ? {} : {}
+        supabase.auth.getUser().then(({ data }) => {
+            const me = data?.user
+            const isOwn = pack.user_id === me?.id
+            const isAdmin = D.isAdmin
+            if(isOwn || isAdmin){
+                items.push({
+                    label:'Удалить стикер', icon: I.trash, danger:true,
+                    onClick: async () => {
+                        const next = (pack.stickers || []).filter(s => s !== stickerUrl)
+                        const { error } = await supabase.from('sticker_packs').update({ stickers: next }).eq('id', pack.id)
+                        if(error){ window.showToast?.('error', error.message); return }
+                        pack.stickers = next
+                        window.showToast?.('success','Стикер удалён', { icon: I.check })
+                        renderStickersPanel()
+                    }
+                })
+            }
+            window.showActionSheet?.(pack.name || 'Стикерпак', items)
+        })
+    } else {
+        window.showActionSheet?.(pack.name || 'Стикерпак', items)
+    }
+}
+
+// Превью пака в DM
+function openPackPreviewDM(pack){
+    if(!pack) return
+    // Просто вызываем глобальную функцию из main.js (она уже добавлена)
+    if(typeof window.openStickerPackPreview === 'function'){
+        window.openStickerPackPreview(pack, { onSelect: (url) => {
+                sendSticker(url)
+            }})
+    }
 }
 
 async function savePublicPack(packId){

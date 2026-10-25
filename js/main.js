@@ -1080,13 +1080,18 @@ function switchScreen(name){
 
 document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => {
     const s = b.dataset.screen
-    if(s === 'direct'){
-        // Вызываем openDirectTab первым, чтобы его внутренние манипуляции
-        // с DOM не затирали нашу подсветку
-        try { openDirectTab() } catch(e){ console.warn('[direct]', e) }
 
-        // Форсим .active на кнопке direct — несколько раз,
-        // потому что openDirectTab может быть async
+    // ⚡ Закрываем полноэкранное видео при переходе на другой раздел
+    if(VFM.active) closeVideoFeed()
+
+    // ⚡ Камера Tread
+    if(s === 'new-video' || s === 'tread'){
+        openTreadCamera()
+        return
+    }
+
+    if(s === 'direct'){
+        try { openDirectTab() } catch(e){ console.warn('[direct]', e) }
         const forceDirectActive = () => {
             document.querySelectorAll('.nav-btn').forEach(x => {
                 x.classList.toggle('active', x.dataset.screen === 'direct')
@@ -2146,6 +2151,7 @@ function renderFeedFromPrefetch(list, cached, userId){
     liked.forEach(pid => syncPostLike(pid, true, 0))
     reposted.forEach(pid => syncPostRepost(pid, true, 0))
     attachFeedActions(list, userId)
+    attachStickerHandlers(list)
     list.dataset.renderedFor = 'recommended'
     list.dataset.renderedAt = String(Date.now())
     markSeen(first.map(p => p.id))
@@ -2247,6 +2253,7 @@ async function appendRecommendedChunk(list, userId, size = 5){
         const allCards = [...list.querySelectorAll('.feed-post')]
         const newCards = allCards.slice(allCards.length - enriched.length)
         newCards.forEach(card => attachHandlersToCard(card, userId))
+        attachStickerHandlers(list)
         markSeen(enriched.map(p => p.id))
         markSeen(enriched.map(p => p.id))
 
@@ -4334,6 +4341,7 @@ async function renderMyLiked(userId){
     const repostedSet = new Set((reps||[]).map(r => r.post_id))
     box.innerHTML = posts.map(p => renderProfilePost(p, user.id, likedSet, repostedSet, counts)).join('')
     attachFeedActions(box, user.id)
+    attachStickerHandlers(box)
     setTimeout(initTrackObserver, 100)
 }
 
@@ -4352,6 +4360,7 @@ async function renderMyReposts(userId){
     const repostedSet = new Set((reps||[]).map(r => r.post_id))
     box.innerHTML = posts.map(p => renderProfilePost(p, user.id, likedSet, repostedSet, counts)).join('')
     attachFeedActions(box, user.id)
+    attachStickerHandlers(box)
     setTimeout(initTrackObserver, 100)
 }
 
@@ -4390,6 +4399,7 @@ async function renderMyPosts(userId = null){
         const repostedSet = new Set((reps||[]).map(r => r.post_id))
         box.innerHTML = data.map(p => renderProfilePost(p, user.id, likedSet, repostedSet, counts)).join('')
         attachFeedActions(box, user.id)
+        attachStickerHandlers(box)
         setTimeout(initTrackObserver, 100)
     } catch(e){ box.innerHTML = `<p class="empty">Ошибка: ${e.message}</p>` }
 }
@@ -5634,7 +5644,7 @@ async function openChannel(channelId){
 
         screen.innerHTML = `
             <div class="ch-page-header">
-    <button class="topbar-btn" id="ch-back">...</button>
+    <button class="topbar-btn" id="ch-back"><</button>
     <div class="ch-header-title-wrap">
         <div class="topbar-logo-static">канал</div>
         ${headerBadge}
@@ -5890,23 +5900,16 @@ async function openChannelStickerPicker(onSelect){
 
     const [ownRes, savedRes, pubRes] = await Promise.all([
         supabase.from('sticker_packs').select('*').eq('user_id', user.id).order('created_at', { ascending:false }),
-        supabase.from('sticker_pack_saves')
-            .select('pack_id, sticker_packs(*)')
-            .eq('user_id', user.id),
-        supabase.from('sticker_packs').select('*').eq('is_public', true).limit(40)
+        supabase.from('sticker_pack_saves').select('pack_id, sticker_packs(*)').eq('user_id', user.id),
+        supabase.from('sticker_packs').select('*').eq('is_public', true).neq('user_id', user.id).limit(50)
     ])
 
-    const myPacks = [
-        ...(ownRes.data || []),
-        ...((savedRes.data || []).map(s => s.sticker_packs).filter(Boolean))
-    ]
-    const myIds = new Set(myPacks.map(p => p.id))
-    const publicPacks = (pubRes.data || []).filter(p => !myIds.has(p.id) && p.user_id !== user.id)
-
-    if(!myPacks.length && !publicPacks.length){
-        showToast('info', 'Нет доступных стикеров', { icon:'🎨' })
-        return
-    }
+    const myPacks = ownRes.data || []
+    const savedPacks = (savedRes.data || []).map(s => s.sticker_packs).filter(Boolean)
+    const ownIds = new Set(myPacks.map(p => p.id))
+    const savedIds = new Set(savedPacks.map(p => p.id))
+    const allPublic = (pubRes.data || []).filter(p => !ownIds.has(p.id) && !savedIds.has(p.id))
+    const shuffled = [...allPublic].sort(() => Math.random() - 0.5)
 
     const modal = document.createElement('div')
     modal.className = 'sticker-picker-modal'
@@ -5915,68 +5918,152 @@ async function openChannelStickerPicker(onSelect){
         <div class="sticker-picker-sheet">
             <div class="lang-sheet-handle"></div>
             <div class="sticker-picker-tabs">
-                <button class="sticker-picker-tab ${myPacks.length ? 'active' : ''}" data-tab="my">Мои · ${myPacks.length}</button>
-                <button class="sticker-picker-tab ${!myPacks.length ? 'active' : ''}" data-tab="public">Все · ${publicPacks.length}</button>
+                <button class="sticker-picker-tab active" data-tab="personal">Личные</button>
+                <button class="sticker-picker-tab" data-tab="saved">Сохранённые · ${savedPacks.length}</button>
+                <button class="sticker-picker-tab" data-tab="find">Найти</button>
             </div>
             <div class="sticker-picker-packs" id="sp-packs"></div>
             <div class="sticker-picker-grid" id="sp-grid"></div>
-        </div>
-    `
+        </div>`
     document.body.appendChild(modal)
 
-    let currentTab = myPacks.length ? 'my' : 'public'
-    let currentPack = currentTab === 'my' ? myPacks[0] : publicPacks[0]
+    let currentTab = 'personal'
+    let currentPack = null
+    let findOffset = 0
+    const FIND_BATCH = 15, FIND_MORE = 3
 
     const close = () => modal.remove()
     modal.querySelector('.sticker-picker-backdrop').onclick = close
 
-    function render(){
-        const packs = currentTab === 'my' ? myPacks : publicPacks
-        if(!currentPack || !packs.find(p => p.id === currentPack.id)){
-            currentPack = packs[0]
-        }
+    function getPacksForTab(){
+        if(currentTab === 'personal') return myPacks
+        if(currentTab === 'saved') return savedPacks
+        return shuffled.slice(0, FIND_BATCH + findOffset)
+    }
 
-        // Паки
+    function render(){
+        const packs = getPacksForTab()
+        if(!currentPack || !packs.find(p => p.id === currentPack.id)) currentPack = packs[0] || null
+
         const packsBox = modal.querySelector('#sp-packs')
         packsBox.innerHTML = packs.map(p => {
             const cover = p.stickers?.[0]
-            return `<button class="sp-pack ${currentPack?.id === p.id ? 'active' : ''}" data-pid="${p.id}">
-                ${cover ? `<img src="${cover}" alt="">` : '?'}
-            </button>`
+            return `<button class="sp-pack ${currentPack?.id === p.id ? 'active' : ''}" data-pid="${p.id}">${cover ? `<img src="${cover}">` : '?'}</button>`
         }).join('')
-        packsBox.querySelectorAll('.sp-pack').forEach(b => {
-            b.onclick = () => {
-                currentPack = packs.find(p => p.id === b.dataset.pid)
-                render()
-            }
+        packsBox.querySelectorAll('.sp-pack').forEach(b => b.onclick = () => {
+            currentPack = packs.find(p => p.id === b.dataset.pid)
+            render()
         })
 
-        // Стикеры
+        // Long-press на пак → меню
+        packsBox.querySelectorAll('.sp-pack').forEach(b => {
+            let tm = null, moved = false
+            const start = () => {
+                moved = false
+                tm = setTimeout(() => {
+                    if(moved) return
+                    const pack = packs.find(p => p.id === b.dataset.pid)
+                    if(pack) showStickerPackMenu(pack)
+                }, 480)
+            }
+            const cancel = () => { if(tm){ clearTimeout(tm); tm = null } }
+            b.addEventListener('touchstart', start, { passive:true })
+            b.addEventListener('touchmove', () => { moved = true; cancel() }, { passive:true })
+            b.addEventListener('touchend', cancel)
+            b.addEventListener('mousedown', start)
+            b.addEventListener('mouseup', cancel)
+            b.addEventListener('mouseleave', cancel)
+            b.addEventListener('contextmenu', e => {
+                e.preventDefault()
+                const pack = packs.find(p => p.id === b.dataset.pid)
+                if(pack) showStickerPackMenu(pack)
+            })
+        })
+
         const grid = modal.querySelector('#sp-grid')
         if(!currentPack || !currentPack.stickers?.length){
-            grid.innerHTML = '<p class="empty small" style="grid-column:1/-1;padding:20px;text-align:center;color:var(--text-tertiary)">Нет стикеров в этом паке</p>'
+            grid.innerHTML = '<p class="empty small" style="grid-column:1/-1;padding:20px;text-align:center;color:var(--text-tertiary)">Нет стикеров</p>'
             return
         }
-        grid.innerHTML = currentPack.stickers.map(s => `
-            <button class="sp-sticker" data-url="${s}">
-                <img src="${s}" alt="">
-            </button>
-        `).join('')
+        grid.innerHTML = currentPack.stickers.map(s =>
+            `<button class="sp-sticker" data-url="${s}"><img src="${s}" alt=""></button>`
+        ).join('')
+
         grid.querySelectorAll('.sp-sticker').forEach(b => {
-            b.onclick = () => {
-                onSelect(b.dataset.url)
-                close()
+            // Клик → выбрать стикер
+            b.addEventListener('click', () => { onSelect(b.dataset.url); close() })
+
+            // Long-press → меню пака
+            let tm = null, moved = false
+            const start = () => {
+                moved = false
+                tm = setTimeout(() => {
+                    if(moved) return
+                    showStickerPackMenu(currentPack, b.dataset.url)
+                }, 480)
             }
+            const cancel = () => { if(tm){ clearTimeout(tm); tm = null } }
+            b.addEventListener('touchstart', start, { passive:true })
+            b.addEventListener('touchmove', () => { moved = true; cancel() }, { passive:true })
+            b.addEventListener('touchend', cancel)
+            b.addEventListener('mousedown', start)
+            b.addEventListener('mouseup', cancel)
+            b.addEventListener('mouseleave', cancel)
+            b.addEventListener('contextmenu', e => { e.preventDefault(); showStickerPackMenu(currentPack, b.dataset.url) })
         })
+
+        // "Больше" для вкладки "Найти"
+        if(currentTab === 'find' && shuffled.length > FIND_BATCH + findOffset){
+            const moreBtn = document.createElement('button')
+            moreBtn.className = 'btn-gray'
+            moreBtn.style.cssText = 'width:100%;margin:12px 0 0;'
+            moreBtn.textContent = 'Показать ещё 3 пака'
+            moreBtn.onclick = () => { findOffset += FIND_MORE; render() }
+            packsBox.parentElement.insertBefore(moreBtn, packsBox.nextSibling)
+        }
     }
 
-    modal.querySelectorAll('.sticker-picker-tab').forEach(t => {
-        t.onclick = () => {
-            currentTab = t.dataset.tab
-            modal.querySelectorAll('.sticker-picker-tab').forEach(x =>
-                x.classList.toggle('active', x === t))
-            render()
+    function showStickerPackMenu(pack, stickerUrl){
+        const items = []
+        items.push({ label:'Открыть пак', icon: ICONS.channel,
+            onClick: () => openStickerPackPreview(pack, { onSelect }) })
+        items.push({
+            label:'Сохранить пак', icon: ICONS.star,
+            onClick: async () => {
+                try {
+                    await supabase.from('sticker_pack_saves').insert({ user_id: user.id, pack_id: pack.id })
+                    showToast('success', 'Пак сохранён', { icon:'✓' })
+                } catch { showToast('info', 'Уже сохранён', { icon:'ℹ️' }) }
+            }
+        })
+        if(pack.id) items.push({
+            label:'Пожаловаться на пак', icon: ICONS.flag, danger:true,
+            onClick: () => openReportModal({
+                targetType:'sticker_pack', targetId: pack.id,
+                text: pack.name, media: pack.stickers?.[0]
+            })
+        })
+        if(stickerUrl && (pack.user_id === user.id || ADMIN_STATE.isAdmin)){
+            items.push({
+                label:'Удалить стикер', icon: ICONS.trash, danger:true,
+                onClick: async () => {
+                    const next = (pack.stickers || []).filter(s => s !== stickerUrl)
+                    const { error } = await supabase.from('sticker_packs').update({ stickers: next }).eq('id', pack.id)
+                    if(error){ showToast('error', error.message); return }
+                    pack.stickers = next
+                    showToast('success','Стикер удалён',{icon:'✓'})
+                    render()
+                }
+            })
         }
+        showActionSheet(pack.name || 'Стикерпак', items)
+    }
+
+    modal.querySelectorAll('.sticker-picker-tab').forEach(t => t.onclick = () => {
+        currentTab = t.dataset.tab
+        findOffset = 0
+        modal.querySelectorAll('.sticker-picker-tab').forEach(x => x.classList.toggle('active', x === t))
+        render()
     })
 
     render()
@@ -6162,7 +6249,9 @@ async function loadChannelPosts(channelId, canPost){
     state.channelCounts = counts
     list.innerHTML = data.map(p => renderProfilePost(p, user.id, likedSet, repostedSet, counts)).join('')
     attachFeedActions(list, user.id)
+    attachStickerHandlers(list)
     applyChannelFilter()
+
     setTimeout(initTrackObserver, 100)
 }
 
@@ -9472,6 +9561,7 @@ async function renderPostsResults(box, data, ctx){
     likedIds.forEach(pid => syncPostLike(pid, true, 0))
     repostedIds.forEach(pid => syncPostRepost(pid, true, 0))
     attachFeedActions(box, user?.id)
+    attachStickerHandlers(box)
     setTimeout(initTrackObserver, 100)
 }
 
@@ -10658,7 +10748,277 @@ window.followAuthor = followAuthor;
     new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
     scan();
 })();
+/* ============================================================
+   TREAD CAMERA
+============================================================ */
+let _treadStream = null
+let _treadRecorder = null
+let _treadChunks = []
+let _treadTimerInt = null
+let _treadRecordStart = 0
 
+async function openTreadCamera(){
+    let view = document.getElementById('tread-camera-view')
+    if(!view){
+        view = document.createElement('div')
+        view.id = 'tread-camera-view'
+        view.className = 'tread-camera-view hidden'
+        view.innerHTML = `
+            <video class="tread-camera-video" id="tread-camera-video" autoplay playsinline muted></video>
+            <button class="tread-camera-back" id="tread-camera-back" aria-label="Назад">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
+            <div class="tread-camera-record-wrap">
+                <div class="tread-camera-timer" id="tread-camera-timer">0:00</div>
+                <button class="tread-camera-record" id="tread-camera-record" aria-label="Запись">
+                    <div class="tread-camera-record-inner"></div>
+                </button>
+            </div>`
+        document.body.appendChild(view)
+        view.querySelector('#tread-camera-back').addEventListener('click', closeTreadCamera)
+        view.querySelector('#tread-camera-record').addEventListener('click', toggleTreadRecording)
+    }
+    view.classList.remove('hidden')
+    try {
+        _treadStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1080 }, height: { ideal: 1920 } },
+            audio: true
+        })
+        document.getElementById('tread-camera-video').srcObject = _treadStream
+    } catch(e){
+        showToast('error', 'Не удалось открыть камеру: ' + (e.message||''), { icon:'📷', duration:4000 })
+        view.classList.add('hidden')
+    }
+}
+
+function closeTreadCamera(){
+    if(_treadRecorder && _treadRecorder.state === 'recording'){ try { _treadRecorder.stop() } catch {} }
+    if(_treadStream){ _treadStream.getTracks().forEach(t => t.stop()); _treadStream = null }
+    if(_treadTimerInt){ clearInterval(_treadTimerInt); _treadTimerInt = null }
+    const v = document.getElementById('tread-camera-view')
+    if(v) v.classList.add('hidden')
+    state.currentProfileViewId = null
+    state.viewingOwnProfile = true
+    switchScreen('home')
+}
+
+async function toggleTreadRecording(){
+    const btn = document.getElementById('tread-camera-record')
+    const timer = document.getElementById('tread-camera-timer')
+    if(!_treadStream) return
+    if(_treadRecorder && _treadRecorder.state === 'recording'){
+        _treadRecorder.stop()
+        btn?.classList.remove('recording')
+        if(_treadTimerInt){ clearInterval(_treadTimerInt); _treadTimerInt = null }
+        timer?.classList.remove('show')
+        return
+    }
+    try {
+        const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+            ? 'video/webm;codecs=vp9,opus'
+            : MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4'
+        _treadRecorder = new MediaRecorder(_treadStream, { mimeType: mime })
+        _treadChunks = []
+        _treadRecorder.ondataavailable = e => { if(e.data && e.data.size) _treadChunks.push(e.data) }
+        _treadRecorder.onstop = async () => {
+            const blob = new Blob(_treadChunks, { type: _treadRecorder.mimeType })
+            _treadChunks = []
+            await handleTreadRecording(blob)
+        }
+        _treadRecorder.start()
+        btn?.classList.add('recording')
+        _treadRecordStart = Date.now()
+        timer?.classList.add('show')
+        if(timer) timer.textContent = '0:00'
+        _treadTimerInt = setInterval(() => {
+            const sec = Math.floor((Date.now() - _treadRecordStart) / 1000)
+            if(timer){
+                const m = Math.floor(sec / 60), s = sec % 60
+                timer.textContent = m + ':' + String(s).padStart(2, '0')
+            }
+            if(sec >= 60) toggleTreadRecording()
+        }, 250)
+        try { navigator.vibrate?.(30) } catch {}
+    } catch(e){
+        showToast('error', 'Не удалось начать запись', { icon:'⚠️' })
+    }
+}
+
+async function handleTreadRecording(blob){
+    if(!blob || blob.size < 1000){ showToast('info', 'Слишком короткая запись'); return }
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user){ showToast('error', 'Войдите в аккаунт'); return }
+    closeTreadCamera()
+    const loadToast = showToast('loading', 'Загрузка видео...', { dismissible:false, duration:0 })
+    try {
+        const path = `${user.id}/tread-${Date.now()}.webm`
+        const { error:upErr } = await supabase.storage.from('posts')
+            .upload(path, blob, { contentType: blob.type || 'video/webm' })
+        if(upErr) throw upErr
+        const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
+        const { data:post, error } = await supabase.from('posts').insert({
+            content: '', author_id: user.id, media_url: pub.publicUrl
+        }).select().single()
+        if(error) throw error
+        loadToast.close()
+        showToast('success', 'Видео опубликовано', { icon:'✓' })
+        setTimeout(() => {
+            switchScreen('home')
+            setTimeout(() => {
+                const cards = document.querySelectorAll('.feed-post.feed-post-video')
+                const newCard = [...cards].find(c => c.dataset.pid === post.id)
+                if(newCard) openVideoFeed(newCard)
+            }, 500)
+        }, 300)
+    } catch(e){
+        loadToast.close()
+        showToast('error', 'Не удалось: ' + (e.message||''), { icon:'⚠️' })
+    }
+}
+/* ============================================================
+   STICKER PACK PREVIEW + LONG-PRESS MENU
+============================================================ */
+async function openStickerPackPreview(pack, options = {}){
+    if(!pack) return
+    let modal = document.getElementById('sticker-pack-modal')
+    if(!modal){
+        modal = document.createElement('div')
+        modal.id = 'sticker-pack-modal'
+        modal.className = 'sticker-pack-modal hidden'
+        modal.innerHTML = `
+            <div class="spm-backdrop"></div>
+            <div class="spm-sheet">
+                <div class="spm-handle"></div>
+                <div class="spm-header">
+                    <div class="spm-avatar" id="spm-avatar">📦</div>
+                    <div class="spm-info">
+                        <div class="spm-name" id="spm-name">Стикерпак</div>
+                        <div class="spm-count" id="spm-count"></div>
+                    </div>
+                    <button class="spm-more" id="spm-more" aria-label="Действия">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                    </button>
+                </div>
+                <div class="spm-grid" id="spm-grid"></div>
+            </div>`
+        document.body.appendChild(modal)
+        modal.querySelector('.spm-backdrop').addEventListener('click', () => modal.classList.add('hidden'))
+    }
+    const stickers = pack.stickers || []
+    const av = document.getElementById('spm-avatar')
+    if(av) av.innerHTML = stickers[0] ? `<img src="${stickers[0]}" alt="">` : '📦'
+    document.getElementById('spm-name').textContent = pack.name || 'Стикерпак'
+    document.getElementById('spm-count').textContent = `${stickers.length} стикер${stickers.length === 1 ? '' : 'ов'}`
+    const grid = document.getElementById('spm-grid')
+    grid.innerHTML = stickers.map(s =>
+        `<button class="sp-sticker" data-url="${escapeHtml(s)}"><img src="${escapeHtml(s)}" alt=""></button>`
+    ).join('')
+    grid.querySelectorAll('.sp-sticker').forEach(b => b.addEventListener('click', () => {
+        if(options.onSelect){ options.onSelect(b.dataset.url); modal.classList.add('hidden') }
+    }))
+    const moreBtn = document.getElementById('spm-more')
+    const fresh = moreBtn.cloneNode(true)
+    moreBtn.parentNode.replaceChild(fresh, moreBtn)
+    fresh.addEventListener('click', async () => {
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user) return
+        const items = []
+        if(pack.id) items.push({
+            label:'Сохранить пак', icon: ICONS.star,
+            onClick: async () => {
+                try {
+                    await supabase.from('sticker_pack_saves').insert({ user_id: user.id, pack_id: pack.id })
+                    showToast('success', 'Пак сохранён', { icon:'✓' })
+                } catch { showToast('info', 'Уже сохранён', { icon:'ℹ️' }) }
+            }
+        })
+        if(pack.id) items.push({
+            label:'Пожаловаться на пак', icon: ICONS.flag, danger:true,
+            onClick: () => openReportModal({ targetType:'sticker_pack', targetId: pack.id, text: pack.name, media: stickers[0] })
+        })
+        showActionSheet(pack.name || 'Стикерпак', items)
+    })
+    modal.classList.remove('hidden')
+}
+
+async function findPackByStickerUrl(url){
+    if(!url) return null
+    try {
+        const { data } = await supabase.from('sticker_packs')
+            .select('id, user_id, name, stickers, is_public')
+            .contains('stickers', [url]).limit(1).maybeSingle()
+        return data
+    } catch { return null }
+}
+
+async function showStickerContextMenu(stickerUrl){
+    if(!stickerUrl) return
+    const pack = await findPackByStickerUrl(stickerUrl)
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
+    const items = []
+    if(pack){
+        const packAvatarHtml = pack.stickers?.[0]
+            ? `<span class="feed-more-menu-avatar"><img src="${pack.stickers[0]}" alt=""></span>` : ''
+        items.push({ label: pack.name || 'Открыть пак', icon: packAvatarHtml,
+            onClick: () => openStickerPackPreview(pack) })
+    }
+    items.push({
+        label:'Пожаловаться на стикер', icon: ICONS.flag, danger:true,
+        onClick: () => openReportModal({
+            targetType:'sticker', targetId: pack?.id || stickerUrl,
+            text: pack?.name || 'Стикер', media: stickerUrl
+        })
+    })
+    if(pack && pack.user_id !== user.id){
+        items.push({
+            label:'Сохранить пак', icon: ICONS.star,
+            onClick: async () => {
+                try {
+                    await supabase.from('sticker_pack_saves').insert({ user_id: user.id, pack_id: pack.id })
+                    showToast('success', 'Пак сохранён', { icon:'✓' })
+                } catch { showToast('info', 'Уже сохранён', { icon:'ℹ️' }) }
+            }
+        })
+    }
+    if(pack && (pack.user_id === user.id || ADMIN_STATE.isAdmin)){
+        items.push({
+            label:'Удалить стикер', icon: ICONS.trash, danger:true,
+            onClick: async () => {
+                if(!confirm('Удалить стикер из пака?')) return
+                const next = (pack.stickers || []).filter(s => s !== stickerUrl)
+                const { error } = await supabase.from('sticker_packs').update({ stickers: next }).eq('id', pack.id)
+                if(error){ showToast('error','Ошибка: ' + error.message); return }
+                showToast('success', 'Стикер удалён', { icon:'✓' })
+            }
+        })
+    }
+    showActionSheet('Стикер', items)
+}
+
+function attachStickerHandlers(container){
+    if(!container) return
+    container.querySelectorAll('.feed-post-sticker').forEach(img => {
+        if(img.dataset.stickerBound === '1') return
+        img.dataset.stickerBound = '1'
+        let pressTimer = null, moved = false
+        const start = () => {
+            moved = false
+            pressTimer = setTimeout(() => { if(!moved) showStickerContextMenu(img.src) }, 480)
+        }
+        const cancel = () => { if(pressTimer){ clearTimeout(pressTimer); pressTimer = null } }
+        const move = () => { moved = true; cancel() }
+        img.addEventListener('touchstart', start, { passive:true })
+        img.addEventListener('touchmove', move, { passive:true })
+        img.addEventListener('touchend', cancel)
+        img.addEventListener('touchcancel', cancel)
+        img.addEventListener('mousedown', start)
+        img.addEventListener('mouseup', cancel)
+        img.addEventListener('mouseleave', cancel)
+        img.addEventListener('contextmenu', e => { e.preventDefault(); showStickerContextMenu(img.src) })
+    })
+}
+window.openStickerPackPreview = openStickerPackPreview
 boot();
 setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
