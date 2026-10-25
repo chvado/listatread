@@ -2327,6 +2327,11 @@ function attachHandlersToCard(card, userId){
         e.stopPropagation()
         await showPostMoreMenu(btn, card, userId)
     }))
+
+
+    // ⚡ ДОБАВЬ ЭТО:
+    if(card.querySelector('.feed-post-sticker')) attachStickerHandlers(card);
+
 }
 
 async function showPostMoreMenu(btn, card, userId){
@@ -2922,6 +2927,11 @@ async function attachFeedActions(list, myId){
         const card = btn.closest('.feed-post')
         await showPostMoreMenu(btn, card, myId)
     }))
+
+
+    // ⚡ ДОБАВЬ ЭТО:
+    attachStickerHandlers(list);
+
 }
 
 /* ============================================================
@@ -6149,6 +6159,7 @@ async function loadChContent(channelId, tab, canPost = false){
       <div class="ch-new-post">
         <textarea id="ch-new-text" class="ch-new-post-text" placeholder="Текст" rows="3"></textarea>
         <div class="ch-new-post-media-box" id="ch-new-media-box"></div>
+        <div class="ch-new-poll-box" id="ch-new-poll-box" style="display:none"></div>
         <div class="ch-new-post-tools">
           <button class="tool-btn" id="ch-new-emoji" title="Смайл">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="0.8" fill="currentColor"/><circle cx="15" cy="10" r="0.8" fill="currentColor"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
@@ -6156,7 +6167,14 @@ async function loadChContent(channelId, tab, canPost = false){
           <button class="tool-btn" id="ch-new-sticker" title="Стикер">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M14 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z"/><path d="M14 21v-4a3 3 0 0 1 3-3h4"/><circle cx="9" cy="10" r="0.9" fill="currentColor"/><circle cx="14" cy="10" r="0.9" fill="currentColor"/></svg>
           </button>
+          <button class="tool-btn" id="ch-new-photo" title="Фото">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>
+          </button>
+          <button class="tool-btn" id="ch-new-poll" title="Опрос">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg>
+          </button>
         </div>
+        <input type="file" id="ch-new-photo-input" accept="image/*" hidden>
         <div class="ch-new-post-footer">
           <small style="color:var(--text-secondary)">Пост канала</small>
           <button class="btn-primary" id="ch-new-publish" style="width:auto;padding:10px 20px;font-size:14px">Опубликовать</button>
@@ -6165,7 +6183,6 @@ async function loadChContent(channelId, tab, canPost = false){
       <div id="ch-posts-list"></div>
     `
         setupChannelComposer(channelId, canPost)
-
     } else {
         box.innerHTML = '<div id="ch-posts-list"></div>'
     }
@@ -6173,19 +6190,62 @@ async function loadChContent(channelId, tab, canPost = false){
 }
 
 function setupChannelComposer(channelId, canPost){
-    const mediaBox = $('ch-new-media-box'), textArea = $('ch-new-text'), publishBtn = $('ch-new-publish')
-    let attachedStickerUrl = null
+    const mediaBox   = $('ch-new-media-box')
+    const pollBox    = $('ch-new-poll-box')
+    const textArea   = $('ch-new-text')
+    const publishBtn = $('ch-new-publish')
+    const photoInput = $('ch-new-photo-input')
 
-    function renderStickerPreview(){
-        if(!attachedStickerUrl){ mediaBox.innerHTML = ''; return }
-        mediaBox.innerHTML = `
-            <div class="ch-sticker-attach">
-                <img src="${attachedStickerUrl}" alt="">
-                <button class="ch-sticker-attach-remove" id="ch-sticker-attach-remove" type="button">✕</button>
+    let attachedStickerUrl = null
+    let attachedPhotoFile  = null
+    let pollData           = null
+
+    function renderMediaPreview(){
+        mediaBox.innerHTML = ''
+        if(attachedStickerUrl){
+            mediaBox.innerHTML = `
+                <div class="ch-sticker-attach">
+                    <img src="${attachedStickerUrl}" alt="">
+                    <button class="ch-sticker-attach-remove" id="ch-sticker-attach-remove" type="button">✕</button>
+                </div>`
+            $('ch-sticker-attach-remove')?.addEventListener('click', () => {
+                attachedStickerUrl = null
+                renderMediaPreview()
+            })
+            return
+        }
+        if(attachedPhotoFile){
+            const url = URL.createObjectURL(attachedPhotoFile)
+            mediaBox.innerHTML = `
+                <div class="ch-sticker-attach">
+                    <img src="${url}" alt="">
+                    <button class="ch-sticker-attach-remove" id="ch-photo-attach-remove" type="button">✕</button>
+                </div>`
+            $('ch-photo-attach-remove')?.addEventListener('click', () => {
+                attachedPhotoFile = null
+                if(photoInput) photoInput.value = ''
+                renderMediaPreview()
+            })
+        }
+    }
+
+    function renderPollPreview(){
+        if(!pollData){ pollBox.style.display = 'none'; pollBox.innerHTML = ''; return }
+        pollBox.style.display = 'block'
+        pollBox.innerHTML = `
+            <div class="poll-builder">
+                <div class="poll-builder-head">
+                    <span>${pollData.mode === 'quiz' ? '🎯 Викторина' : '📊 Опрос'}</span>
+                    <button type="button" id="ch-poll-remove" style="margin-left:auto;background:transparent;border:none;color:var(--red-pink);font-size:13px;font-weight:700;cursor:pointer">Удалить</button>
+                </div>
+                <div style="font-size:14px;font-weight:600;margin-bottom:6px">${escapeHtml(pollData.question)}</div>
+                <div class="poll-view-options">
+                    ${pollData.options.map(o => `<div class="poll-view-option" style="pointer-events:none;cursor:default">${escapeHtml(o)}</div>`).join('')}
+                </div>
             </div>`
-        $('ch-sticker-attach-remove')?.addEventListener('click', () => {
-            attachedStickerUrl = null
-            renderStickerPreview()
+        $('ch-poll-remove')?.addEventListener('click', () => {
+            pollData = null
+            renderPollPreview()
         })
     }
 
@@ -6198,8 +6258,26 @@ function setupChannelComposer(channelId, canPost){
 
     $('ch-new-sticker')?.addEventListener('click', () => {
         openChannelStickerPicker(url => {
-            attachedStickerUrl = url          // ⚡ заменяет предыдущий
-            renderStickerPreview()
+            attachedStickerUrl = url
+            attachedPhotoFile = null
+            renderMediaPreview()
+        })
+    })
+
+    $('ch-new-photo')?.addEventListener('click', () => photoInput?.click())
+    photoInput?.addEventListener('change', e => {
+        const f = e.target.files?.[0]
+        if(!f) return
+        if(!f.type.startsWith('image/')){ showToast('error', 'Выберите фото'); return }
+        attachedPhotoFile = f
+        attachedStickerUrl = null
+        renderMediaPreview()
+    })
+
+    $('ch-new-poll')?.addEventListener('click', () => {
+        openChannelPollBuilder(data => {
+            pollData = data
+            renderPollPreview()
         })
     })
 
@@ -6208,21 +6286,47 @@ function setupChannelComposer(channelId, canPost){
             const { data:{ user } } = await supabase.auth.getUser()
             if(!user) return
             const text = textArea.value.trim()
-            if(!text && !attachedStickerUrl) return
+            if(!text && !attachedStickerUrl && !attachedPhotoFile && !pollData) return
 
             publishBtn.disabled = true
             publishBtn.textContent = 'Публикация...'
 
             const payload = { content: text, author_id: user.id, channel_id: channelId }
-            // ⚡ Стикер кладём в media_url — но с URL из бакета stickers
+
             if(attachedStickerUrl) payload.media_url = attachedStickerUrl
+
+            if(attachedPhotoFile){
+                const ext = attachedPhotoFile.name.split('.').pop() || 'jpg'
+                const path = `${user.id}/chphoto-${Date.now()}.${ext}`
+                const { error:upErr } = await supabase.storage.from('posts')
+                    .upload(path, attachedPhotoFile, { contentType: attachedPhotoFile.type })
+                if(upErr) throw upErr
+                const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
+                payload.media_url = pub.publicUrl
+            }
+
+            if(pollData){
+                payload.poll = {
+                    mode: pollData.mode || 'vote',
+                    question: pollData.question,
+                    options: pollData.options,
+                    votes: pollData.options.map(() => 0),
+                    voters: {},
+                    correct: pollData.mode === 'quiz' ? (pollData.correct ?? 0) : null
+                }
+            }
 
             const { error } = await supabase.from('posts').insert(payload)
             if(error) throw error
 
             textArea.value = ''
             mediaBox.innerHTML = ''
+            pollBox.innerHTML = ''
+            pollBox.style.display = 'none'
             attachedStickerUrl = null
+            attachedPhotoFile  = null
+            pollData           = null
+            if(photoInput) photoInput.value = ''
 
             loadChannelPosts(channelId, true)
         } catch(err){
@@ -10938,66 +11042,6 @@ async function showStickerContextMenu(stickerUrl){
     showActionSheet('Стикер', items)
 }
 
-/* ============================================================
-   STICKER — тап открывает меню + плавный выезд наверх по центру
-============================================================ */
-let _stickerPreviewEl = null;
-
-function showStickerPreviewAnimated(imgEl){
-    // убираем предыдущий, если остался
-    _stickerPreviewEl?.remove();
-
-    const rect = imgEl.getBoundingClientRect();
-    const vh   = window.innerHeight;
-
-    // размер в "большом" виде — до 40% высоты экрана, но не больше 320px
-    const bigSize = Math.min(vh * 0.40, 320, Math.max(rect.width, rect.height) * 4);
-    // позиция центра превью — над шитом (шит ~ 60% высоты снизу)
-    const centerY = vh * 0.34;
-
-    const clone = document.createElement('img');
-    clone.src = imgEl.src;
-    clone.alt = '';
-    clone.style.cssText = `
-        position: fixed;
-        left: ${rect.left}px;
-        top: ${rect.top}px;
-        width: ${rect.width}px;
-        height: ${rect.height}px;
-        object-fit: contain;
-        z-index: 9005;
-        pointer-events: none;
-        transition:
-            left .42s cubic-bezier(.22,1,.36,1),
-            top .42s cubic-bezier(.22,1,.36,1),
-            width .42s cubic-bezier(.22,1,.36,1),
-            height .42s cubic-bezier(.22,1,.36,1),
-            filter .3s ease;
-        filter: drop-shadow(0 0 0 rgba(0,0,0,0));
-        will-change: left, top, width, height;
-    `;
-    document.body.appendChild(clone);
-    _stickerPreviewEl = clone;
-
-    // стартовый кадр уже стоит (rect), запускаем к центру
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-        clone.style.left   = `calc(50% - ${bigSize / 2}px)`;
-        clone.style.top    = `${centerY - bigSize / 2}px`;
-        clone.style.width  = `${bigSize}px`;
-        clone.style.height = `${bigSize}px`;
-        clone.style.filter = 'drop-shadow(0 20px 44px rgba(0,0,0,.55))';
-    }));
-}
-
-function hideStickerPreviewAnimated(){
-    const el = _stickerPreviewEl;
-    if(!el) return;
-    el.style.transition = 'opacity .25s ease, transform .25s ease';
-    el.style.opacity = '0';
-    el.style.transform = 'scale(.85)';
-    setTimeout(() => { el.remove(); if(_stickerPreviewEl === el) _stickerPreviewEl = null; }, 260);
-}
-
 function attachStickerHandlers(container){
     if(!container) return;
     container.querySelectorAll('.feed-post-sticker').forEach(img => {
@@ -11007,76 +11051,10 @@ function attachStickerHandlers(container){
         img.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
-            openStickerTapMenu(img);
+            showStickerContextMenu(img.src);
         });
     });
 }
-
-async function openStickerTapMenu(imgEl){
-    // 1. выезд превью наверх
-    showStickerPreviewAnimated(imgEl);
-
-    // 2. показать меню
-    await showStickerContextMenu(imgEl.src, () => {
-        // колбэк закрытия шита
-        hideStickerPreviewAnimated();
-    });
-}
-
-// переопределяем showStickerContextMenu, чтобы принимать onClose
-const _origShowStickerMenu = window.showStickerContextMenu;
-window.showStickerContextMenu = async function(stickerUrl, onClose){
-    if(!stickerUrl){ onClose?.(); return; }
-    const pack = await findPackByStickerUrl(stickerUrl);
-    const { data:{ user } } = await supabase.auth.getUser();
-    if(!user){ onClose?.(); return; }
-
-    const items = [];
-    if(pack){
-        const packAvatarHtml = pack.stickers?.[0]
-            ? `<span class="feed-more-menu-avatar"><img src="${pack.stickers[0]}" alt=""></span>`
-            : '';
-        items.push({ label: pack.name || 'Открыть пак', icon: packAvatarHtml,
-            onClick: () => openStickerPackPreview(pack) });
-    }
-    items.push({
-        label:'Пожаловаться на стикер', icon: ICONS.flag, danger:true,
-        onClick: () => openReportModal({
-            targetType:'sticker', targetId: pack?.id || stickerUrl,
-            text: pack?.name || 'Стикер', media: stickerUrl
-        })
-    });
-    if(pack && pack.user_id !== user.id){
-        items.push({
-            label:'Сохранить пак', icon: ICONS.star,
-            onClick: async () => {
-                try {
-                    await supabase.from('sticker_pack_saves')
-                        .insert({ user_id: user.id, pack_id: pack.id });
-                    showToast('success', 'Пак сохранён', { icon:'✓' });
-                } catch { showToast('info', 'Уже сохранён', { icon:'ℹ️' }); }
-            }
-        });
-    }
-    if(pack && (pack.user_id === user.id || ADMIN_STATE.isAdmin)){
-        items.push({
-            label:'Удалить стикер', icon: ICONS.trash, danger:true,
-            onClick: async () => {
-                if(!confirm('Удалить стикер из пака?')) return;
-                const next = (pack.stickers || []).filter(s => s !== stickerUrl);
-                const { error } = await supabase.from('sticker_packs')
-                    .update({ stickers: next }).eq('id', pack.id);
-                if(error){ showToast('error','Ошибка: ' + error.message); return; }
-                showToast('success', 'Стикер удалён', { icon:'✓' });
-            }
-        });
-    }
-
-    // патчим closeActionSheet, чтобы вызвать onClose
-    const _prevClose = window.__stickerMenuCloseHooks || [];
-    window.__stickerMenuCloseHooks = [..._prevClose, onClose];
-    showActionSheet('Стикер', items);
-};
 window.openStickerPackPreview = openStickerPackPreview
 // Публикация из tread-studio → переход в профиль на вкладку постов
 document.addEventListener('lt:goProfilePosts', async (e) => {
@@ -11093,6 +11071,55 @@ document.addEventListener('lt:goProfilePosts', async (e) => {
         try { renderProfileTab() } catch(err){ console.warn(err) }
     }, 350)
 })
+/* ============================================================
+   POLL BUILDER для канала
+============================================================ */
+function openChannelPollBuilder(onSave){
+    document.getElementById('ch-poll-builder-modal')?.remove()
+    const m = document.createElement('div')
+    m.id = 'ch-poll-builder-modal'
+    m.className = 'ts-mini-modal'
+    m.innerHTML = `
+        <div class="ts-mini-sheet" style="max-width:420px">
+            <div class="ts-mini-title">Опрос</div>
+            <input class="ts-mini-input" id="ch-poll-q" placeholder="Вопрос..." maxlength="120">
+            <div id="ch-poll-options" style="display:flex;flex-direction:column;gap:8px"></div>
+            <button class="btn-gray" id="ch-poll-add" style="padding:10px">+ Добавить вариант</button>
+            <div class="ts-mini-actions">
+                <button class="ts-mini-btn cancel" id="ch-poll-cancel">Отмена</button>
+                <button class="ts-mini-btn confirm" id="ch-poll-ok">Готово</button>
+            </div>
+        </div>
+    `
+    document.body.appendChild(m)
+
+    const opts = m.querySelector('#ch-poll-options')
+    const addOpt = (val = '') => {
+        const row = document.createElement('div')
+        row.className = 'poll-option-row'
+        row.innerHTML = `
+            <input type="text" placeholder="Вариант" maxlength="60" value="${escapeHtml(val)}">
+            <button type="button" class="poll-option-remove" style="width:30px;height:30px;border-radius:50%;border:none;background:rgba(255,59,48,.12);color:var(--red-pink);cursor:pointer">✕</button>`
+        row.querySelector('.poll-option-remove').addEventListener('click', () => row.remove())
+        opts.appendChild(row)
+    }
+    addOpt(); addOpt()
+
+    m.querySelector('#ch-poll-add').addEventListener('click', () => {
+        if(opts.children.length >= 8){ showToast('info', 'Максимум 8 вариантов'); return }
+        addOpt()
+    })
+    m.querySelector('#ch-poll-cancel').addEventListener('click', () => m.remove())
+    m.querySelector('#ch-poll-ok').addEventListener('click', () => {
+        const question = m.querySelector('#ch-poll-q').value.trim()
+        const options = [...opts.querySelectorAll('input')].map(i => i.value.trim()).filter(Boolean)
+        if(!question){ showToast('error', 'Введите вопрос'); return }
+        if(options.length < 2){ showToast('error', 'Минимум 2 варианта'); return }
+        onSave({ mode:'vote', question, options })
+        m.remove()
+    })
+    setTimeout(() => m.querySelector('#ch-poll-q')?.focus(), 100)
+}
 boot();
 setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })

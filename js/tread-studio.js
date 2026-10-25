@@ -1,53 +1,59 @@
 /* ============================================================
-   TREAD STUDIO — камера / редактор / публикация
-   ============================================================ */
+   TREAD STUDIO v3 — камера / редактор / публикация
+   Всё белое, плавные анимации, меню через ts-sheet-modal
+============================================================ */
 import { supabase } from './supabase.js'
 
+/* ============================================================
+   SVG ИКОНКИ
+============================================================ */
 const SVG_TS = {
-    flip:   '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.5"/><path d="M17 12h.01"/></svg>',
-    flashOn:'<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>',
-    flashOff:'<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7z" opacity=".4"/><path d="M2 2l20 20"/></svg>',
-    text:   '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14M12 5v15M8 20h8"/></svg>',
-    photo:  '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>',
-    track:  '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
-    album:  '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>',
-    poll:   '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg>',
-    sticker:'<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z"/><path d="M14 21v-4a3 3 0 0 1 3-3h4"/></svg>',
-    chevDown:'<svg viewBox="0 0 24 24" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
-    musicNote:'<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
-    effects:'<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12s1.5-2 4-2 4 2 4 2"/><circle cx="9" cy="9" r=".8" fill="currentColor"/><circle cx="15" cy="9" r=".8" fill="currentColor"/></svg>',
-    back:   '<svg viewBox="0 0 24 24" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
+    flip:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.5"/><path d="M17 12h.01"/></svg>',
+    flashOn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>',
+    flashOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7z" opacity=".4"/><path d="M2 2l20 20"/></svg>',
+    text:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14M12 5v15M8 20h8"/></svg>',
+    photo:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>',
+    track:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+    album:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>',
+    poll:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg>',
+    sticker:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z"/><path d="M14 21v-4a3 3 0 0 1 3-3h4"/></svg>',
+    chevDown:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+    musicNote:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+    effects:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12s1.5-2 4-2 4 2 4 2"/><circle cx="9" cy="9" r=".8" fill="currentColor"/><circle cx="15" cy="9" r=".8" fill="currentColor"/></svg>',
+    back:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
     check:  '<svg viewBox="0 0 24 24" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-11"/></svg>',
-    filter: '<svg viewBox="0 0 24 24" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg>',
-    textE:  '<svg viewBox="0 0 24 24" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14M12 5v15M8 20h8"/></svg>',
-    stickerE:'<svg viewBox="0 0 24 24" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z"/><path d="M14 21v-4a3 3 0 0 1 3-3h4"/></svg>',
-    soundE: '<svg viewBox="0 0 24 24" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>',
-    editE:  '<svg viewBox="0 0 24 24" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>',
-    wmE:    '<svg viewBox="0 0 24 24" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="4"/><path d="M7 17l10-10"/></svg>',
-    subsE:  '<svg viewBox="0 0 24 24" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h3M13 12h4M7 16h7M16 16h1"/></svg>',
-    dlE:    '<svg viewBox="0 0 24 24" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 11l6 6 6-6M5 21h14"/></svg>'
+    filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg>',
+    textE:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14M12 5v15M8 20h8"/></svg>',
+    stickerE:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z"/><path d="M14 21v-4a3 3 0 0 1 3-3h4"/></svg>',
+    soundE: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>',
+    editE:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>',
+    wmE:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="4"/><path d="M7 17l10-10"/></svg>',
+    subsE:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h3M13 12h4M7 16h7M16 16h1"/></svg>',
+    dlE:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 11l6 6 6-6M5 21h14"/></svg>'
 }
 
+/* ============================================================
+   STATE
+============================================================ */
 const TS = {
-    root:        null,
-    videoEl:     null,
-    stream:      null,
-    facing:      'environment',
-    flashOn:     false,
-    selectedChannel: null,      // { id, name, avatar_url, kind:'personal'|'public' }
+    root: null,
+    videoEl: null,
+    stream: null,
+    facing: 'environment',
+    flashOn: false,
+    selectedChannel: null,
     selectedTime: 15,
-    recorder:    null,
-    chunks:      [],
+    recorder: null,
+    chunks: [],
     recordStart: 0,
-    timerInt:    null,
+    timerInt: null,
     progressInt: null,
-    galleryFile: null,          // выбранное видео из галереи
     recordedBlob: null,
-    selectedTrack: null,        // { id, name, author, cover, src, duration, startAt }
+    selectedTrack: null,
     selectedEffect: 'none',
-    overlays:    [],            // { type:'text'|'sticker', content, x, y }
-    activeTab:   'record',      // record | editor | publish
-    audio:       null,          // Audio для проигрывания трека во время записи
+    overlays: [],
+    activeTab: 'record',
+    audio: null,
     _trackOffset: 0,
 }
 
@@ -63,7 +69,6 @@ export async function openTreadStudio(){
     }
     TS.root.classList.remove('hidden')
     document.body.style.overflow = 'hidden'
-
     await renderCameraScreen()
 }
 
@@ -72,15 +77,15 @@ export function closeTreadStudio(){
     try { TS.audio?.pause() } catch {}
     if(TS.timerInt){ clearInterval(TS.timerInt); TS.timerInt = null }
     if(TS.progressInt){ clearInterval(TS.progressInt); TS.progressInt = null }
+    document.body.classList.remove('ts-recording')
+    document.body.style.overflow = ''
     TS.stream = null
     TS.audio = null
     TS.recordedBlob = null
-    TS.galleryFile = null
     TS.selectedTrack = null
     TS.overlays = []
     TS.selectedEffect = 'none'
     if(TS.root){ TS.root.classList.add('hidden'); TS.root.innerHTML = '' }
-    document.body.style.overflow = ''
 }
 
 /* ============================================================
@@ -111,7 +116,7 @@ async function renderCameraScreen(){
             ${renderSideBtn('text',  SVG_TS.text,    'Текстовый тред',  true, null, true)}
             ${renderSideBtn('photo', SVG_TS.photo,   'Фото тред',       true, null, true)}
             ${renderSideBtn('track', SVG_TS.track,   'Выложить трек',   true, null, true)}
-            <div id="ts-side-more" style="display:none">
+            <div id="ts-side-more">
                 ${renderSideBtn('album',   SVG_TS.album,   'Альбомы',        true, null, true)}
                 ${renderSideBtn('poll',    SVG_TS.poll,    'Опросы',         true, null, true)}
                 ${renderSideBtn('sticker', SVG_TS.sticker, 'Стикер тред',    true, null, true)}
@@ -132,7 +137,7 @@ async function renderCameraScreen(){
             </div>
             <div class="ts-record-row">
                 <button class="ts-gallery" id="ts-gallery" disabled>
-                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8">
                         <rect x="3" y="4" width="18" height="16" rx="3"/>
                         <circle cx="9" cy="10" r="2"/>
                         <path d="M3 18l5-5 4 4 3-3 6 6"/>
@@ -143,7 +148,6 @@ async function renderCameraScreen(){
                 </button>
                 <button class="ts-effects-btn" id="ts-effects" disabled>
                     ${SVG_TS.effects}
-                    <span>Эффекты</span>
                 </button>
             </div>
             <button class="ts-track-strip" id="ts-track-strip" disabled>
@@ -154,47 +158,24 @@ async function renderCameraScreen(){
         </div>
     `
 
-    // ссылки
-    const previewEl = root.querySelector('#ts-preview')
-    TS.videoEl = previewEl
-    TS.previewEl = previewEl
+    TS.videoEl = root.querySelector('#ts-preview')
 
-    // камера
-    try {
-        await startCamera()
-    } catch(e){
+    try { await startCamera() } catch(e){
         console.warn('[tstudio camera]', e)
         showToastLocal('Камера недоступна: ' + (e.message || ''), 'error')
     }
 
-    // обновляем состояние кнопок в зависимости от канала
     refreshChannelDependentState()
 
-    // ── ОБРАБОТЧИКИ ──
-    root.querySelector('#ts-back').addEventListener('click', () => {
-        closeTreadStudio()
-    })
-
-    root.querySelector('#ts-channel-pill').addEventListener('click', () => {
-        openChannelPicker()
-    })
+    root.querySelector('#ts-back').addEventListener('click', closeTreadStudio)
+    root.querySelector('#ts-channel-pill').addEventListener('click', openChannelPicker)
 
     root.querySelector('#ts-side-expand').addEventListener('click', () => {
         const more = root.querySelector('#ts-side-more')
         const exp  = root.querySelector('#ts-side-expand')
-        const side = root.querySelector('#ts-side')
-        const isOpen = more.style.display !== 'none'
-        if(isOpen){
-            more.style.display = 'none'
-            side.classList.remove('expanded')
-            exp.classList.remove('open')
-        } else {
-            more.style.display = 'flex'
-            more.style.flexDirection = 'column'
-            more.style.gap = '10px'
-            side.classList.add('expanded')
-            exp.classList.add('open')
-        }
+        const isOpen = more.classList.contains('open')
+        more.classList.toggle('open', !isOpen)
+        exp.classList.toggle('open', !isOpen)
     })
 
     root.querySelectorAll('.ts-side-btn').forEach(btn => {
@@ -226,6 +207,7 @@ async function renderCameraScreen(){
 
     root.querySelector('#ts-track-strip').addEventListener('click', () => {
         if(!TS.selectedChannel) return
+        if(TS.selectedTrack) return
         openTrackPicker()
     })
 }
@@ -233,12 +215,12 @@ async function renderCameraScreen(){
 function renderSideBtn(key, icon, label, withLabel, extraClass, disabled){
     const cls = 'ts-side-btn' + (extraClass ? ' ' + extraClass : '')
     const dis = disabled ? 'disabled' : ''
-    return `<button class="${cls}" data-k="${key}" ${dis} title="${label}">
-        ${icon}
-        <span class="ts-side-label">${label}</span>
-    </button>`
+    return `<button class="${cls}" data-k="${key}" ${dis} title="${label}">${icon}</button>`
 }
 
+/* ============================================================
+   КАМЕРА
+============================================================ */
 async function startCamera(){
     if(TS.stream) return
     TS.stream = await navigator.mediaDevices.getUserMedia({
@@ -261,7 +243,6 @@ function refreshChannelDependentState(){
     const has = !!TS.selectedChannel
     const root = TS.root; if(!root) return
 
-    // канал-пилюля
     const pill = root.querySelector('#ts-channel-pill')
     const ava  = root.querySelector('#ts-channel-ava')
     const name = root.querySelector('#ts-channel-name')
@@ -271,7 +252,6 @@ function refreshChannelDependentState(){
         : '?'
     if(name) name.textContent = TS.selectedChannel ? TS.selectedChannel.name : 'выберите канал'
 
-    // запись / галерея / эффекты / трек
     const rec = root.querySelector('#ts-record')
     const gal = root.querySelector('#ts-gallery')
     const eff = root.querySelector('#ts-effects')
@@ -281,50 +261,52 @@ function refreshChannelDependentState(){
     if(eff) eff.disabled = !has
     if(trk) trk.disabled = !has
 
-    // боковые кнопки, которые работают только с каналом
     root.querySelectorAll('.ts-side-btn[data-k="text"],.ts-side-btn[data-k="photo"],.ts-side-btn[data-k="track"],.ts-side-btn[data-k="album"],.ts-side-btn[data-k="poll"],.ts-side-btn[data-k="sticker"]')
         .forEach(b => b.disabled = !has)
 }
 
 /* ============================================================
-   ВЫБОР КАНАЛА
+   ВЫБОР КАНАЛА — только общественные, в которых подписан
 ============================================================ */
 async function openChannelPicker(){
-    const { data:{ user } } = await supabase.auth.getUser()
-    if(!user) return
-
-    // грузим каналы
-    const { data:mine } = await supabase.from('channels')
-        .select('id, name, avatar_url, channel_type')
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending:false })
+    const { data:{ user }, error } = await supabase.auth.getUser()
+    if(error || !user){ showToastLocal('Войдите в аккаунт', 'error'); return }
 
     const { data:subs } = await supabase.from('subscriptions')
-        .select('channels ( id, name, avatar_url, channel_type, owner_id )')
+        .select('channels ( id, name, avatar_url, channel_type )')
         .eq('follower_id', user.id)
 
-    const subsFiltered = (subs || [])
+    const channels = (subs || [])
         .map(s => s.channels)
-        .filter(c => c && c.owner_id !== user.id && c.channel_type !== 'private' && c.channel_type !== 'bycode')
+        .filter(c => c && c.channel_type === 'public')
 
-    // существующий шит?
-    let sheet = document.getElementById('ts-channel-sheet')
-    if(sheet) sheet.remove()
+    document.getElementById('ts-channel-sheet')?.remove()
 
-    sheet = document.createElement('div')
+    const sheet = document.createElement('div')
     sheet.id = 'ts-channel-sheet'
-    sheet.className = 'ts-channel-sheet'
+    sheet.className = 'ts-sheet-modal'
     sheet.innerHTML = `
-        <div class="ts-channel-sheet-title">Выберите канал</div>
-        <div class="ts-channel-group-title">Личные</div>
-        ${(mine || []).length
-        ? (mine || []).map(c => renderChannelItem(c, 'personal')).join('')
-        : '<div style="padding:10px 12px;color:var(--text-secondary);font-size:13px">Нет личных каналов</div>'}
-        <div class="ts-channel-group-title">Общественные</div>
-        ${subsFiltered.length
-        ? subsFiltered.map(c => renderChannelItem(c, 'public')).join('')
-        : '<div style="padding:10px 12px;color:var(--text-secondary);font-size:13px">Нет подписок</div>'}
-    `
+        <div class="ts-sheet-backdrop"></div>
+        <div class="ts-sheet-body">
+            <div class="ts-sheet-handle"></div>
+            <div class="ts-sheet-title">Выберите канал</div>
+            <div class="ts-channel-list">
+                ${channels.length
+        ? channels.map(c => {
+            const ava = c.avatar_url
+                ? `<img src="${c.avatar_url}" alt="">`
+                : (c.name || 'K').charAt(0).toUpperCase()
+            return `<button class="ts-channel-item" data-id="${c.id}" data-name="${escapeHtml(c.name || 'Канал')}" data-ava="${c.avatar_url || ''}">
+                            <span class="ts-channel-item-ava">${ava}</span>
+                            <span class="ts-channel-item-info">
+                                <div class="ts-channel-item-name">${escapeHtml(c.name || 'Канал')}</div>
+                                <div class="ts-channel-item-sub">Общественный канал</div>
+                            </span>
+                        </button>`
+        }).join('')
+        : '<p style="text-align:center;padding:40px 16px;color:var(--text-secondary);font-size:14px;line-height:1.5">Нет общественных каналов.<br>Подпишитесь на канал, чтобы публиковать в него</p>'}
+            </div>
+        </div>`
     document.body.appendChild(sheet)
 
     sheet.addEventListener('click', e => {
@@ -333,26 +315,14 @@ async function openChannelPicker(){
             TS.selectedChannel = {
                 id: item.dataset.id,
                 name: item.dataset.name,
-                avatar_url: item.dataset.ava,
-                kind: item.dataset.kind
+                avatar_url: item.dataset.ava
             }
             sheet.remove()
             refreshChannelDependentState()
             return
         }
-        if(e.target === sheet) sheet.remove()
+        if(e.target.closest('.ts-sheet-backdrop')) sheet.remove()
     })
-}
-
-function renderChannelItem(c, kind){
-    const ava = c.avatar_url ? `<img src="${c.avatar_url}" alt="">` : (c.name || 'K').charAt(0).toUpperCase()
-    return `<button class="ts-channel-item" data-id="${c.id}" data-name="${escapeHtml(c.name || 'Канал')}" data-ava="${c.avatar_url || ''}" data-kind="${kind}">
-        <span class="ts-channel-item-ava">${ava}</span>
-        <span class="ts-channel-item-info">
-            <div class="ts-channel-item-name">${escapeHtml(c.name || 'Канал')}</div>
-            <div class="ts-channel-item-sub">${kind === 'personal' ? 'Личный канал' : 'Общественный'}</div>
-        </span>
-    </button>`
 }
 
 /* ============================================================
@@ -364,12 +334,8 @@ async function handleSideAction(key){
         return
     }
     switch(key){
-        case 'flip':
-            await flipCamera()
-            return
-        case 'flash':
-            await toggleFlash()
-            return
+        case 'flip': await flipCamera(); return
+        case 'flash': await toggleFlash(); return
         case 'text':
         case 'photo':
         case 'poll':
@@ -405,37 +371,31 @@ async function toggleFlash(){
     const btn = TS.root?.querySelector('.ts-side-btn[data-k="flash"]')
     if(btn){
         btn.classList.toggle('active', TS.flashOn)
-        btn.innerHTML = (TS.flashOn ? SVG_TS.flashOn : SVG_TS.flashOff) + '<span class="ts-side-label">Вспышка</span>'
+        btn.innerHTML = TS.flashOn ? SVG_TS.flashOn : SVG_TS.flashOff
     }
 }
 
 /* ============================================================
-   БЫСТРЫЙ КОМПОЗЕР (текст/фото/опрос/стикер)
-   → отправляем в канал и подсвечиваем окно публикации
-   ============================================================ */
+   БЫСТРЫЙ КОМПОЗЕР — открывает канал и кликает по нужной кнопке
+============================================================ */
 async function openChannelQuickComposer(kind){
     if(!TS.selectedChannel) return
     closeTreadStudio()
 
-    // открываем канал
     if(typeof window.__ltOpenChannel === 'function'){
         await window.__ltOpenChannel(TS.selectedChannel.id)
     } else {
-        // fallback через кастомное событие
         document.dispatchEvent(new CustomEvent('lt:openChannel', { detail: { id: TS.selectedChannel.id } }))
     }
 
-    // ждём, пока канал отрисуется
     await new Promise(r => setTimeout(r, 700))
 
-    // ищем композер канала
     const composer = document.getElementById('ch-new-post')
     if(!composer){
         showToastLocal('Не удалось открыть канал', 'error')
         return
     }
 
-    // ── подсветка + мигание кнопки ──
     composer.scrollIntoView({ behavior: 'smooth', block: 'center' })
     composer.style.transition = 'box-shadow .4s ease'
     composer.style.boxShadow = '0 0 0 3px var(--blue), 0 8px 32px rgba(10,132,255,.35)'
@@ -452,44 +412,21 @@ async function openChannelQuickComposer(kind){
         }, 500)
     }
 
-    // через 5 секунд убираем подсветку
-    setTimeout(() => {
-        composer.style.boxShadow = ''
-    }, 5000)
+    setTimeout(() => { composer.style.boxShadow = '' }, 5000)
 
-    // ── активация нужного режима ──
     const textArea = composer.querySelector('#ch-new-text')
-    if(kind === 'text' || kind === 'photo' || kind === 'sticker' || kind === 'poll'){
-        // фокус в textarea
-        if(textArea) textArea.focus()
-        // для опросов/стикеров — открываем соответствующий пикер
-        if(kind === 'sticker'){
-            composer.querySelector('#ch-new-sticker')?.click()
-        }
-        if(kind === 'photo'){
-            // программно триггерим file-input (если есть)
-            const fileInput = composer.querySelector('#ch-new-photo-input')
-            if(fileInput) fileInput.click()
-            else showToastLocal('Прикрепите фото через композер', 'info')
-        }
-        if(kind === 'poll'){
-            showToastLocal('Опрос: откроется в композере канала', 'info')
-        }
-    }
+    if(kind === 'text'){ textArea?.focus() }
+    if(kind === 'sticker'){ composer.querySelector('#ch-new-sticker')?.click() }
+    if(kind === 'photo'){ composer.querySelector('#ch-new-photo')?.click() }
+    if(kind === 'poll'){ composer.querySelector('#ch-new-poll')?.click() }
 }
 
 /* ============================================================
    ЗАПИСЬ
-   ============================================================ */
+============================================================ */
 async function startRecording(){
-    if(!TS.selectedChannel){
-        showToastLocal('Сначала выберите канал', 'info')
-        return
-    }
-    if(!TS.stream){
-        showToastLocal('Камера недоступна', 'error')
-        return
-    }
+    if(!TS.selectedChannel){ showToastLocal('Сначала выберите канал', 'info'); return }
+    if(!TS.stream){ showToastLocal('Камера недоступна', 'error'); return }
     try {
         const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
             ? 'video/webm;codecs=vp9,opus'
@@ -525,21 +462,21 @@ function showRecordingUI(on){
     const root = TS.root; if(!root) return
     const bar   = root.querySelector('#ts-rec-bar')
     const timer = root.querySelector('#ts-rec-timer')
-    const ctrls = root.querySelector('#ts-controls')
     const recBtn= root.querySelector('#ts-record')
 
     if(on){
-        bar.classList.add('active')
-        timer.classList.add('active')
-        ctrls.classList.add('hidden-during-rec')
-        recBtn.classList.add('recording')
+        document.body.classList.add('ts-recording')
+        bar?.classList.add('active')
+        timer?.classList.add('active')
+        recBtn?.classList.add('recording')
     } else {
-        bar.classList.remove('active')
-        timer.classList.remove('active')
-        ctrls.classList.remove('hidden-during-rec')
-        recBtn.classList.remove('recording')
-        root.querySelector('#ts-rec-bar-fill').style.width = '0%'
-        timer.textContent = '0:00'
+        document.body.classList.remove('ts-recording')
+        bar?.classList.remove('active')
+        timer?.classList.remove('active')
+        recBtn?.classList.remove('recording')
+        const fill = root.querySelector('#ts-rec-bar-fill')
+        if(fill) fill.style.width = '0%'
+        if(timer) timer.textContent = '0:00'
     }
 }
 
@@ -569,14 +506,13 @@ function playSelectedTrackIfAny(){
         TS.audio.currentTime = TS.selectedTrack.startAt || 0
         TS.audio.volume = 0.9
         TS.audio.play().catch(()=>{})
-        // авто-стоп по окончании сьёмки
         setTimeout(() => { try { TS.audio?.pause() } catch {} }, TS.selectedTime * 1000 + 100)
     } catch(e){ console.warn('[track play]', e) }
 }
 
 /* ============================================================
    ГАЛЕРЕЯ
-   ============================================================ */
+============================================================ */
 async function handleGalleryFile(file){
     if(!TS.selectedChannel){ showToastLocal('Сначала выберите канал', 'info'); return }
     if(!file.type.startsWith('video/')){ showToastLocal('Выберите видео', 'error'); return }
@@ -586,19 +522,18 @@ async function handleGalleryFile(file){
 
 /* ============================================================
    ЭФФЕКТЫ
-   ============================================================ */
+============================================================ */
 function openEffectsSheet(){
-    let sheet = document.getElementById('ts-effects-sheet')
-    if(sheet) sheet.remove()
+    document.getElementById('ts-effects-sheet')?.remove()
 
-    sheet = document.createElement('div')
+    const sheet = document.createElement('div')
     sheet.id = 'ts-effects-sheet'
-    sheet.className = 'ts-effects-sheet'
+    sheet.className = 'ts-sheet-modal'
     sheet.innerHTML = `
-        <div class="ts-track-backdrop"></div>
-        <div class="ts-effects-body">
-            <div class="lang-sheet-handle"></div>
-            <div class="ts-effects-title">Эффекты</div>
+        <div class="ts-sheet-backdrop"></div>
+        <div class="ts-sheet-body">
+            <div class="ts-sheet-handle"></div>
+            <div class="ts-sheet-title">Эффекты</div>
             <div class="ts-effects-grid">
                 ${renderEffectCard('none',  'Оригинал', SVG_TS.effects)}
                 ${renderEffectCard('warm',  'Тёплый',   SVG_TS.effects)}
@@ -608,8 +543,7 @@ function openEffectsSheet(){
                 ${renderEffectCard('ov-stars',  'Звёзды',   SVG_TS.effects)}
                 ${renderEffectCard('ov-neon',   'Неон',     SVG_TS.effects)}
             </div>
-        </div>
-    `
+        </div>`
     document.body.appendChild(sheet)
 
     sheet.addEventListener('click', e => {
@@ -619,7 +553,7 @@ function openEffectsSheet(){
             sheet.remove()
             return
         }
-        if(e.target.closest('.ts-track-backdrop')) sheet.remove()
+        if(e.target.closest('.ts-sheet-backdrop')) sheet.remove()
     })
 }
 
@@ -648,31 +582,30 @@ function applyEffect(key){
 }
 
 /* ============================================================
-   ВЫБОР ТРЕКА
-   ============================================================ */
+   ВЫБОР ТРЕКА — 2 колонки
+============================================================ */
 async function openTrackPicker(){
-    let sheet = document.getElementById('ts-track-sheet')
-    if(sheet) sheet.remove()
+    document.getElementById('ts-track-sheet')?.remove()
     TS._trackOffset = 0
 
-    sheet = document.createElement('div')
+    const sheet = document.createElement('div')
     sheet.id = 'ts-track-sheet'
-    sheet.className = 'ts-track-sheet'
+    sheet.className = 'ts-sheet-modal'
     sheet.innerHTML = `
-        <div class="ts-track-backdrop"></div>
-        <div class="ts-track-body">
-            <div class="lang-sheet-handle"></div>
-            <div class="ts-track-title">Популярные треки</div>
+        <div class="ts-sheet-backdrop"></div>
+        <div class="ts-sheet-body">
+            <div class="ts-sheet-handle"></div>
+            <div class="ts-sheet-title">Добавить трек</div>
             <div class="ts-track-grid" id="ts-track-grid"></div>
-            <button class="ts-track-more" id="ts-track-more">Ещё 5</button>
-        </div>
-    `
+            <button class="ts-track-more" id="ts-track-more">Показать ещё</button>
+        </div>`
     document.body.appendChild(sheet)
 
     sheet.addEventListener('click', e => {
-        if(e.target.closest('.ts-track-backdrop')){ sheet.remove(); return }
+        if(e.target.closest('.ts-sheet-backdrop')){ sheet.remove(); return }
         const card = e.target.closest('.ts-track-card')
         if(card){
+            sheet.remove()
             openTrimPicker({
                 id: card.dataset.id,
                 name: card.dataset.name,
@@ -683,9 +616,7 @@ async function openTrackPicker(){
             })
             return
         }
-        if(e.target.closest('#ts-track-more')){
-            loadTracks(true)
-        }
+        if(e.target.closest('#ts-track-more')) loadTracks(true)
     })
 
     loadTracks(false)
@@ -701,7 +632,6 @@ async function loadTracks(more){
         TS._trackOffset += 5
     }
 
-    // треки = посты с аудио, отсортированные по лайкам (упрощённо — по дате)
     const { data, error } = await supabase.from('posts')
         .select('id, content, media_url, media_title, created_at, author_id, profiles:author_id ( username, full_name, avatar_url )')
         .not('media_url', 'is', null)
@@ -736,7 +666,6 @@ async function loadTracks(more){
     if(more){ grid.insertAdjacentHTML('beforeend', html) }
     else    { grid.innerHTML = html }
 
-    // метаданные (длительность)
     grid.querySelectorAll('.ts-track-card').forEach(card => {
         if(card.dataset.durLoaded === '1') return
         const src = card.dataset.src
@@ -751,30 +680,28 @@ async function loadTracks(more){
         })
     })
 
-    if(btn){ btn.disabled = false; btn.textContent = 'Ещё 5' }
+    if(btn){ btn.disabled = false; btn.textContent = 'Показать ещё' }
 }
 
 /* ============================================================
-   ВЫБОР ОТРЕЗКА ТРЕКА
+   ТРИМ-ПИКЕР
 ============================================================ */
 function openTrimPicker(track){
-    let sheet = document.getElementById('ts-trim-sheet')
-    if(sheet) sheet.remove()
+    document.getElementById('ts-trim-sheet')?.remove()
 
     const totalDur = track.duration || 30
     const needDur  = TS.selectedTime
-    const maxStart = Math.max(0, totalDur - needDur)
     const pctWidth = Math.min(100, needDur / totalDur * 100)
     let startAt = 0
 
-    sheet = document.createElement('div')
+    const sheet = document.createElement('div')
     sheet.id = 'ts-trim-sheet'
-    sheet.className = 'ts-trim-sheet'
+    sheet.className = 'ts-sheet-modal'
     sheet.innerHTML = `
-        <div class="ts-track-backdrop"></div>
-        <div class="ts-trim-body">
-            <div class="lang-sheet-handle"></div>
-            <div class="ts-trim-title">${escapeHtml(track.name)} · ${escapeHtml(track.author)}</div>
+        <div class="ts-sheet-backdrop"></div>
+        <div class="ts-sheet-body">
+            <div class="ts-sheet-handle"></div>
+            <div class="ts-sheet-title">${escapeHtml(track.name)} · ${escapeHtml(track.author)}</div>
             <div class="ts-trim-wave" id="ts-trim-wave">
                 <div class="ts-trim-wave-inner"></div>
                 <div class="ts-trim-sel" id="ts-trim-sel" style="left:0;width:${pctWidth}%"></div>
@@ -788,7 +715,6 @@ function openTrimPicker(track){
     `
     document.body.appendChild(sheet)
 
-    // drag выбора
     const wave = sheet.querySelector('#ts-trim-wave')
     const sel  = sheet.querySelector('#ts-trim-sel')
     const tStart = sheet.querySelector('#ts-trim-start')
@@ -809,21 +735,15 @@ function openTrimPicker(track){
     wave.addEventListener('pointerup',   () => { drag = false })
 
     sheet.addEventListener('click', e => {
-        if(e.target.closest('.ts-track-backdrop')){ sheet.remove(); return }
+        if(e.target.closest('.ts-sheet-backdrop')){ sheet.remove(); return }
         if(e.target.closest('#ts-trim-use')){
             TS.selectedTrack = { ...track, startAt }
             sheet.remove()
-            closeOtherTrackSheets()
             renderSelectedTrackStrip()
             showToastLocal('Трек выбран', 'success')
             return
         }
     })
-}
-
-function closeOtherTrackSheets(){
-    document.getElementById('ts-track-sheet')?.remove()
-    document.getElementById('ts-trim-sheet')?.remove()
 }
 
 function renderSelectedTrackStrip(){
@@ -838,9 +758,7 @@ function renderSelectedTrackStrip(){
         <span class="ts-track-sep">·</span>
         <span class="ts-track-author">${escapeHtml(t.author)}</span>
     `
-    // меняем поведение — теперь показывает модалку «убрать/заменить»
     btn.onclick = () => {
-        // small confirm
         if(confirm('Убрать трек?')){
             TS.selectedTrack = null
             btn.classList.remove('selected')
@@ -851,17 +769,21 @@ function renderSelectedTrackStrip(){
 }
 
 /* ============================================================
-   РЕДАКТОР
+   РЕДАКТОР — видео с полями, музыка играет
 ============================================================ */
 async function openEditor(blob){
     TS.activeTab = 'editor'
     stopCameraStream()
 
+    const hasTrack = !!TS.selectedTrack?.src
+
     const root = TS.root
     root.innerHTML = `
         <div class="ts-editor" id="ts-editor">
-            <video class="ts-editor-video" id="ts-editor-video" controls playsinline autoplay></video>
-            <div id="ts-overlays-layer" style="position:absolute;inset:0;z-index:5;pointer-events:none"></div>
+            <div class="ts-editor-video-wrap">
+                <video class="ts-editor-video" id="ts-editor-video" playsinline ${hasTrack ? 'muted' : ''} autoplay loop></video>
+            </div>
+            <div id="ts-overlays-layer" class="ts-overlays-layer"></div>
             <div class="ts-editor-side" id="ts-editor-side">
                 ${editorSideBtn('sound', SVG_TS.soundE, 'Звук', TS.selectedTrack?.cover)}
                 ${editorSideBtn('filter', SVG_TS.filter, 'Фильтры')}
@@ -884,20 +806,35 @@ async function openEditor(blob){
     vid.src = url
     vid.dataset.objectUrl = url
     vid.play().catch(()=>{})
-    // применяем выбранный фильтр
+
     if(TS.selectedEffect === 'warm')    vid.classList.add('filter-warm')
     if(TS.selectedEffect === 'cool')    vid.classList.add('filter-cool')
     if(TS.selectedEffect === 'vintage') vid.classList.add('filter-vintage')
 
-    // ── кнопки редактора ──
+    // ⚡ МУЗЫКА НА 2 ЭТАПЕ
+    if(hasTrack){
+        try {
+            TS.audio?.pause()
+            TS.audio = new Audio(TS.selectedTrack.src)
+            TS.audio.currentTime = TS.selectedTrack.startAt || 0
+            TS.audio.volume = 1
+            TS.audio.loop = true
+            TS.audio.play().catch(()=>{})
+        } catch(e){ console.warn('[editor audio]', e) }
+    }
+
     root.querySelectorAll('.ts-editor-side-btn').forEach(b => {
         b.addEventListener('click', () => handleEditorAction(b.dataset.k))
     })
     root.querySelector('#ts-editor-delete').addEventListener('click', () => {
         if(!confirm('Удалить видео?')) return
+        try { TS.audio?.pause() } catch {}
         closeTreadStudio()
     })
-    root.querySelector('#ts-editor-continue').addEventListener('click', () => openPublishScreen())
+    root.querySelector('#ts-editor-continue').addEventListener('click', () => {
+        try { TS.audio?.pause() } catch {}
+        openPublishScreen()
+    })
 }
 
 function editorSideBtn(key, icon, label, avatar){
@@ -940,15 +877,16 @@ async function handleEditorAction(key){
 }
 
 function openEditorFilterModal(){
-    let m = document.getElementById('ts-mini-filter')
-    if(m) m.remove()
-    m = document.createElement('div')
+    document.getElementById('ts-mini-filter')?.remove()
+    const m = document.createElement('div')
     m.id = 'ts-mini-filter'
-    m.className = 'ts-mini-modal'
+    m.className = 'ts-sheet-modal'
     m.innerHTML = `
-        <div class="ts-mini-sheet">
-            <div class="ts-mini-title">Фильтры</div>
-            <div class="ts-effects-grid" style="grid-template-columns:repeat(2,1fr)">
+        <div class="ts-sheet-backdrop"></div>
+        <div class="ts-sheet-body">
+            <div class="ts-sheet-handle"></div>
+            <div class="ts-sheet-title">Фильтры</div>
+            <div class="ts-effects-grid">
                 ${renderEditorFilterCard('none', 'Оригинал')}
                 ${renderEditorFilterCard('warm', 'Тёплый')}
                 ${renderEditorFilterCard('cool', 'Холодный')}
@@ -970,7 +908,7 @@ function openEditorFilterModal(){
                 if(k === 'vintage') vid.classList.add('filter-vintage')
             }
             m.remove()
-        } else if(e.target === m) m.remove()
+        } else if(e.target.closest('.ts-sheet-backdrop')) m.remove()
     })
 }
 
@@ -978,16 +916,15 @@ function renderEditorFilterCard(key, label){
     const a = TS.selectedEffect === key ? 'active' : ''
     return `<button class="ts-effect-card ${a}" data-e="${key}">
         <span class="ts-effect-card-icon" style="background:linear-gradient(135deg,#ff9f0a,#ff375f)">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12s1.5-2 4-2 4 2 4 2"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12s1.5-2 4-2 4 2 4 2"/></svg>
         </span>
         <span class="ts-effect-card-label">${label}</span>
     </button>`
 }
 
 function openTextModal(){
-    let m = document.getElementById('ts-mini-text')
-    if(m) m.remove()
-    m = document.createElement('div')
+    document.getElementById('ts-mini-text')?.remove()
+    const m = document.createElement('div')
     m.id = 'ts-mini-text'
     m.className = 'ts-mini-modal'
     m.innerHTML = `
@@ -1035,9 +972,8 @@ async function openStickerEditorModal(){
     ;(packs || []).forEach(p => (p.stickers || []).forEach(s => stickers.push(s)))
     if(!stickers.length){ showToastLocal('Нет стикеров — создайте их в директе', 'info'); return }
 
-    let m = document.getElementById('ts-mini-sticker')
-    if(m) m.remove()
-    m = document.createElement('div')
+    document.getElementById('ts-mini-sticker')?.remove()
+    const m = document.createElement('div')
     m.id = 'ts-mini-sticker'
     m.className = 'ts-mini-modal'
     m.innerHTML = `
@@ -1115,10 +1051,10 @@ function downloadVideo(){
 async function openPublishScreen(){
     TS.activeTab = 'publish'
 
-    // останавливаем видео редактора
     const ed = document.getElementById('ts-editor')
     const ev = ed?.querySelector('#ts-editor-video')
     try { ev?.pause() } catch {}
+    try { TS.audio?.pause() } catch {}
 
     const root = TS.root
     root.innerHTML = `
@@ -1160,7 +1096,6 @@ async function openPublishScreen(){
         </div>
     `
 
-    // превью
     const pv = root.querySelector('#ts-pub-video')
     if(TS.recordedBlob){
         pv.src = URL.createObjectURL(TS.recordedBlob)
@@ -1179,9 +1114,7 @@ async function openPublishScreen(){
 }
 
 async function openChannelPickerForPublish(){
-    // используем тот же шит
     await openChannelPicker()
-    // после закрытия обновляем имя в публикации
     const obs = setInterval(() => {
         if(!document.getElementById('ts-channel-sheet')){
             clearInterval(obs)
@@ -1203,15 +1136,12 @@ async function publishVideo(){
     const publishBtn = document.getElementById('ts-pub-btn')
     if(publishBtn){ publishBtn.disabled = true; publishBtn.textContent = 'Публикуем…' }
 
-    // ── оверлей загрузки ──
     const overlay = document.createElement('div')
     overlay.className = 'ts-publish-overlay'
     overlay.innerHTML = `
         <div class="ts-pub-spinner" id="ts-pub-spin"></div>
         <div class="ts-pub-success" id="ts-pub-success">
-            <div class="ts-pub-success-circle">
-                ${SVG_TS.check}
-            </div>
+            <div class="ts-pub-success-circle">${SVG_TS.check}</div>
             <div class="ts-pub-success-text">Готово</div>
         </div>
         <div class="ts-pub-progress-wrap">
@@ -1222,7 +1152,6 @@ async function publishVideo(){
     `
     document.body.appendChild(overlay)
 
-    // анимируем прогресс
     const barEl = overlay.querySelector('#ts-pub-bar')
     const pctEl = overlay.querySelector('#ts-pub-pct')
     let fakePct = 0
@@ -1236,9 +1165,7 @@ async function publishVideo(){
         const { data:{ user } } = await supabase.auth.getUser()
         if(!user) throw new Error('Не авторизован')
 
-        // загрузка видео
-        const ext = 'webm'
-        const path = `${user.id}/tread-${Date.now()}.${ext}`
+        const path = `${user.id}/tread-${Date.now()}.webm`
         const { error:upErr } = await supabase.storage
             .from('posts')
             .upload(path, TS.recordedBlob, { contentType: TS.recordedBlob.type || 'video/webm' })
@@ -1247,7 +1174,6 @@ async function publishVideo(){
         const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
         const mediaUrl = pub.publicUrl
 
-        // создаём пост
         const { data:post, error } = await supabase.from('posts').insert({
             author_id: user.id,
             channel_id: TS.selectedChannel.id,
@@ -1256,29 +1182,23 @@ async function publishVideo(){
         }).select().single()
         if(error) throw error
 
-        // финалим прогресс
         clearInterval(fakeInt)
         barEl.style.width = '100%'
         pctEl.textContent = '100%'
 
-        // скрываем спиннер/прогресс/статус
         setTimeout(() => {
             overlay.querySelector('#ts-pub-spin')?.remove()
             overlay.querySelector('.ts-pub-progress-wrap')?.remove()
             overlay.querySelector('#ts-pub-success')?.classList.add('show')
 
-            // через 1.5 сек — переход в профиль
             setTimeout(() => {
                 overlay.remove()
                 closeTreadStudio()
-
-                // переходим в свой профиль на вкладку публикации
                 setTimeout(() => {
                     document.dispatchEvent(new CustomEvent('lt:goProfilePosts', { detail: { postId: post.id } }))
                 }, 200)
             }, 1400)
         }, 200)
-
     } catch(e){
         clearInterval(fakeInt)
         overlay.remove()
