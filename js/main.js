@@ -5,6 +5,7 @@
 import './offline.js'
 import { mountFeedBg } from './offline.js'   // ← добавь это
 import { supabase } from './supabase.js'
+import { openTreadStudio, closeTreadStudio } from './tread-studio.js'
 function isUuid(s){
     return typeof s === 'string'
         && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -1553,6 +1554,11 @@ function closeActionSheet(){
     actionsheet.classList.remove('open');
     actionsheet.classList.add('hidden');
     actionsheetBackdrop.classList.add('hidden');
+
+    // ⚡ новые хуки на закрытие (стикер-превью и т.п.)
+    const hooks = window.__stickerMenuCloseHooks || [];
+    window.__stickerMenuCloseHooks = [];
+    hooks.forEach(fn => { try { fn(); } catch(e){ console.warn(e); } });
 }
 actionsheetBackdrop.addEventListener('click', closeActionSheet)
 $('actionsheet-cancel').addEventListener('click', closeActionSheet)
@@ -10758,36 +10764,12 @@ let _treadTimerInt = null
 let _treadRecordStart = 0
 
 async function openTreadCamera(){
-    let view = document.getElementById('tread-camera-view')
-    if(!view){
-        view = document.createElement('div')
-        view.id = 'tread-camera-view'
-        view.className = 'tread-camera-view hidden'
-        view.innerHTML = `
-            <video class="tread-camera-video" id="tread-camera-video" autoplay playsinline muted></video>
-            <button class="tread-camera-back" id="tread-camera-back" aria-label="Назад">
-                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
-            </button>
-            <div class="tread-camera-record-wrap">
-                <div class="tread-camera-timer" id="tread-camera-timer">0:00</div>
-                <button class="tread-camera-record" id="tread-camera-record" aria-label="Запись">
-                    <div class="tread-camera-record-inner"></div>
-                </button>
-            </div>`
-        document.body.appendChild(view)
-        view.querySelector('#tread-camera-back').addEventListener('click', closeTreadCamera)
-        view.querySelector('#tread-camera-record').addEventListener('click', toggleTreadRecording)
-    }
-    view.classList.remove('hidden')
+    // полностью заменяем старую камеру на новый tread-studio
     try {
-        _treadStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 1080 }, height: { ideal: 1920 } },
-            audio: true
-        })
-        document.getElementById('tread-camera-video').srcObject = _treadStream
+        await openTreadStudio()
     } catch(e){
-        showToast('error', 'Не удалось открыть камеру: ' + (e.message||''), { icon:'📷', duration:4000 })
-        view.classList.add('hidden')
+        console.warn('[openTreadCamera]', e)
+        showToast('error', 'Не удалось открыть камеру', { icon:'📷' })
     }
 }
 
@@ -10802,47 +10784,7 @@ function closeTreadCamera(){
     switchScreen('home')
 }
 
-async function toggleTreadRecording(){
-    const btn = document.getElementById('tread-camera-record')
-    const timer = document.getElementById('tread-camera-timer')
-    if(!_treadStream) return
-    if(_treadRecorder && _treadRecorder.state === 'recording'){
-        _treadRecorder.stop()
-        btn?.classList.remove('recording')
-        if(_treadTimerInt){ clearInterval(_treadTimerInt); _treadTimerInt = null }
-        timer?.classList.remove('show')
-        return
-    }
-    try {
-        const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-            ? 'video/webm;codecs=vp9,opus'
-            : MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4'
-        _treadRecorder = new MediaRecorder(_treadStream, { mimeType: mime })
-        _treadChunks = []
-        _treadRecorder.ondataavailable = e => { if(e.data && e.data.size) _treadChunks.push(e.data) }
-        _treadRecorder.onstop = async () => {
-            const blob = new Blob(_treadChunks, { type: _treadRecorder.mimeType })
-            _treadChunks = []
-            await handleTreadRecording(blob)
-        }
-        _treadRecorder.start()
-        btn?.classList.add('recording')
-        _treadRecordStart = Date.now()
-        timer?.classList.add('show')
-        if(timer) timer.textContent = '0:00'
-        _treadTimerInt = setInterval(() => {
-            const sec = Math.floor((Date.now() - _treadRecordStart) / 1000)
-            if(timer){
-                const m = Math.floor(sec / 60), s = sec % 60
-                timer.textContent = m + ':' + String(s).padStart(2, '0')
-            }
-            if(sec >= 60) toggleTreadRecording()
-        }, 250)
-        try { navigator.vibrate?.(30) } catch {}
-    } catch(e){
-        showToast('error', 'Не удалось начать запись', { icon:'⚠️' })
-    }
-}
+
 
 async function handleTreadRecording(blob){
     if(!blob || blob.size < 1000){ showToast('info', 'Слишком короткая запись'); return }
@@ -10996,29 +10938,161 @@ async function showStickerContextMenu(stickerUrl){
     showActionSheet('Стикер', items)
 }
 
-function attachStickerHandlers(container){
-    if(!container) return
-    container.querySelectorAll('.feed-post-sticker').forEach(img => {
-        if(img.dataset.stickerBound === '1') return
-        img.dataset.stickerBound = '1'
-        let pressTimer = null, moved = false
-        const start = () => {
-            moved = false
-            pressTimer = setTimeout(() => { if(!moved) showStickerContextMenu(img.src) }, 480)
-        }
-        const cancel = () => { if(pressTimer){ clearTimeout(pressTimer); pressTimer = null } }
-        const move = () => { moved = true; cancel() }
-        img.addEventListener('touchstart', start, { passive:true })
-        img.addEventListener('touchmove', move, { passive:true })
-        img.addEventListener('touchend', cancel)
-        img.addEventListener('touchcancel', cancel)
-        img.addEventListener('mousedown', start)
-        img.addEventListener('mouseup', cancel)
-        img.addEventListener('mouseleave', cancel)
-        img.addEventListener('contextmenu', e => { e.preventDefault(); showStickerContextMenu(img.src) })
-    })
+/* ============================================================
+   STICKER — тап открывает меню + плавный выезд наверх по центру
+============================================================ */
+let _stickerPreviewEl = null;
+
+function showStickerPreviewAnimated(imgEl){
+    // убираем предыдущий, если остался
+    _stickerPreviewEl?.remove();
+
+    const rect = imgEl.getBoundingClientRect();
+    const vh   = window.innerHeight;
+
+    // размер в "большом" виде — до 40% высоты экрана, но не больше 320px
+    const bigSize = Math.min(vh * 0.40, 320, Math.max(rect.width, rect.height) * 4);
+    // позиция центра превью — над шитом (шит ~ 60% высоты снизу)
+    const centerY = vh * 0.34;
+
+    const clone = document.createElement('img');
+    clone.src = imgEl.src;
+    clone.alt = '';
+    clone.style.cssText = `
+        position: fixed;
+        left: ${rect.left}px;
+        top: ${rect.top}px;
+        width: ${rect.width}px;
+        height: ${rect.height}px;
+        object-fit: contain;
+        z-index: 9005;
+        pointer-events: none;
+        transition:
+            left .42s cubic-bezier(.22,1,.36,1),
+            top .42s cubic-bezier(.22,1,.36,1),
+            width .42s cubic-bezier(.22,1,.36,1),
+            height .42s cubic-bezier(.22,1,.36,1),
+            filter .3s ease;
+        filter: drop-shadow(0 0 0 rgba(0,0,0,0));
+        will-change: left, top, width, height;
+    `;
+    document.body.appendChild(clone);
+    _stickerPreviewEl = clone;
+
+    // стартовый кадр уже стоит (rect), запускаем к центру
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        clone.style.left   = `calc(50% - ${bigSize / 2}px)`;
+        clone.style.top    = `${centerY - bigSize / 2}px`;
+        clone.style.width  = `${bigSize}px`;
+        clone.style.height = `${bigSize}px`;
+        clone.style.filter = 'drop-shadow(0 20px 44px rgba(0,0,0,.55))';
+    }));
 }
+
+function hideStickerPreviewAnimated(){
+    const el = _stickerPreviewEl;
+    if(!el) return;
+    el.style.transition = 'opacity .25s ease, transform .25s ease';
+    el.style.opacity = '0';
+    el.style.transform = 'scale(.85)';
+    setTimeout(() => { el.remove(); if(_stickerPreviewEl === el) _stickerPreviewEl = null; }, 260);
+}
+
+function attachStickerHandlers(container){
+    if(!container) return;
+    container.querySelectorAll('.feed-post-sticker').forEach(img => {
+        if(img.dataset.stickerBound === '1') return;
+        img.dataset.stickerBound = '1';
+        img.style.cursor = 'pointer';
+        img.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            openStickerTapMenu(img);
+        });
+    });
+}
+
+async function openStickerTapMenu(imgEl){
+    // 1. выезд превью наверх
+    showStickerPreviewAnimated(imgEl);
+
+    // 2. показать меню
+    await showStickerContextMenu(imgEl.src, () => {
+        // колбэк закрытия шита
+        hideStickerPreviewAnimated();
+    });
+}
+
+// переопределяем showStickerContextMenu, чтобы принимать onClose
+const _origShowStickerMenu = window.showStickerContextMenu;
+window.showStickerContextMenu = async function(stickerUrl, onClose){
+    if(!stickerUrl){ onClose?.(); return; }
+    const pack = await findPackByStickerUrl(stickerUrl);
+    const { data:{ user } } = await supabase.auth.getUser();
+    if(!user){ onClose?.(); return; }
+
+    const items = [];
+    if(pack){
+        const packAvatarHtml = pack.stickers?.[0]
+            ? `<span class="feed-more-menu-avatar"><img src="${pack.stickers[0]}" alt=""></span>`
+            : '';
+        items.push({ label: pack.name || 'Открыть пак', icon: packAvatarHtml,
+            onClick: () => openStickerPackPreview(pack) });
+    }
+    items.push({
+        label:'Пожаловаться на стикер', icon: ICONS.flag, danger:true,
+        onClick: () => openReportModal({
+            targetType:'sticker', targetId: pack?.id || stickerUrl,
+            text: pack?.name || 'Стикер', media: stickerUrl
+        })
+    });
+    if(pack && pack.user_id !== user.id){
+        items.push({
+            label:'Сохранить пак', icon: ICONS.star,
+            onClick: async () => {
+                try {
+                    await supabase.from('sticker_pack_saves')
+                        .insert({ user_id: user.id, pack_id: pack.id });
+                    showToast('success', 'Пак сохранён', { icon:'✓' });
+                } catch { showToast('info', 'Уже сохранён', { icon:'ℹ️' }); }
+            }
+        });
+    }
+    if(pack && (pack.user_id === user.id || ADMIN_STATE.isAdmin)){
+        items.push({
+            label:'Удалить стикер', icon: ICONS.trash, danger:true,
+            onClick: async () => {
+                if(!confirm('Удалить стикер из пака?')) return;
+                const next = (pack.stickers || []).filter(s => s !== stickerUrl);
+                const { error } = await supabase.from('sticker_packs')
+                    .update({ stickers: next }).eq('id', pack.id);
+                if(error){ showToast('error','Ошибка: ' + error.message); return; }
+                showToast('success', 'Стикер удалён', { icon:'✓' });
+            }
+        });
+    }
+
+    // патчим closeActionSheet, чтобы вызвать onClose
+    const _prevClose = window.__stickerMenuCloseHooks || [];
+    window.__stickerMenuCloseHooks = [..._prevClose, onClose];
+    showActionSheet('Стикер', items);
+};
 window.openStickerPackPreview = openStickerPackPreview
+// Публикация из tread-studio → переход в профиль на вкладку постов
+document.addEventListener('lt:goProfilePosts', async (e) => {
+    state.currentProfileViewId = null
+    state.viewingOwnProfile = true
+    state.profileTab = 'posts'
+    // активируем нужный таб
+    document.querySelectorAll('#profile-tabs .profile-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.ptab === 'posts')
+    })
+    switchScreen('profile')
+    // перерендерим через 300ms (после загрузки)
+    setTimeout(() => {
+        try { renderProfileTab() } catch(err){ console.warn(err) }
+    }, 350)
+})
 boot();
 setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
