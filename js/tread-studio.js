@@ -1154,28 +1154,22 @@ async function publishVideo(){
 
     const barEl = overlay.querySelector('#ts-pub-bar')
     const pctEl = overlay.querySelector('#ts-pub-pct')
-    let fakePct = 0
-    const { error: upErr } = await supabase.storage
-        .from('posts')
-        .upload(path, TS.recordedBlob, {
-            contentType: 'video/webm',
-            // Реальный прогресс по байтам
-            onUploadProgress: (evt) => {
-                const realPercent = Math.round((evt.loaded / evt.total) * 100);
-                // Обновляй полоску этим значением, а не фейковым таймером
-                barEl.style.width = realPercent + '%';
-                pctEl.textContent = realPercent + '%';
-            }
-        });
 
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         if(!user) throw new Error('Не авторизован')
 
         const path = `${user.id}/tread-${Date.now()}.webm`
-        const { error:upErr } = await supabase.storage
+        const { error: upErr } = await supabase.storage
             .from('posts')
-            .upload(path, TS.recordedBlob, { contentType: 'video/webm' })
+            .upload(path, TS.recordedBlob, {
+                contentType: 'video/webm',
+                onUploadProgress: (evt) => {
+                    const real = Math.round((evt.loaded / evt.total) * 100)
+                    barEl.style.width = real + '%'
+                    pctEl.textContent = real + '%'
+                }
+            })
         if(upErr) throw upErr
 
         const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
@@ -1189,7 +1183,6 @@ async function publishVideo(){
         }).select().single()
         if(error) throw error
 
-        clearInterval(fakeInt)
         barEl.style.width = '100%'
         pctEl.textContent = '100%'
 
@@ -1207,7 +1200,6 @@ async function publishVideo(){
             }, 1400)
         }, 200)
     } catch(e){
-        clearInterval(fakeInt)
         overlay.remove()
         if(publishBtn){ publishBtn.disabled = false; publishBtn.textContent = 'Опубликовать' }
         showToastLocal('Ошибка: ' + (e.message || ''), 'error')
@@ -1242,8 +1234,3 @@ function showToastLocal(msg, type = 'info'){
     }
 }
 
-const uploadPromise = supabase.storage.from('posts').upload(path, TS.recordedBlob, { contentType: 'video/webm' });
-
-// Твой хелпер withTimeout уже есть в main.js, используй его
-const { error: upErr } = await withTimeout(uploadPromise, 120000, 'video upload');
-if (upErr) throw upErr;
