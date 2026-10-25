@@ -436,7 +436,7 @@ async function startRecording(){
         TS.chunks = []
         TS.recorder.ondataavailable = e => { if(e.data?.size) TS.chunks.push(e.data) }
         TS.recorder.onstop = async () => {
-            TS.recordedBlob = new Blob(TS.chunks, { type: TS.recorder.mimeType })
+            TS.recordedBlob = new Blob(TS.chunks, { type: 'video/webm' })
             TS.chunks = []
             try { TS.audio?.pause() } catch {}
             if(TS.timerInt){ clearInterval(TS.timerInt); TS.timerInt = null }
@@ -1155,11 +1155,18 @@ async function publishVideo(){
     const barEl = overlay.querySelector('#ts-pub-bar')
     const pctEl = overlay.querySelector('#ts-pub-pct')
     let fakePct = 0
-    const fakeInt = setInterval(() => {
-        fakePct = Math.min(85, fakePct + Math.random() * 8)
-        barEl.style.width = fakePct + '%'
-        pctEl.textContent  = Math.floor(fakePct) + '%'
-    }, 200)
+    const { error: upErr } = await supabase.storage
+        .from('posts')
+        .upload(path, TS.recordedBlob, {
+            contentType: 'video/webm',
+            // Реальный прогресс по байтам
+            onUploadProgress: (evt) => {
+                const realPercent = Math.round((evt.loaded / evt.total) * 100);
+                // Обновляй полоску этим значением, а не фейковым таймером
+                barEl.style.width = realPercent + '%';
+                pctEl.textContent = realPercent + '%';
+            }
+        });
 
     try {
         const { data:{ user } } = await supabase.auth.getUser()
@@ -1168,7 +1175,7 @@ async function publishVideo(){
         const path = `${user.id}/tread-${Date.now()}.webm`
         const { error:upErr } = await supabase.storage
             .from('posts')
-            .upload(path, TS.recordedBlob, { contentType: TS.recordedBlob.type || 'video/webm' })
+            .upload(path, TS.recordedBlob, { contentType: 'video/webm' })
         if(upErr) throw upErr
 
         const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
@@ -1234,3 +1241,9 @@ function showToastLocal(msg, type = 'info'){
         console.log('[tstudio]', msg)
     }
 }
+
+const uploadPromise = supabase.storage.from('posts').upload(path, TS.recordedBlob, { contentType: 'video/webm' });
+
+// Твой хелпер withTimeout уже есть в main.js, используй его
+const { error: upErr } = await withTimeout(uploadPromise, 120000, 'video upload');
+if (upErr) throw upErr;
