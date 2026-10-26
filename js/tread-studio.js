@@ -110,16 +110,16 @@ async function renderCameraScreen(){
             </button>
         </div>
 
-        <div class="ts-side" id="ts-side">
-            ${renderSideBtn('flip',  SVG_TS.flip, 'Повернуть камеру', false)}
-            ${renderSideBtn('flash', SVG_TS.flashOff, 'Вспышка', false, 'flash')}
-            ${renderSideBtn('text',  SVG_TS.text,    'Текстовый тред',  true, null, true)}
-            ${renderSideBtn('photo', SVG_TS.photo,   'Фото тред',       true, null, true)}
-            ${renderSideBtn('track', SVG_TS.track,   'Выложить трек',   true, null, true)}
-                        <div id="ts-side-more">
-                ${renderSideBtnWithLabel('album',   SVG_TS.album,   'Альбомы',     true)}
-                ${renderSideBtnWithLabel('poll',    SVG_TS.poll,    'Опросы',      true)}
-                ${renderSideBtnWithLabel('sticker', SVG_TS.sticker, 'Стикеры',      true)}
+                <div class="ts-side" id="ts-side">
+            ${renderSideBtnWithLabel('flip',  SVG_TS.flip,     'Повернуть камеру')}
+            ${renderSideBtnWithLabel('flash', SVG_TS.flashOff, 'Вспышка')}
+            ${renderSideBtnWithLabel('text',  SVG_TS.text,     'Тред',  true)}
+            ${renderSideBtnWithLabel('photo', SVG_TS.photo,    'Фото',   true)}
+            ${renderSideBtnWithLabel('track', SVG_TS.track,    'Треки',   true)}
+            <div id="ts-side-more">
+                ${renderSideBtnWithLabel('album',   SVG_TS.album,   'Альбомы', true)}
+                ${renderSideBtnWithLabel('poll',    SVG_TS.poll,    'Опросы',  true)}
+                ${renderSideBtnWithLabel('sticker', SVG_TS.sticker, 'Стикеры',  true)}
             </div>
             <button class="ts-side-expand" id="ts-side-expand">${SVG_TS.chevDown}</button>
         </div>
@@ -173,9 +173,11 @@ async function renderCameraScreen(){
     root.querySelector('#ts-side-expand').addEventListener('click', () => {
         const more = root.querySelector('#ts-side-more')
         const exp  = root.querySelector('#ts-side-expand')
+        const side = root.querySelector('#ts-side')
         const isOpen = more.classList.contains('open')
         more.classList.toggle('open', !isOpen)
         exp.classList.toggle('open', !isOpen)
+        side.classList.toggle('expanded', !isOpen)   // ⚡ подписи у ВСЕХ кнопок
     })
 
     root.querySelectorAll('.ts-side-btn').forEach(btn => {

@@ -5739,61 +5739,20 @@ textarea.lt-edit-input{ min-height: 110px; }
 .ts-side{
     position: absolute; top: calc(var(--safe-top) + 70px); right: 12px;
     z-index: 15;
-    display: flex; flex-direction: column; gap: 18px; align-items: flex-end;
+    display: flex; flex-direction: column; gap: 18px;
+    align-items: flex-end;              /* кнопки прижаты к правому краю */
     transition: opacity .3s ease, transform .3s ease;
 }
 
-.ts-side-btn{
-    width: 32px; height: 32px; padding: 0;
-    border: none !important;
-    background: transparent !important;
-    color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: transform .18s cubic-bezier(.34,1.56,.64,1), opacity .2s ease, color .2s ease;
-    flex-shrink: 0;
-}
-.ts-side-btn:active:not(:disabled){ transform: scale(.82) }
-.ts-side-btn:disabled{ opacity: .35; cursor: not-allowed }
-.ts-side-btn.active{ color: #ff9f0a }
-.ts-side-btn svg{
-    width: 28px; height: 28px;
-    stroke: currentColor; fill: none; stroke-width: 2;
-    filter: drop-shadow(0 1px 4px rgba(0,0,0,.7));
-}
-
-.ts-side-label{ display: none !important; }
-
-#ts-side-more{
-    display: flex; flex-direction: column; gap: 18px; align-items: center;
-    max-height: 0; overflow: hidden;
-    transition: max-height .35s cubic-bezier(.22,1,.36,1);
-}
-#ts-side-more.open{ max-height: 200px }
-#ts-side-more > .ts-side-btn{
-    opacity: 0;
-    transform: translateY(-6px) scale(.9);
-    transition: opacity .25s ease, transform .3s cubic-bezier(.22,1,.36,1);
-}
-/* Строки: [название] [кнопка] */
+/* Строка: [подпись] [кнопка] */
 .ts-side-row{
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 10px;
-    opacity: 0;
-    transform: translateX(14px);
-    transition: opacity .25s ease, transform .3s cubic-bezier(.22,1,.36,1);
-    width: 100%;
 }
-#ts-side-more.open .ts-side-row{
-    opacity: 1;
-    transform: translateX(0);
-}
-#ts-side-more.open .ts-side-row:nth-child(1){ transition-delay: .04s }
-#ts-side-more.open .ts-side-row:nth-child(2){ transition-delay: .08s }
-#ts-side-more.open .ts-side-row:nth-child(3){ transition-delay: .12s }
 
+/* Подпись кнопки — по умолчанию скрыта */
 .ts-side-row-label{
     font-size: 12px;
     font-weight: 600;
@@ -5807,17 +5766,66 @@ textarea.lt-edit-input{ min-height: 110px; }
     backdrop-filter: blur(8px);
     pointer-events: none;
     user-select: none;
+    opacity: 0;
+    transform: translateX(8px);
+    transition: opacity .22s ease, transform .25s cubic-bezier(.22,1,.36,1);
 }
 
-/* Дизейбл перекрывает opacity из открытого состояния */
-.ts-side-btn:disabled,
-#ts-side-more.open .ts-side-btn:disabled,
-#ts-side-more .ts-side-row .ts-side-btn:disabled{
+/* Показываем подписи когда панель раскрыта (нажали шеврон) */
+.ts-side.expanded .ts-side-row-label{
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.ts-side-btn{
+    width: 32px; height: 32px; padding: 0;
+    border: none !important;
+    background: transparent !important;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1), opacity .2s ease, color .2s ease;
+    flex-shrink: 0;
+}
+.ts-side-btn:active:not(:disabled){ transform: scale(.82) }
+.ts-side-btn:disabled{
     opacity: .35 !important;
     cursor: not-allowed !important;
     pointer-events: none;
 }
+.ts-side-btn.active{ color: #ff9f0a }
+.ts-side-btn svg{
+    width: 28px; height: 28px;
+    stroke: currentColor; fill: none; stroke-width: 2;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,.7));
+}
 
+.ts-side-label{ display: none !important; }
+
+/* Контейнер «ещё» (album/poll/sticker) */
+#ts-side-more{
+    display: flex; flex-direction: column; gap: 18px;
+    align-items: flex-end;
+    max-height: 0; overflow: hidden;
+    transition: max-height .35s cubic-bezier(.22,1,.36,1);
+}
+#ts-side-more.open{ max-height: 200px }
+
+/* Появление строк внутри «more» */
+#ts-side-more .ts-side-row{
+    opacity: 0;
+    transform: translateX(14px);
+    transition: opacity .25s ease, transform .3s cubic-bezier(.22,1,.36,1);
+}
+#ts-side-more.open .ts-side-row{
+    opacity: 1;
+    transform: translateX(0);
+}
+#ts-side-more.open .ts-side-row:nth-child(1){ transition-delay: .04s }
+#ts-side-more.open .ts-side-row:nth-child(2){ transition-delay: .08s }
+#ts-side-more.open .ts-side-row:nth-child(3){ transition-delay: .12s }
+
+/* Шеврон «развернуть/свернуть» */
 .ts-side-expand{
     width: 32px; height: 32px; padding: 0;
     border: none !important;
