@@ -567,31 +567,121 @@ async function openChannelQuickComposer(kind){
 async function startRecording(){
     if(!TS.selectedChannel){ showToastLocal('Сначала выберите канал', 'info'); return }
     if(!TS.stream){ showToastLocal('Камера недоступна', 'error'); return }
+    if(TS.recorder?.state === 'recording') return
+
     try {
         const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
             ? 'video/webm;codecs=vp9,opus'
-            : MediaRecorder.isTypeSupported('video/webm') ? 'video/webm'
-                : 'video/mp4'
-        TS.recorder = new MediaRecorder(TS.stream, { mimeType: mime })
+            : MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4'
+
+        // ═══════════════════════════════════════════════════════════
+        // ⚡ СТАБИЛЬНАЯ ЗАПИСЬ: микшируем трек через AudioContext
+        //    → нет 2-сек. задержки, нет «подводного» звука,
+        //    → звук не пропадает в начале, камера не чернеет.
+        // ═══════════════════════════════════════════════════════════
+        let recordStream = TS.stream
+        let audioCtx = null
+
+        if(TS.selectedTrack?.src){
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+                if(audioCtx.state === 'suspended') await audioCtx.resume()
+
+                const audioEl = new Audio()
+                audioEl.crossOrigin = 'anonymous'
+                audioEl.preload = 'auto'
+                audioEl.loop = true
+                audioEl.src = TS.selectedTrack.src
+
+                // Ждём готовности до 2 сек, чтобы .play() стартовал мгновенно
+                await new Promise(resolve => {
+                    if(audioEl.readyState >= 3) return resolve()
+                    let done = false
+                    const finish = () => { if(!done){ done = true; resolve() } }
+                    audioEl.addEventListener('canplaythrough', finish, { once: true })
+                    audioEl.addEventListener('error', finish, { once: true })
+                    audioEl.load()
+                    setTimeout(finish, 2000)
+                })
+
+                audioEl.currentTime = TS.selectedTrack.startAt || 0
+
+                // Источники
+                const micSrc   = audioCtx.createMediaStreamSource(TS.stream)
+                const trackSrc = audioCtx.createMediaElementSource(audioEl)
+                const dest     = audioCtx.createMediaStreamDestination()
+
+                // Микрофон → тише (чтобы не ловить эхо из динамика)
+                const micGain = audioCtx.createGain()
+                micGain.gain.value = 0.5
+                micSrc.connect(micGain).connect(dest)
+
+                // Трек → в запись
+                const trackGain = audioCtx.createGain()
+                trackGain.gain.value = 1.0
+                trackSrc.connect(trackGain).connect(dest)
+
+                // Трек → в динамик (чтобы юзер слышал)
+                const speakerGain = audioCtx.createGain()
+                speakerGain.gain.value = 0.6
+                trackSrc.connect(speakerGain).connect(audioCtx.destination)
+
+                // Склеиваем видео + микшированное аудио
+                recordStream = new MediaStream([
+                    ...TS.stream.getVideoTracks(),
+                    ...dest.stream.getAudioTracks()
+                ])
+
+                TS._audioEl  = audioEl
+                TS._audioCtx = audioCtx
+
+                // ⚡ СТАРТ АУДИО ДО MediaRecorder — прогрев аудио-стека
+                try { await audioEl.play() } catch(e){ console.warn('[audio play]', e) }
+            } catch(e){
+                console.warn('[audio mix fail → speaker fallback]', e)
+                recordStream = TS.stream
+                // Фолбэк: играем через динамик (микрофон запишет)
+                try {
+                    TS._audioEl = new Audio(TS.selectedTrack.src)
+                    TS._audioEl.currentTime = TS.selectedTrack.startAt || 0
+                    TS._audioEl.volume = 0.85
+                    await new Promise(r => {
+                        TS._audioEl.addEventListener('canplay', r, { once: true })
+                        setTimeout(r, 1500)
+                    })
+                    TS._audioEl.play().catch(()=>{})
+                } catch(_){}
+            }
+        }
+
+        TS.recorder = new MediaRecorder(recordStream, { mimeType: mime })
         TS.chunks = []
         TS.recorder.ondataavailable = e => { if(e.data?.size) TS.chunks.push(e.data) }
         TS.recorder.onstop = async () => {
             TS.recordedBlob = new Blob(TS.chunks, { type: 'video/webm' })
             TS.chunks = []
-            try { TS.audio?.pause() } catch {}
+            try { TS._audioEl?.pause() } catch {}
+            try { await TS._audioCtx?.close() } catch {}
+            TS._audioEl  = null
+            TS._audioCtx = null
             if(TS.timerInt){ clearInterval(TS.timerInt); TS.timerInt = null }
             if(TS.progressInt){ clearInterval(TS.progressInt); TS.progressInt = null }
             showRecordingUI(false)
             await openEditor(TS.recordedBlob)
         }
+
         TS.recorder.start(120)
         TS.recordStart = Date.now()
         showRecordingUI(true)
         startRecordTimer()
-        playSelectedTrackIfAny()
     } catch(e){
         showToastLocal('Не удалось начать запись: ' + (e.message || ''), 'error')
     }
+}
+
+function stopRecording(){
+    if(TS.recorder?.state === 'recording') TS.recorder.stop()
+    try { TS._audioEl?.pause() } catch {}
 }
 
 function stopRecording(){
@@ -639,16 +729,7 @@ function startRecordTimer(){
     }, 100)
 }
 
-function playSelectedTrackIfAny(){
-    if(!TS.selectedTrack?.src) return
-    try {
-        TS.audio = new Audio(TS.selectedTrack.src)
-        TS.audio.currentTime = TS.selectedTrack.startAt || 0
-        TS.audio.volume = 0.9
-        TS.audio.play().catch(()=>{})
-        setTimeout(() => { try { TS.audio?.pause() } catch {} }, TS.selectedTime * 1000 + 100)
-    } catch(e){ console.warn('[track play]', e) }
-}
+
 
 /* ============================================================
    ГАЛЕРЕЯ
@@ -721,12 +802,140 @@ function applyEffect(key){
     }
 }
 
-/* ============================================================
-   ВЫБОР ТРЕКА — 2 колонки
-============================================================ */
+
+
+let _cameraPausedForSheet = false
+
+function pauseCameraForSheet(){
+    if(_cameraPausedForSheet) return
+    _cameraPausedForSheet = true
+    try {
+        TS.stream?.getVideoTracks().forEach(t => { t.enabled = false })
+        if(TS.videoEl) try { TS.videoEl.pause() } catch {}
+    } catch(e){ console.warn('[pause camera]', e) }
+}
+
+async function resumeCameraAfterSheet(){
+    if(!_cameraPausedForSheet) return
+    _cameraPausedForSheet = false
+    try {
+        TS.stream?.getVideoTracks().forEach(t => { t.enabled = true })
+        if(TS.videoEl && TS.videoEl.srcObject){
+            try { await TS.videoEl.play() } catch {}
+        }
+    } catch(e){ console.warn('[resume camera]', e) }
+}
+
+function checkCameraState(){
+    const trackSheet = document.getElementById('ts-track-sheet')
+    const trimSheet = document.getElementById('ts-trim-sheet')
+    if(!trackSheet && !trimSheet){
+        resumeCameraAfterSheet()
+    } else {
+        pauseCameraForSheet()
+    }
+}
+
+async function loadAllAudioTracks(){
+    try {
+        const { data, error } = await supabase.from('posts')
+            .select('id, content, media_url, media_title, created_at, author_id, channel_id, profiles:author_id ( username, full_name, avatar_url ), channels:channel_id ( id, name, avatar_url )')
+            .not('media_url', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(500)
+
+        if(error){ console.warn('[loadAllAudioTracks]', error.message); return [] }
+
+        const tracks = (data || []).filter(p => isAudioUrl(p.media_url))
+
+        // 🔀 перемешиваем
+        for(let i = tracks.length - 1; i > 0; i--){
+            const j = Math.floor(Math.random() * (i + 1));
+            [tracks[i], tracks[j]] = [tracks[j], tracks[i]]
+        }
+        return tracks
+    } catch(e){ console.warn('[loadAllAudioTracks]', e); return [] }
+}
+
+function renderTrackRow(t){
+    const prof = t.profiles || {}
+    const ch   = t.channels || {}
+    const trackName   = t.media_title || (t.content ? t.content.slice(0, 40) : 'Трек')
+    const authorName  = prof.full_name || prof.username || 'user'
+    const channelName = ch.name || 'Канал'
+    const channelAva  = ch.avatar_url
+    const authorAva   = prof.avatar_url
+
+    const chAvaHtml = channelAva
+        ? `<img src="${channelAva}" alt="">`
+        : escapeHtml(channelName.charAt(0).toUpperCase())
+    const authAvaHtml = authorAva
+        ? `<img src="${authorAva}" alt="">`
+        : escapeHtml(authorName.charAt(0).toUpperCase())
+
+    return `<div class="ts-track-row"
+        data-id="${t.id}"
+        data-name="${escapeHtml(trackName)}"
+        data-author="${escapeHtml(authorName)}"
+        data-cover="${escapeHtml(authorAva || '')}"
+        data-channel="${escapeHtml(channelName)}"
+        data-channel-cover="${escapeHtml(channelAva || '')}"
+        data-src="${t.media_url}">
+        <div class="ts-track-row-ava">${chAvaHtml}</div>
+        <div class="ts-track-row-info">
+            <div class="ts-track-row-title">${escapeHtml(trackName)}</div>
+            <div class="ts-track-row-meta">
+                <span class="ts-track-row-author-ava">${authAvaHtml}</span>
+                <span class="ts-track-row-author-name">@${escapeHtml((prof.username||'user').replace(/^@/,''))}</span>
+                <span class="ts-track-row-from">from</span>
+                <span class="ts-track-row-channel">${escapeHtml(channelName)}</span>
+            </div>
+        </div>
+        <button type="button" class="ts-track-row-play" aria-label="Включить">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path class="icon-play" d="M8 5v14l11-7z"/>
+                <g class="icon-pause" style="display:none"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></g>
+            </svg>
+        </button>
+        <button type="button" class="ts-track-row-listen" aria-label="Прослушать">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 6l6 6-6 6"/>
+            </svg>
+        </button>
+    </div>`
+}
+
+function renderTrackPickerList(){
+    const list = document.getElementById('ts-track-list')
+    const more = document.getElementById('ts-track-more')
+    if(!list) return
+
+    const all = TS._allTracks || []
+    const shown = all.slice(0, TS._shownCount)
+
+    if(!shown.length){
+        list.innerHTML = '<p class="empty small" style="padding:24px 16px;text-align:center;color:var(--text-tertiary)">Нет доступных треков</p>'
+        if(more) more.style.display = 'none'
+        return
+    }
+
+    list.innerHTML = shown.map(renderTrackRow).join('')
+
+    if(more){
+        if(TS._shownCount >= all.length){
+            more.style.display = 'none'
+        } else {
+            more.style.display = ''
+            more.textContent = 'Загрузить ещё'
+        }
+    }
+}
+
 async function openTrackPicker(){
     document.getElementById('ts-track-sheet')?.remove()
-    TS._trackOffset = 0
+
+    // ⚡ Выключаем камеру — экономим ресурсы
+    pauseCameraForSheet()
 
     const sheet = document.createElement('div')
     sheet.id = 'ts-track-sheet'
@@ -735,104 +944,151 @@ async function openTrackPicker(){
         <div class="ts-sheet-backdrop"></div>
         <div class="ts-sheet-body">
             <div class="ts-sheet-handle"></div>
-            <div class="ts-sheet-title">Добавить трек</div>
-            <div class="ts-track-grid" id="ts-track-grid"></div>
-            <button class="ts-track-more" id="ts-track-more">Показать ещё</button>
+            <div class="ts-sheet-title">добавить трек</div>
+            <div class="ts-track-list" id="ts-track-list">
+                <div style="text-align:center;padding:30px 0;color:var(--text-secondary);font-size:14px">Загрузка…</div>
+            </div>
+            <button class="ts-track-more" id="ts-track-more" style="display:none">Загрузить ещё</button>
         </div>`
     document.body.appendChild(sheet)
 
+    TS._allTracks    = await loadAllAudioTracks()
+    TS._shownCount   = 10
+    TS._previewAudio = null
+    TS._previewSrc   = null
+    renderTrackPickerList()
+
     sheet.addEventListener('click', e => {
-        if(e.target.closest('.ts-sheet-backdrop')){ sheet.remove(); return }
-        const card = e.target.closest('.ts-track-card')
-        if(card){
-            sheet.remove()
-            openTrimPicker({
-                id: card.dataset.id,
-                name: card.dataset.name,
-                author: card.dataset.author,
-                cover: card.dataset.cover,
-                src:   card.dataset.src,
-                duration: parseFloat(card.dataset.dur) || 0
-            })
-            return
+        if(e.target.closest('.ts-sheet-backdrop')){ closeTrackSheet(); return }
+
+        const playBtn = e.target.closest('.ts-track-row-play')
+        if(playBtn){ e.stopPropagation(); handleTrackRowPlay(playBtn); return }
+
+        const listenBtn = e.target.closest('.ts-track-row-listen')
+        if(listenBtn){ e.stopPropagation(); handleTrackRowListen(listenBtn); return }
+
+        if(e.target.closest('#ts-track-more')){
+            TS._shownCount += 5
+            renderTrackPickerList()
         }
-        if(e.target.closest('#ts-track-more')) loadTracks(true)
     })
 
-    loadTracks(false)
+    function closeTrackSheet(){
+        if(TS._previewAudio){
+            try { TS._previewAudio.pause() } catch {}
+            TS._previewAudio = null
+            TS._previewSrc   = null
+        }
+        sheet.remove()
+        checkCameraState()
+    }
 }
 
-async function loadTracks(more){
-    const grid = document.getElementById('ts-track-grid')
-    const btn  = document.getElementById('ts-track-more')
-    if(!grid) return
-    if(more){
-        if(!btn) return
-        btn.disabled = true; btn.textContent = 'Загрузка…'
-        TS._trackOffset += 5
+function handleTrackRowPlay(btn){
+    const row = btn.closest('.ts-track-row')
+    if(!row) return
+    const src = row.dataset.src
+
+    if(!TS._previewAudio){
+        TS._previewAudio = new Audio()
+        TS._previewAudio.crossOrigin = 'anonymous'
+        TS._previewAudio.addEventListener('ended', () => {
+            document.querySelectorAll('.ts-track-row-play.playing').forEach(b => {
+                b.classList.remove('playing')
+                const ip = b.querySelector('.icon-play')
+                const iz = b.querySelector('.icon-pause')
+                if(ip) ip.style.display = ''
+                if(iz) iz.style.display = 'none'
+            })
+        })
     }
 
-    const { data, error } = await supabase.from('posts')
-        .select('id, content, media_url, media_title, created_at, author_id, profiles:author_id ( username, full_name, avatar_url )')
-        .not('media_url', 'is', null)
-        .order('created_at', { ascending: false })
-        .range(TS._trackOffset, TS._trackOffset + (more ? 4 : 9))
+    const playIcon  = btn.querySelector('.icon-play')
+    const pauseIcon = btn.querySelector('.icon-pause')
 
-    if(error){ console.warn('[tracks]', error.message) }
+    if(TS._previewAudio.src === src && !TS._previewAudio.paused){
+        TS._previewAudio.pause()
+        btn.classList.remove('playing')
+        if(playIcon)  playIcon.style.display  = ''
+        if(pauseIcon) pauseIcon.style.display = 'none'
+        return
+    }
 
-    const tracks = (data || []).filter(p => isAudioUrl(p.media_url))
-
-    const html = tracks.map(p => {
-        const prof = p.profiles || {}
-        const name = p.media_title || p.content?.slice(0, 30) || 'Трек'
-        const author = prof.full_name || prof.username || 'user'
-        const cover = prof.avatar_url
-            ? `<img src="${prof.avatar_url}" alt="">`
-            : name.charAt(0).toUpperCase()
-        return `<button class="ts-track-card"
-            data-id="${p.id}"
-            data-name="${escapeHtml(name)}"
-            data-author="${escapeHtml(author)}"
-            data-cover="${prof.avatar_url || ''}"
-            data-src="${p.media_url}"
-            data-dur="0">
-            <span class="ts-track-card-ava">${cover}</span>
-            <div class="ts-track-card-name">${escapeHtml(name)}</div>
-            <div class="ts-track-card-author">@${escapeHtml((prof.username||'user').replace(/^@/,''))}</div>
-            <div class="ts-track-card-dur">0:00</div>
-        </button>`
-    }).join('')
-
-    if(more){ grid.insertAdjacentHTML('beforeend', html) }
-    else    { grid.innerHTML = html }
-
-    grid.querySelectorAll('.ts-track-card').forEach(card => {
-        if(card.dataset.durLoaded === '1') return
-        const src = card.dataset.src
-        const a = document.createElement('audio')
-        a.preload = 'metadata'; a.muted = true; a.src = src
-        a.addEventListener('loadedmetadata', () => {
-            const dur = a.duration || 0
-            card.dataset.dur = dur
-            const durEl = card.querySelector('.ts-track-card-dur')
-            if(durEl) durEl.textContent = formatDur(Math.floor(dur))
-            card.dataset.durLoaded = '1'
-        })
+    document.querySelectorAll('.ts-track-row-play.playing').forEach(b => {
+        b.classList.remove('playing')
+        const ip = b.querySelector('.icon-play')
+        const iz = b.querySelector('.icon-pause')
+        if(ip) ip.style.display = ''
+        if(iz) iz.style.display = 'none'
     })
 
-    if(btn){ btn.disabled = false; btn.textContent = 'Показать ещё' }
+    TS._previewAudio.pause()
+    TS._previewAudio.src = src
+    TS._previewAudio.currentTime = 0
+    TS._previewAudio.play().catch(()=>{})
+    btn.classList.add('playing')
+    if(playIcon)  playIcon.style.display  = 'none'
+    if(pauseIcon) pauseIcon.style.display = ''
+}
+
+function handleTrackRowListen(btn){
+    const row = btn.closest('.ts-track-row')
+    if(!row) return
+
+    if(TS._previewAudio){ try { TS._previewAudio.pause() } catch {} }
+    document.querySelectorAll('.ts-track-row-play.playing').forEach(b => {
+        b.classList.remove('playing')
+        const ip = b.querySelector('.icon-play')
+        const iz = b.querySelector('.icon-pause')
+        if(ip) ip.style.display = ''
+        if(iz) iz.style.display = 'none'
+    })
+
+    // Закрываем трек-пикер БЕЗ возобновления камеры — её возобновит trim-picker при закрытии
+    const sheet = document.getElementById('ts-track-sheet')
+    if(sheet) sheet.remove()
+
+    const track = {
+        id:       row.dataset.id,
+        name:     row.dataset.name,
+        author:   row.dataset.author,
+        cover:    row.dataset.cover || row.dataset.channelCover,
+        channel:  row.dataset.channel,
+        src:      row.dataset.src,
+        duration: 0
+    }
+
+    const audio = new Audio()
+    audio.crossOrigin = 'anonymous'
+    audio.preload = 'metadata'
+    audio.src = track.src
+
+    const openTrim = () => openTrimPicker(track)
+
+    audio.addEventListener('loadedmetadata', () => {
+        track.duration = audio.duration || 30
+        openTrim()
+    }, { once: true })
+    audio.addEventListener('error', () => {
+        track.duration = 30
+        openTrim()
+    }, { once: true })
 }
 
 /* ============================================================
-   ТРИМ-ПИКЕР
+   TRIM PICKER v2 — с -1s/+1s и play выбранного фрагмента
 ============================================================ */
 function openTrimPicker(track){
     document.getElementById('ts-trim-sheet')?.remove()
+    pauseCameraForSheet()
 
     const totalDur = track.duration || 30
     const needDur  = TS.selectedTime
-    const pctWidth = Math.min(100, needDur / totalDur * 100)
+    const pctWidth = Math.min(100, (needDur / totalDur) * 100)
     let startAt = 0
+    let trimAudio = null
+    let trimPlaying = false
+    let trimStopTimer = null
 
     const sheet = document.createElement('div')
     sheet.id = 'ts-trim-sheet'
@@ -850,40 +1106,111 @@ function openTrimPicker(track){
                 <span id="ts-trim-start">0:00</span>
                 <span id="ts-trim-end">${formatDur(needDur)}</span>
             </div>
-            <button class="ts-trim-use" id="ts-trim-use">Использовать трек</button>
+            <div class="ts-trim-controls">
+                <button type="button" class="ts-trim-ctrl-btn" id="ts-trim-back">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>
+                    <span>-1с</span>
+                </button>
+                <button type="button" class="ts-trim-play-btn" id="ts-trim-play">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" id="ts-trim-play-icon"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <button type="button" class="ts-trim-ctrl-btn" id="ts-trim-fwd">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M13 6v12l8.5-6L13 6zM4 18l8.5-6L4 6v12z"/></svg>
+                    <span>+1с</span>
+                </button>
+            </div>
+            <button type="button" class="ts-trim-use" id="ts-trim-use">Выбрать</button>
         </div>
     `
     document.body.appendChild(sheet)
 
-    const wave = sheet.querySelector('#ts-trim-wave')
-    const sel  = sheet.querySelector('#ts-trim-sel')
+    const wave   = sheet.querySelector('#ts-trim-wave')
+    const selEl  = sheet.querySelector('#ts-trim-sel')
     const tStart = sheet.querySelector('#ts-trim-start')
     const tEnd   = sheet.querySelector('#ts-trim-end')
+    const playBtn= sheet.querySelector('#ts-trim-play')
+    const playIcon = sheet.querySelector('#ts-trim-play-icon')
 
-    let drag = false
-    const setFromX = clientX => {
-        const rect = wave.getBoundingClientRect()
-        const pct  = Math.max(0, Math.min(1 - needDur / totalDur, (clientX - rect.left) / rect.width))
-        startAt = pct * totalDur
-        sel.style.left  = (pct * 100) + '%'
-        sel.style.width = Math.min(100 - pct*100, pctWidth) + '%'
+    function updateUI(){
+        const pct = (startAt / totalDur) * 100
+        selEl.style.left  = pct + '%'
+        selEl.style.width = pctWidth + '%'
         tStart.textContent = formatDur(Math.floor(startAt))
         tEnd.textContent   = formatDur(Math.floor(startAt + needDur))
     }
+
+    function stopTrimPreview(){
+        if(trimAudio){ try { trimAudio.pause() } catch {} }
+        if(trimStopTimer){ clearTimeout(trimStopTimer); trimStopTimer = null }
+        trimPlaying = false
+        playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>'
+    }
+
+    function startTrimPreview(){
+        if(!trimAudio){
+            trimAudio = new Audio(track.src)
+            trimAudio.crossOrigin = 'anonymous'
+        }
+        trimAudio.currentTime = startAt
+        trimAudio.play().then(() => {
+            trimPlaying = true
+            playIcon.innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/>'
+            trimStopTimer = setTimeout(stopTrimPreview, needDur * 1000)
+        }).catch(e => console.warn('[trim play]', e))
+    }
+
+    // Клик по play
+    playBtn.addEventListener('click', () => {
+        if(trimPlaying) stopTrimPreview()
+        else startTrimPreview()
+    })
+
+    // -1s / +1s
+    sheet.querySelector('#ts-trim-back').addEventListener('click', () => {
+        startAt = Math.max(0, startAt - 1)
+        updateUI()
+        if(trimPlaying && trimAudio) trimAudio.currentTime = startAt
+    })
+    sheet.querySelector('#ts-trim-fwd').addEventListener('click', () => {
+        startAt = Math.min(Math.max(0, totalDur - needDur), startAt + 1)
+        updateUI()
+        if(trimPlaying && trimAudio) trimAudio.currentTime = startAt
+    })
+
+    // Свайп по волне
+    let drag = false
+    const setFromX = clientX => {
+        const rect = wave.getBoundingClientRect()
+        const maxPct = Math.max(0, 1 - needDur / totalDur)
+        const pct = Math.max(0, Math.min(maxPct, (clientX - rect.left) / rect.width))
+        startAt = pct * totalDur
+        updateUI()
+        if(trimPlaying && trimAudio) trimAudio.currentTime = startAt
+    }
     wave.addEventListener('pointerdown', e => { drag = true; setFromX(e.clientX); wave.setPointerCapture(e.pointerId) })
     wave.addEventListener('pointermove', e => { if(drag) setFromX(e.clientX) })
-    wave.addEventListener('pointerup',   () => { drag = false })
+    wave.addEventListener('pointerup', () => { drag = false })
+
+    // Закрытие
+    function closeTrim(){
+        stopTrimPreview()
+        trimAudio = null
+        sheet.remove()
+        checkCameraState()
+    }
 
     sheet.addEventListener('click', e => {
-        if(e.target.closest('.ts-sheet-backdrop')){ sheet.remove(); return }
+        if(e.target.closest('.ts-sheet-backdrop')){ closeTrim(); return }
         if(e.target.closest('#ts-trim-use')){
             TS.selectedTrack = { ...track, startAt }
-            sheet.remove()
+            closeTrim()
             renderSelectedTrackStrip()
             showToastLocal('Трек выбран', 'success')
             return
         }
     })
+
+    updateUI()
 }
 
 function renderSelectedTrackStrip(){
@@ -951,14 +1278,34 @@ async function openEditor(blob){
     if(TS.selectedEffect === 'cool')    vid.classList.add('filter-cool')
     if(TS.selectedEffect === 'vintage') vid.classList.add('filter-vintage')
 
-    // ⚡ МУЗЫКА НА 2 ЭТАПЕ
+    // ═══ МУЗЫКА НА 2 ЭТАПЕ — фрагмент трека зациклен вместе с видео ═══
     if(hasTrack){
         try {
             TS.audio?.pause()
             TS.audio = new Audio(TS.selectedTrack.src)
-            TS.audio.currentTime = TS.selectedTrack.startAt || 0
+            TS.audio.crossOrigin = 'anonymous'
             TS.audio.volume = 1
-            TS.audio.loop = true
+            TS.audio.currentTime = TS.selectedTrack.startAt || 0
+
+            const fragStart = TS.selectedTrack.startAt || 0
+            const fragEnd   = fragStart + TS.selectedTime
+
+            // 🔁 Зацикливаем ТОЛЬКО фрагмент (не весь трек)
+            TS.audio.addEventListener('timeupdate', () => {
+                if(TS.audio.currentTime >= fragEnd || TS.audio.currentTime < fragStart - 0.1){
+                    TS.audio.currentTime = fragStart
+                }
+            })
+
+            // 🔁 Синхронизируем с loop'ом видео
+            vid.addEventListener('timeupdate', () => {
+                if(vid.currentTime < 0.15 && TS.audio){
+                    if(Math.abs(TS.audio.currentTime - fragStart) > 0.6){
+                        TS.audio.currentTime = fragStart
+                    }
+                }
+            })
+
             TS.audio.play().catch(()=>{})
         } catch(e){ console.warn('[editor audio]', e) }
     }
