@@ -2335,62 +2335,97 @@ function attachHandlersToCard(card, userId){
 }
 
 async function showPostMoreMenu(btn, card, userId){
-    const pid = btn.dataset.pid
-    const isMine = btn.dataset.mine === '1'
-    const chId = btn.dataset.channel
+    const pid      = btn.dataset.pid
+    const isMine   = btn.dataset.mine === '1'
+    const chId     = btn.dataset.channel
     const authorId = btn.dataset.authorId || card.querySelector('.feed-post-avatar')?.dataset.uid
     const videoSrc = card.classList.contains('feed-post-video') ? card.dataset.videoSrc : null
-    const onHome = state.screen === 'home'
-
-    let amAdmin = false
-    if(chId){
-        const { data:ch } = await supabase.from('channels').select('owner_id').eq('id', chId).maybeSingle()
-        if(ch && ch.owner_id === userId) amAdmin = true
-    }
+    const onHome   = state.screen === 'home'
+    const iAmAdmin = ADMIN_STATE.isAdmin
 
     const items = []
 
-    // ─── МЕДИА-ИНФО (некликабельно, шапка меню) ───
-    const mediaInfo = await buildMediaInfoItem(card)
-    if(mediaInfo) items.push(mediaInfo)
+    // ⚡ Медиа-инфо грузится в ФОНЕ и вставляется поверх уже открытого меню
+    const mediaInfoPromise = buildMediaInfoItem(card).catch(() => null)
 
+    // ⚡ Проверка прав на канал — тоже в фоне, не блокирует открытие меню
+    let amAdmin = false
+    if(chId){
+        supabase.from('channels')
+            .select('owner_id')
+            .eq('id', chId)
+            .maybeSingle()
+            .then(({ data: ch }) => { if(ch && ch.owner_id === userId) amAdmin = true })
+            .catch(() => {})
+    }
+
+    // ─── ПРОФИЛЬ АВТОРА ───
     if(authorId){
         const avEl = card.querySelector('.feed-post-avatar')
         let avHtml = ''
-        if(avEl) avHtml = avEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/,'')
+        if(avEl) avHtml = avEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/, '')
         items.push({
-            label:`Профиль @${btn.dataset.author || 'user'}`,
-            icon:`<span class="feed-more-menu-avatar">${avHtml || '?'}</span>`,
+            label: `Профиль @${btn.dataset.author || 'user'}`,
+            icon: `<span class="feed-more-menu-avatar">${avHtml || '?'}</span>`,
             onClick: () => openUserProfile(authorId)
         })
     }
 
+    // ─── НЕИНТЕРЕСНО / ИНТЕРЕСНО (только в ленте и не для своих) ───
     if(onHome && !isMine){
-        items.push({ label:'Неинтересно', icon:ICONS.thumbDown, onClick: () => {
-                hidePostLocally(pid); showToast('info','Будем показывать меньше такого',{icon:'👋'})
-            }})
-        items.push({ label:'Интересно — больше такого', icon:ICONS.thumbUp, onClick: () => {
-                boostPostLocally(pid); showToast('success','Учли!',{icon:'✓'})
-            }})
-        if(chId) items.push({ label:'Не рекомендовать с этого канала', icon:ICONS.flag,
-            onClick: async () => { await hideChannelLocally(chId); showToast('info','Канал скрыт') }
+        items.push({
+            label: 'Неинтересно',
+            icon: ICONS.thumbDown,
+            onClick: () => {
+                hidePostLocally(pid)
+                showToast('info', 'Будем показывать меньше такого', { icon: '👋' })
+            }
         })
-        if(authorId) items.push({ label:'Не рекомендовать автора', icon:ICONS.flag,
-            onClick: async () => { await hideAuthorLocally(authorId); showToast('info','Автор скрыт') }
+        items.push({
+            label: 'Интересно — больше такого',
+            icon: ICONS.thumbUp,
+            onClick: () => {
+                boostPostLocally(pid)
+                showToast('success', 'Учли!', { icon: '✓' })
+            }
+        })
+        if(chId) items.push({
+            label: 'Не рекомендовать с этого канала',
+            icon: ICONS.flag,
+            onClick: async () => {
+                await hideChannelLocally(chId)
+                showToast('info', 'Канал скрыт')
+            }
+        })
+        if(authorId) items.push({
+            label: 'Не рекомендовать автора',
+            icon: ICONS.flag,
+            onClick: async () => {
+                await hideAuthorLocally(authorId)
+                showToast('info', 'Автор скрыт')
+            }
         })
     }
 
-    if(videoSrc) items.push({ label:'Полноэкранный режим', icon:ICONS.fullscreen,
-        onClick: () => enterVideoFS(videoSrc, pid) })
+    // ─── ПОЛНОЭКРАННЫЙ РЕЖИМ (для видео) ───
+    if(videoSrc) items.push({
+        label: 'Полноэкранный режим',
+        icon: ICONS.fullscreen,
+        onClick: () => enterVideoFS(videoSrc, pid)
+    })
 
-    items.push({ label:'Поделиться', icon:ICONS.share, onClick: () => {
+    // ─── ПОДЕЛИТЬСЯ ───
+    items.push({
+        label: 'Поделиться',
+        icon: ICONS.share,
+        onClick: () => {
             const content = card.querySelector('.feed-post-content')?.textContent || ''
-            openShareSheet({ type:'post', postId:pid, src:videoSrc, title:content, content })
-        }})
+            openShareSheet({ type: 'post', postId: pid, src: videoSrc, title: content, content })
+        }
+    })
 
-    // ─── РЕДАКТИРОВАНИЕ (только платформенный админ) ───
-    const iAmAdmin = ADMIN_STATE.isAdmin
-    const canEdit = iAmAdmin || isMine           // ⚡ автор тоже может редактировать
+    // ─── РЕДАКТИРОВАНИЕ (автор или платформенный админ) ───
+    const canEdit = iAmAdmin || isMine
     if(canEdit){
         const contentEl = card.querySelector('.feed-post-content')
         if(contentEl){
@@ -2406,7 +2441,7 @@ async function showPostMoreMenu(btn, card, userId){
                         const { error } = await supabase.from('posts').update({ content: newText }).eq('id', pid)
                         if(error) throw error
                         contentEl.textContent = newText
-                        showToast('success', 'Тред обновлён', { icon:'✓' })
+                        showToast('success', 'Тред обновлён', { icon: '✓' })
                     }
                 })
             })
@@ -2425,42 +2460,84 @@ async function showPostMoreMenu(btn, card, userId){
                         const { error } = await supabase.from('posts').update({ media_title: newTitle }).eq('id', pid)
                         if(error) throw error
                         trackTitleEl.textContent = newTitle
-                        showToast('success', 'Название обновлено', { icon:'✓' })
+                        showToast('success', 'Название обновлено', { icon: '✓' })
                     }
                 })
             })
         }
     }
 
+    // ─── ПОЖАЛОВАТЬСЯ (не для своих) ───
     if(!isMine){
-        items.push({ label:'Пожаловаться', icon:ICONS.flag, danger:true, onClick: () => {
+        items.push({
+            label: 'Пожаловаться',
+            icon: ICONS.flag,
+            danger: true,
+            onClick: () => {
                 const authorEl = card.querySelector('.feed-post-avatar[data-uid]')
-                const authorData = authorEl ? { id:authorEl.dataset.uid, username:btn.dataset.author, full_name:btn.dataset.author } : null
+                const authorData = authorEl
+                    ? { id: authorEl.dataset.uid, username: btn.dataset.author, full_name: btn.dataset.author }
+                    : null
                 const media = card.dataset.videoSrc || card.querySelector('.feed-post-image')?.src || null
                 const text = card.querySelector('.feed-post-content')?.textContent || ''
-                openReportModal({ targetType: card.dataset.videoSrc ? 'video' : 'post',
-                    targetId: pid, authorId: authorData?.id, author: authorData, media, text })
-            }})
+                openReportModal({
+                    targetType: card.dataset.videoSrc ? 'video' : 'post',
+                    targetId: pid,
+                    authorId: authorData?.id,
+                    author: authorData,
+                    media,
+                    text
+                })
+            }
+        })
     }
 
-    if(isMine || amAdmin || iAmAdmin){
+    // ─── УДАЛЕНИЕ (свой пост / админ канала / платформенный админ) ───
+    if(isMine || iAmAdmin || chId){
         items.push({
             label: iAmAdmin && !isMine ? 'Удалить (админ)' : 'Удалить',
-            icon: ICONS.trash, danger:true,
+            icon: ICONS.trash,
+            danger: true,
             onClick: async () => {
+                // ⚡ Если не свой и не платформенный админ — проверяем права на канал ПРИ КЛИКЕ
+                if(!isMine && !iAmAdmin && chId){
+                    const { data: ch } = await supabase.from('channels')
+                        .select('owner_id').eq('id', chId).maybeSingle()
+                    if(!ch || ch.owner_id !== userId){
+                        showToast('error', 'Нет прав на удаление', { icon: '⚠️' })
+                        return
+                    }
+                }
                 if(!confirm('Удалить пост?')) return
                 const res = await deletePostById(pid)
                 if(res.ok){
                     card.style.transition = 'opacity .25s, transform .25s'
-                    card.style.opacity = '0'; card.style.transform = 'scale(.95)'
+                    card.style.opacity = '0'
+                    card.style.transform = 'scale(.95)'
                     setTimeout(() => card.remove(), 260)
                 }
             }
         })
     }
 
-    if(!items.length) items.push({ label:'Нет действий', onClick:() => {} })
-    showActionSheet(isMine ? 'Ваш пост' : (amAdmin ? 'Действия (админ)' : 'Действия'), items)
+    if(!items.length) items.push({ label: 'Нет действий', onClick: () => {} })
+
+    // ⚡ Меню открывается МГНОВЕННО — без ожидания запросов
+    showActionSheet(isMine ? 'Ваш пост' : (iAmAdmin ? 'Действия (админ)' : 'Действия'), items)
+
+    // ⚡ Медиа-инфо (размер, длительность) — догружаем поверх уже открытого меню
+    mediaInfoPromise.then(info => {
+        if(!info) return
+        const list = document.getElementById('actionsheet-list')
+        if(!list) return
+        // Не дублируем
+        if(list.querySelector('.info-item')) return
+        const el = document.createElement('button')
+        el.className = 'actionsheet-item info-item'
+        el.disabled = true
+        el.innerHTML = `<span>${escapeHtml(info.label)}</span>`
+        list.insertBefore(el, list.firstChild)
+    })
 }
 
 function hidePostLocally(postId){
@@ -3017,17 +3094,7 @@ function closeCommentsModal(){
 async function openCommentsSheet(postId){
     if(!postId) return;
 
-    // проверяем, не отключили ли обсуждение в канале этого треда
-    try {
-        const { data: post } = await supabase.from('posts').select('channel_id').eq('id', postId).maybeSingle();
-        if (post?.channel_id) {
-            const { data: ch } = await supabase.from('channels').select('allow_discussions').eq('id', post.channel_id).maybeSingle();
-            if (ch && ch.allow_discussions === false) {
-                showToast('info', 'В этом канале ограничили обсуждение тредов', { icon:'🔒', duration: 3500 });
-                return;
-            }
-        }
-    } catch(e){ /* колонка может отсутствовать — считаем разрешено */ }
+    // ⚡ 1. ОТКРЫВАЕМ СРАЗУ, без ожиданий
     _commentsPostId = postId;
     _commentsReplyTo = null;
 
@@ -3041,6 +3108,21 @@ async function openCommentsSheet(postId){
     const body = modal.querySelector('#comments-body');
     body.innerHTML = renderCommentsSkeleton();
 
+    // ⚡ 2. Проверку прав — в ФОНЕ
+    (async () => {
+        try {
+            const { data: post } = await supabase.from('posts').select('channel_id').eq('id', postId).maybeSingle();
+            if (post?.channel_id) {
+                const { data: ch } = await supabase.from('channels').select('allow_discussions').eq('id', post.channel_id).maybeSingle();
+                if (ch && ch.allow_discussions === false) {
+                    closeCommentsModal();
+                    showToast('info', 'В этом канале ограничили обсуждение тредов', { icon:'🔒', duration: 3500 });
+                }
+            }
+        } catch(e){ /* колонки может не быть — считаем разрешено */ }
+    })();
+
+    // ⚡ 3. Грузим комментарии параллельно
     await loadCommentsNew(postId);
 }
 
@@ -3773,7 +3855,7 @@ if(emojiPicker){
 }
 
 $('post-btn')?.addEventListener('click', async () => {
-    // ⚡ Повторная проверка лимита перед отправкой
+    // ⚡ 1. Повторная проверка лимита перед отправкой
     if(state.attachedPhoto){
         const k = detectFileKind(state.attachedPhoto) || (state.attachedKind === 'image' ? 'photo' : state.attachedKind)
         const chk = await checkFileLimits(state.attachedPhoto, k)
@@ -3782,40 +3864,62 @@ $('post-btn')?.addEventListener('click', async () => {
             return
         }
     }
-    if(state.attachedPhoto){
-        const ext = state.attachedPhoto.name.split('.').pop() || 'bin'
-        const path = `${user.id}/${Date.now()}.${ext}`
-        const { error:upErr } = await supabase.storage.from('posts').upload(path, state.attachedPhoto, { contentType:state.attachedPhoto.type })
-        if(upErr){
-            throw new Error('Ошибка загрузки: ' + upErr.message + ' (возможно, превышен лимит бакета Supabase)')
-        }
-        const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
-        mediaUrl = pub.publicUrl
-    }
+
+    // ⚡ 2. Кулдаун
     const since = Date.now() - state.lastPostAt
-    if(since < 15000){ alert(`Подождите ${Math.ceil((15000 - since) / 1000)} сек.`); return }
+    if(since < 15000){
+        alert(`Подождите ${Math.ceil((15000 - since) / 1000)} сек.`)
+        return
+    }
+
     const text = $('post-content').value.trim()
     if(!text && !state.attachedPhoto) return
-    const btn = $('post-btn'); btn.disabled = true
+
+    const btn = $('post-btn')
+    btn.disabled = true
+
     try {
+        // ⚡ 3. Получаем пользователя ОДИН раз
         const { data:{ user } } = await supabase.auth.getUser()
+        if(!user) throw new Error('Войдите в аккаунт')
+
+        // ⚡ 4. Загрузка медиа (если есть)
         let mediaUrl = null
         if(state.attachedPhoto){
             const ext = state.attachedPhoto.name.split('.').pop() || 'bin'
             const path = `${user.id}/${Date.now()}.${ext}`
-            const { error:upErr } = await supabase.storage.from('posts').upload(path, state.attachedPhoto, { contentType:state.attachedPhoto.type })
-            if(!upErr){ const { data:pub } = supabase.storage.from('posts').getPublicUrl(path); mediaUrl = pub.publicUrl }
+            const { error:upErr } = await supabase.storage
+                .from('posts')
+                .upload(path, state.attachedPhoto, { contentType: state.attachedPhoto.type })
+
+            if(upErr){
+                throw new Error('Ошибка загрузки: ' + upErr.message + ' (возможно, превышен лимит бакета Supabase)')
+            }
+
+            const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
+            mediaUrl = pub?.publicUrl || null
         }
-        const payload = { content:text, author_id:user.id, show_in_profile:true }
+
+        // ⚡ 5. Формируем payload и вставляем пост
+        const payload = { content: text, author_id: user.id, show_in_profile: true }
         if(mediaUrl) payload.media_url = mediaUrl
         if(state.replyTo) payload.reply_to = state.replyTo
+
         const { error } = await supabase.from('posts').insert(payload)
         if(error) throw error
+
+        // ⚡ 6. Успех
         $('post-content').value = ''
         resetComposerPreview()
-        cancelReply(); state.lastPostAt = Date.now(); await renderLiveFeed()
-    } catch(err){ alert('Ошибка: ' + err.message) }
-    finally { btn.disabled = false }
+        cancelReply()
+        state.lastPostAt = Date.now()
+        await renderLiveFeed()
+    } catch(err){
+        console.error('[post-btn]', err)
+        alert('Ошибка: ' + (err.message || 'неизвестно'))
+    } finally {
+        btn.disabled = false
+    }
 })
 
 function replyToUser(postId, username){ state.replyTo = postId; $('reply-to-name').textContent = '@' + username; $('reply-banner').classList.remove('hidden'); $('post-content').focus() }
@@ -6632,29 +6736,72 @@ function syncPostRepost(postId, reposted, delta){
 }
 async function followAuthor(authorId){
     if(!authorId) return
+
     const { data:{ user } } = await supabase.auth.getUser()
     if(!user || user.id === authorId) return
+
+    const wasFollowing = state.myFollows.has(authorId)
+    const nowFollowing = !wasFollowing
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ 1. МГНОВЕННО: состояние + тост + DOM (без ожидания БД)
+    // ═══════════════════════════════════════════════════════════
+    if(nowFollowing){
+        state.myFollows.add(authorId)
+        showToast('error', 'Вы подписаны', { icon: '❤️', duration: 2200 })   // КРАСНЫЙ
+    } else {
+        state.myFollows.delete(authorId)
+        showToast('info', 'Отписка', { icon: '👋', duration: 2200 })
+    }
+
+    // Убираем «+» под аватарками этого автора
+    document.querySelectorAll(`.feed-avatar-plus[data-plus-uid="${authorId}"]`).forEach(x => x.remove())
+
+    // Обновляем текстовые кнопки «Подписаться / Вы подписаны»
+    document.querySelectorAll(`.feed-follow-text[data-plus-uid="${authorId}"]`).forEach(b => {
+        b.classList.toggle('subscribed', nowFollowing)
+        b.textContent = nowFollowing ? 'Вы подписаны' : 'Подписаться'
+    })
+
+    // Кнопка подписки в VFM, если открыт на этом авторе
+    const vfmFollow = document.getElementById('vfm-follow-btn')
+    if(vfmFollow && vfmFollow.dataset.uid === authorId){
+        vfmFollow.classList.toggle('following', nowFollowing)
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ 2. В ФОНЕ: пишем в БД. При ошибке — полный откат
+    // ═══════════════════════════════════════════════════════════
     try {
-        const isFollowing = state.myFollows.has(authorId)
-        if(isFollowing){
-            await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', authorId)
-            state.myFollows.delete(authorId)
-            showToast('info', 'Отписка', { icon:'👋' })
+        let error = null
+        if(wasFollowing){
+            ;({ error } = await supabase.from('follows')
+                .delete()
+                .eq('follower_id', user.id)
+                .eq('following_id', authorId))
         } else {
-            await supabase.from('follows').insert({ follower_id: user.id, following_id: authorId })
-            state.myFollows.add(authorId)
-            showToast('success', 'Вы подписаны', { icon:'✓' })
+            ;({ error } = await supabase.from('follows')
+                .insert({ follower_id: user.id, following_id: authorId }))
         }
-        // убрать/показать все плюсики этого автора
-        document.querySelectorAll(`.feed-avatar-plus[data-plus-uid="${authorId}"]`).forEach(x => x.remove())
-        document.querySelectorAll(`.feed-follow-text[data-plus-uid="${authorId}"]`).forEach(b => {
-            const f = state.myFollows.has(authorId)
-            b.classList.toggle('subscribed', f)
-            b.textContent = f ? 'Вы подписаны' : 'Подписаться'
-        })
+        if(error) throw error
+
         refreshFollowCache()
     } catch(e){
-        showToast('error', 'Не удалось: ' + (e.message || ''), { icon:'⚠️' })
+        // ⚠️ ОТКАТ к прежнему состоянию
+        if(wasFollowing) state.myFollows.add(authorId)
+        else             state.myFollows.delete(authorId)
+
+        document.querySelectorAll(`.feed-follow-text[data-plus-uid="${authorId}"]`).forEach(b => {
+            b.classList.toggle('subscribed', wasFollowing)
+            b.textContent = wasFollowing ? 'Вы подписаны' : 'Подписаться'
+        })
+
+        const vfmFollow = document.getElementById('vfm-follow-btn')
+        if(vfmFollow && vfmFollow.dataset.uid === authorId){
+            vfmFollow.classList.toggle('following', wasFollowing)
+        }
+
+        showToast('error', 'Не удалось: ' + (e.message || 'ошибка'), { icon: '⚠️' })
     }
 }
 async function toggleLikeGlobal(postId){
@@ -7493,22 +7640,28 @@ function vfmBuildOverlay(){
     })
 
     el.querySelector('#vfm-ch-sub').addEventListener('click', async e => {
-        const chId = e.currentTarget.dataset.chid
+        const btn  = e.currentTarget
+        const chId = btn.dataset.chid
         if(!chId) return
-        const { data:{ user } } = await supabase.auth.getUser()
-        if(!user) return
-        const wasSub = state.myChannelSubs.has(chId)
-        const nowSub = !wasSub
-        applySubState(chId, nowSub)
-        if(nowSub) state.myChannelSubs.add(chId); else state.myChannelSubs.delete(chId)
+
+        // ⚡ МГНОВЕННО
+        btn.classList.add('hidden')
+        state.myChannelSubs.add(chId)
+        applySubState(chId, true)
+        showToast('error', 'Вы подписаны', { icon:'❤️', duration: 2200 })   // КРАСНЫЙ
+
         try {
-            if(nowSub) await supabase.from('subscriptions').insert({ follower_id: user.id, channel_id: chId })
-            else await supabase.from('subscriptions').delete().eq('follower_id', user.id).eq('channel_id', chId)
+            const { data:{ user } } = await supabase.auth.getUser()
+            if(!user) throw new Error('Войдите в аккаунт')
+            const { error } = await supabase.from('subscriptions').insert({ follower_id: user.id, channel_id: chId })
+            if(error) throw error
         } catch(err){
-            applySubState(chId, wasSub)
-            if(wasSub) state.myChannelSubs.add(chId); else state.myChannelSubs.delete(chId)
+            // ⚠️ ОТКАТ
+            btn.classList.remove('hidden')
+            state.myChannelSubs.delete(chId)
+            applySubState(chId, false)
+            showToast('error', 'Не удалось подписаться', { icon:'⚠️' })
         }
-        setTimeout(syncVfmMeta, 260)
     })
 
     el.querySelector('#vfm-top-more').addEventListener('click', openVfmMoreMenu)
@@ -7516,11 +7669,86 @@ function vfmBuildOverlay(){
     /* ─── Кнопки: share / repost / like ─── */
     el.querySelectorAll('[data-vfm]').forEach(b => b.addEventListener('click', async e => {
         e.stopPropagation()
+        e.preventDefault()
         const item = VFM.list[VFM.index]; if(!item) return
         const k = b.dataset.vfm
         const pid = item.id
-        if(k === 'like'){ await toggleLikeGlobal(pid); syncVfmMeta() }
-        if(k === 'repost'){ await toggleRepostGlobal(pid); syncVfmMeta() }
+
+        if(k === 'like'){
+            const btn      = b
+            const countEl  = btn.querySelector('[data-vfm-count="like"]')
+            const svg      = btn.querySelector('svg')
+            const wasLiked = btn.classList.contains('liked')
+            const nowLiked = !wasLiked
+            const oldCount = parseInt(countEl?.textContent || '0', 10)
+            const newCount = Math.max(0, oldCount + (nowLiked ? 1 : -1))
+
+            // 1. МГНОВЕННО: класс + число + fill иконки
+            btn.classList.toggle('liked', nowLiked)
+            if(countEl) countEl.textContent = String(newCount)
+            if(svg){
+                svg.style.fill   = nowLiked ? 'currentColor' : 'none'
+                svg.style.stroke = 'currentColor'
+                svg.style.transition = 'transform .18s cubic-bezier(.34,1.56,.64,1)'
+                svg.style.transform = 'scale(1.25)'
+                setTimeout(() => { svg.style.transform = '' }, 180)
+            }
+
+            // 2. МГНОВЕННО синхронизируем скрытую карточку (для возврата назад)
+            try { syncPostLike(pid, nowLiked, nowLiked ? 1 : -1) } catch(_){}
+
+            // 3. В фоне — БД
+            try {
+                const { data:{ user } } = await supabase.auth.getUser()
+                if(!user) throw new Error('Войдите в аккаунт')
+
+                const error = nowLiked
+                    ? (await supabase.from('likes').insert({ user_id: user.id, post_id: pid })).error
+                    : (await supabase.from('likes').delete().eq('user_id', user.id).eq('post_id', pid)).error
+                if(error) throw error
+
+                invalidateFeedCache()
+                if(typeof learnFromPost === 'function') learnFromPost(pid, nowLiked ? 3 : -1)
+            } catch(err){
+                // ⚠️ ОТКАТ
+                btn.classList.toggle('liked', wasLiked)
+                if(countEl) countEl.textContent = String(oldCount)
+                if(svg) svg.style.fill = wasLiked ? 'currentColor' : 'none'
+                try { syncPostLike(pid, wasLiked, wasLiked ? 1 : -1) } catch(_){}
+                showToast('error', 'Не удалось: ' + (err.message || 'ошибка'), { icon:'⚠️' })
+            }
+            return
+        }
+
+        if(k === 'repost'){
+            const btn        = b
+            const countEl    = btn.querySelector('[data-vfm-count="repost"]')
+            const wasRep     = btn.classList.contains('reposted')
+            const nowRep     = !wasRep
+            const oldCount   = parseInt(countEl?.textContent || '0', 10)
+            const newCount   = Math.max(0, oldCount + (nowRep ? 1 : -1))
+
+            btn.classList.toggle('reposted', nowRep)
+            if(countEl) countEl.textContent = String(newCount)
+            try { syncPostRepost(pid, nowRep, nowRep ? 1 : -1) } catch(_){}
+
+            try {
+                const { data:{ user } } = await supabase.auth.getUser()
+                if(!user) throw new Error('Войдите в аккаунт')
+                const error = nowRep
+                    ? (await supabase.from('reposts').insert({ user_id: user.id, post_id: pid })).error
+                    : (await supabase.from('reposts').delete().eq('user_id', user.id).eq('post_id', pid)).error
+                if(error) throw error
+                invalidateFeedCache()
+            } catch(err){
+                btn.classList.toggle('reposted', wasRep)
+                if(countEl) countEl.textContent = String(oldCount)
+                try { syncPostRepost(pid, wasRep, wasRep ? 1 : -1) } catch(_){}
+                showToast('error', 'Не удалось: ' + (err.message || 'ошибка'), { icon:'⚠️' })
+            }
+            return
+        }
+
         if(k === 'share'){
             const content = item.card?.querySelector('.feed-post-content')?.textContent || ''
             openShareSheet({ type:'post', postId: pid, src: item.src, title: content })
@@ -7541,9 +7769,41 @@ function vfmBuildOverlay(){
         if(!authorId) return
         const btn = e.currentTarget
         const wasFollowing = btn.classList.contains('following')
-        btn.classList.toggle('following', !wasFollowing)
-        await followAuthor(authorId)
-        setTimeout(syncVfmMeta, 260)
+        const nowFollowing = !wasFollowing
+
+        // ⚡ МГНОВЕННО
+        btn.classList.toggle('following', nowFollowing)
+        if(nowFollowing){
+            state.myFollows.add(authorId)
+            showToast('error', 'Вы подписаны', { icon:'❤️', duration: 2200 })   // КРАСНЫЙ
+        } else {
+            state.myFollows.delete(authorId)
+            showToast('info', 'Отписка', { icon:'👋', duration: 2200 })
+        }
+        // Обновляем кнопки во всех карточках
+        document.querySelectorAll(`.feed-follow-text[data-plus-uid="${authorId}"]`).forEach(b => {
+            b.classList.toggle('subscribed', nowFollowing)
+            b.textContent = nowFollowing ? 'Вы подписаны' : 'Подписаться'
+        })
+        document.querySelectorAll(`.feed-avatar-plus[data-plus-uid="${authorId}"]`).forEach(x => x.remove())
+
+        try {
+            const { data:{ user } } = await supabase.auth.getUser()
+            if(!user) throw new Error('Войдите в аккаунт')
+            const error = nowFollowing
+                ? (await supabase.from('follows').insert({ follower_id: user.id, following_id: authorId })).error
+                : (await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', authorId)).error
+            if(error) throw error
+        } catch(err){
+            // ⚠️ ОТКАТ
+            btn.classList.toggle('following', wasFollowing)
+            if(wasFollowing) state.myFollows.add(authorId); else state.myFollows.delete(authorId)
+            document.querySelectorAll(`.feed-follow-text[data-plus-uid="${authorId}"]`).forEach(b => {
+                b.classList.toggle('subscribed', wasFollowing)
+                b.textContent = wasFollowing ? 'Вы подписаны' : 'Подписаться'
+            })
+            showToast('error', 'Не удалось: ' + (err.message || 'ошибка'), { icon:'⚠️' })
+        }
     })
 
     /* ─── Прогресс ─── */
