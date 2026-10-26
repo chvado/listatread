@@ -2785,16 +2785,25 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     }
 
     // видео: текст → кнопки
+    const trackAv = post.profiles?.avatar_url || null
+    const trackInitial = (post.profiles?.full_name || post.profiles?.username || 'U').charAt(0).toUpperCase()
+    const vinylHtml = `<div class="post-vinyl" data-sound-post="${post.id}" title="Смотреть все треды под этот звук">
+    <div class="post-vinyl-disc">
+        <div class="post-vinyl-cover">${trackAv ? `<img src="${trackAv}">` : trackInitial}</div>
+    </div>
+</div>`
+
     return `<article class="feed-post fp-new feed-post-video" data-pid="${post.id}" data-channel="${post.channel_id || ''}" data-video-src="${post.media_url}">
     <video class="post-bg-video" src="${post.media_url}" autoplay muted loop playsinline preload="metadata"></video>
     <div class="post-bg-overlay"></div>
     <div class="feed-post-video-hint" style="white-space:nowrap">нажмите чтобы посмотреть</div>
+    ${vinylHtml}
     ${header}
     <div class="feed-post-content">${escapeHtml(post.content || '')}</div>
     ${pollHtml}
     ${footer}
     ${discuss}
-  </article>`
+</article>`
 }
 
 function renderPoll(poll, postId){
@@ -2868,8 +2877,9 @@ function updatePollInDom(postId, newPoll, userId){
     if(inRecBuffer) inRecBuffer.poll = newPoll
 }
 function mediaLabel(post){
+    if(post.media_title) return post.media_title
     if(isVideoUrl(post.media_url)) return 'оригинальный звук -'
-    if(isAudioUrl(post.media_url)) return  'может быть защищено авторским правом пользователя -'
+    if(isAudioUrl(post.media_url)) return 'оригинальный звук -'
     if(post.media_url) return 'оригинальное фото -'
     return 'пост был выложен -'
 }
@@ -2880,14 +2890,17 @@ function buildMetaRow(time, contextLabel, post){
     const initial = (p.full_name || p.username || 'U').charAt(0).toUpperCase()
     const avaHtml = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : initial
     const soundLabel = mediaLabel(post)
+    const isOriginal = !post.media_title
+    // Метка «оригинальный звук — @user» или «{название} — @user»
+    const soundText = isOriginal
+        ? `оригинальный звук · @${escapeHtml(username)}`
+        : `${escapeHtml(soundLabel)} · @${escapeHtml(username)}`
     const content = `
         <span class="mq-label">${escapeHtml(contextLabel)}</span>
         <span class="mq-dot">•</span>
-        <span class="mq-label">${escapeHtml(soundLabel)}</span>
-        <span class="mq-dot">•</span>
-        <span class="mq-sound">
+        <span class="mq-sound" data-sound-post="${post.id}">
             <span class="mq-sound-ava">${avaHtml}</span>
-            <span class="mq-sound-name">@${escapeHtml(username)}</span>
+            <span class="mq-sound-name">${soundText}</span>
         </span>
     `
     return `
@@ -3019,7 +3032,69 @@ async function attachFeedActions(list, myId){
     attachStickerHandlers(list);
 
 }
+document.addEventListener('click', e => {
+    const v = e.target.closest('.post-vinyl, .mq-sound[data-sound-post]')
+    if(!v) return
+    e.stopPropagation()
+    const pid = v.dataset.soundPost
+    if(!pid) return
+    openSoundPage(pid)
+})
 
+async function openSoundPage(postId){
+    try {
+        const { data: post } = await supabase.from('posts')
+            .select('media_url, media_title, author_id, profiles:author_id ( username, full_name, avatar_url )')
+            .eq('id', postId).maybeSingle()
+        if(!post?.media_url) return
+        // Ищем все посты с тем же звуком (media_url)
+        const { data: same } = await supabase.from('posts')
+            .select('id, content, media_url, media_title, created_at, author_id, profiles:author_id ( username, full_name, avatar_url )')
+            .eq('media_url', post.media_url)
+            .order('created_at', { ascending: false })
+            .limit(50)
+        if(!same || !same.length){ showToast('info', 'Постов с этим звуком пока нет'); return }
+        // Открываем временный экран
+        let scr = document.getElementById('sound-page-screen')
+        if(!scr){
+            scr = document.createElement('div')
+            scr.id = 'sound-page-screen'
+            scr.className = 'sound-page-screen hidden'
+            document.body.appendChild(scr)
+        }
+        const name = post.media_title || 'оригинальный звук'
+        const author = post.profiles?.full_name || post.profiles?.username || 'user'
+        const ava = post.profiles?.avatar_url
+        scr.innerHTML = `
+            <div class="sound-page-top">
+                <button class="topbar-btn" id="sound-page-back">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+                </button>
+                <div class="sound-page-title">${escapeHtml(name)}</div>
+                <div style="width:40px"></div>
+            </div>
+            <div class="sound-page-header">
+                <div class="sound-page-ava">${ava ? `<img src="${ava}">` : escapeHtml(author.charAt(0).toUpperCase())}</div>
+                <div>
+                    <div class="sound-page-name">${escapeHtml(name)}</div>
+                    <div class="sound-page-author">@${escapeHtml(author)}</div>
+                </div>
+            </div>
+            <div class="sound-page-list">
+                ${same.map(p => `<div class="feed-post" data-pid="${p.id}" style="margin-bottom:12px">
+                    <div class="feed-post-content">${escapeHtml(p.content || '')}</div>
+                    ${isVideoUrl(p.media_url) ? `<video class="post-bg-video" src="${p.media_url}" muted loop playsinline style="position:relative;width:100%;height:auto;max-height:420px"></video>` : ''}
+                </div>`).join('')}
+            </div>
+        `
+        scr.classList.remove('hidden')
+        requestAnimationFrame(() => scr.classList.add('show'))
+        document.getElementById('sound-page-back').onclick = () => {
+            scr.classList.remove('show')
+            setTimeout(() => scr.classList.add('hidden'), 300)
+        }
+    } catch(err){ console.warn('[sound page]', err) }
+}
 /* ============================================================
    COMMENTS — TikTok-style modal
 ============================================================ */

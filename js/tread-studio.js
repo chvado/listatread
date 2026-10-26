@@ -584,77 +584,83 @@ async function startRecording(){
 
         if(TS.selectedTrack?.src){
             try {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-                if(audioCtx.state === 'suspended') await audioCtx.resume()
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
+                if(audioCtx.state === 'suspended') await audioCtx.resume();
 
-                const audioEl = new Audio()
-                audioEl.crossOrigin = 'anonymous'
-                audioEl.preload = 'auto'
-                audioEl.loop = true
-                audioEl.src = TS.selectedTrack.src
+                const audioEl = new Audio();
+                audioEl.crossOrigin = 'anonymous';
+                audioEl.preload = 'auto';
+                audioEl.loop = true;
+                audioEl.src = TS.selectedTrack.src;
 
-                // Ждём готовности до 2 сек, чтобы .play() стартовал мгновенно
                 await new Promise(resolve => {
-                    if(audioEl.readyState >= 3) return resolve()
-                    let done = false
-                    const finish = () => { if(!done){ done = true; resolve() } }
-                    audioEl.addEventListener('canplaythrough', finish, { once: true })
-                    audioEl.addEventListener('error', finish, { once: true })
-                    audioEl.load()
-                    setTimeout(finish, 2000)
-                })
+                    if(audioEl.readyState >= 3) return resolve();
+                    let done = false;
+                    const finish = () => { if(!done){ done = true; resolve() } };
+                    audioEl.addEventListener('canplaythrough', finish, { once: true });
+                    audioEl.addEventListener('error', finish, { once: true });
+                    audioEl.load();
+                    setTimeout(finish, 2000);
+                });
 
-                audioEl.currentTime = TS.selectedTrack.startAt || 0
+                audioEl.currentTime = TS.selectedTrack.startAt || 0;
 
-                // Источники
-                const micSrc   = audioCtx.createMediaStreamSource(TS.stream)
-                const trackSrc = audioCtx.createMediaElementSource(audioEl)
-                const dest     = audioCtx.createMediaStreamDestination()
+                const trackSrc = audioCtx.createMediaElementSource(audioEl);
+                const dest     = audioCtx.createMediaStreamDestination();
 
-                // Микрофон → тише (чтобы не ловить эхо из динамика)
-                const micGain = audioCtx.createGain()
-                micGain.gain.value = 0.5
-                micSrc.connect(micGain).connect(dest)
+                // ⚡ Только трек — без микрофона (чтобы не было «подводного» эха)
+                const trackGain = audioCtx.createGain();
+                trackGain.gain.value = 1.0;
+                trackSrc.connect(trackGain).connect(dest);
 
-                // Трек → в запись
-                const trackGain = audioCtx.createGain()
-                trackGain.gain.value = 1.0
-                trackSrc.connect(trackGain).connect(dest)
+                // Трек → в динамик (чтоб юзер слышал)
+                const speakerGain = audioCtx.createGain();
+                speakerGain.gain.value = 0.7;
+                trackSrc.connect(speakerGain).connect(audioCtx.destination);
 
-                // Трек → в динамик (чтобы юзер слышал)
-                const speakerGain = audioCtx.createGain()
-                speakerGain.gain.value = 0.6
-                trackSrc.connect(speakerGain).connect(audioCtx.destination)
+                // Компрессор — убирает клиппинг
+                const compressor = audioCtx.createDynamicsCompressor();
+                compressor.threshold.value = -12;
+                compressor.knee.value = 12;
+                compressor.ratio.value = 4;
+                compressor.attack.value = 0.003;
+                compressor.release.value = 0.25;
 
-                // Склеиваем видео + микшированное аудио
+                // реконнект через компрессор
+                trackSrc.disconnect();
+                trackSrc.connect(compressor).connect(dest);
+                compressor.connect(speakerGain).connect(audioCtx.destination);
+
                 recordStream = new MediaStream([
                     ...TS.stream.getVideoTracks(),
                     ...dest.stream.getAudioTracks()
-                ])
+                ]);
 
-                TS._audioEl  = audioEl
-                TS._audioCtx = audioCtx
+                TS._audioEl  = audioEl;
+                TS._audioCtx = audioCtx;
 
-                // ⚡ СТАРТ АУДИО ДО MediaRecorder — прогрев аудио-стека
                 try { await audioEl.play() } catch(e){ console.warn('[audio play]', e) }
             } catch(e){
-                console.warn('[audio mix fail → speaker fallback]', e)
-                recordStream = TS.stream
-                // Фолбэк: играем через динамик (микрофон запишет)
+                console.warn('[audio mix fail → speaker fallback]', e);
+                recordStream = TS.stream;
                 try {
-                    TS._audioEl = new Audio(TS.selectedTrack.src)
-                    TS._audioEl.currentTime = TS.selectedTrack.startAt || 0
-                    TS._audioEl.volume = 0.85
+                    TS._audioEl = new Audio(TS.selectedTrack.src);
+                    TS._audioEl.currentTime = TS.selectedTrack.startAt || 0;
+                    TS._audioEl.volume = 0.85;
                     await new Promise(r => {
-                        TS._audioEl.addEventListener('canplay', r, { once: true })
-                        setTimeout(r, 1500)
-                    })
-                    TS._audioEl.play().catch(()=>{})
+                        TS._audioEl.addEventListener('canplay', r, { once: true });
+                        setTimeout(r, 1500);
+                    });
+                    TS._audioEl.play().catch(()=>{});
                 } catch(_){}
             }
         }
 
-        TS.recorder = new MediaRecorder(recordStream, { mimeType: mime })
+        TS.recorder = new MediaRecorder(recordStream, {
+            mimeType: mime,
+            audioBitsPerSecond: 128000,
+            videoBitsPerSecond: 2500000
+        });
         TS.chunks = []
         TS.recorder.ondataavailable = e => { if(e.data?.size) TS.chunks.push(e.data) }
         TS.recorder.onstop = async () => {
@@ -1240,13 +1246,12 @@ async function openEditor(blob){
     TS.activeTab = 'editor'
     stopCameraStream()
 
-    const hasTrack = !!TS.selectedTrack?.src
-
     const root = TS.root
     root.innerHTML = `
         <div class="ts-editor" id="ts-editor">
             <div class="ts-editor-video-wrap">
-                <video class="ts-editor-video" id="ts-editor-video" playsinline ${hasTrack ? 'muted' : ''} autoplay loop></video>
+                <video class="ts-editor-video" id="ts-editor-video"
+                    playsinline autoplay loop muted></video>
             </div>
             <div id="ts-overlays-layer" class="ts-overlays-layer"></div>
             <div class="ts-editor-side" id="ts-editor-side">
@@ -1270,43 +1275,60 @@ async function openEditor(blob){
     const url = URL.createObjectURL(blob)
     vid.src = url
     vid.dataset.objectUrl = url
-    vid.play().catch(()=>{})
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ ВИДЕО: полный экран + автоплей со звуком
+    // ═══════════════════════════════════════════════════════════
+    vid.addEventListener('loadedmetadata', () => {
+        const vw = vid.videoWidth, vh = vid.videoHeight;
+        if(!vw || !vh) return;
+        // Всегда cover как на 1 этапе (кроп как в TikTok)
+        vid.style.objectFit = 'cover';
+        vid.style.objectPosition = 'center center';
+    }, { once: true })
+
+    // muted autoplay → потом снимаем mute (обход автоплей-политики)
+    vid.muted = true
+    const playPromise = vid.play()
+    if(playPromise && playPromise.then){
+        playPromise.then(() => {
+            setTimeout(() => { vid.muted = false }, 60)
+        }).catch(() => {
+            // Автоплей заблокирован — ждём тапа
+            const overlay = document.createElement('div')
+            overlay.className = 'ts-editor-tap-overlay'
+            overlay.innerHTML = '<div class="ts-editor-tap-btn">▶</div>'
+            overlay.addEventListener('click', () => {
+                vid.muted = false
+                vid.play().catch(()=>{})
+                overlay.remove()
+            })
+            root.appendChild(overlay)
+        })
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ ТАП по видео → пауза/плей
+    // ═══════════════════════════════════════════════════════════
+    vid.addEventListener('click', e => {
+        // Игнорируем если клик по overlay-элементу
+        if(e.target.closest('.ts-overlay-text, .ts-overlay-sticker')) return
+        if(vid.paused){ vid.play().catch(()=>{}) }
+        else { vid.pause() }
+    })
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ ВОССТАНАВЛИВАЕМ РАНЕЕ ДОБАВЛЕННЫЕ OVERLAYS
+    // ═══════════════════════════════════════════════════════════
+    const layer = root.querySelector('#ts-overlays-layer')
+    TS.overlays.forEach(ov => {
+        if(ov.type === 'text') renderTextOverlay(layer, ov)
+        else if(ov.type === 'sticker') renderStickerOverlay(layer, ov)
+    })
 
     if(TS.selectedEffect === 'warm')    vid.classList.add('filter-warm')
     if(TS.selectedEffect === 'cool')    vid.classList.add('filter-cool')
     if(TS.selectedEffect === 'vintage') vid.classList.add('filter-vintage')
-
-    // ═══ МУЗЫКА НА 2 ЭТАПЕ — фрагмент трека зациклен вместе с видео ═══
-    if(hasTrack){
-        try {
-            TS.audio?.pause()
-            TS.audio = new Audio(TS.selectedTrack.src)
-            TS.audio.crossOrigin = 'anonymous'
-            TS.audio.volume = 1
-            TS.audio.currentTime = TS.selectedTrack.startAt || 0
-
-            const fragStart = TS.selectedTrack.startAt || 0
-            const fragEnd   = fragStart + TS.selectedTime
-
-            // 🔁 Зацикливаем ТОЛЬКО фрагмент (не весь трек)
-            TS.audio.addEventListener('timeupdate', () => {
-                if(TS.audio.currentTime >= fragEnd || TS.audio.currentTime < fragStart - 0.1){
-                    TS.audio.currentTime = fragStart
-                }
-            })
-
-            // 🔁 Синхронизируем с loop'ом видео
-            vid.addEventListener('timeupdate', () => {
-                if(vid.currentTime < 0.15 && TS.audio){
-                    if(Math.abs(TS.audio.currentTime - fragStart) > 0.6){
-                        TS.audio.currentTime = fragStart
-                    }
-                }
-            })
-
-            TS.audio.play().catch(()=>{})
-        } catch(e){ console.warn('[editor audio]', e) }
-    }
 
     root.querySelectorAll('.ts-editor-side-btn').forEach(b => {
         b.addEventListener('click', () => handleEditorAction(b.dataset.k))
@@ -1314,10 +1336,11 @@ async function openEditor(blob){
     root.querySelector('#ts-editor-delete').addEventListener('click', () => {
         if(!confirm('Удалить видео?')) return
         try { TS.audio?.pause() } catch {}
+        TS.overlays = []
         closeTreadStudio()
     })
     root.querySelector('#ts-editor-continue').addEventListener('click', () => {
-        try { TS.audio?.pause() } catch {}
+        try { vid.pause() } catch {}
         openPublishScreen()
     })
 }
@@ -1344,7 +1367,7 @@ async function handleEditorAction(key){
             openTextModal()
             return
         case 'sticker':
-            openStickerEditorModal()
+            await openStickerPickerForEditor()
             return
         case 'edit':
             showToastLocal('Монтаж — в разработке', 'info')
@@ -1360,7 +1383,93 @@ async function handleEditorAction(key){
             return
     }
 }
+async function openStickerPickerForEditor(){
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user){ showToastLocal('Войдите в аккаунт', 'error'); return }
 
+    const [ownRes, savedRes, pubRes] = await Promise.all([
+        supabase.from('sticker_packs').select('*').eq('user_id', user.id).order('created_at', { ascending:false }),
+        supabase.from('sticker_pack_saves').select('pack_id, sticker_packs(*)').eq('user_id', user.id),
+        supabase.from('sticker_packs').select('*').eq('is_public', true).neq('user_id', user.id).limit(50)
+    ])
+
+    const myPacks = ownRes.data || []
+    const savedPacks = (savedRes.data || []).map(s => s.sticker_packs).filter(Boolean)
+    const ownIds = new Set(myPacks.map(p => p.id))
+    const savedIds = new Set(savedPacks.map(p => p.id))
+    const allPublic = (pubRes.data || []).filter(p => !ownIds.has(p.id) && !savedIds.has(p.id))
+    const shuffled = [...allPublic].sort(() => Math.random() - 0.5)
+
+    const modal = document.createElement('div')
+    modal.className = 'sticker-picker-modal'
+    modal.innerHTML = `
+        <div class="sticker-picker-backdrop"></div>
+        <div class="sticker-picker-sheet">
+            <div class="lang-sheet-handle"></div>
+            <div class="sticker-picker-tabs">
+                <button class="sticker-picker-tab active" data-tab="personal">Личные · ${myPacks.length}</button>
+                <button class="sticker-picker-tab" data-tab="saved">Сохранённые · ${savedPacks.length}</button>
+                <button class="sticker-picker-tab" data-tab="find">Найти</button>
+            </div>
+            <div class="sticker-picker-packs" id="sp-packs"></div>
+            <div class="sticker-picker-grid" id="sp-grid"></div>
+        </div>`
+    document.body.appendChild(modal)
+
+    let currentTab = 'personal'
+    let currentPack = null
+
+    const close = () => modal.remove()
+    modal.querySelector('.sticker-picker-backdrop').onclick = close
+
+    function getPacksForTab(){
+        if(currentTab === 'personal') return myPacks
+        if(currentTab === 'saved') return savedPacks
+        return shuffled
+    }
+
+    function render(){
+        const packs = getPacksForTab()
+        if(!currentPack || !packs.find(p => p.id === currentPack.id)) currentPack = packs[0] || null
+
+        const packsBox = modal.querySelector('#sp-packs')
+        packsBox.innerHTML = packs.map(p => {
+            const cover = p.stickers?.[0]
+            return `<button class="sp-pack ${currentPack?.id === p.id ? 'active' : ''}" data-pid="${p.id}">${cover ? `<img src="${cover}">` : '?'}</button>`
+        }).join('')
+        packsBox.querySelectorAll('.sp-pack').forEach(b => b.onclick = () => {
+            currentPack = packs.find(p => p.id === b.dataset.pid)
+            render()
+        })
+
+        const grid = modal.querySelector('#sp-grid')
+        if(!currentPack || !currentPack.stickers?.length){
+            grid.innerHTML = '<p class="empty small" style="grid-column:1/-1;padding:20px;text-align:center;color:var(--text-tertiary)">Нет стикеров</p>'
+            return
+        }
+        grid.innerHTML = currentPack.stickers.map(s =>
+            `<button class="sp-sticker" data-url="${s}"><img src="${s}" alt=""></button>`
+        ).join('')
+        grid.querySelectorAll('.sp-sticker').forEach(b => {
+            b.addEventListener('click', () => {
+                const url = b.dataset.url
+                const ov = { type:'sticker', content: url, x: 0.5, y: 0.6, scale: 1 }
+                TS.overlays.push(ov)
+                const layer = document.getElementById('ts-overlays-layer')
+                if(layer) renderStickerOverlay(layer, ov)
+                close()
+            })
+        })
+    }
+
+    modal.querySelectorAll('.sticker-picker-tab').forEach(t => t.onclick = () => {
+        currentTab = t.dataset.tab
+        modal.querySelectorAll('.sticker-picker-tab').forEach(x => x.classList.toggle('active', x === t))
+        render()
+    })
+
+    render()
+}
 function openEditorFilterModal(){
     document.getElementById('ts-mini-filter')?.remove()
     const m = document.createElement('div')
@@ -1411,42 +1520,216 @@ function openTextModal(){
     document.getElementById('ts-mini-text')?.remove()
     const m = document.createElement('div')
     m.id = 'ts-mini-text'
-    m.className = 'ts-mini-modal'
+    m.className = 'ts-text-editor-modal'
     m.innerHTML = `
-        <div class="ts-mini-sheet">
-            <div class="ts-mini-title">Добавить текст</div>
-            <textarea class="ts-mini-input" id="ts-text-input" placeholder="Ваш текст..." maxlength="120"></textarea>
-            <div class="ts-mini-actions">
+        <div class="ts-text-editor">
+            <div class="ts-text-editor-preview" id="ts-text-preview">
+                <span id="ts-text-preview-span"></span>
+            </div>
+            <textarea class="ts-text-editor-input" id="ts-text-input"
+                placeholder="Ваш текст..." maxlength="30" rows="2"></textarea>
+            <div class="ts-text-editor-counter"><span id="ts-text-counter">0</span>/30</div>
+            <div class="ts-text-editor-row">
+                <label>Шрифт:</label>
+                <select id="ts-text-font">
+                    <option value="-apple-system, sans-serif">Системный</option>
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="'Times New Roman', serif">Times</option>
+                    <option value="'Courier New', monospace">Courier</option>
+                    <option value="Impact, sans-serif">Impact</option>
+                    <option value="'Comic Sans MS', cursive">Comic</option>
+                </select>
+            </div>
+            <div class="ts-text-editor-row">
+                <label>Стиль:</label>
+                <div class="ts-text-editor-toggles">
+                    <button type="button" data-style="bold"><b>Ж</b></button>
+                    <button type="button" data-style="italic"><i>К</i></button>
+                    <button type="button" data-style="strike"><s>З</s></button>
+                </div>
+            </div>
+            <div class="ts-text-editor-row">
+                <label>Цвет текста:</label>
+                <input type="color" id="ts-text-color" value="#ffffff">
+            </div>
+            <div class="ts-text-editor-row">
+                <label>Обводка:</label>
+                <input type="color" id="ts-text-stroke" value="#000000">
+                <label style="margin-left:12px">Толщина:</label>
+                <input type="range" id="ts-text-stroke-w" min="0" max="6" value="2" style="flex:1">
+            </div>
+            <div class="ts-text-editor-row">
+                <label>Фон:</label>
+                <input type="color" id="ts-text-bg" value="#000000">
+                <button type="button" id="ts-text-bg-none" style="margin-left:6px">✕ Убрать</button>
+            </div>
+            <div class="ts-text-editor-actions">
                 <button class="ts-mini-btn cancel" id="ts-text-cancel">Отмена</button>
                 <button class="ts-mini-btn confirm" id="ts-text-ok">Добавить</button>
             </div>
         </div>
     `
     document.body.appendChild(m)
+
     const input = m.querySelector('#ts-text-input')
-    input.focus()
+    const preview = m.querySelector('#ts-text-preview-span')
+    const counter = m.querySelector('#ts-text-counter')
+
+    const state = {
+        font: '-apple-system, sans-serif',
+        bold: false, italic: false, strike: false,
+        color: '#ffffff', stroke: '#000000', strokeW: 2,
+        bg: null,
+        text: ''
+    }
+
+    const applyPreview = () => {
+        preview.textContent = state.text || 'Текст'
+        preview.style.fontFamily = state.font
+        preview.style.fontWeight = state.bold ? '900' : '500'
+        preview.style.fontStyle = state.italic ? 'italic' : 'normal'
+        preview.style.textDecoration = state.strike ? 'line-through' : 'none'
+        preview.style.color = state.color
+        preview.style.webkitTextStroke = state.strokeW > 0 ? `${state.strokeW}px ${state.stroke}` : 'none'
+        preview.style.background = state.bg || 'transparent'
+        preview.style.padding = state.bg ? '4px 10px' : '0'
+        preview.style.borderRadius = state.bg ? '6px' : '0'
+        counter.textContent = state.text.length
+    }
+    applyPreview()
+
+    input.addEventListener('input', () => { state.text = input.value; applyPreview() })
+    m.querySelector('#ts-text-font').addEventListener('change', e => { state.font = e.target.value; applyPreview() })
+    m.querySelectorAll('[data-style]').forEach(b => b.addEventListener('click', () => {
+        const k = b.dataset.style
+        state[k] = !state[k]
+        b.classList.toggle('active', state[k])
+        applyPreview()
+    }))
+    m.querySelector('#ts-text-color').addEventListener('input', e => { state.color = e.target.value; applyPreview() })
+    m.querySelector('#ts-text-stroke').addEventListener('input', e => { state.stroke = e.target.value; applyPreview() })
+    m.querySelector('#ts-text-stroke-w').addEventListener('input', e => { state.strokeW = +e.target.value; applyPreview() })
+    m.querySelector('#ts-text-bg').addEventListener('input', e => { state.bg = e.target.value; applyPreview() })
+    m.querySelector('#ts-text-bg-none').addEventListener('click', () => { state.bg = null; applyPreview() })
+
     m.querySelector('#ts-text-cancel').onclick = () => m.remove()
     m.querySelector('#ts-text-ok').onclick = () => {
-        const text = input.value.trim()
-        if(!text){ m.remove(); return }
-        addTextOverlay(text)
+        if(!state.text.trim()){ m.remove(); return }
+        const ov = {
+            type: 'text',
+            content: state.text.trim(),
+            x: 0.5, y: 0.4,   // проценты от 0 до 1
+            scale: 1,
+            font: state.font,
+            bold: state.bold, italic: state.italic, strike: state.strike,
+            color: state.color,
+            stroke: state.stroke, strokeW: state.strokeW,
+            bg: state.bg
+        }
+        TS.overlays.push(ov)
+        const layer = document.getElementById('ts-overlays-layer')
+        if(layer) renderTextOverlay(layer, ov)
         m.remove()
     }
+    setTimeout(() => input.focus(), 100)
 }
 
-function addTextOverlay(text){
-    const layer = document.getElementById('ts-overlays-layer')
-    if(!layer) return
+function renderTextOverlay(layer, ov){
     const el = document.createElement('div')
     el.className = 'ts-overlay-text'
-    el.textContent = text
-    el.style.left = '50%'
-    el.style.top  = '40%'
-    el.style.transform = 'translate(-50%,-50%)'
+    el.style.left = (ov.x * 100) + '%'
+    el.style.top  = (ov.y * 100) + '%'
+    el.style.transform = `translate(-50%,-50%) scale(${ov.scale || 1})`
+    el.style.fontFamily = ov.font
+    el.style.fontSize = '28px'
+    el.style.fontWeight = ov.bold ? '900' : '500'
+    el.style.fontStyle = ov.italic ? 'italic' : 'normal'
+    el.style.textDecoration = ov.strike ? 'line-through' : 'none'
+    el.style.color = ov.color
+    el.style.webkitTextStroke = ov.strokeW > 0 ? `${ov.strokeW}px ${ov.stroke}` : 'none'
+    el.style.background = ov.bg || 'transparent'
+    el.style.padding = ov.bg ? '4px 10px' : '0'
+    el.style.borderRadius = ov.bg ? '6px' : '0'
     el.style.pointerEvents = 'auto'
-    makeDraggable(el)
+    el.textContent = ov.content
+    el._ov = ov
+    attachOverlayGestures(el, ov)
     layer.appendChild(el)
-    TS.overlays.push({ type:'text', content: text })
+}
+
+function renderStickerOverlay(layer, ov){
+    const el = document.createElement('img')
+    el.className = 'ts-overlay-sticker'
+    el.src = ov.content
+    el.style.left = (ov.x * 100) + '%'
+    el.style.top  = (ov.y * 100) + '%'
+    el.style.transform = `translate(-50%,-50%) scale(${ov.scale || 1})`
+    el.style.pointerEvents = 'auto'
+    el._ov = ov
+    attachOverlayGestures(el, ov)
+    layer.appendChild(el)
+}
+
+/* Общий drag + pinch-to-zoom для оверлеев */
+function attachOverlayGestures(el, ov){
+    let dragging = false
+    let sx = 0, sy = 0, ox = 0, oy = 0
+    let pinchDist = 0
+    let pinchScale = 1
+
+    const parentRect = () => el.closest('.ts-editor')?.getBoundingClientRect() ||
+        { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
+
+    el.addEventListener('pointerdown', e => {
+        if(e.pointerType === 'touch' && e.touches && e.touches.length === 2) return
+        e.stopPropagation()
+        dragging = true
+        sx = e.clientX; sy = e.clientY
+        const r = el.getBoundingClientRect()
+        ox = r.left; oy = r.top
+        el.classList.add('dragging')
+    })
+    el.addEventListener('pointermove', e => {
+        if(!dragging) return
+        const pr = parentRect()
+        const nx = ox + (e.clientX - sx)
+        const ny = oy + (e.clientY - sy)
+        ov.x = Math.max(0.05, Math.min(0.95, (nx + el.offsetWidth/2 - pr.left) / pr.width))
+        ov.y = Math.max(0.05, Math.min(0.95, (ny + el.offsetHeight/2 - pr.top) / pr.height))
+        el.style.left = (ov.x * 100) + '%'
+        el.style.top  = (ov.y * 100) + '%'
+        el.style.transform = `translate(-50%,-50%) scale(${ov.scale || 1})`
+    })
+    el.addEventListener('pointerup', () => {
+        dragging = false
+        el.classList.remove('dragging')
+    })
+
+    // Pinch-to-zoom (2 пальца)
+    el.addEventListener('touchstart', e => {
+        if(e.touches.length === 2){
+            e.preventDefault()
+            const dx = e.touches[0].clientX - e.touches[1].clientX
+            const dy = e.touches[0].clientY - e.touches[1].clientY
+            pinchDist = Math.hypot(dx, dy)
+            pinchScale = ov.scale || 1
+        }
+    }, { passive: false })
+
+    el.addEventListener('touchmove', e => {
+        if(e.touches.length === 2 && pinchDist > 0){
+            e.preventDefault()
+            const dx = e.touches[0].clientX - e.touches[1].clientX
+            const dy = e.touches[0].clientY - e.touches[1].clientY
+            const dist = Math.hypot(dx, dy)
+            ov.scale = Math.max(0.3, Math.min(5, pinchScale * (dist / pinchDist)))
+            el.style.transform = `translate(-50%,-50%) scale(${ov.scale})`
+        }
+    }, { passive: false })
+
+    el.addEventListener('touchend', e => {
+        if(e.touches.length < 2) pinchDist = 0
+    })
 }
 
 async function openStickerEditorModal(){
@@ -1479,45 +1762,9 @@ async function openStickerEditorModal(){
     })
 }
 
-function addStickerOverlay(url){
-    const layer = document.getElementById('ts-overlays-layer')
-    if(!layer) return
-    const el = document.createElement('img')
-    el.className = 'ts-overlay-sticker'
-    el.src = url
-    el.style.left = '50%'
-    el.style.top  = '60%'
-    el.style.transform = 'translate(-50%,-50%)'
-    el.style.pointerEvents = 'auto'
-    makeDraggable(el)
-    layer.appendChild(el)
-    TS.overlays.push({ type:'sticker', content: url })
-}
 
-function makeDraggable(el){
-    let sx = 0, sy = 0, ox = 0, oy = 0, drag = false
-    el.addEventListener('pointerdown', e => {
-        e.stopPropagation()
-        drag = true
-        sx = e.clientX; sy = e.clientY
-        const r = el.getBoundingClientRect()
-        ox = r.left; oy = r.top
-        el.classList.add('dragging')
-        el.setPointerCapture(e.pointerId)
-    })
-    el.addEventListener('pointermove', e => {
-        if(!drag) return
-        const nx = ox + (e.clientX - sx)
-        const ny = oy + (e.clientY - sy)
-        el.style.left = nx + 'px'
-        el.style.top  = ny + 'px'
-        el.style.transform = 'none'
-    })
-    el.addEventListener('pointerup', () => {
-        drag = false
-        el.classList.remove('dragging')
-    })
-}
+
+
 
 function downloadVideo(){
     if(!TS.recordedBlob) return
@@ -1577,10 +1824,111 @@ async function openPublishScreen(){
                     <span>Сохранить как черновик</span>
                     <span class="ts-publish-setting-chev">›</span>
                 </button>
+                root.innerHTML = \`
+    <div class="ts-publish" id="ts-publish">
+        <div class="ts-publish-top">
+            <button class="ts-publish-back" id="ts-pub-back">${SVG_TS.back}</button>
+            <div class="ts-publish-title">Публикация</div>
+            <button class="ts-publish-btn" id="ts-pub-btn">Опубликовать</button>
+        </div>
+        <div class="ts-publish-body">
+            <div class="ts-publish-row">
+                <div class="ts-publish-prev" id="ts-pub-prev">
+                    <video id="ts-pub-video" playsinline muted autoplay loop></video>
+                </div>
+                <div class="ts-publish-desc">
+                    <textarea id="ts-pub-desc" placeholder="Добавьте описание..." maxlength="500"></textarea>
+                </div>
+            </div>
+            <button class="ts-publish-setting" id="ts-pub-channel">
+                <span class="ts-publish-setting-left">
+                    <span class="ts-publish-setting-ava" id="ts-pub-ch-ava">
+                        ${TS.selectedChannel?.avatar_url ? `<img src="${TS.selectedChannel.avatar_url}">` : '?'}
+                    </span>
+                    <span class="ts-publish-setting-name" id="ts-pub-ch-name">
+                        Выложить в канал · ${TS.selectedChannel?.name || ''}
+                    </span>
+                </span>
+                <span class="ts-publish-setting-chev">›</span>
+            </button>
+            <button class="ts-publish-setting" id="ts-pub-dl">
+                <span>Скачать видео в галерею</span>
+                <span class="ts-publish-setting-chev">›</span>
+            </button>
+            <button class="ts-publish-setting" id="ts-pub-draft">
+                <span>Сохранить как черновик</span>
+                <span class="ts-publish-setting-chev">›</span>
+            </button>
+
+            <!-- ═══ ПОМЕТИТЬ КОНТЕНТ КАК ═══ -->
+            <div class="ts-publish-section">
+                <div class="ts-publish-section-title">Пометить контент как</div>
+                <div class="ts-publish-labels">
+                    <button class="ts-label-btn" data-label="ad">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+                        <span>Реклама</span>
+                        <span class="ts-label-chev">›</span>
+                    </button>
+                    <button class="ts-label-btn" data-label="sponsored">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l3 7 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>
+                        <span>Спонсировано брендом</span>
+                        <span class="ts-label-chev">›</span>
+                    </button>
+                    <button class="ts-label-btn" data-label="ai">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/></svg>
+                        <span>Сгенерировано AI</span>
+                        <span class="ts-label-chev">›</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ═══ ДОСТУП И ВЫБОР АУДИТОРИИ ═══ -->
+            <div class="ts-publish-section">
+                <div class="ts-publish-section-title">Доступ и выбор аудитории</div>
+                <div class="ts-publish-audience-hint">Этот контент подойдёт для возрастной категории:</div>
+                <div class="ts-publish-audience">
+                    <button class="ts-aud-btn" data-age="13-18">13–18</button>
+                    <button class="ts-aud-btn" data-age="19-29">19–29</button>
+                    <button class="ts-aud-btn" data-age="30-45">30–45</button>
+                    <button class="ts-aud-btn" data-age="45-65">45–65</button>
+                    <button class="ts-aud-btn" data-age="65+">65+</button>
+                </div>
+                <p class="ts-publish-warning">
+                    Выбор неверной аудитории является нарушением правил сообщества. Если ваш контент подходит для всех — не выбирайте аудиторию. Учтите, что выбор подходящей аудитории может хорошо сказаться на охватах: мы рекомендуем контент исходя из многих факторов, в том числе возраст. Например, если ваш контент подходит для 13–18 лет, а его посмотрел человек категории 45–65 и ему не понравилось, и он пролистнул или поставил отметку «не нравится» — это снизит коэффициент удержания, вследствие чего ваши видео будут реже показываться в рекомендациях до достижения удовлетворительного коэффициента удержания. Подробнее читайте <a href="https://listatread.online/tips" target="_blank">«основы основ ведения блога»</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+\`
             </div>
         </div>
     `
+// ⚡ Метки контента
+    const pubLabels = new Set()
+    root.querySelectorAll('.ts-label-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const k = btn.dataset.label
+            if(pubLabels.has(k)){ pubLabels.delete(k); btn.classList.remove('active') }
+            else { pubLabels.add(k); btn.classList.add('active') }
+        })
+    })
 
+// ⚡ Аудитория (только один выбор)
+    let pubAudience = null
+    root.querySelectorAll('.ts-aud-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const k = btn.dataset.age
+            if(pubAudience === k){ pubAudience = null; btn.classList.remove('active') }
+            else {
+                pubAudience = k
+                root.querySelectorAll('.ts-aud-btn').forEach(b => b.classList.toggle('active', b === btn))
+            }
+        })
+    })
+
+// Сохраняем в TS для publishVideo
+    TS._pubLabels = pubLabels
+    TS._pubAudience = () => pubAudience
     const pv = root.querySelector('#ts-pub-video')
     if(TS.recordedBlob){
         pv.src = URL.createObjectURL(TS.recordedBlob)
@@ -1632,44 +1980,69 @@ async function publishVideo(){
         <div class="ts-pub-progress-wrap">
             <div class="ts-pub-pct" id="ts-pub-pct">0%</div>
             <div class="ts-pub-bar"><div class="ts-pub-bar-fill" id="ts-pub-bar"></div></div>
-            <div class="ts-pub-status" id="ts-pub-status">публикация...</div>
+            <div class="ts-pub-status" id="ts-pub-status">обработка...</div>
         </div>
     `
     document.body.appendChild(overlay)
-
     const barEl = overlay.querySelector('#ts-pub-bar')
     const pctEl = overlay.querySelector('#ts-pub-pct')
+    const statusEl = overlay.querySelector('#ts-pub-status')
+
+    // ⚡ Плавный «фейк-прогресс» до 90% (Supabase v2 не даёт onUploadProgress)
+    let fakePct = 0
+    const fakeInt = setInterval(() => {
+        if(fakePct < 90){
+            fakePct = Math.min(90, fakePct + Math.random() * 6)
+            barEl.style.width = fakePct + '%'
+            pctEl.textContent = Math.round(fakePct) + '%'
+        }
+    }, 180)
 
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         if(!user) throw new Error('Не авторизован')
 
+        // 1. Запекаем оверлеи в видео (если есть)
+        let finalBlob = TS.recordedBlob
+        if(TS.overlays.length){
+            statusEl.textContent = 'накладываем текст и стикеры...'
+            finalBlob = await bakeOverlays(TS.recordedBlob, TS.overlays)
+        }
+
+        statusEl.textContent = 'загрузка...'
+
+        // 2. Загружаем
         const path = `${user.id}/tread-${Date.now()}.webm`
         const { error: upErr } = await supabase.storage
             .from('posts')
-            .upload(path, TS.recordedBlob, {
-                contentType: 'video/webm',
-                onUploadProgress: (evt) => {
-                    const real = Math.round((evt.loaded / evt.total) * 100)
-                    barEl.style.width = real + '%'
-                    pctEl.textContent = real + '%'
-                }
-            })
+            .upload(path, finalBlob, { contentType: 'video/webm' })
         if(upErr) throw upErr
 
         const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
         const mediaUrl = pub.publicUrl
 
-        const { data:post, error } = await supabase.from('posts').insert({
+        // 3. Вставляем пост
+        const labels = TS._pubLabels ? [...TS._pubLabels] : []
+        const audience = TS._pubAudience ? TS._pubAudience() : null
+        const track = TS.selectedTrack
+
+        const payload = {
             author_id: user.id,
             channel_id: TS.selectedChannel.id,
             content: desc,
             media_url: mediaUrl
-        }).select().single()
+        }
+        if(track?.name) payload.media_title = track.name
+        if(labels.length) payload.content_labels = labels
+        if(audience) payload.target_audience = audience
+
+        const { data: post, error } = await supabase.from('posts').insert(payload).select().single()
         if(error) throw error
 
+        clearInterval(fakeInt)
         barEl.style.width = '100%'
         pctEl.textContent = '100%'
+        statusEl.textContent = 'готово'
 
         setTimeout(() => {
             overlay.querySelector('#ts-pub-spin')?.remove()
@@ -1678,6 +2051,9 @@ async function publishVideo(){
 
             setTimeout(() => {
                 overlay.remove()
+                TS.overlays = []
+                TS._pubLabels = new Set()
+                TS._pubAudience = null
                 closeTreadStudio()
                 setTimeout(() => {
                     document.dispatchEvent(new CustomEvent('lt:goProfilePosts', { detail: { postId: post.id } }))
@@ -1685,10 +2061,169 @@ async function publishVideo(){
             }, 1400)
         }, 200)
     } catch(e){
+        clearInterval(fakeInt)
         overlay.remove()
         if(publishBtn){ publishBtn.disabled = false; publishBtn.textContent = 'Опубликовать' }
         showToastLocal('Ошибка: ' + (e.message || ''), 'error')
     }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   БЭЙКИНГ ОВЕРЛЕЕВ — рендерит видео+текст+стикеры в один blob
+══════════════════════════════════════════════════════════════ */
+async function bakeOverlays(sourceBlob, overlays){
+    const video = document.createElement('video')
+    video.src = URL.createObjectURL(sourceBlob)
+    video.muted = true
+    video.playsInline = true
+    await new Promise(r => video.addEventListener('loadedmetadata', r, { once: true }))
+
+    const W = video.videoWidth || 720
+    const H = video.videoHeight || 1280
+    const canvas = document.createElement('canvas')
+    canvas.width = W
+    canvas.height = H
+    const ctx = canvas.getContext('2d')
+
+    // Аудио из оригинала
+    const audioCtx = new AudioContext({ sampleRate: 48000 })
+    const arrayBuf = await sourceBlob.arrayBuffer()
+    let audioBuffer = null
+    try { audioBuffer = await audioCtx.decodeAudioData(arrayBuf) } catch {}
+    const dest = audioCtx.createMediaStreamDestination()
+    let srcNode = null
+    if(audioBuffer){
+        srcNode = audioCtx.createBufferSource()
+        srcNode.buffer = audioBuffer
+        srcNode.connect(dest)
+    }
+
+    // Canvas stream + аудио
+    const canvasStream = canvas.captureStream(30)
+    const tracks = [...canvasStream.getVideoTracks(), ...dest.stream.getAudioTracks()]
+    const mixedStream = new MediaStream(tracks)
+
+    const recorder = new MediaRecorder(mixedStream, {
+        mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+            ? 'video/webm;codecs=vp9,opus' : 'video/webm',
+        audioBitsPerSecond: 128000,
+        videoBitsPerSecond: 2500000
+    })
+    const chunks = []
+    recorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data) }
+    const donePromise = new Promise(r => recorder.onstop = r)
+
+    // Предзагрузка картинок-стикеров
+    const stickerImgs = {}
+    for(const ov of overlays){
+        if(ov.type === 'sticker' && ov.content){
+            const img = new Image()
+            img.crossOrigin = 'anonymous'
+            img.src = ov.content
+            await new Promise(r => { img.onload = r; img.onerror = r })
+            stickerImgs[ov.content] = img
+        }
+    }
+
+    recorder.start()
+    if(srcNode) srcNode.start()
+    video.currentTime = 0
+    await video.play().catch(()=>{})
+
+    const drawFrame = () => {
+        if(video.paused || video.ended) return
+        ctx.clearRect(0, 0, W, H)
+        ctx.drawImage(video, 0, 0, W, H)
+
+        for(const ov of overlays){
+            const sc = ov.scale || 1
+            const cx = ov.x * W
+            const cy = ov.y * H
+
+            if(ov.type === 'text'){
+                const baseFontSize = W * 0.055 * sc   // ~40px при W=720
+                ctx.save()
+                ctx.textAlign = 'center'
+                ctx.textBaseline = 'middle'
+
+                let fontStyle = ''
+                if(ov.italic) fontStyle += 'italic '
+                if(ov.bold) fontStyle += '900 '
+                else fontStyle += '500 '
+                const fontFam = ov.font || '-apple-system, sans-serif'
+                ctx.font = `${fontStyle}${Math.round(baseFontSize)}px ${fontFam}`
+
+                const txt = ov.content || ''
+                const m = ctx.measureText(txt)
+                const tw = m.width
+                const th = baseFontSize * 1.2
+
+                // Фон
+                if(ov.bg){
+                    ctx.fillStyle = ov.bg
+                    ctx.beginPath()
+                    const pad = baseFontSize * 0.2
+                    const r = baseFontSize * 0.15
+                    roundRect(ctx, cx - tw/2 - pad, cy - th/2 - pad*0.5,
+                        tw + pad*2, th + pad, r)
+                    ctx.fill()
+                }
+
+                // Обводка
+                if(ov.strokeW > 0){
+                    ctx.strokeStyle = ov.stroke
+                    ctx.lineWidth = ov.strokeW * sc * 2
+                    ctx.lineJoin = 'round'
+                    ctx.strokeText(txt, cx, cy)
+                }
+
+                // Заливка
+                ctx.fillStyle = ov.color || '#fff'
+                ctx.fillText(txt, cx, cy)
+
+                if(ov.strike){
+                    ctx.strokeStyle = ov.color || '#fff'
+                    ctx.lineWidth = baseFontSize * 0.06
+                    ctx.beginPath()
+                    ctx.moveTo(cx - tw/2, cy)
+                    ctx.lineTo(cx + tw/2, cy)
+                    ctx.stroke()
+                }
+                ctx.restore()
+            } else if(ov.type === 'sticker'){
+                const img = stickerImgs[ov.content]
+                if(img && img.complete && img.naturalWidth){
+                    const sz = W * 0.22 * sc
+                    ctx.drawImage(img, cx - sz/2, cy - sz/2, sz, sz)
+                }
+            }
+        }
+        requestAnimationFrame(drawFrame)
+    }
+
+    video.addEventListener('ended', () => {
+        setTimeout(() => {
+            try { recorder.stop() } catch {}
+            try { srcNode?.stop() } catch {}
+            try { audioCtx.close() } catch {}
+        }, 100)
+    })
+
+    video.addEventListener('playing', drawFrame, { once: true })
+
+    await donePromise
+    video.src = ''
+    return new Blob(chunks, { type: 'video/webm' })
+}
+
+function roundRect(ctx, x, y, w, h, r){
+    ctx.beginPath()
+    ctx.moveTo(x+r, y)
+    ctx.arcTo(x+w, y, x+w, y+h, r)
+    ctx.arcTo(x+w, y+h, x, y+h, r)
+    ctx.arcTo(x, y+h, x, y, r)
+    ctx.arcTo(x, y, x+w, y, r)
+    ctx.closePath()
 }
 
 /* ============================================================
