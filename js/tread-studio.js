@@ -2046,59 +2046,78 @@ async function publishVideo(){
    БЭЙКИНГ ОВЕРЛЕЕВ — рендерит видео+текст+стикеры в один blob
 ══════════════════════════════════════════════════════════════ */
 async function bakeOverlays(sourceBlob, overlays){
+    // ═══════════════════════════════════════════════════════════
+    // 1. Видео — добавляем в DOM, чтобы браузер точно декодировал
+    // ═══════════════════════════════════════════════════════════
     const video = document.createElement('video')
     video.src = URL.createObjectURL(sourceBlob)
     video.muted = true
     video.playsInline = true
-    await new Promise(r => video.addEventListener('loadedmetadata', r, { once: true }))
+    video.preload = 'auto'
+    video.setAttribute('playsinline', '')
+    video.setAttribute('webkit-playsinline', '')
+    video.style.cssText =
+        'position:fixed;top:0;left:0;width:100%;height:100%;' +
+        'opacity:0;pointer-events:none;z-index:-9999'
+    document.body.appendChild(video)
 
-    const W = video.videoWidth || 720
-    const H = video.videoHeight || 1280
+    await new Promise((resolve, reject) => {
+        const onMeta = () => { video.removeEventListener('error', onErr); resolve() }
+        const onErr  = () => { video.removeEventListener('loadedmetadata', onMeta); reject(new Error('video load failed')) }
+        video.addEventListener('loadedmetadata', onMeta, { once: true })
+        video.addEventListener('error', onErr, { once: true })
+    })
+
+    if(!video.videoWidth || !video.videoHeight){
+        try { video.remove() } catch {}
+        throw new Error('Не удалось прочитать видео — пустой файл или неподдерживаемый кодек')
+    }
+
+    const W = video.videoWidth
+    const H = video.videoHeight
+    const videoDuration = isFinite(video.duration) && video.duration > 0 ? video.duration : 30
+
     const canvas = document.createElement('canvas')
     canvas.width = W
     canvas.height = H
     const ctx = canvas.getContext('2d')
 
     // ═══════════════════════════════════════════════════════════
-    // ⚡ ПРАВИЛЬНЫЙ ЗАХВАТ АУДИО:
-    //    Не decodeAudioData (не работает на WebM video),
-    //    а createMediaElementSource(video) — тянет аудио-дорожку
-    //    прямо из видео-элемента в реальном времени.
+    // 2. Аудио — через MediaElementSource + компрессор + silent monitor
+    //    (monitor нужен, чтобы граф не «засыпал» в некоторых браузерах)
     // ═══════════════════════════════════════════════════════════
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 })
-    if(audioCtx.state === 'suspended') await audioCtx.resume()
-    const srcNode = audioCtx.createMediaElementSource(video)
-    const dest = audioCtx.createMediaStreamDestination()
+    let audioCtx = null
+    let srcNode = null
+    let dest = null
 
-    // Компрессор — сглаживает пики
-    const compressor = audioCtx.createDynamicsCompressor()
-    compressor.threshold.value = -12
-    compressor.knee.value = 12
-    compressor.ratio.value = 4
-    compressor.attack.value = 0.003
-    compressor.release.value = 0.25
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 })
+        if(audioCtx.state === 'suspended') await audioCtx.resume()
+        srcNode = audioCtx.createMediaElementSource(video)
+        dest = audioCtx.createMediaStreamDestination()
 
-    srcNode.connect(compressor).connect(dest)
-    // НЕ подключаем к audioCtx.destination — не хотим слышать во время обработки
+        const compressor = audioCtx.createDynamicsCompressor()
+        compressor.threshold.value = -12
+        compressor.knee.value = 12
+        compressor.ratio.value = 4
+        compressor.attack.value = 0.003
+        compressor.release.value = 0.25
 
-    // Canvas-стрим + аудио-стрим
-    const canvasStream = canvas.captureStream(30)
-    const mixedStream = new MediaStream([
-        ...canvasStream.getVideoTracks(),
-        ...dest.stream.getAudioTracks()
-    ])
+        // Компрессор → запись
+        srcNode.connect(compressor).connect(dest)
 
-    const recorder = new MediaRecorder(mixedStream, {
-        mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-            ? 'video/webm;codecs=vp9,opus' : 'video/webm',
-        audioBitsPerSecond: 128000,
-        videoBitsPerSecond: 2500000
-    })
-    const chunks = []
-    recorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data) }
-    const donePromise = new Promise(r => recorder.onstop = r)
+        // Компрессор → динамик через gain=0 (граф активен, звука нет)
+        const silentMonitor = audioCtx.createGain()
+        silentMonitor.gain.value = 0
+        compressor.connect(silentMonitor).connect(audioCtx.destination)
+    } catch(e){
+        console.warn('[bake audio]', e)
+        audioCtx = null
+    }
 
-    // Предзагрузка стикеров
+    // ═══════════════════════════════════════════════════════════
+    // 3. Предзагрузка стикеров
+    // ═══════════════════════════════════════════════════════════
     const stickerImgs = {}
     for(const ov of overlays){
         if(ov.type === 'sticker' && ov.content){
@@ -2110,90 +2129,173 @@ async function bakeOverlays(sourceBlob, overlays){
         }
     }
 
-    recorder.start(120)
+    // ═══════════════════════════════════════════════════════════
+    // 4. Стримы
+    // ═══════════════════════════════════════════════════════════
+    const canvasStream = canvas.captureStream(30)
+    const mixedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...(dest ? dest.stream.getAudioTracks() : [])
+    ])
 
-    // ⚡ Играем с самого начала (muted — неважно, MediaElementSource тянет данные)
-    video.currentTime = 0
-    await video.play().catch(()=>{})
+    const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+        ? 'video/webm;codecs=vp9,opus'
+        : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
+            ? 'video/webm;codecs=vp8,opus'
+            : 'video/webm'
 
+    const recorder = new MediaRecorder(mixedStream, {
+        mimeType: mime,
+        audioBitsPerSecond: 128000,
+        videoBitsPerSecond: 2500000
+    })
+    const chunks = []
+    recorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data) }
+    const donePromise = new Promise(r => recorder.onstop = r)
+
+    // ═══════════════════════════════════════════════════════════
+    // 5. Флаги и остановка
+    // ═══════════════════════════════════════════════════════════
+    let drawingStopped = false
+    let recorderStopped = false
+
+    const stopAll = () => {
+        if(recorderStopped) return
+        recorderStopped = true
+        setTimeout(() => {
+            try { recorder.stop() } catch {}
+            try { srcNode?.disconnect() } catch {}
+            try { audioCtx?.close() } catch {}
+        }, 150)
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 6. ⚡ ГЛАВНЫЙ ФИКС — рисуем СРАЗУ, а не по событию 'playing'
+    //    drawFrame крутится в rAF с самого начала и рисует,
+    //    как только готовы данные (readyState >= 2).
+    // ═══════════════════════════════════════════════════════════
     const drawFrame = () => {
-        if(video.paused || video.ended) return
+        if(drawingStopped) return
         ctx.clearRect(0, 0, W, H)
-        ctx.drawImage(video, 0, 0, W, H)
-
-        for(const ov of overlays){
-            const sc = ov.scale || 1
-            const cx = ov.x * W
-            const cy = ov.y * H
-
-            if(ov.type === 'text'){
-                const baseFontSize = W * 0.055 * sc
-                ctx.save()
-                ctx.textAlign = 'center'
-                ctx.textBaseline = 'middle'
-
-                let fontStyle = ''
-                if(ov.italic) fontStyle += 'italic '
-                fontStyle += ov.bold ? '900 ' : '500 '
-                const fontFam = ov.font || '-apple-system, sans-serif'
-                ctx.font = `${fontStyle}${Math.round(baseFontSize)}px ${fontFam}`
-
-                const txt = ov.content || ''
-                const m = ctx.measureText(txt)
-                const tw = m.width
-                const th = baseFontSize * 1.2
-
-                if(ov.bg){
-                    ctx.fillStyle = ov.bg
-                    const pad = baseFontSize * 0.2
-                    const r = baseFontSize * 0.15
-                    roundRect(ctx, cx - tw/2 - pad, cy - th/2 - pad*0.5,
-                        tw + pad*2, th + pad, r)
-                    ctx.fill()
-                }
-
-                if(ov.strokeW > 0){
-                    ctx.strokeStyle = ov.stroke
-                    ctx.lineWidth = ov.strokeW * sc * 2
-                    ctx.lineJoin = 'round'
-                    ctx.strokeText(txt, cx, cy)
-                }
-
-                ctx.fillStyle = ov.color || '#fff'
-                ctx.fillText(txt, cx, cy)
-
-                if(ov.strike){
-                    ctx.strokeStyle = ov.color || '#fff'
-                    ctx.lineWidth = baseFontSize * 0.06
-                    ctx.beginPath()
-                    ctx.moveTo(cx - tw/2, cy)
-                    ctx.lineTo(cx + tw/2, cy)
-                    ctx.stroke()
-                }
-                ctx.restore()
-            } else if(ov.type === 'sticker'){
-                const img = stickerImgs[ov.content]
-                if(img && img.complete && img.naturalWidth){
-                    const sz = W * 0.22 * sc
-                    ctx.drawImage(img, cx - sz/2, cy - sz/2, sz, sz)
-                }
-            }
+        if(video.readyState >= 2 && !video.ended){
+            try { ctx.drawImage(video, 0, 0, W, H) } catch(_){}
+            drawOverlaysOnCanvas(ctx, overlays, stickerImgs, W, H)
         }
         requestAnimationFrame(drawFrame)
     }
 
-    video.addEventListener('playing', drawFrame, { once: true })
+    // ═══════════════════════════════════════════════════════════
+    // 7. `ended` — ДО play()
+    // ═══════════════════════════════════════════════════════════
     video.addEventListener('ended', () => {
-        setTimeout(() => {
-            try { recorder.stop() } catch {}
-            try { srcNode.disconnect() } catch {}
-            try { audioCtx.close() } catch {}
-        }, 150)
-    })
+        drawingStopped = true
+        stopAll()
+    }, { once: true })
+
+    // ═══════════════════════════════════════════════════════════
+    // 8. Старт: сначала цикл рисования, потом запись, потом play
+    // ═══════════════════════════════════════════════════════════
+    drawFrame()
+    recorder.start(120)
+
+    // Safety-таймаут — если по какой-то причине `ended` не сработает
+    const safetyTimer = setTimeout(() => {
+        if(!recorderStopped){
+            console.warn('[bake] safety timeout — force stop')
+            drawingStopped = true
+            stopAll()
+        }
+    }, (videoDuration + 5) * 1000)
+
+    video.currentTime = 0
+    try {
+        await video.play()
+    } catch(e){
+        console.warn('[bake play]', e)
+        try {
+            video.muted = true
+            await video.play()
+        } catch(e2){ console.warn('[bake play retry]', e2) }
+    }
 
     await donePromise
-    video.src = ''
-    return new Blob(chunks, { type: 'video/webm' })
+    clearTimeout(safetyTimer)
+
+    // ═══════════════════════════════════════════════════════════
+    // 9. Чистим
+    // ═══════════════════════════════════════════════════════════
+    try { video.pause() } catch {}
+    try { URL.revokeObjectURL(video.src) } catch {}
+    try { video.removeAttribute('src'); video.load() } catch {}
+    try { video.remove() } catch {}
+
+    const outBlob = new Blob(chunks, { type: 'video/webm' })
+    if(!outBlob.size || outBlob.size < 1000){
+        throw new Error('Запечённое видео пустое — попробуйте снова')
+    }
+    return outBlob
+}
+
+/* Рисование оверлеев — вынесено в отдельную функцию */
+function drawOverlaysOnCanvas(ctx, overlays, stickerImgs, W, H){
+    for(const ov of overlays){
+        const sc = ov.scale || 1
+        const cx = ov.x * W
+        const cy = ov.y * H
+
+        if(ov.type === 'text'){
+            const baseFontSize = W * 0.055 * sc
+            ctx.save()
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+
+            let fontStyle = ''
+            if(ov.italic) fontStyle += 'italic '
+            fontStyle += ov.bold ? '900 ' : '500 '
+            const fontFam = ov.font || '-apple-system, sans-serif'
+            ctx.font = `${fontStyle}${Math.round(baseFontSize)}px ${fontFam}`
+
+            const txt = ov.content || ''
+            const m = ctx.measureText(txt)
+            const tw = m.width
+            const th = baseFontSize * 1.2
+
+            if(ov.bg){
+                ctx.fillStyle = ov.bg
+                const pad = baseFontSize * 0.2
+                const r = baseFontSize * 0.15
+                roundRect(ctx, cx - tw/2 - pad, cy - th/2 - pad*0.5,
+                    tw + pad*2, th + pad, r)
+                ctx.fill()
+            }
+
+            if(ov.strokeW > 0){
+                ctx.strokeStyle = ov.stroke
+                ctx.lineWidth = ov.strokeW * sc * 2
+                ctx.lineJoin = 'round'
+                ctx.strokeText(txt, cx, cy)
+            }
+
+            ctx.fillStyle = ov.color || '#fff'
+            ctx.fillText(txt, cx, cy)
+
+            if(ov.strike){
+                ctx.strokeStyle = ov.color || '#fff'
+                ctx.lineWidth = baseFontSize * 0.06
+                ctx.beginPath()
+                ctx.moveTo(cx - tw/2, cy)
+                ctx.lineTo(cx + tw/2, cy)
+                ctx.stroke()
+            }
+            ctx.restore()
+        } else if(ov.type === 'sticker'){
+            const img = stickerImgs[ov.content]
+            if(img && img.complete && img.naturalWidth){
+                const sz = W * 0.22 * sc
+                ctx.drawImage(img, cx - sz/2, cy - sz/2, sz, sz)
+            }
+        }
+    }
 }
 
 function roundRect(ctx, x, y, w, h, r){
