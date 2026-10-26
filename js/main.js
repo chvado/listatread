@@ -1545,8 +1545,17 @@ function showActionSheet(title, items){
     })
     actionsheetBackdrop.classList.remove('hidden')
     actionsheet.classList.remove('hidden')
+    /* rAF нужен чтобы transition гарантированно сыграл.
+       Но 'open' класс нам сейчас ничего не анимирует — добавляем сразу
+       (на случай если браузер «проглотит» rAF). */
     void actionsheet.offsetHeight
-    requestAnimationFrame(() => actionsheet.classList.add('open'))
+    actionsheet.classList.add('open')
+    requestAnimationFrame(() => {
+        // если вдруг класс был снят — восстановим
+        if(!actionsheet.classList.contains('open')){
+            actionsheet.classList.add('open')
+        }
+    })
 }
 window.showActionSheet = showActionSheet
 window.showToast = showToast
@@ -3240,12 +3249,15 @@ function renderCommentCard(c, replies){
                             Посмотреть обсуждение (${replies.length}) ›
                         </button>
                     </div>` : ''}
-                <div class="comment-footer">
+                                <div class="comment-footer">
                     <span class="comment-time">${time}</span>
                     <button class="comment-btn" data-comment-reply="${c.id}" data-author="${escapeHtml(name)}">Ответить</button>
                     <button class="comment-btn ${c._likedByMe?'liked':''}" data-comment-like="${c.id}">
                         <svg viewBox="0 0 24 24" fill="${c._likedByMe?'currentColor':'none'}" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                         <span>${c._likes||0}</span>
+                    </button>
+                    <button class="comment-btn comment-more-btn" data-comment-more="${c.id}" aria-label="Действия">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
                     </button>
                 </div>
                 <div class="comment-replies-list hidden" data-replies-for="${c.id}"></div>
@@ -3271,12 +3283,15 @@ function renderReplyCard(c){
                     <div class="comment-author">${escapeHtml(name)}${p.is_admin ? adminBadge(true,'small') : ''}</div>
                 </div>
                 ${textHtml}
-                <div class="comment-footer">
+                                <div class="comment-footer">
                     <span class="comment-time">${time}</span>
                     <button class="comment-btn" data-comment-reply="${c.id}" data-author="${escapeHtml(name)}">Ответить</button>
                     <button class="comment-btn ${c._likedByMe?'liked':''}" data-comment-like="${c.id}">
                         <svg viewBox="0 0 24 24" fill="${c._likedByMe?'currentColor':'none'}" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                         <span>${c._likes||0}</span>
+                    </button>
+                    <button class="comment-btn comment-more-btn" data-comment-more="${c.id}" aria-label="Действия">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
                     </button>
                 </div>
             </div>
@@ -3299,6 +3314,130 @@ function bindCommentEvents(root){
         btn.dataset.bound = '1';
         btn.addEventListener('click', () => toggleReplies(btn.dataset.commentToggle));
     });
+    root.querySelectorAll('[data-comment-more]').forEach(btn => {
+        if(btn.dataset.bound === '1') return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            showCommentMoreMenu(btn.dataset.commentMore);
+        });
+    });
+}
+
+/* ─── Найти комментарий в кэше (top-level или ответ) ─── */
+function getCommentById(commentId){
+    if(!_commentsCache) return null
+    const all = [
+        ...(_commentsCache.topLevel || []),
+        ...Object.values(_commentsCache.repliesByParent || {}).flat()
+    ]
+    return all.find(c => c.id === commentId) || null
+}
+
+/* ─── Меню 3 точки у комментария ─── */
+async function showCommentMoreMenu(commentId){
+    const c = getCommentById(commentId)
+    if(!c) return
+
+    const { data:{ user } } = await supabase.auth.getUser()
+    if(!user) return
+
+    const isMine = c.user_id === user.id
+    const isAdmin = ADMIN_STATE.isAdmin
+    const p = c.profiles || {}
+
+    const items = []
+    if(isMine){
+        items.push({
+            label: 'Удалить',
+            icon: ICONS.trash,
+            danger: true,
+            onClick: () => deleteCommentById(commentId)
+        })
+    } else if(isAdmin){
+        items.push({
+            label: 'Удалить (админ)',
+            icon: ICONS.trash,
+            danger: true,
+            onClick: () => deleteCommentById(commentId)
+        })
+    } else {
+        items.push({
+            label: 'Пожаловаться',
+            icon: ICONS.flag,
+            danger: true,
+            onClick: () => openReportModal({
+                targetType: 'comment',
+                targetId: commentId,
+                authorId: c.user_id,
+                author: {
+                    username: p.username,
+                    full_name: p.full_name,
+                    avatar_url: p.avatar_url
+                },
+                text: c.text,
+                media: c.media_url
+            })
+        })
+    }
+
+    showActionSheet('Комментарий', items)
+}
+
+/* ─── Каскадное удаление комментария из БД ─── */
+async function deleteCommentById(commentId){
+    if(!confirm('Удалить комментарий навсегда?')) return
+
+    try {
+        // 1. Лайки комментария
+        await supabase.from('comment_likes').delete().eq('comment_id', commentId)
+
+        // 2. Ответы на этот комментарий (несколько уровней — пока не кончатся)
+        //    Собираем все дочерние id рекурсивно, если они есть в кэше
+        const childrenIds = []
+        if(_commentsCache){
+            const collectChildren = (parentId) => {
+                const children = _commentsCache.repliesByParent[parentId] || []
+                children.forEach(ch => {
+                    childrenIds.push(ch.id)
+                    collectChildren(ch.id)
+                })
+            }
+            collectChildren(commentId)
+        }
+        if(childrenIds.length){
+            // Удаляем лайки вложенных ответов
+            await supabase.from('comment_likes').delete().in('comment_id', childrenIds)
+            await supabase.from('comments').delete().in('id', childrenIds)
+        }
+        // Дополнительно по parent_comment_id — на случай если кэш не полный
+        await supabase.from('comments').delete().eq('parent_comment_id', commentId)
+
+        // 3. Сам комментарий
+        const { data: del, error } = await supabase
+            .from('comments').delete().eq('id', commentId).select('id')
+        if(error) throw error
+        if(!del || !del.length) throw new Error('Нет прав на удаление (RLS)')
+
+        showToast('success', 'Комментарий удалён', { icon: '✓' })
+
+        // 4. Обновляем счётчик в постах
+        if(_commentsPostId){
+            const removedCount = 1 + childrenIds.length
+            document.querySelectorAll(`.feed-count[data-comment-count="${_commentsPostId}"]`).forEach(el => {
+                const cur = parseInt(el.textContent) || 0
+                el.textContent = Math.max(0, cur - removedCount)
+            })
+        }
+
+        // 5. Перезагружаем список комментариев модалки
+        if(_commentsPostId){
+            await loadCommentsNew(_commentsPostId)
+        }
+    } catch(err){
+        console.error('[deleteCommentById]', err)
+        showToast('error', 'Не удалось удалить: ' + (err.message || ''), { icon: '⚠️' })
+    }
 }
 
 function toggleReplies(parentId){
@@ -7520,13 +7659,12 @@ function vfmBuildOverlay(){
     </div>
   </div>
   <div class="vfm-cpop-right">
-    <button class="vfm-cpop-like" id="vfm-cpop-like">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-      <span id="vfm-cpop-likes">0</span>
-    </button>
-    <span class="vfm-cpop-total" id="vfm-cpop-total">0</span>
-    <span class="vfm-cpop-arrow" id="vfm-cpop-arrow">›</span>
-  </div>
+  <button class="vfm-cpop-like" id="vfm-cpop-like">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    <span id="vfm-cpop-likes">0</span>
+  </button>
+  <span class="vfm-cpop-arrow" id="vfm-cpop-arrow">›</span>
+</div>
 </div>
 
           <!-- ===== EMPTY (<50%, нет комментов) ===== -->
@@ -7923,30 +8061,68 @@ function setVfmCommentState(state){
 }
 
 async function loadVfmCommentData(postId){
-    // одним запросом — счётчик, популярный и 3 последних
-    const [{ count }, { data: recent }] = await Promise.all([
-        supabase.from('comments').select('*', { count:'exact', head:true }).eq('post_id', postId),
-        supabase.from('comments')
-            .select('id, text, created_at, user_id, profiles:user_id ( username, full_name, avatar_url )')
-            .eq('post_id', postId)
-            .order('created_at', { ascending:false })
-            .limit(3)
-    ])
-    const total = count || 0
-    const list = recent || []
+    const { data:{ user } } = await supabase.auth.getUser();
+    const myId = user?.id;
+
+    // 1. Общее число комментариев (для счётчика) — включая ответы
+    const { count: totalCount } = await supabase.from('comments')
+        .select('*', { count:'exact', head:true }).eq('post_id', postId);
+
+    // 2. Только топ-уровневые (не ответы) — берём 30 последних
+    const { data: recentTop } = await supabase.from('comments')
+        .select('id, text, created_at, user_id, parent_comment_id, profiles:user_id ( username, full_name, avatar_url )')
+        .eq('post_id', postId)
+        .is('parent_comment_id', null)
+        .order('created_at', { ascending:false })
+        .limit(30);
+
+    const comments = recentTop || [];
+
+    // 3. Лайки по этим комментариям
+    const likeCounts = {};
+    const myLikedSet = new Set();
+    if(comments.length){
+        const ids = comments.map(c => c.id);
+        const { data: likesData } = await supabase.from('comment_likes')
+            .select('comment_id, user_id')
+            .in('comment_id', ids);
+        (likesData || []).forEach(l => {
+            likeCounts[l.comment_id] = (likeCounts[l.comment_id] || 0) + 1;
+            if(myId && l.user_id === myId) myLikedSet.add(l.comment_id);
+        });
+    }
+
+    // 4. Обогащаем комментарии лайками
+    comments.forEach(c => {
+        c._likes = likeCounts[c.id] || 0;
+        c._likedByMe = myLikedSet.has(c.id);
+    });
+
+    // 5. «Самый популярный» = топ-уровневый с максимальным числом лайков
+    let popular = null;
+    if(comments.length){
+        popular = [...comments].sort((a, b) => (b._likes || 0) - (a._likes || 0))[0];
+    }
+
+    // 6. Синхронизируем локальный флаг лайка с БД
+    if(popular){
+        vfmUserVoteLike[postId] = !!popular._likedByMe;
+    }
+
     vfmCurrentPostComments = {
-        total,
-        popular: list[0] || null,
-        avatars: list.map(c => {
-            const p = c.profiles || {}
+        total: totalCount || 0,
+        popular,
+        avatars: comments.slice(0, 3).map(c => {
+            const p = c.profiles || {};
             return {
                 uid: c.user_id,
                 ava: p.avatar_url || null,
                 initial: (p.full_name || p.username || '?').charAt(0).toUpperCase()
-            }
+            };
         })
-    }
-    return vfmCurrentPostComments
+    };
+
+    return vfmCurrentPostComments;
 }
 
 function renderVfmCommentBar(){
@@ -7979,12 +8155,16 @@ function renderVfmCommentBar(){
         const nm = pr.full_name || pr.username || 'user'
         if(pr.avatar_url) pAva.innerHTML = `<img src="${pr.avatar_url}" alt="">`
         else pAva.textContent = nm.charAt(0).toUpperCase()
-        pName.textContent = nm   // полное имя, без @
+        pName.textContent = nm
         pBody.textContent = (data.popular.text || '').slice(0, 120)
-        pTotal.textContent = data.total
-        const liked = !!vfmUserVoteLike[postId]
+        if(pTotal) pTotal.textContent = data.total
+
+        // ── актуальный лайк: берём из _likedByMe + _likes (уже подтянуто из БД) ──
+        const liked = !!data.popular._likedByMe
         pLikeBtn.classList.toggle('liked', liked)
-        pLikes.textContent = liked ? (data.popular._likes || 1) : (data.popular._likes || 0)
+        pLikes.textContent = String(data.popular._likes || 0)
+        // синхронизируем локальный флаг — чтобы VFM-кнопка не «врала»
+        vfmUserVoteLike[postId] = liked
     } else {
         // нет комментов — очищаем визуал и показываем «Обсуждение»
         if(pAva)   pAva.textContent = '?';
@@ -8033,15 +8213,42 @@ function initVfmCommentBar(el){
     inArrow.addEventListener('click', openSheet)
 
     // Лайк популярного коммента
-    popLike.addEventListener('click', e => {
+    // Лайк популярного коммента (с синхронизацией в БД)
+    popLike.addEventListener('click', async e => {
         e.stopPropagation()
         const item = VFM.list[VFM.index]; if(!item) return
-        vfmUserVoteLike[item.id] = !vfmUserVoteLike[item.id]
-        if(vfmCurrentPostComments.popular){
-            vfmCurrentPostComments.popular._likes = (vfmCurrentPostComments.popular._likes || 0) + (vfmUserVoteLike[item.id] ? 1 : -1)
-            if(vfmCurrentPostComments.popular._likes < 0) vfmCurrentPostComments.popular._likes = 0
-        }
+        const comment = vfmCurrentPostComments.popular; if(!comment) return
+
+        const { data:{ user } } = await supabase.auth.getUser()
+        if(!user){ showToast('error', 'Войдите в аккаунт', { icon:'⚠️' }); return }
+
+        const wasLiked = !!comment._likedByMe
+        const nowLiked = !wasLiked
+
+        // Оптимистично
+        comment._likedByMe = nowLiked
+        comment._likes = Math.max(0, (comment._likes || 0) + (nowLiked ? 1 : -1))
+        vfmUserVoteLike[item.id] = nowLiked
         renderVfmCommentBar()
+
+        try {
+            if(nowLiked){
+                const { error } = await supabase.from('comment_likes')
+                    .insert({ user_id: user.id, comment_id: comment.id })
+                if(error) throw error
+            } else {
+                const { error } = await supabase.from('comment_likes')
+                    .delete().eq('user_id', user.id).eq('comment_id', comment.id)
+                if(error) throw error
+            }
+        } catch(err){
+            // Откат
+            comment._likedByMe = wasLiked
+            comment._likes = Math.max(0, (comment._likes || 0) + (wasLiked ? 1 : -1))
+            vfmUserVoteLike[item.id] = wasLiked
+            renderVfmCommentBar()
+            showToast('error', 'Не удалось: ' + (err.message || ''), { icon:'⚠️' })
+        }
     })
 
     // Лайк в правой зоне input — тот же самый (визуально)
@@ -9199,20 +9406,20 @@ async function maybeSendDailyNotification(){
    REPORT — жалобы
 ============================================================ */
 const REPORT_REASONS = [
-    { key:'spam',    icon:'📢', label:'Спам или реклама' },
-    { key:'abuse',   icon:'😡', label:'Оскорбления или травля' },
-    { key:'adult',   icon:'🔞', label:'Контент для взрослых' },
-    { key:'violence',icon:'⚔️', label:'Насилие или угрозы' },
-    { key:'fraud',   icon:'💸', label:'Мошенничество' },
-    { key:'copyright',icon:'©️', label:'Нарушение авторских прав' },
-    { key:'fake',    icon:'🎭', label:'Фейковая информация' },
-    { key:'hate',    icon:'💢', label:'Пропаганда ненависти' },
-    { key:'danger',  icon:'☠️', label:'Опасный контент' },
-    { key:'symbols', icon:'🚫', label:'Оскорбительные символы' },
+    { key:'spam',    icon:'📢', label:'Спам или массовая реклама и несанкционированные рассылки' },
+    { key:'abuse',   icon:'😡', label:'Оскорбления или травля и унижения перед другими' },
+    { key:'adult',   icon:'🔞', label:'Контент для взрослых 18+ (порнография, реклама, распросраннение, создание порнографии или создание стикеров, видео, тредов такого характера' },
+    { key:'violence',icon:'⚔️', label:'Угрозы насилия и предупреждения' },
+    { key:'fraud',   icon:'💸', label:'Мошенничество - звонки, рассылка, продажа, выдача себя за должностное лицо и другое' },
+    { key:'copyright',icon:'©️', label:'Нарушение авторских прав пользователя listatread или прямого автора (исполнителя песни, режисера и других лиц принимающих участие в контенте)' },
+    { key:'fake',    icon:'🎭', label:'Рассылка фейковой информации или ввождение в заблуждение, действие которого может причинить вред или нарушить закон' },
+    { key:'hate',    icon:'💢', label:'Пропаганда ненависти к расе, цвета кожи, религии, страны и другое' },
+    { key:'danger',  icon:'☠️', label:'Создание или распространение шокирующего, опасного контента - насилие, порнография и другое' },
+    { key:'symbols', icon:'🚫', label:'Угрозы докс, взлома и другое' },
     { key:'bully',   icon:'👊', label:'Буллинг' },
-    { key:'illegal', icon:'⚠️', label:'Продажа запрещённых товаров' },
-    { key:'privacy', icon:'🔒', label:'Личные данные без согласия' },
-    { key:'minor',   icon:'🧒', label:'Несовершеннолетние в опасности' },
+    { key:'illegal', icon:'⚠️', label:'Создание, распространение или продажа запрещённых товаров' },
+    { key:'privacy', icon:'🔒', label:'Кража личных данных listatread или других сервисов' },
+    { key:'minor',   icon:'🧒', label:'Насилие над детьми и угрозы' },
     { key:'other',   icon:'❓', label:'Другое' }
 ]
 let _reportCtx = { targetType:null, targetId:null, authorId:null, media:null, text:null, author:null }
@@ -9464,7 +9671,11 @@ async function boot(){
     }
 }
 
-document.getElementById('home-search-btn')?.addEventListener('click', openSearchMenu)
+document.getElementById('home-search-btn')?.addEventListener('click', e => {
+    e.preventDefault()
+    e.stopPropagation()
+    openSearchMenu()
+})
 
 function openSearchMenu(){
     showActionSheet('Поиск', [
@@ -9480,7 +9691,11 @@ function openSearchMenu(){
 document.getElementById('home-chats-btn')?.addEventListener('click', () => {
     openDirectTab()
 })
-document.getElementById('home-bell-btn')?.addEventListener('click', () => switchScreen('inbox'))
+document.getElementById('home-bell-btn')?.addEventListener('click', e => {
+    e.preventDefault()
+    e.stopPropagation()
+    switchScreen('inbox')
+})
 // #home-new-thread (плюс в кружке) пока без функционала
 ;(function initTopbarAutoHide(){
     let lastY = window.scrollY, ticking = false

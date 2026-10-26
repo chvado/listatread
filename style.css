@@ -458,7 +458,8 @@ html[data-theme="dark"] .main-app::before{
     background:var(--glass);border-bottom:1px solid var(--glass-edge);
     -webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
     box-shadow:0 1px 0 var(--glass-border) inset;
-    transition:transform .38s var(--ease-out),opacity .3s var(--ease);
+    transition:transform .15s cubic-bezier(.22,1,.36,1),opacity .15s var(--ease);
+    will-change: auto;   /* отключаем отдельный GPU-слой */
 }
 .topbar.topbar-hidden{transform:translateX(-50%) translateY(-110%);opacity:0;pointer-events:none}
 .topbar-btn{width:40px;height:40px;border-radius:50%;background:transparent;border:none;display:flex;align-items:center;justify-content:center;color:var(--text);flex-shrink:0;position:relative}
@@ -4688,11 +4689,12 @@ html[data-theme="dark"] .channel-live-status.has-new{ color: #ff8a5b; }
 }
 
 /* --- 3. Discussion input (≥50%): убираем лайк / число / стрелку --- */
+/* --- 3. Discussion input (≥50%): оставляем стрелку, чтобы открывать комментарии --- */
 #vfm-cinput .vfm-cinput-like,
-#vfm-cinput .vfm-cinput-count,
-#vfm-cinput .vfm-cinput-arrow{
+#vfm-cinput .vfm-cinput-count{
     display: none !important;
 }
+/* стрелка (.vfm-cinput-arrow) остаётся видимой */
 
 /* --- 4. Direct: кнопка «Новый чат» больше не за шапкой --- */
 #screen-direct .new-chat-btn{
@@ -6446,6 +6448,48 @@ body.ts-recording .ts-track-strip{
 }
 .ts-sticker-pick img{ width: 100%; height: 100%; object-fit: contain }
 .ts-sticker-pick:active{ transform: scale(.93) }
+
+.vfm-cpop-more{
+    background: transparent;
+    border: none;
+    padding: 0 2px;
+    color: rgba(255,255,255,.7);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: color .18s ease, transform .18s var(--spring);
+}
+.vfm-cpop-more:hover,
+.vfm-cpop-more:active{
+    color: #fff;
+}
+.vfm-cpop-more:active{ transform: scale(.88) }
+.vfm-cpop-more svg{
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+/* ============================================================
+   COMMENTS — кнопка «3 точки» в каждом комментарии/ответе
+============================================================ */
+.comment-btn.comment-more-btn{
+    margin-left: auto;          /* прижимается к правому краю */
+    padding: 0 4px;
+    color: var(--text-tertiary);
+    transition: color .18s ease, transform .18s var(--spring);
+}
+.comment-btn.comment-more-btn:hover,
+.comment-btn.comment-more-btn:active{
+    color: var(--text-secondary);
+}
+.comment-btn.comment-more-btn:active{ scale: .88 }
+.comment-btn.comment-more-btn svg{
+    width: 18px;
+    height: 18px;
+    display: block;
+}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
