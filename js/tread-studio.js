@@ -55,6 +55,9 @@ const TS = {
     activeTab: 'record',
     audio: null,
     _trackOffset: 0,
+    _pubDesc: '',
+    _pubLabels: null,
+    _pubAudience: null,
 }
 
 /* ============================================================
@@ -85,6 +88,10 @@ export function closeTreadStudio(){
     TS.selectedTrack = null
     TS.overlays = []
     TS.selectedEffect = 'none'
+    // ⚡ СБРОС 3 ЭТАПА
+    TS._pubDesc = ''
+    TS._pubLabels = null
+    TS._pubAudience = null
     if(TS.root){ TS.root.classList.add('hidden'); TS.root.innerHTML = '' }
 }
 
@@ -1732,35 +1739,7 @@ function attachOverlayGestures(el, ov){
     })
 }
 
-async function openStickerEditorModal(){
-    const { data:{ user } } = await supabase.auth.getUser()
-    if(!user) return
-    const { data:packs } = await supabase.from('sticker_packs').select('stickers').eq('user_id', user.id)
-    const stickers = []
-    ;(packs || []).forEach(p => (p.stickers || []).forEach(s => stickers.push(s)))
-    if(!stickers.length){ showToastLocal('Нет стикеров — создайте их в директе', 'info'); return }
 
-    document.getElementById('ts-mini-sticker')?.remove()
-    const m = document.createElement('div')
-    m.id = 'ts-mini-sticker'
-    m.className = 'ts-mini-modal'
-    m.innerHTML = `
-        <div class="ts-mini-sheet">
-            <div class="ts-mini-title">Выберите стикер</div>
-            <div class="ts-sticker-picker">
-                ${stickers.map(s => `<button class="ts-sticker-pick" data-s="${escapeHtml(s)}"><img src="${escapeHtml(s)}" alt=""></button>`).join('')}
-            </div>
-        </div>
-    `
-    document.body.appendChild(m)
-    m.addEventListener('click', e => {
-        const btn = e.target.closest('.ts-sticker-pick')
-        if(btn){
-            addStickerOverlay(btn.dataset.s)
-            m.remove()
-        } else if(e.target === m) m.remove()
-    })
-}
 
 
 
@@ -1789,6 +1768,11 @@ async function openPublishScreen(){
     try { TS.audio?.pause() } catch {}
 
     const root = TS.root
+
+    // ⚡ Восстанавливаем сохранённое состояние при возврате со 2 этапа
+    if(!TS._pubLabels) TS._pubLabels = new Set()
+    let pubAudience = TS._pubAudience ? TS._pubAudience() : null
+
     root.innerHTML = `
         <div class="ts-publish" id="ts-publish">
             <div class="ts-publish-top">
@@ -1799,10 +1783,10 @@ async function openPublishScreen(){
             <div class="ts-publish-body">
                 <div class="ts-publish-row">
                     <div class="ts-publish-prev" id="ts-pub-prev">
-                        <video id="ts-pub-video" playsinline muted autoplay loop></video>
+                        <video id="ts-pub-video" playsinline autoplay loop muted></video>
                     </div>
                     <div class="ts-publish-desc">
-                        <textarea id="ts-pub-desc" placeholder="Добавьте описание..." maxlength="500"></textarea>
+                        <textarea id="ts-pub-desc" placeholder="Добавьте описание..." maxlength="500">${escapeHtml(TS._pubDesc || '')}</textarea>
                     </div>
                 </div>
                 <button class="ts-publish-setting" id="ts-pub-channel">
@@ -1824,126 +1808,116 @@ async function openPublishScreen(){
                     <span>Сохранить как черновик</span>
                     <span class="ts-publish-setting-chev">›</span>
                 </button>
-                root.innerHTML = \`
-    <div class="ts-publish" id="ts-publish">
-        <div class="ts-publish-top">
-            <button class="ts-publish-back" id="ts-pub-back">${SVG_TS.back}</button>
-            <div class="ts-publish-title">Публикация</div>
-            <button class="ts-publish-btn" id="ts-pub-btn">Опубликовать</button>
-        </div>
-        <div class="ts-publish-body">
-            <div class="ts-publish-row">
-                <div class="ts-publish-prev" id="ts-pub-prev">
-                    <video id="ts-pub-video" playsinline muted autoplay loop></video>
-                </div>
-                <div class="ts-publish-desc">
-                    <textarea id="ts-pub-desc" placeholder="Добавьте описание..." maxlength="500"></textarea>
-                </div>
-            </div>
-            <button class="ts-publish-setting" id="ts-pub-channel">
-                <span class="ts-publish-setting-left">
-                    <span class="ts-publish-setting-ava" id="ts-pub-ch-ava">
-                        ${TS.selectedChannel?.avatar_url ? `<img src="${TS.selectedChannel.avatar_url}">` : '?'}
-                    </span>
-                    <span class="ts-publish-setting-name" id="ts-pub-ch-name">
-                        Выложить в канал · ${TS.selectedChannel?.name || ''}
-                    </span>
-                </span>
-                <span class="ts-publish-setting-chev">›</span>
-            </button>
-            <button class="ts-publish-setting" id="ts-pub-dl">
-                <span>Скачать видео в галерею</span>
-                <span class="ts-publish-setting-chev">›</span>
-            </button>
-            <button class="ts-publish-setting" id="ts-pub-draft">
-                <span>Сохранить как черновик</span>
-                <span class="ts-publish-setting-chev">›</span>
-            </button>
 
-            <!-- ═══ ПОМЕТИТЬ КОНТЕНТ КАК ═══ -->
-            <div class="ts-publish-section">
-                <div class="ts-publish-section-title">Пометить контент как</div>
-                <div class="ts-publish-labels">
-                    <button class="ts-label-btn" data-label="ad">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
-                        <span>Реклама</span>
-                        <span class="ts-label-chev">›</span>
-                    </button>
-                    <button class="ts-label-btn" data-label="sponsored">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l3 7 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>
-                        <span>Спонсировано брендом</span>
-                        <span class="ts-label-chev">›</span>
-                    </button>
-                    <button class="ts-label-btn" data-label="ai">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/></svg>
-                        <span>Сгенерировано AI</span>
-                        <span class="ts-label-chev">›</span>
-                    </button>
+                <!-- ═══ ПОМЕТИТЬ КОНТЕНТ КАК ═══ -->
+                <div class="ts-publish-section">
+                    <div class="ts-publish-section-title">Пометить контент как</div>
+                    <div class="ts-publish-labels">
+                        <button class="ts-label-btn" data-label="ad">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+                            <span>Реклама</span>
+                            <span class="ts-label-chev">›</span>
+                        </button>
+                        <button class="ts-label-btn" data-label="sponsored">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l3 7 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>
+                            <span>Спонсировано брендом</span>
+                            <span class="ts-label-chev">›</span>
+                        </button>
+                        <button class="ts-label-btn" data-label="ai">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/></svg>
+                            <span>Сгенерировано AI</span>
+                            <span class="ts-label-chev">›</span>
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            <!-- ═══ ДОСТУП И ВЫБОР АУДИТОРИИ ═══ -->
-            <div class="ts-publish-section">
-                <div class="ts-publish-section-title">Доступ и выбор аудитории</div>
-                <div class="ts-publish-audience-hint">Этот контент подойдёт для возрастной категории:</div>
-                <div class="ts-publish-audience">
-                    <button class="ts-aud-btn" data-age="13-18">13–18</button>
-                    <button class="ts-aud-btn" data-age="19-29">19–29</button>
-                    <button class="ts-aud-btn" data-age="30-45">30–45</button>
-                    <button class="ts-aud-btn" data-age="45-65">45–65</button>
-                    <button class="ts-aud-btn" data-age="65+">65+</button>
+                <!-- ═══ ДОСТУП И ВЫБОР АУДИТОРИИ ═══ -->
+                <div class="ts-publish-section">
+                    <div class="ts-publish-section-title">Доступ и выбор аудитории</div>
+                    <div class="ts-publish-audience-hint">Этот контент подойдёт для возрастной категории:</div>
+                    <div class="ts-publish-audience">
+                        <button class="ts-aud-btn" data-age="13-18">13–18</button>
+                        <button class="ts-aud-btn" data-age="19-29">19–29</button>
+                        <button class="ts-aud-btn" data-age="30-45">30–45</button>
+                        <button class="ts-aud-btn" data-age="45-65">45–65</button>
+                        <button class="ts-aud-btn" data-age="65+">65+</button>
+                    </div>
+                    <p class="ts-publish-warning">
+                        Выбор неверной аудитории является нарушением правил сообщества. Если ваш контент подходит для всех — не выбирайте аудиторию. Учтите, что выбор подходящей аудитории может хорошо сказаться на охватах: мы рекомендуем контент исходя из многих факторов, в том числе возраст. Например, если ваш контент подходит для 13–18 лет, а его посмотрел человек категории 45–65 и ему не понравилось, и он пролистнул или поставил отметку «не нравится» — это снизит коэффициент удержания, вследствие чего ваши видео будут реже показываться в рекомендациях до достижения удовлетворительного коэффициента удержания. Подробнее читайте <a href="https://listatread.online/tips" target="_blank">«основы основ ведения блога»</a>.
+                    </p>
                 </div>
-                <p class="ts-publish-warning">
-                    Выбор неверной аудитории является нарушением правил сообщества. Если ваш контент подходит для всех — не выбирайте аудиторию. Учтите, что выбор подходящей аудитории может хорошо сказаться на охватах: мы рекомендуем контент исходя из многих факторов, в том числе возраст. Например, если ваш контент подходит для 13–18 лет, а его посмотрел человек категории 45–65 и ему не понравилось, и он пролистнул или поставил отметку «не нравится» — это снизит коэффициент удержания, вследствие чего ваши видео будут реже показываться в рекомендациях до достижения удовлетворительного коэффициента удержания. Подробнее читайте <a href="https://listatread.online/tips" target="_blank">«основы основ ведения блога»</a>.
-                </p>
-            </div>
-        </div>
-    </div>
-\`
             </div>
         </div>
     `
-// ⚡ Метки контента
-    const pubLabels = new Set()
-    root.querySelectorAll('.ts-label-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const k = btn.dataset.label
-            if(pubLabels.has(k)){ pubLabels.delete(k); btn.classList.remove('active') }
-            else { pubLabels.add(k); btn.classList.add('active') }
-        })
-    })
 
-// ⚡ Аудитория (только один выбор)
-    let pubAudience = null
-    root.querySelectorAll('.ts-aud-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const k = btn.dataset.age
-            if(pubAudience === k){ pubAudience = null; btn.classList.remove('active') }
-            else {
-                pubAudience = k
-                root.querySelectorAll('.ts-aud-btn').forEach(b => b.classList.toggle('active', b === btn))
-            }
-        })
-    })
-
-// Сохраняем в TS для publishVideo
-    TS._pubLabels = pubLabels
-    TS._pubAudience = () => pubAudience
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ ВИДЕО-ПРЕВЬЮ
+    // ═══════════════════════════════════════════════════════════
     const pv = root.querySelector('#ts-pub-video')
-    if(TS.recordedBlob){
-        pv.src = URL.createObjectURL(TS.recordedBlob)
-        pv.play().catch(()=>{})
+    if(pv && TS.recordedBlob){
+        try {
+            pv.src = URL.createObjectURL(TS.recordedBlob)
+            pv.addEventListener('loadedmetadata', () => {
+                pv.style.objectFit = 'cover'
+            }, { once: true })
+            pv.play().catch(()=>{})
+        } catch(e){ console.warn('[pub preview]', e) }
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ КНОПКА НАЗАД — возврат на 2 этап (редактор)
+    // ═══════════════════════════════════════════════════════════
     root.querySelector('#ts-pub-back').addEventListener('click', () => {
+        const descEl = root.querySelector('#ts-pub-desc')
+        if(descEl) TS._pubDesc = descEl.value
+        try { pv?.pause() } catch {}
         openEditor(TS.recordedBlob)
     })
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ КНОПКА ОПУБЛИКОВАТЬ
+    // ═══════════════════════════════════════════════════════════
     root.querySelector('#ts-pub-btn').addEventListener('click', publishVideo)
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ ОСТАЛЬНЫЕ КНОПКИ
+    // ═══════════════════════════════════════════════════════════
     root.querySelector('#ts-pub-channel').addEventListener('click', openChannelPickerForPublish)
     root.querySelector('#ts-pub-dl').addEventListener('click', () => { downloadVideo() })
     root.querySelector('#ts-pub-draft').addEventListener('click', () => {
         showToastLocal('Черновик — скоро', 'info')
     })
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ МЕТКИ КОНТЕНТА
+    // ═══════════════════════════════════════════════════════════
+    const labelBtns = root.querySelectorAll('.ts-label-btn')
+    labelBtns.forEach(btn => {
+        if(TS._pubLabels.has(btn.dataset.label)) btn.classList.add('active')
+        btn.addEventListener('click', () => {
+            const k = btn.dataset.label
+            if(TS._pubLabels.has(k)){ TS._pubLabels.delete(k); btn.classList.remove('active') }
+            else { TS._pubLabels.add(k); btn.classList.add('active') }
+        })
+    })
+
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ АУДИТОРИЯ
+    // ═══════════════════════════════════════════════════════════
+    const audBtns = root.querySelectorAll('.ts-aud-btn')
+    audBtns.forEach(btn => {
+        if(btn.dataset.age === pubAudience) btn.classList.add('active')
+        btn.addEventListener('click', () => {
+            const k = btn.dataset.age
+            if(pubAudience === k){ pubAudience = null; btn.classList.remove('active') }
+            else {
+                pubAudience = k
+                audBtns.forEach(b => b.classList.toggle('active', b === btn))
+            }
+        })
+    })
+
+    TS._pubAudience = () => pubAudience
 }
 
 async function openChannelPickerForPublish(){
