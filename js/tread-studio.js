@@ -116,10 +116,10 @@ async function renderCameraScreen(){
             ${renderSideBtn('text',  SVG_TS.text,    'Текстовый тред',  true, null, true)}
             ${renderSideBtn('photo', SVG_TS.photo,   'Фото тред',       true, null, true)}
             ${renderSideBtn('track', SVG_TS.track,   'Выложить трек',   true, null, true)}
-            <div id="ts-side-more">
-                ${renderSideBtn('album',   SVG_TS.album,   'Альбомы',        true, null, true)}
-                ${renderSideBtn('poll',    SVG_TS.poll,    'Опросы',         true, null, true)}
-                ${renderSideBtn('sticker', SVG_TS.sticker, 'Стикер тред',    true, null, true)}
+                        <div id="ts-side-more">
+                ${renderSideBtnWithLabel('album',   SVG_TS.album,   'Альбомы',     true)}
+                ${renderSideBtnWithLabel('poll',    SVG_TS.poll,    'Опросы',      true)}
+                ${renderSideBtnWithLabel('sticker', SVG_TS.sticker, 'Стикеры',      true)}
             </div>
             <button class="ts-side-expand" id="ts-side-expand">${SVG_TS.chevDown}</button>
         </div>
@@ -217,20 +217,108 @@ function renderSideBtn(key, icon, label, withLabel, extraClass, disabled){
     const dis = disabled ? 'disabled' : ''
     return `<button class="${cls}" data-k="${key}" ${dis} title="${label}">${icon}</button>`
 }
-
+function renderSideBtnWithLabel(key, icon, label, disabled){
+    const dis = disabled ? 'disabled' : ''
+    return `<div class="ts-side-row">
+        <span class="ts-side-row-label">${label}</span>
+        <button class="ts-side-btn" data-k="${key}" ${dis} title="${label}">${icon}</button>
+    </div>`
+}
 /* ============================================================
    КАМЕРА
 ============================================================ */
 async function startCamera(){
     if(TS.stream) return
-    TS.stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: TS.facing, width: { ideal: 1080 }, height: { ideal: 1920 } },
+
+    // Сначала пробуем максимальное разрешение — это снижает цифровой зум
+    const highRes = {
+        video: {
+            facingMode: TS.facing,
+            width:  { ideal: 1920, max: 3840 },
+            height: { ideal: 1080, max: 2160 }
+        },
         audio: true
-    })
+    }
+    const fallback = {
+        video: { facingMode: TS.facing },
+        audio: true
+    }
+
+    try {
+        TS.stream = await navigator.mediaDevices.getUserMedia(highRes)
+    } catch(e){
+        console.warn('[camera] high-res failed, fallback:', e.message)
+        TS.stream = await navigator.mediaDevices.getUserMedia(fallback)
+    }
+
     if(TS.videoEl){
         TS.videoEl.srcObject = TS.stream
         await TS.videoEl.play().catch(()=>{})
     }
+
+    // ⚡ Устанавливаем минимальный (обычно 1x) зум, чтобы не было кропа
+    await applyMinZoom()
+    attachPinchZoom()
+}
+
+async function applyMinZoom(){
+    try {
+        const track = TS.stream?.getVideoTracks()[0]
+        if(!track) return
+        const caps = track.getCapabilities?.()
+        if(caps?.zoom){
+            const min = caps.zoom.min ?? 1
+            await track.applyConstraints({ advanced: [{ zoom: min }] })
+            TS._zoom = min
+            TS._zoomMin = caps.zoom.min ?? 1
+            TS._zoomMax = caps.zoom.max ?? 1
+        }
+    } catch(e){ console.warn('[zoom init]', e.message) }
+}
+
+let _pinch = null
+
+function attachPinchZoom(){
+    const el = TS.videoEl
+    if(!el || el.dataset.pinchBound === '1') return
+    el.dataset.pinchBound = '1'
+
+    el.addEventListener('touchstart', e => {
+        if(e.touches.length === 2){
+            const dx = e.touches[0].clientX - e.touches[1].clientX
+            const dy = e.touches[0].clientY - e.touches[1].clientY
+            _pinch = {
+                dist: Math.hypot(dx, dy),
+                zoom: TS._zoom ?? TS._zoomMin ?? 1
+            }
+        }
+    }, { passive: true })
+
+    el.addEventListener('touchmove', async e => {
+        if(e.touches.length !== 2 || !_pinch) return
+        const dx = e.touches[0].clientX - e.touches[1].clientX
+        const dy = e.touches[0].clientY - e.touches[1].clientY
+        const dist = Math.hypot(dx, dy)
+        const ratio = dist / (_pinch.dist || 1)
+
+        const track = TS.stream?.getVideoTracks()[0]
+        if(!track) return
+        const caps = track.getCapabilities?.()
+        if(!caps?.zoom) return
+
+        const min = caps.zoom.min ?? 1
+        const max = caps.zoom.max ?? 1
+        let z = _pinch.zoom * ratio
+        z = Math.max(min, Math.min(max, z))
+        TS._zoom = z
+        try {
+            await track.applyConstraints({ advanced: [{ zoom: z }] })
+        } catch(_) {}
+    }, { passive: true })
+
+    el.addEventListener('touchend', e => {
+        if(e.touches.length < 2) _pinch = null
+    })
 }
 
 function stopCameraStream(){
@@ -272,15 +360,60 @@ async function openChannelPicker(){
     const { data:{ user }, error } = await supabase.auth.getUser()
     if(error || !user){ showToastLocal('Войдите в аккаунт', 'error'); return }
 
-    const { data:subs } = await supabase.from('subscriptions')
-        .select('channels ( id, name, avatar_url, channel_type )')
-        .eq('follower_id', user.id)
+    const [{ data:owned }, { data:subs }] = await Promise.all([
+        supabase.from('channels')
+            .select('id, name, avatar_url, channel_type')
+            .eq('owner_id', user.id),
+        supabase.from('subscriptions')
+            .select('channels ( id, name, avatar_url, channel_type )')
+            .eq('follower_id', user.id)
+    ])
 
-    const channels = (subs || [])
+    const ownedChannels = (owned || []).filter(c => c && c.id)
+    const ownedIds = new Set(ownedChannels.map(c => c.id))
+
+    // Показываем только общественные (community), в которых юзер может постить
+    const subscribedCommunity = (subs || [])
         .map(s => s.channels)
-        .filter(c => c && c.channel_type === 'public')
+        .filter(c => c && c.id && !ownedIds.has(c.id))
+        .filter(c => c.channel_type === 'community')
 
     document.getElementById('ts-channel-sheet')?.remove()
+
+    const renderItem = (c, isOwned) => {
+        const ava = c.avatar_url
+            ? `<img src="${c.avatar_url}" alt="">`
+            : (c.name || 'K').charAt(0).toUpperCase()
+        const subtitle = isOwned ? 'Личный канал' : 'Общественный канал'
+        return `<button class="ts-channel-item"
+            data-id="${c.id}"
+            data-name="${escapeHtml(c.name || 'Канал')}"
+            data-ava="${c.avatar_url || ''}"
+            data-type="${isOwned ? 'owned' : 'community'}">
+            <span class="ts-channel-item-ava">${ava}</span>
+            <span class="ts-channel-item-info">
+                <div class="ts-channel-item-name">${escapeHtml(c.name || 'Канал')}</div>
+                <div class="ts-channel-item-sub">${subtitle}</div>
+            </span>
+        </button>`
+    }
+
+    const sectionsHtml = `
+        ${ownedChannels.length ? `
+            <div class="ts-channel-section-title">Мои каналы</div>
+            ${ownedChannels.map(c => renderItem(c, true)).join('')}
+        ` : ''}
+        ${subscribedCommunity.length ? `
+            <div class="ts-channel-section-title">Общественные каналы</div>
+            ${subscribedCommunity.map(c => renderItem(c, false)).join('')}
+        ` : ''}
+        ${!ownedChannels.length && !subscribedCommunity.length ? `
+            <p style="text-align:center;padding:40px 16px;color:var(--text-secondary);font-size:14px;line-height:1.5">
+                Нет доступных каналов.<br>
+                Создайте свой канал или подпишитесь на общественный
+            </p>
+        ` : ''}
+    `
 
     const sheet = document.createElement('div')
     sheet.id = 'ts-channel-sheet'
@@ -290,22 +423,7 @@ async function openChannelPicker(){
         <div class="ts-sheet-body">
             <div class="ts-sheet-handle"></div>
             <div class="ts-sheet-title">Выберите канал</div>
-            <div class="ts-channel-list">
-                ${channels.length
-        ? channels.map(c => {
-            const ava = c.avatar_url
-                ? `<img src="${c.avatar_url}" alt="">`
-                : (c.name || 'K').charAt(0).toUpperCase()
-            return `<button class="ts-channel-item" data-id="${c.id}" data-name="${escapeHtml(c.name || 'Канал')}" data-ava="${c.avatar_url || ''}">
-                            <span class="ts-channel-item-ava">${ava}</span>
-                            <span class="ts-channel-item-info">
-                                <div class="ts-channel-item-name">${escapeHtml(c.name || 'Канал')}</div>
-                                <div class="ts-channel-item-sub">Общественный канал</div>
-                            </span>
-                        </button>`
-        }).join('')
-        : '<p style="text-align:center;padding:40px 16px;color:var(--text-secondary);font-size:14px;line-height:1.5">Нет общественных каналов.<br>Подпишитесь на канал, чтобы публиковать в него</p>'}
-            </div>
+            <div class="ts-channel-list">${sectionsHtml}</div>
         </div>`
     document.body.appendChild(sheet)
 
@@ -315,7 +433,8 @@ async function openChannelPicker(){
             TS.selectedChannel = {
                 id: item.dataset.id,
                 name: item.dataset.name,
-                avatar_url: item.dataset.ava
+                avatar_url: item.dataset.ava,
+                type: item.dataset.type
             }
             sheet.remove()
             refreshChannelDependentState()
@@ -380,22 +499,42 @@ async function toggleFlash(){
 ============================================================ */
 async function openChannelQuickComposer(kind){
     if(!TS.selectedChannel) return
+    const chId   = TS.selectedChannel.id
+    const chName = TS.selectedChannel.name || 'канал'
     closeTreadStudio()
 
+    // 1. Открываем канал
+    let opened = false
     if(typeof window.__ltOpenChannel === 'function'){
-        await window.__ltOpenChannel(TS.selectedChannel.id)
-    } else {
-        document.dispatchEvent(new CustomEvent('lt:openChannel', { detail: { id: TS.selectedChannel.id } }))
+        try { await window.__ltOpenChannel(chId); opened = true }
+        catch(e){ console.warn('[openChannel]', e) }
+    }
+    if(!opened){
+        document.dispatchEvent(new CustomEvent('lt:openChannel', { detail: { id: chId } }))
     }
 
-    await new Promise(r => setTimeout(r, 700))
+    // 2. Ждём появления композера до 3 секунд
+    const composer = await new Promise(resolve => {
+        const start = Date.now()
+        const tick = () => {
+            const el = document.getElementById('ch-new-post')
+            if(el) return resolve(el)
+            if(Date.now() - start > 3000) return resolve(null)
+            setTimeout(tick, 120)
+        }
+        tick()
+    })
 
-    const composer = document.getElementById('ch-new-post')
     if(!composer){
-        showToastLocal('Не удалось открыть канал', 'error')
+        showToastLocal(
+            `Не удалось открыть канал «${chName}». Возможно, у вас нет прав на публикацию.`,
+            'error',
+            4500
+        )
         return
     }
 
+    // 3. Подсветка + скролл
     composer.scrollIntoView({ behavior: 'smooth', block: 'center' })
     composer.style.transition = 'box-shadow .4s ease'
     composer.style.boxShadow = '0 0 0 3px var(--blue), 0 8px 32px rgba(10,132,255,.35)'
@@ -411,11 +550,10 @@ async function openChannelQuickComposer(kind){
             }
         }, 500)
     }
-
     setTimeout(() => { composer.style.boxShadow = '' }, 5000)
 
-    const textArea = composer.querySelector('#ch-new-text')
-    if(kind === 'text'){ textArea?.focus() }
+    // 4. Активируем нужный инструмент
+    if(kind === 'text'){ composer.querySelector('#ch-new-text')?.focus() }
     if(kind === 'sticker'){ composer.querySelector('#ch-new-sticker')?.click() }
     if(kind === 'photo'){ composer.querySelector('#ch-new-photo')?.click() }
     if(kind === 'poll'){ composer.querySelector('#ch-new-poll')?.click() }
@@ -1226,9 +1364,12 @@ function isAudioUrl(u){
     return /\.(mp3|wav|ogg|m4a|aac|flac|opus)(\?|$)/i.test(u||'')
 }
 
-function showToastLocal(msg, type = 'info'){
+function showToastLocal(msg, type = 'info', duration){
     if(typeof window.showToast === 'function'){
-        window.showToast(type, msg, { icon: type === 'error' ? '⚠️' : type === 'success' ? '✓' : 'ℹ️' })
+        window.showToast(type, msg, {
+            icon: type === 'error' ? '⚠️' : type === 'success' ? '✓' : 'ℹ️',
+            duration: duration || undefined
+        })
     } else {
         console.log('[tstudio]', msg)
     }
