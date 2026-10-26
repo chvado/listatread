@@ -2085,23 +2085,34 @@ async function bakeOverlays(sourceBlob, overlays){
     canvas.height = H
     const ctx = canvas.getContext('2d')
 
-    // Аудио из оригинала
-    const audioCtx = new AudioContext({ sampleRate: 48000 })
-    const arrayBuf = await sourceBlob.arrayBuffer()
-    let audioBuffer = null
-    try { audioBuffer = await audioCtx.decodeAudioData(arrayBuf) } catch {}
+    // ═══════════════════════════════════════════════════════════
+    // ⚡ ПРАВИЛЬНЫЙ ЗАХВАТ АУДИО:
+    //    Не decodeAudioData (не работает на WebM video),
+    //    а createMediaElementSource(video) — тянет аудио-дорожку
+    //    прямо из видео-элемента в реальном времени.
+    // ═══════════════════════════════════════════════════════════
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 })
+    if(audioCtx.state === 'suspended') await audioCtx.resume()
+    const srcNode = audioCtx.createMediaElementSource(video)
     const dest = audioCtx.createMediaStreamDestination()
-    let srcNode = null
-    if(audioBuffer){
-        srcNode = audioCtx.createBufferSource()
-        srcNode.buffer = audioBuffer
-        srcNode.connect(dest)
-    }
 
-    // Canvas stream + аудио
+    // Компрессор — сглаживает пики
+    const compressor = audioCtx.createDynamicsCompressor()
+    compressor.threshold.value = -12
+    compressor.knee.value = 12
+    compressor.ratio.value = 4
+    compressor.attack.value = 0.003
+    compressor.release.value = 0.25
+
+    srcNode.connect(compressor).connect(dest)
+    // НЕ подключаем к audioCtx.destination — не хотим слышать во время обработки
+
+    // Canvas-стрим + аудио-стрим
     const canvasStream = canvas.captureStream(30)
-    const tracks = [...canvasStream.getVideoTracks(), ...dest.stream.getAudioTracks()]
-    const mixedStream = new MediaStream(tracks)
+    const mixedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...dest.stream.getAudioTracks()
+    ])
 
     const recorder = new MediaRecorder(mixedStream, {
         mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
@@ -2113,7 +2124,7 @@ async function bakeOverlays(sourceBlob, overlays){
     recorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data) }
     const donePromise = new Promise(r => recorder.onstop = r)
 
-    // Предзагрузка картинок-стикеров
+    // Предзагрузка стикеров
     const stickerImgs = {}
     for(const ov of overlays){
         if(ov.type === 'sticker' && ov.content){
@@ -2125,8 +2136,9 @@ async function bakeOverlays(sourceBlob, overlays){
         }
     }
 
-    recorder.start()
-    if(srcNode) srcNode.start()
+    recorder.start(120)
+
+    // ⚡ Играем с самого начала (muted — неважно, MediaElementSource тянет данные)
     video.currentTime = 0
     await video.play().catch(()=>{})
 
@@ -2141,15 +2153,14 @@ async function bakeOverlays(sourceBlob, overlays){
             const cy = ov.y * H
 
             if(ov.type === 'text'){
-                const baseFontSize = W * 0.055 * sc   // ~40px при W=720
+                const baseFontSize = W * 0.055 * sc
                 ctx.save()
                 ctx.textAlign = 'center'
                 ctx.textBaseline = 'middle'
 
                 let fontStyle = ''
                 if(ov.italic) fontStyle += 'italic '
-                if(ov.bold) fontStyle += '900 '
-                else fontStyle += '500 '
+                fontStyle += ov.bold ? '900 ' : '500 '
                 const fontFam = ov.font || '-apple-system, sans-serif'
                 ctx.font = `${fontStyle}${Math.round(baseFontSize)}px ${fontFam}`
 
@@ -2158,10 +2169,8 @@ async function bakeOverlays(sourceBlob, overlays){
                 const tw = m.width
                 const th = baseFontSize * 1.2
 
-                // Фон
                 if(ov.bg){
                     ctx.fillStyle = ov.bg
-                    ctx.beginPath()
                     const pad = baseFontSize * 0.2
                     const r = baseFontSize * 0.15
                     roundRect(ctx, cx - tw/2 - pad, cy - th/2 - pad*0.5,
@@ -2169,7 +2178,6 @@ async function bakeOverlays(sourceBlob, overlays){
                     ctx.fill()
                 }
 
-                // Обводка
                 if(ov.strokeW > 0){
                     ctx.strokeStyle = ov.stroke
                     ctx.lineWidth = ov.strokeW * sc * 2
@@ -2177,7 +2185,6 @@ async function bakeOverlays(sourceBlob, overlays){
                     ctx.strokeText(txt, cx, cy)
                 }
 
-                // Заливка
                 ctx.fillStyle = ov.color || '#fff'
                 ctx.fillText(txt, cx, cy)
 
@@ -2201,15 +2208,14 @@ async function bakeOverlays(sourceBlob, overlays){
         requestAnimationFrame(drawFrame)
     }
 
+    video.addEventListener('playing', drawFrame, { once: true })
     video.addEventListener('ended', () => {
         setTimeout(() => {
             try { recorder.stop() } catch {}
-            try { srcNode?.stop() } catch {}
+            try { srcNode.disconnect() } catch {}
             try { audioCtx.close() } catch {}
-        }, 100)
+        }, 150)
     })
-
-    video.addEventListener('playing', drawFrame, { once: true })
 
     await donePromise
     video.src = ''
@@ -2225,6 +2231,8 @@ function roundRect(ctx, x, y, w, h, r){
     ctx.arcTo(x, y, x+w, y, r)
     ctx.closePath()
 }
+
+
 
 /* ============================================================
    ХЕЛПЕРЫ
