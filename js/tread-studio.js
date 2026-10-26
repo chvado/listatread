@@ -684,9 +684,7 @@ function stopRecording(){
     try { TS._audioEl?.pause() } catch {}
 }
 
-function stopRecording(){
-    if(TS.recorder?.state === 'recording') TS.recorder.stop()
-}
+
 
 function showRecordingUI(on){
     const root = TS.root; if(!root) return
