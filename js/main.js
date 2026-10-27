@@ -1152,6 +1152,7 @@ document.querySelectorAll('.sidebar-item').forEach(item => {
         if(a === 'help-cookie')   return window.open('/cookie','_blank')
         if(a === 'help-about')    return showToast('info','listatread.online · v16',{icon:'<img src="/logo.jpeg" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;display:block">'})
         if(a === 'karsq') return showScreen('karsq')
+        if(a === 'help-fts') return window.open('/fts', '_blank')
     })
 })
 $('sidebar-logout')?.addEventListener('click', async () => {
