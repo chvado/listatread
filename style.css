@@ -7135,77 +7135,31 @@ body.ts-recording .ts-track-strip{
 }
 
 /* ═══════════════════════════════════════════════════════════
-   3. ФИКС iPHONE — «нижнее меню подлетает вверх» при старте
-   Причина: overflow-x: hidden на iOS Safari превращает
-   .main-app в containing block для position: fixed детей.
-   Пока контент короткий — bottom-nav «прилипает» к его низу.
-   Решение: overflow-x: clip (не создаёт containing block),
-   стабильная высота 100svh, GPU-слой у bottom-nav.
-═══════════════════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════════════════
-   iOS FIX v3 — bottom-nav на iPhone больше не «подлетает»
+   FIX v5 — iOS bottom-nav
    ───────────────────────────────────────────────────────────
-   Идея: на мобильных .main-app прибит к экрану (position: fixed
-   inset: 0) и скроллится ВНУТРИ, а .bottom-nav фиксирован к
-   самому viewport без transform-центрирования. Трансформов
-   на предках нет → nav не может «съехать», даже когда контент
-   ещё не загрузился.
+   Не трогаем .main-app (position: relative как было).
+   .bottom-nav — истинный position: fixed на мобильных:
+   - никаких transform / will-change / backface-visibility
+   - margin-based центрирование (не translateX)
+   - !important чтобы перебить оригинальные правила
 ═══════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
-
-    /* Тело больше не скроллится — только .main-app */
-    html, body {
-        height: 100%;
-        overflow: hidden !important;
-        overscroll-behavior: none;
-    }
-
-    /* Оболочка во весь экран */
-    .app {
-        position: relative;
-        height: 100%;
-        max-width: 100%;
-        margin: 0;
-        overflow: hidden;
-        /* НИКАКОГО transform — иначе bottom-nav снова сломается */
-    }
-
-    /* Главный блок прибит к экрану, контент скроллится внутри */
-    .main-app {
-        position: fixed;
-        inset: 0;
-        overflow-y: auto;
-        overflow-x: hidden;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: calc(var(--nav-height) + var(--safe-bottom));
-        min-height: 0;
-        will-change: scroll-position;
-    }
-
-    /* Нижнее меню — фиксировано к viewport, без translateX-центрирования */
     .bottom-nav {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-width: 100%;
-        transform: none;
-        -webkit-transform: none;
-        /* стабильный paint-слой — Safari не пересчитывает позицию */
-        will-change: transform;
-        -webkit-backface-visibility: hidden;
-        backface-visibility: hidden;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        transform: none !important;
+        -webkit-transform: none !important;
+        will-change: auto !important;
+        -webkit-backface-visibility: visible !important;
+        backface-visibility: visible !important;
+        margin: 0 !important;
     }
 }
-
-/* ═══════════════════════════════════════════════════════════
-   ПРОВЕРКА: если .app внезапно получил transform (например,
-   через анимацию), bottom-nav перестанет быть viewport-fixed.
-   Страхуемся — сбрасываем анимации/transform на предках:
-═══════════════════════════════════════════════════════════ */
-.main-app { transform: none !important; }
-
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

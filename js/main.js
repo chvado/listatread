@@ -2149,6 +2149,7 @@ async function renderHomeFeed(force = false){
         console.warn('[renderHomeFeed]', e.message)
         list.innerHTML = '<p class="empty">Пока нет публикаций</p>'
     }
+    document.dispatchEvent(new Event('lt:feed-rendered'))
 }
 
 /* ⚡ Мгновенный рендер из prefetch */
@@ -2174,6 +2175,7 @@ function renderFeedFromPrefetch(list, cached, userId){
     markSeen(first.map(p => p.id))
     setupInfinite(list, userId)
     setTimeout(initTrackObserver, 60)
+    document.dispatchEvent(new Event('lt:feed-rendered'))
 }
 
 /* ============================================================
@@ -2288,6 +2290,7 @@ async function appendRecommendedChunk(list, userId, size = 5){
             }
         }
         setTimeout(initTrackObserver, 60)
+        document.dispatchEvent(new Event('lt:feed-rendered'))
     } catch(e){
         console.warn('[appendRecommendedChunk]', e.message)
     } finally {
@@ -11714,7 +11717,55 @@ function initBootHearts(){
         setTimeout(scheduleLike, 200 + Math.random() * 1200)
     }
 }
+/* ═══════════════════════════════════════════════════════════
+   iOS NAV RE-PIN
+   Когда лента закончила рендериться — iOS Safari иногда
+   «роняет» position: fixed у .bottom-nav из-за пересчёта
+   layout. Форсим фиксированные inline-стили ещё раз.
+═══════════════════════════════════════════════════════════ */
+;(function pinBottomNavHard(){
+    const pin = () => {
+        const nav = document.querySelector('.bottom-nav')
+        if (!nav) return
+        // Проверяем, реально ли nav на дне viewport (±3px)
+        const rect = nav.getBoundingClientRect()
+        const vh = window.innerHeight || document.documentElement.clientHeight
+        if (Math.abs(rect.bottom - vh) <= 3) return   // уже на дне — норм
 
+        // Не на дне — форсим inline-стилями
+        nav.style.setProperty('position', 'fixed', 'important')
+        nav.style.setProperty('bottom', '0', 'important')
+        nav.style.setProperty('left', '0', 'important')
+        nav.style.setProperty('right', '0', 'important')
+        nav.style.setProperty('top', 'auto', 'important')
+        nav.style.setProperty('transform', 'none', 'important')
+        nav.style.setProperty('width', '100%', 'important')
+        nav.style.setProperty('max-width', '100%', 'important')
+        nav.style.setProperty('margin', '0', 'important')
+    }
+
+    // 1) После старта
+    setTimeout(pin, 100)
+    setTimeout(pin, 600)
+    setTimeout(pin, 1500)
+
+    // 2) Главный триггер — конец рендера ленты
+    document.addEventListener('lt:feed-rendered', pin)
+
+    // 3) Любая смена экрана
+    document.addEventListener('click', e => {
+        if (e.target.closest('.nav-btn')) setTimeout(pin, 100)
+    })
+
+    // 4) Скролл и resize (с requestAnimationFrame)
+    let raf = null
+    const onScroll = () => {
+        if (raf) return
+        raf = requestAnimationFrame(() => { raf = null; pin() })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+})()
 initBootHearts()
 boot();
 setInterval(heartbeat, 30 * 1000)
