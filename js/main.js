@@ -26,6 +26,7 @@ window.__ltRegRegion = 'ru';
 /* ============================================================
    SVG-ИКОНКИ
 ============================================================ */
+const LT_INVITE_CODES = [‘A9POE’, 'L1S0A', 'C1V40’, 'T35S1', ’SV8JZ];
 const SVG = {
     instagram:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="#fff" stroke="none"/></svg>',
     telegram:'<svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><path d="M21.9 4.4 3.4 11.6c-1.2.5-1.2 1.2-.2 1.5l4.6 1.4 1.7 5.4c.2.6.4.8 1 .8.5 0 .7-.2 1-.5l2.4-2.3 4.7 3.5c.9.5 1.5.2 1.7-.8l3-14c.3-1.3-.5-1.9-1.4-1.5z"/></svg>',
@@ -11902,20 +11903,43 @@ window.__ltOpenRegisterLanding = function(){
     }
 
     /* ---------- КОД ИЗ ПИСЬМА ---------- */
+    /* ---------- КОД ПРИГЛАШЕНИЯ (5 символов: A-Z, 0-9) ---------- */
     const boxes = [...qsa('.auth-code-box')];
+
+    // принудительно text + uppercase-friendly + без автокоррекции
+    boxes.forEach(box => {
+        try {
+            box.type = 'text';
+            box.setAttribute('inputmode', 'text');
+            box.setAttribute('autocomplete', 'off');
+            box.setAttribute('autocapitalize', 'characters');
+            box.setAttribute('spellcheck', 'false');
+            box.setAttribute('pattern', '[A-Za-z0-9]*');
+            box.maxLength = 1;
+        } catch {}
+    });
+
     boxes.forEach((box, idx) => {
         box.addEventListener('input', () => {
-            box.value = box.value.replace(/\D/g, '').slice(0, 1);
+            // только латиница A-Z и цифры 0-9, ровно 1 символ
+            box.value = box.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 1).toUpperCase();
             box.classList.toggle('filled', !!box.value);
             if (box.value && idx < boxes.length - 1) boxes[idx + 1].focus();
+            const errEl = $('auth-error');
+            if (errEl) errEl.textContent = '';
         });
+
         box.addEventListener('keydown', e => {
             if (e.key === 'Backspace' && !box.value && idx > 0) boxes[idx - 1].focus();
         });
+
         box.addEventListener('paste', e => {
             e.preventDefault();
-            const p = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 5);
-            [...p].forEach((ch, i) => { if (boxes[i]){ boxes[i].value = ch; boxes[i].classList.add('filled'); } });
+            const raw = (e.clipboardData || window.clipboardData).getData('text') || '';
+            const p = raw.replace(/[^A-Za-z0-9]/g, '').slice(0, 5).toUpperCase();
+            [...p].forEach((ch, i) => {
+                if (boxes[i]){ boxes[i].value = ch; boxes[i].classList.add('filled'); }
+            });
             const next = boxes.findIndex(b => !b.value);
             (next >= 0 ? boxes[next] : boxes[boxes.length - 1]).focus();
         });
@@ -12003,8 +12027,22 @@ window.__ltOpenRegisterLanding = function(){
             if (!regConsent.checked) return showErr('Подтвердите согласие'), false;
         }
         if (currentStep === 2){
-            const all = boxes.every(b => b.value);
-            if (!all) return showErr('Введите все 5 цифр'), false;
+            const code = boxes.map(b => (b.value || '').toUpperCase()).join('');
+
+            // 1. должно быть ровно 5 символов
+            if (code.length !== 5){
+                return showErr('Код приглашения — ровно 5 символов'), false;
+            }
+
+            // 2. только латиница A–Z и цифры 0–9
+            if (!/^[A-Z0-9]{5}$/.test(code)){
+                return showErr('Только английские буквы A–Z и цифры 0–9'), false;
+            }
+
+            // 3. сверка со списком
+            if (!LT_INVITE_CODES.includes(code)){
+                return showErr('Неверный код приглашения'), false;
+            }
         }
         if (currentStep === 3){
             const name = $('reg-name').value.trim();

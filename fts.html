@@ -8,481 +8,245 @@
     <link rel="icon" href="/logo.jpeg" type="image/jpeg">
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
-        body{
+        html,body{
+            background:#fff;color:#000;
             font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',sans-serif;
-            background:#fff;color:#000;line-height:1.6;
-            -webkit-font-smoothing:antialiased;min-height:100vh;
+            font-size:15px;line-height:1.55;
+            -webkit-font-smoothing:antialiased;
         }
-        .page{max-width:760px;margin:0 auto;padding:32px 20px 80px}
-
-        /* ═══ HERO ═══ */
-        .hero{text-align:center;padding:24px 0 8px}
+        a{color:#000;text-decoration:underline}
+        a:hover{text-decoration:none}
+        .page{max-width:none;margin:0;padding:24px 28px 60px;text-align:left}
         .hero-badge{
-            display:inline-flex;align-items:center;gap:6px;
-            padding:6px 14px;border-radius:100px;
-            background:rgba(255,55,95,.1);color:#ff375f;
-            font-size:13px;font-weight:700;letter-spacing:.02em;
-            margin-bottom:18px;
+            display:inline-block;padding:3px 9px;border:1px solid #000;
+            font-size:11px;font-weight:700;text-transform:uppercase;
+            letter-spacing:.08em;margin-bottom:14px;
         }
-        .hero h1{
-            font-size:clamp(34px,6vw,48px);
-            font-weight:900;letter-spacing:-.03em;line-height:1.05;
-            margin-bottom:14px;
-            background:linear-gradient(135deg,#ff375f,#bf5af2,#0a84ff);
-            -webkit-background-clip:text;background-clip:text;
-            -webkit-text-fill-color:transparent;color:transparent;
-        }
-        .hero p{
-            font-size:16px;color:#666;
-            max-width:540px;margin:0 auto;
-        }
-
-        /* ═══ INTRO ═══ */
-        .intro{
-            background:linear-gradient(135deg,rgba(255,55,95,.05),rgba(191,90,242,.05));
-            border:1px solid rgba(0,0,0,.06);
-            border-radius:22px;
-            padding:22px;
-            margin:32px 0;
-        }
-        .intro-label{
-            font-size:12px;font-weight:800;text-transform:uppercase;
-            letter-spacing:.07em;color:#999;margin-bottom:10px;
-        }
-        .intro p{font-size:15px;color:#333;margin-bottom:12px}
+        h1{font-size:30px;font-weight:900;letter-spacing:-.01em;margin-bottom:12px;line-height:1.15}
+        .hero p{font-size:15px;margin-bottom:6px}
+        h2{font-size:16px;font-weight:800;letter-spacing:.05em;margin:32px 0 12px;
+            padding-bottom:6px;border-bottom:2px solid #000;text-transform:uppercase}
+        h3{font-size:15px;font-weight:800;margin:16px 0 6px}
+        .intro{border:1px solid #000;padding:14px 16px;margin:22px 0}
+        .intro p{font-size:14px;margin-bottom:8px}
         .intro p:last-child{margin-bottom:0}
-        .intro strong{color:#ff375f}
-
-        /* ═══ SECTION ═══ */
-        .section{margin:44px 0 0}
-        .section-title{
-            font-size:13px;font-weight:800;text-transform:uppercase;
-            letter-spacing:.08em;color:#999;padding-left:4px;
-            margin-bottom:16px;
-        }
-
-        /* ═══ TIER CARDS ═══ */
-        .tier{
-            position:relative;border-radius:24px;padding:24px;
-            color:#fff;overflow:hidden;margin-bottom:14px;
-            isolation:isolate;
-            box-shadow:0 12px 32px rgba(0,0,0,.15);
-        }
-        .tier::before{
-            content:'';position:absolute;inset:0;z-index:-2;
-            background:var(--tier-bg);
-        }
-        .tier::after{
-            content:'';position:absolute;inset:0;z-index:-1;
-            background:radial-gradient(circle at 15% 0%,rgba(255,255,255,.28),transparent 55%);
-            pointer-events:none;
-        }
-        .tier-1{--tier-bg:linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2)}
-        .tier-2{--tier-bg:linear-gradient(135deg,#0a84ff,#bf5af2)}
-        .tier-3{--tier-bg:linear-gradient(135deg,#3a3a3c,#1c1c1e)}
-        .tier-creator{--tier-bg:linear-gradient(135deg,#ff9f0a,#ff3b30,#bf5af2)}
-        .tier-head{
-            display:flex;align-items:center;gap:14px;
-            margin-bottom:18px;
-        }
-        .tier-rank{
-            width:58px;height:58px;border-radius:18px;
-            background:rgba(255,255,255,.22);
-            -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
-            display:flex;align-items:center;justify-content:center;
-            font-size:30px;flex-shrink:0;
-            box-shadow:inset 0 1px 0 rgba(255,255,255,.4);
-        }
-        .tier-info{flex:1;min-width:0}
-        .tier-count{
-            font-size:11.5px;font-weight:800;text-transform:uppercase;
-            letter-spacing:.06em;opacity:.88;
-        }
-        .tier-title{
-            font-size:20px;font-weight:900;line-height:1.2;
-            margin-top:3px;
-        }
-        .perks{
-            list-style:none;display:flex;flex-direction:column;gap:9px;
-        }
-        .perks li{
-            display:flex;align-items:flex-start;gap:10px;
-            font-size:14.5px;line-height:1.45;
-        }
-        .perks li::before{
-            content:'✓';
-            display:inline-flex;align-items:center;justify-content:center;
-            width:20px;height:20px;border-radius:50%;
-            background:rgba(255,255,255,.28);
-            font-weight:900;font-size:12px;
-            flex-shrink:0;margin-top:1px;
-        }
-
-        /* ═══ RULES ═══ */
-        .rules{
-            list-style:none;counter-reset:rule;
-            display:flex;flex-direction:column;gap:10px;
-        }
-        .rules li{
-            counter-increment:rule;
-            padding:14px 16px;background:#f5f5f7;
-            border-radius:14px;font-size:14.5px;line-height:1.5;
-            display:flex;gap:12px;align-items:flex-start;
-        }
-        .rules li::before{
-            content:counter(rule);
-            flex-shrink:0;
-            width:26px;height:26px;border-radius:8px;
-            background:linear-gradient(135deg,#ff375f,#bf5af2);
-            color:#fff;font-weight:800;font-size:13px;
-            display:flex;align-items:center;justify-content:center;
-        }
-        .rules li b{font-weight:800}
-
-        /* ═══ WARNING ═══ */
-        .warning{
-            margin-top:16px;padding:16px 18px;
-            background:rgba(255,59,48,.08);
-            border:1px solid rgba(255,59,48,.22);
-            border-radius:14px;
-            font-size:14px;line-height:1.55;color:#c81f14;
-        }
+        table{width:100%;border-collapse:collapse;margin:10px 0 18px;font-size:14px}
+        th,td{border:1px solid #000;padding:8px 10px;text-align:left;vertical-align:top}
+        th{background:#fff;font-weight:800;text-transform:uppercase;font-size:12px;letter-spacing:.04em}
+        ul,ol{padding-left:22px;margin:8px 0 16px}
+        li{margin-bottom:6px;font-size:14px}
+        .warning{border:1px solid #000;padding:10px 12px;font-size:13px;margin:14px 0}
         .warning b{font-weight:800}
-
-        /* ═══ EXTRAS GRID ═══ */
-        .extras{
-            display:grid;
-            grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-            gap:12px;
-        }
-        .extra{
-            padding:18px;background:#f5f5f7;
-            border-radius:18px;border:1px solid rgba(0,0,0,.04);
-        }
-        .extra-icon{font-size:24px;margin-bottom:8px;line-height:1}
-        .extra-title{font-size:15px;font-weight:800;margin-bottom:4px}
-        .extra-desc{font-size:13px;color:#666;line-height:1.45}
-
-        /* ═══ STEPS ═══ */
-        .steps{display:flex;flex-direction:column;gap:12px;counter-reset:step}
-        .step{
-            counter-increment:step;
-            display:flex;gap:14px;align-items:flex-start;
-            padding:16px;background:#fff;
-            border:1px solid rgba(0,0,0,.06);
-            border-radius:16px;
-        }
-        .step::before{
-            content:counter(step);
-            flex-shrink:0;width:32px;height:32px;border-radius:50%;
-            background:linear-gradient(135deg,#ff375f,#bf5af2);
-            color:#fff;font-weight:800;
-            display:flex;align-items:center;justify-content:center;
-            font-size:15px;
-        }
-        .step-body{flex:1}
-        .step-title{font-weight:800;font-size:15px;margin-bottom:3px}
-        .step-desc{font-size:14px;color:#555;line-height:1.5}
-        .step-desc a{color:#0a84ff;text-decoration:none;font-weight:600}
-        .step-desc a:hover{text-decoration:underline}
-
-        /* ═══ FAQ ═══ */
-        .faq{display:flex;flex-direction:column;gap:10px}
-        .faq-item{
-            padding:16px 18px;background:#f5f5f7;border-radius:14px;
-        }
-        .faq-q{font-weight:800;font-size:14.5px;margin-bottom:6px}
-        .faq-a{font-size:14px;color:#555;line-height:1.55}
-
-        /* ═══ FOOTER ═══ */
-        .footer{
-            margin-top:56px;padding-top:28px;
-            border-top:1px solid rgba(0,0,0,.08);
-        }
-        .footer-links{
-            display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px;
-        }
-        .footer-links a{
-            padding:8px 14px;background:#f5f5f7;color:#333;
-            text-decoration:none;border-radius:100px;
-            font-size:13px;font-weight:600;
-            transition:background .2s;
-        }
-        .footer-links a:hover{background:#e5e5ea}
-        .contact-line{
-            font-size:14px;color:#666;margin-bottom:22px;
-            line-height:1.6;
-        }
-        .contact-line a{color:#0a84ff;text-decoration:none;font-weight:600}
-        .contact-line a:hover{text-decoration:underline}
-        .home-btn{
-            display:inline-block;padding:14px 26px;
-            background:linear-gradient(135deg,#ff375f,#bf5af2);
-            color:#fff;border-radius:14px;
-            text-decoration:none;font-weight:800;
-            box-shadow:0 8px 24px rgba(255,55,95,.3);
-            transition:transform .2s;
-        }
-        .home-btn:active{transform:scale(.97)}
-
-        /* ═══ DARK MODE ═══ */
-        @media (prefers-color-scheme: dark){
-            body{background:#000;color:#fff}
-            .hero p{color:#999}
-            .intro{background:linear-gradient(135deg,rgba(255,55,95,.08),rgba(191,90,242,.08));border-color:rgba(255,255,255,.08)}
-            .intro p{color:#ccc}
-            .intro-label,.section-title{color:#666}
-            .rules li{background:#161618;color:#e5e5e5}
-            .warning{background:rgba(255,59,48,.14);border-color:rgba(255,59,48,.3);color:#ff8a80}
-            .extra{background:#161618;border-color:rgba(255,255,255,.06)}
-            .extra-desc{color:#999}
-            .step{background:#111;border-color:rgba(255,255,255,.06)}
-            .step-desc{color:#aaa}
-            .faq-item{background:#161618}
-            .faq-a{color:#aaa}
-            .footer{border-color:rgba(255,255,255,.08)}
-            .footer-links a{background:#161618;color:#ccc}
-            .footer-links a:hover{background:#242426}
-            .contact-line{color:#999}
-        }
+        .faq-item{padding:10px 0;border-bottom:1px solid #000}
+        .faq-item:last-child{border-bottom:none}
+        .faq-q{font-weight:800;font-size:14px;margin-bottom:4px}
+        .faq-a{font-size:13px}
+        .footer{margin-top:44px;padding-top:18px;border-top:2px solid #000}
+        .footer-links{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
+        .footer-links a{color:#000;text-decoration:underline;font-size:13px;font-weight:600}
+        .contact-line{font-size:13px;margin-bottom:14px}
+        .contact-line a{font-weight:600}
+        .home-btn{display:inline-block;padding:9px 18px;border:1px solid #000;
+            background:#fff;color:#000;text-decoration:none;font-weight:800;font-size:14px}
     </style>
 </head>
 <body>
 <div class="page">
 
-    <!-- ═══════════ HERO ═══════════ -->
-    <header class="hero">
+    <header>
         <div class="hero-badge">Программа тестирования</div>
         <h1>For Testers Sourse</h1>
         <p>Стань одним из первых — и получи награды навсегда. Чем раньше ты с нами, тем больше бонусов.</p>
     </header>
 
-    <!-- ═══════════ INTRO ═══════════ -->
     <div class="intro">
-        <div class="intro-label">Что это?</div>
-        <p>
-            <strong>listatread</strong> открывает программу раннего доступа. Мы тестируем всё —
+        <h3>Что это?</h3>
+        <p><strong>listatread</strong> открывает программу раннего доступа. Мы тестируем всё —
             бесконечную ленту рекомендаций, каналы, <b>listalive</b>, встроенный плеер музыки,
             кастомизацию профиля и чаты. Твоя обратная связь помогает делать продукт лучше,
-            а мы за это дарим реальные награды.
-        </p>
-        <p>
-            Что нужно от тебя: <b>пользоваться приложением</b>, <b>находить баги</b>,
+            а мы за это дарим реальные награды.</p>
+        <p>Что нужно от тебя: <b>пользоваться приложением</b>, <b>находить баги</b>,
             <b>давать фидбек</b> и соблюдать правила сообщества. Никаких обязательных
-            отчётов и сложных форм — просто живи в listatread и расскажи нам, что можно улучшить.
-        </p>
+            отчётов и сложных форм — просто живи в listatread и расскажи нам, что можно улучшить.</p>
     </div>
 
-    <!-- ═══════════ TIERS ═══════════ -->
-    <section class="section">
-        <div class="section-title">Награды для тестировщиков</div>
+    <h2>Награды для тестировщиков</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Слот</th>
+            <th>Подписка listatread chvad</th>
+            <th>Статус тестера</th>
+            <th>Значок</th>
+            <th>Ранний доступ</th>
+            <th>Голосования за фичи</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td><b>Первые 100 пользователей</b></td>
+            <td>Бесконечная, навсегда</td>
+            <td>Постоянный</td>
+            <td>Эксклюзивный</td>
+            <td>Да</td>
+            <td>Да</td>
+        </tr>
+        <tr>
+            <td><b>Следующие 900 (101–1000)</b></td>
+            <td>3 месяца бесплатно, далее по желанию</td>
+            <td>Постоянный</td>
+            <td>Есть</td>
+            <td>Да</td>
+            <td>Нет</td>
+        </tr>
+        <tr>
+            <td><b>Все последующие</b></td>
+            <td>Покупка и продление в штатном режиме</td>
+            <td>Нет</td>
+            <td>Нет</td>
+            <td>Нет</td>
+            <td>Нет</td>
+        </tr>
+        </tbody>
+    </table>
 
-        <!-- TIER 1 -->
-        <div class="tier tier-1">
-            <div class="tier-head">
-                <div class="tier-rank">🥇</div>
-                <div class="tier-info">
-                    <div class="tier-count">Первые 100 пользователей</div>
-                    <div class="tier-title">Легендарный статус</div>
-                </div>
-            </div>
-            <ul class="perks">
-                <li><b>Бесконечная подписка</b> listatread chvad — навсегда, без оплаты</li>
-                <li>Постоянный <b>статус тестера</b> в профиле</li>
-                <li>Эксклюзивный значок рядом с именем</li>
-                <li>Ранний доступ ко всем новым функциям</li>
-                <li>Участие в закрытых голосованиях за фичи</li>
-            </ul>
-        </div>
+    <h2>Для креаторов контента</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Слот</th>
+            <th>Верификация канала</th>
+            <th>Оформление канала</th>
+            <th>Подарки подписчикам</th>
+            <th>Аналитика</th>
+            <th>Поддержка</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td><b>Первые 100 каналов</b></td>
+            <td>Бесплатно, синяя галочка</td>
+            <td>Премиум: градиент, узор, цвет имени</td>
+            <td>Эксклюзивный набор</td>
+            <td>Расширенная, полный объём</td>
+            <td>Приоритетная</td>
+        </tr>
+        <tr>
+            <td><b>Остальные каналы</b></td>
+            <td>Платно</td>
+            <td>Стандарт</td>
+            <td>Стандартный</td>
+            <td>Базовая</td>
+            <td>Общая</td>
+        </tr>
+        </tbody>
+    </table>
 
-        <!-- TIER 2 -->
-        <div class="tier tier-2">
-            <div class="tier-head">
-                <div class="tier-rank">🥈</div>
-                <div class="tier-info">
-                    <div class="tier-count">Следующие 900 · пользователи 101–1000</div>
-                    <div class="tier-title">Почти легендарный</div>
-                </div>
-            </div>
-            <ul class="perks">
-                <li>Подписка listatread chvad <b>на 3 месяца бесплатно</b></li>
-                <li>Постоянный <b>статус тестера</b> в профиле</li>
-                <li>Значок рядом с именем</li>
-                <li>Ранний доступ ко всем новым функциям</li>
-                <li>После 3 месяцев — стандартное продление по желанию</li>
-            </ul>
-        </div>
+    <h2>Что входит в подписку listatread chvad</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Функция</th>
+            <th>Бесплатно</th>
+            <th>chvad</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr><td>Посты и треды</td><td>Да</td><td>Да</td></tr>
+        <tr><td>Музыка в постах</td><td>до 15 МБ / 240 сек</td><td>до 23 МБ / 480 сек</td></tr>
+        <tr><td>Видео в постах</td><td>до 15 МБ / 180 сек</td><td>до 23 МБ / 480 сек</td></tr>
+        <tr><td>Фото в постах</td><td>до 15 МБ</td><td>до 30 МБ</td></tr>
+        <tr><td>Статусы профиля</td><td>44 базовых</td><td>100 (44 + 56 эксклюзивных)</td></tr>
+        <tr><td>Каналы</td><td>2</td><td>5</td></tr>
+        <tr><td>Скачивание треков</td><td>Нет</td><td>Да</td></tr>
+        </tbody>
+    </table>
 
-        <!-- TIER 3 -->
-        <div class="tier tier-3">
-            <div class="tier-head">
-                <div class="tier-rank">🥉</div>
-                <div class="tier-info">
-                    <div class="tier-count">Все последующие пользователи</div>
-                    <div class="tier-title">Стандартный режим</div>
-                </div>
-            </div>
-            <ul class="perks">
-                <li>Полный доступ ко всем базовым функциям</li>
-                <li>Покупка и продление подписки listatread chvad — <b>в штатном режиме</b></li>
-                <li>Все будущие обновления — для всех</li>
-            </ul>
-        </div>
-    </section>
+    <h2>Правила программы</h2>
+    <ol>
+        <li><b>Уважай сообщество.</b> Оскорбления, травля и унижения запрещены.
+            Полные правила — в <a href="/rules">правилах сообщества</a>.</li>
+        <li><b>Ищи баги, а не используй их.</b> Нашёл уязвимость — сообщи команде
+            на <a href="mailto:support@listatread.online">support@listatread.online</a>.
+            Эксплуатация дыр ради выгоды — прямой путь к потере статуса.</li>
+        <li><b>Не делись доступом.</b> Аккаунт тестировщика — личный.
+            Передача доступа третьим лицам = потеря статуса.</li>
+        <li><b>Давай честный фидбек.</b> Не нужно хвалить всё подряд.
+            Настоящие отчёты о проблемах помогают больше, чем пустые отзывы.</li>
+        <li><b>Соблюдай <a href="/terms">условия пользования</a>.</b>
+            Всё, что запрещено обычным пользователям, запрещено и тестировщикам.</li>
+        <li><b>Не спамь.</b> Массовые рассылки, накрутка лайков и подписчиков —
+            это не тестирование.</li>
+    </ol>
 
-    <!-- ═══════════ CREATORS ═══════════ -->
-    <section class="section">
-        <div class="section-title">Для креаторов контента</div>
+    <div class="warning">
+        <b>Что происходит при нарушениях:</b>
+        первое нарушение — предупреждение; повторное — потеря статуса тестера
+        и всех наград; грубые нарушения (спам, обход банов, 18+, мошенничество) —
+        блокировка аккаунта без возврата наград. Программа не даёт иммунитета.
+    </div>
 
-        <div class="tier tier-creator">
-            <div class="tier-head">
-                <div class="tier-rank">🎨</div>
-                <div class="tier-info">
-                    <div class="tier-count">Первые 100 каналов</div>
-                    <div class="tier-title">Премиальный старт</div>
-                </div>
-            </div>
-            <ul class="perks">
-                <li><b>Бесплатная верификация</b> канала — синяя галочка рядом с именем</li>
-                <li><b>Премиум-оформление</b> канала: градиентный фон, узор, цвет имени</li>
-                <li>Эксклюзивный набор <b>подарков</b> для подписчиков канала</li>
-                <li>Расширенная <b>аналитика</b> в полном объёме</li>
-                <li>Приоритетная поддержка от команды</li>
-                <li>Ранний доступ к новым функциям каналов</li>
-            </ul>
-        </div>
-    </section>
+    <h2>Что ещё интересного</h2>
+    <table>
+        <thead>
+        <tr><th>Возможность</th><th>Описание</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><b>Ранний доступ</b></td><td>Новые функции появляются у тестировщиков на 1–2 недели раньше, чем у всех.</td></tr>
+        <tr><td><b>Прямая связь</b></td><td>Специальный чат с командой — задавай вопросы, предлагай фичи, репорти баги напрямую.</td></tr>
+        <tr><td><b>Голосования</b></td><td>Решай, какую функцию делаем следующей. Голос тестировщика весит больше обычного.</td></tr>
+        <tr><td><b>Эксклюзивные ивенты</b></td><td>Закрытые трансляции, встречи с командой и особые подарки в listalive.</td></tr>
+        <tr><td><b>Мобильные приложения</b></td><td>Тестируй iOS и Android-приложения listatread до официального релиза.</td></tr>
+        <tr><td><b>Признание</b></td><td>Имя тестировщика остаётся в истории продукта — раздел «Команда раннего доступа».</td></tr>
+        </tbody>
+    </table>
 
-    <!-- ═══════════ RULES ═══════════ -->
-    <section class="section">
-        <div class="section-title">Правила программы</div>
+    <h2>Как принять участие</h2>
+    <ol>
+        <li><b>Зарегистрируйся.</b> Создай аккаунт на <a href="/">listatread.online</a>.
+            Если уже есть — просто войди.</li>
+        <li><b>Введи код приглашения.</b> На 2-м этапе регистрации нужен спец. код
+            тестировщика. Без него зарегистрироваться нельзя.</li>
+        <li><b>Пользуйся.</b> Пиши треды, заводи канал, заходи в live, слушай музыку,
+            настраивай профиль — всё как обычно.</li>
+        <li><b>Репорти баги.</b> Нашёл проблему — напиши на
+            <a href="mailto:support@listatread.online">support@listatread.online</a>
+            или через сайдбар «Служба поддержки» в приложении.</li>
+        <li><b>Получи награду.</b> Когда твой слот в программе подтверждён,
+            придёт уведомление от системы с деталями.</li>
+    </ol>
 
-        <ol class="rules">
-            <li><b>Уважай сообщество.</b> Оскорбления, травля и унижения — запрещены. Полные правила в <a href="/rules" style="color:#ff375f;font-weight:700;text-decoration:none">правилах сообщества</a>.</li>
-            <li><b>Ищи баги, а не используй их.</b> Нашёл уязвимость — сообщи команде через <a href="mailto:support@listatread.online" style="color:#ff375f;font-weight:700;text-decoration:none">support@listatread.online</a>. Эксплуатация дыр ради выгоды — прямой путь к потере статуса.</li>
-            <li><b>Не делись доступом.</b> Аккаунт тестировщика — личный. Передача доступа третьим лицам = потеря статуса.</li>
-            <li><b>Давай честный фидбек.</b> Не нужно хвалить всё подряд. Настоящие отчёты о проблемах помогают больше, чем пустые отзывы.</li>
-            <li><b>Соблюдай <a href="/terms" style="color:#ff375f;font-weight:700;text-decoration:none">условия пользования</a>.</b> Всё, что запрещено обычным пользователям, запрещено и тестировщикам.</li>
-            <li><b>Не спамь.</b> Массовые рассылки, накрутка лайков и подписчиков — это не тестирование.</li>
-        </ol>
+    <h2>Частые вопросы</h2>
 
-        <div class="warning">
-            <b>⚠️ Что происходит при нарушениях:</b>
-            первое нарушение — предупреждение; повторное — потеря статуса тестера и всех наград;
-            грубые нарушения (спам, обход банов, 18+, мошенничество) — блокировка аккаунта
-            без возврата наград. Программа не даёт иммунитета.
-        </div>
-    </section>
+    <div class="faq-item">
+        <div class="faq-q">Когда старт программы?</div>
+        <div class="faq-a">Уже сейчас. Слоты распределяются в порядке активности пользователей в приложении.</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-q">Как я узнаю, что попал в первые 100 (или в следующие 900)?</div>
+        <div class="faq-a">В приложении придёт уведомление от системы с подтверждением статуса и деталями награды.</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-q">Где взять код приглашения?</div>
+        <div class="faq-a">Код выдаётся тестировщикам через официальные каналы связи listatread (email, Telegram, служба поддержки). Без кода регистрация невозможна.</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-q">Что если слоты закончились?</div>
+        <div class="faq-a">Ты попадаешь в стандартный режим — покупаешь и продлеваешь подписку как все. Награды не теряются для тех, кто уже успел.</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-q">Можно ли потерять статус тестера?</div>
+        <div class="faq-a">Да — за нарушения правил сообщества, эксплуатацию багов, спам и передачу доступа. См. раздел «Правила программы».</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-q">Бесконечная подписка — действительно бесконечная?</div>
+        <div class="faq-a">Да, пока аккаунт активен и не нарушены правила. Она не списывается и не истекает.</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-q">Что даёт статус тестера после релиза?</div>
+        <div class="faq-a">Значок рядом с именем, ранний доступ к фичам, участие в голосованиях и приоритетную поддержку.</div>
+    </div>
 
-    <!-- ═══════════ EXTRAS ═══════════ -->
-    <section class="section">
-        <div class="section-title">Что ещё интересного</div>
-        <div class="extras">
-            <div class="extra">
-                <div class="extra-icon">🚀</div>
-                <div class="extra-title">Ранний доступ</div>
-                <div class="extra-desc">Новые функции появляются у тестировщиков на 1–2 недели раньше, чем у всех.</div>
-            </div>
-            <div class="extra">
-                <div class="extra-icon">💬</div>
-                <div class="extra-title">Прямая связь</div>
-                <div class="extra-desc">Специальный чат с командой — задавай вопросы, предлагай фичи, репорти баги напрямую.</div>
-            </div>
-            <div class="extra">
-                <div class="extra-icon">🗳️</div>
-                <div class="extra-title">Голосования</div>
-                <div class="extra-desc">Решай, какую функцию делаем следующей. Голос тестировщика весит больше обычного.</div>
-            </div>
-            <div class="extra">
-                <div class="extra-icon">🎉</div>
-                <div class="extra-title">Эксклюзивные ивенты</div>
-                <div class="extra-desc">Закрытые трансляции, встречи с командой и особые подарки в listalive.</div>
-            </div>
-            <div class="extra">
-                <div class="extra-icon">📱</div>
-                <div class="extra-title">Мобильные приложения</div>
-                <div class="extra-desc">Тестируй iOS и Android-приложения listatread до официального релиза.</div>
-            </div>
-            <div class="extra">
-                <div class="extra-icon">🏆</div>
-                <div class="extra-title">Признание</div>
-                <div class="extra-desc">Имя тестировщика остаётся в истории продукта — раздел «Команда раннего доступа».</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══════════ STEPS ═══════════ -->
-    <section class="section">
-        <div class="section-title">Как принять участие</div>
-        <div class="steps">
-            <div class="step">
-                <div class="step-body">
-                    <div class="step-title">Зарегистрируйся</div>
-                    <div class="step-desc">
-                        Создай аккаунт на <a href="/">listatread.online</a>. Если уже есть — просто войди.
-                    </div>
-                </div>
-            </div>
-            <div class="step">
-                <div class="step-body">
-                    <div class="step-title">Пользуйся</div>
-                    <div class="step-desc">
-                        Пиши треды, заводи канал, заходи в live, слушай музыку, настраивай профиль — всё как обычно.
-                    </div>
-                </div>
-            </div>
-            <div class="step">
-                <div class="step-body">
-                    <div class="step-title">Репорти баги</div>
-                    <div class="step-desc">
-                        Нашёл проблему — напиши в <a href="mailto:support@listatread.online">support@listatread.online</a>
-                        или через сайдбар «Служба поддержки» в приложении. Чем раньше сообщишь — тем ценнее вклад.
-                    </div>
-                </div>
-            </div>
-            <div class="step">
-                <div class="step-body">
-                    <div class="step-title">Получи награду</div>
-                    <div class="step-desc">
-                        Когда твой слот в программе подтверждён, придёт уведомление от системы с деталями.
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══════════ FAQ ═══════════ -->
-    <section class="section">
-        <div class="section-title">Частые вопросы</div>
-        <div class="faq">
-            <div class="faq-item">
-                <div class="faq-q">Когда старт программы?</div>
-                <div class="faq-a">Уже сейчас. Споты распределяются в порядке активности пользователей в приложении.</div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-q">Как я узнаю, что попал в первые 100 (или в следующие 900)?</div>
-                <div class="faq-a">В приложении придёт уведомление от системы с подтверждением статуса и деталями награды.</div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-q">Что если слоты закончились?</div>
-                <div class="faq-a">Ты попадаешь в стандартный режим — покупаешь и продлеваешь подписку как все. Награды не теряются для тех, кто уже успел.</div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-q">Можно ли потерять статус тестера?</div>
-                <div class="faq-a">Да — за нарушения правил сообщества, эксплуатацию багов, спам и передачу доступа. См. раздел «Правила программы».</div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-q">Бесконечная подписка — действительно бесконечная?</div>
-                <div class="faq-a">Да, пока аккаунт активен и не нарушены правила. Она не списывается и не истекает.</div>
-            </div>
-            <div class="faq-item">
-                <div class="faq-q">Что даёт статус тестера после релиза?</div>
-                <div class="faq-a">Значок рядом с именем, ранний доступ к фичам, участие в голосованиях и приоритетную поддержку.</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ═══════════ FOOTER ═══════════ -->
     <footer class="footer">
         <div class="footer-links">
             <a href="/terms">Условия пользования</a>
@@ -491,9 +255,10 @@
             <a href="/cookie">Файлы Cookie</a>
         </div>
         <div class="contact-line">
-            Есть вопросы? Пиши: <a href="mailto:support@listatread.online">support@listatread.online или сhvadoorigins@gmail.com</a>
+            Есть вопросы? Пиши: <a href="mailto:support@listatread.online">support@listatread.online</a>
+            или <a href="mailto:chvadoorigins@gmail.com">chvadoorigins@gmail.com</a>
         </div>
-
+        <a href="/" class="home-btn">← На главную</a>
     </footer>
 
 </div>
