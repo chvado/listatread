@@ -7029,46 +7029,10 @@ body.ts-recording .ts-track-strip{
 .boot-screen.fade-out { opacity: 0; pointer-events: none }
 
 /* Слой с летающими сердечками */
-.boot-hearts-layer {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    pointer-events: none;
-    z-index: 1;
-}
-.boot-heart {
-    position: absolute;
-    color: rgba(255, 255, 255, .38);
-    animation: bootHeartFloat linear infinite;
-    will-change: transform, opacity;
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .08));
-}
-.boot-heart svg {
-    width: 100%;
-    height: 100%;
-    stroke: rgba(255, 255, 255, .75);
-    fill: none;
-    stroke-width: 2;
-    display: block;
-    transition: fill .25s ease, stroke .25s ease;
-}
-.boot-heart.liked svg {
-    fill: #fff;
-    stroke: #fff;
-    animation: bootHeartPop .42s cubic-bezier(.34, 1.56, .64, 1);
-}
 
-@keyframes bootHeartFloat {
-    0%   { transform: translate(-15vw, 105vh) rotate(-18deg); opacity: 0 }
-    12%  { opacity: 1 }
-    88%  { opacity: 1 }
-    100% { transform: translate(115vw, -15vh) rotate(-18deg); opacity: 0 }
-}
-@keyframes bootHeartPop {
-    0%   { transform: scale(1) }
-    45%  { transform: scale(1.35) }
-    100% { transform: scale(1) }
-}
+
+
+
 
 /* Центральный блок: лого + название */
 .boot-content {
@@ -7108,26 +7072,7 @@ body.ts-recording .ts-track-strip{
     text-shadow: 0 2px 14px rgba(0, 0, 0, .15);
 }
 
-/* 3 точки — прыгают внизу экрана */
-.boot-loader {
-    position: absolute;
-    bottom: calc(var(--safe-bottom) + 56px);
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 12px;
-    z-index: 2;
-}
-.boot-loader span {
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, .18);
-    animation: bootDot 1.4s ease-in-out infinite;
-}
-.boot-loader span:nth-child(2) { animation-delay: .2s }
-.boot-loader span:nth-child(3) { animation-delay: .4s }
+
 
 @media (max-width: 380px) {
     .boot-logo { width: 76px; height: 76px }
@@ -7159,6 +7104,118 @@ body.ts-recording .ts-track-strip{
         backface-visibility: visible !important;
         margin: 0 !important;
     }
+}
+/* ═══════════════════════════════════════════════════════════
+   BOOT — слой сердечек + 3 точки-этапа
+═══════════════════════════════════════════════════════════ */
+
+/* ─── Слой сердечек ─── */
+.boot-hearts-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1;
+}
+.boot-heart {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    animation: bootHeartRowFloat linear infinite;
+    will-change: transform, opacity;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,.1));
+    pointer-events: none;
+}
+.boot-heart svg {
+    width: 100%;
+    height: 100%;
+    stroke: rgba(255,255,255,.9);
+    fill: rgba(255,255,255,.15);
+    stroke-width: 2;
+    display: block;
+}
+
+@keyframes bootHeartRowFloat {
+    0% {
+        transform: translate(var(--sx), var(--sy)) rotate(-10deg);
+        opacity: 0;
+    }
+    4% {
+        opacity: 1;
+    }
+    92% {
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--ex), var(--ey)) rotate(-10deg);
+        opacity: 0;
+    }
+}
+
+/* ─── 3 точки-этапа ─── */
+.boot-loader {
+    position: absolute;
+    bottom: calc(var(--safe-bottom) + 56px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 14px;
+    z-index: 3;
+}
+.boot-loader span {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.28);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.45);
+    transition:
+            background-color .3s ease,
+            box-shadow .3s ease,
+            transform .3s cubic-bezier(.34,1.56,.64,1);
+    animation: none !important;
+}
+
+.boot-loader span.active {
+    animation: bootDotPulse .8s ease-in-out infinite !important;
+}
+.boot-loader span:nth-child(1).active {
+    background: #0a84ff;
+    box-shadow: 0 0 22px rgba(10,132,255,.9);
+}
+.boot-loader span:nth-child(2).active {
+    background: #ff3b30;
+    box-shadow: 0 0 22px rgba(255,59,48,.9);
+}
+.boot-loader span:nth-child(3).active {
+    background: #30d158;
+    box-shadow: 0 0 22px rgba(48,209,88,.9);
+}
+
+.boot-loader span:nth-child(1).done {
+    background: #0a84ff;
+    box-shadow: 0 0 12px rgba(10,132,255,.5);
+    opacity: .8;
+}
+.boot-loader span:nth-child(2).done {
+    background: #ff3b30;
+    box-shadow: 0 0 12px rgba(255,59,48,.5);
+    opacity: .8;
+}
+.boot-loader span:nth-child(3).done {
+    background: #30d158;
+    box-shadow: 0 0 12px rgba(48,209,88,.5);
+    opacity: .8;
+}
+
+@keyframes bootDotPulse {
+    0%, 100% { transform: scale(1.4); }
+    50%      { transform: scale(1.8); }
+}
+
+@media (max-width: 380px) {
+    .boot-loader { gap: 10px; bottom: calc(var(--safe-bottom) + 40px) }
+    .boot-loader span { width: 12px; height: 12px }
 }
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION

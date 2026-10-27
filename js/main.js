@@ -9721,13 +9721,20 @@ async function boot(){
     initTheme()
     setPageBg()
 
-    // Убираем boot-задержку сразу — она была искусственной
-    bootScreen.classList.add('fade-out')
-    setTimeout(() => bootScreen.remove(), 350)
+    // ─── Этап 1: загрузка компонентов (синяя точка)
+    setBootStage(1)
+    await new Promise(r => setTimeout(r, 220))
 
     try {
+        // ─── Этап 2: загрузка данных (красная точка)
+        setBootStage(2)
+
         const { data:{ session } } = await withTimeout(supabase.auth.getSession(), 5000, 'boot')
         if(!session?.user){
+            setBootStage(3)
+            await new Promise(r => setTimeout(r, 250))
+            bootScreen.classList.add('fade-out')
+            setTimeout(() => bootScreen.remove(), 500)
             showScreen('auth')
             return
         }
@@ -9735,7 +9742,7 @@ async function boot(){
         const userId = session.user.id
         state.currentUser = session.user
 
-        // ⚡ PREFETCH стартует ПАРАЛЛЕЛЬНО с enterApp
+        // Префетч параллельно — пока крутится красная точка
         const prefetchPromise = Promise.allSettled([
             prefetchFollowCacheFor(userId),
             prefetchHomeFeed(userId),
@@ -9744,9 +9751,18 @@ async function boot(){
             prefetchDirectChats(userId)
         ])
 
+        // ─── Этап 3: завершение (зелёная точка)
+        setBootStage(3)
+        await new Promise(r => setTimeout(r, 420))
+
+        bootScreen.classList.add('fade-out')
+        setTimeout(() => bootScreen.remove(), 520)
+
         await enterApp(prefetchPromise)
     } catch(e){
         console.warn('[boot]', e.message)
+        bootScreen.classList.add('fade-out')
+        setTimeout(() => bootScreen.remove(), 450)
         showScreen('auth')
     }
 }
@@ -11678,43 +11694,71 @@ function openChannelPollBuilder(onSave){
 /* ═══════════════════════════════════════════════════════════
    BOOT HEARTS — сердечки летают по диагонали, рандомно «лайкаются»
 ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   BOOT STAGE — 3 точки-этапа
+   1 = синяя  (загрузка компонентов)
+   2 = красная (загрузка данных)
+   3 = зелёная (завершение)
+═══════════════════════════════════════════════════════════ */
+function setBootStage(stage){
+    const dots = document.querySelectorAll('.boot-loader span')
+    if (!dots.length) return
+    dots.forEach((d, i) => {
+        const idx = i + 1
+        d.classList.remove('active', 'done')
+        if (idx === stage) d.classList.add('active')
+        else if (idx < stage) d.classList.add('done')
+    })
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BOOT HEARTS — 4 диагональных ряда, каждый ряд стартует целиком
+   Старт: правый-нижний угол, финиш: левый-верхний
+═══════════════════════════════════════════════════════════ */
 function initBootHearts(){
     const layer = document.getElementById('boot-hearts-layer')
     if (!layer || layer.dataset.inited === '1') return
     layer.dataset.inited = '1'
 
     const heartSvg = '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
-    const TOTAL = 14
 
-    for (let i = 0; i < TOTAL; i++){
-        const heart = document.createElement('div')
-        heart.className = 'boot-heart'
-        heart.innerHTML = heartSvg
+    const ROWS            = 4      // 4 ряда = «линии 1, 2, 3, 4»
+    const HEARTS_PER_ROW  = 5
+    const ROW_GAP_MS      = 700    // задержка между рядами
+    const FLY_DURATION    = 5.5    // сек на пролёт
+    const HEART_SPACING   = 60     // px между сердцами в ряду (вдоль диагонали)
+    const START_OFF       = 40     // стартуют чуть за BR-углом
+    const END_OFF         = 400    // уходят чуть за TL-угол
 
-        // размер 24–64 px
-        const size = 24 + Math.random() * 40
-        heart.style.width  = size + 'px'
-        heart.style.height = size + 'px'
-        heart.style.top    = (Math.random() * 100) + '%'
-        heart.style.left   = '0'
+    for (let r = 0; r < ROWS; r++){
+        const rowDelay = (r * ROW_GAP_MS) / 1000
 
-        // анимация 7–14 сек, случайная фаза
-        heart.style.animationDuration = (7 + Math.random() * 7).toFixed(2) + 's'
-        heart.style.animationDelay    = '-' + (Math.random() * 7).toFixed(2) + 's'
+        for (let h = 0; h < HEARTS_PER_ROW; h++){
+            const heart = document.createElement('div')
+            heart.className = 'boot-heart'
+            heart.innerHTML = heartSvg
 
-        layer.appendChild(heart)
+            const size = 22 + Math.random() * 14
+            heart.style.width  = size + 'px'
+            heart.style.height = size + 'px'
 
-        // рандомно «лайкаем» сердечко
-        const scheduleLike = () => {
-            const delay = 400 + Math.random() * 1600
-            setTimeout(() => {
-                if (!heart.isConnected) return
-                heart.classList.add('liked')
-                setTimeout(() => heart.classList.remove('liked'), 500 + Math.random() * 500)
-                scheduleLike()
-            }, delay)
+            // offset — вдоль диагонали, чтобы получилась линия
+            const offset = h * HEART_SPACING
+
+            // Старт: BR-угол + offset (дальше от экрана)
+            heart.style.setProperty('--sx', `calc(100vw + ${START_OFF + offset}px)`)
+            heart.style.setProperty('--sy', `calc(100vh + ${START_OFF + offset}px)`)
+
+            // Финиш: TL-угол + offset (чтобы каждое ушло за экран)
+            heart.style.setProperty('--ex', `calc(-${END_OFF}px + ${offset}px)`)
+            heart.style.setProperty('--ey', `calc(-${END_OFF}px + ${offset}px)`)
+
+            // Все сердечки ряда стартуют ОДНОВРЕМЕННО → ряд грузится целиком
+            heart.style.animationDelay    = rowDelay + 's'
+            heart.style.animationDuration = FLY_DURATION + 's'
+
+            layer.appendChild(heart)
         }
-        setTimeout(scheduleLike, 200 + Math.random() * 1200)
     }
 }
 /* ═══════════════════════════════════════════════════════════
