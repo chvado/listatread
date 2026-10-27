@@ -11672,6 +11672,50 @@ function openChannelPollBuilder(onSave){
     })
     setTimeout(() => m.querySelector('#ch-poll-q')?.focus(), 100)
 }
+/* ═══════════════════════════════════════════════════════════
+   BOOT HEARTS — сердечки летают по диагонали, рандомно «лайкаются»
+═══════════════════════════════════════════════════════════ */
+function initBootHearts(){
+    const layer = document.getElementById('boot-hearts-layer')
+    if (!layer || layer.dataset.inited === '1') return
+    layer.dataset.inited = '1'
+
+    const heartSvg = '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
+    const TOTAL = 14
+
+    for (let i = 0; i < TOTAL; i++){
+        const heart = document.createElement('div')
+        heart.className = 'boot-heart'
+        heart.innerHTML = heartSvg
+
+        // размер 24–64 px
+        const size = 24 + Math.random() * 40
+        heart.style.width  = size + 'px'
+        heart.style.height = size + 'px'
+        heart.style.top    = (Math.random() * 100) + '%'
+        heart.style.left   = '0'
+
+        // анимация 7–14 сек, случайная фаза
+        heart.style.animationDuration = (7 + Math.random() * 7).toFixed(2) + 's'
+        heart.style.animationDelay    = '-' + (Math.random() * 7).toFixed(2) + 's'
+
+        layer.appendChild(heart)
+
+        // рандомно «лайкаем» сердечко
+        const scheduleLike = () => {
+            const delay = 400 + Math.random() * 1600
+            setTimeout(() => {
+                if (!heart.isConnected) return
+                heart.classList.add('liked')
+                setTimeout(() => heart.classList.remove('liked'), 500 + Math.random() * 500)
+                scheduleLike()
+            }, delay)
+        }
+        setTimeout(scheduleLike, 200 + Math.random() * 1200)
+    }
+}
+
+initBootHearts()
 boot();
 setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
