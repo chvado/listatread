@@ -470,7 +470,36 @@ function applyTheme(theme){
 }
 function getTheme(){ try { return localStorage.getItem(THEME_KEY) || 'light' } catch { return 'light' } }
 function initTheme(){ applyTheme(getTheme()) }
-
+/* ═══════════════════════════════════════════════════════════
+   ГЛОБАЛЬНАЯ ДЕЛЕГАЦИЯ: клик по аве / плюсику
+   — читает data-uid прямо с кликнутого элемента в момент клика
+   — невозможно «промахнуться» из-за устаревшего замыкания
+   — всего 1 обработчик на весь документ (лучше для perf)
+═══════════════════════════════════════════════════════════ */
+document.addEventListener('click', e => {
+    // 1) Плюсик «подписаться» (имеет приоритет)
+    const plus = e.target.closest('.feed-avatar-plus[data-plus-uid]')
+    if(plus){
+        e.stopPropagation()
+        e.preventDefault()
+        followAuthor(plus.dataset.plusUid)
+        return
+    }
+    // 2) Аватар в хедере поста
+    const av = e.target.closest('.feed-post-avatar[data-uid]')
+    if(av){
+        e.stopPropagation()
+        openUserProfile(av.dataset.uid)
+        return
+    }
+    // 3) Аватар в футере поста
+    const fav = e.target.closest('.feed-footer-avatar[data-uid]')
+    if(fav){
+        e.stopPropagation()
+        openUserProfile(fav.dataset.uid)
+        return
+    }
+}, true)  // capture: перехватываем до вложенных обработчиков (карточка не откроет видео)
 document.addEventListener('click', async e => {
     if(e.target.closest('#theme-toggle')){
         const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
@@ -872,8 +901,9 @@ try {
     supabase.channel('direct:realtime')
         .on('postgres_changes', { event:'INSERT', schema:'public', table:'direct_messages' }, async payload => {
             const m = payload.new
-            const { data:{ user } } = await supabase.auth.getUser()
-            if(!user || m.to_id !== user.id) return
+            // ⚡ Без сетевого getUser() — берём из уже загруженного state
+            const myId = state.currentUser?.id
+            if(!myId || m.to_id !== myId) return
 
             // Если это текущий открытый чат — просто обновим
             const room = document.getElementById('direct-room')
@@ -2322,13 +2352,11 @@ function attachHandlersToCard(card, userId){
     }
 
     card.querySelectorAll('.feed-sub-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); handleFeedSubBtn(btn, userId) }))
-    card.querySelectorAll('.feed-avatar-plus, .feed-follow-text').forEach(btn => btn.addEventListener('click', e => {
+    // ⚡ .feed-follow-text — локально; .feed-avatar-plus, .feed-post-avatar, .feed-footer-avatar → глобальный делегат
+    card.querySelectorAll('.feed-follow-text').forEach(btn => btn.addEventListener('click', e => {
         e.stopPropagation(); e.preventDefault()
         followAuthor(btn.dataset.plusUid)
     }))
-    card.querySelectorAll('.feed-footer-avatar[data-uid]').forEach(a =>
-        a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
-    card.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
     card.querySelectorAll('.feed-post-image').forEach(img => {
         img.style.cursor = 'zoom-in'
         img.addEventListener('click', e => {
@@ -2640,6 +2668,8 @@ function hideVideoPauseIcon(card){
 }
 
 function attachVideoProgress(card){
+    if(card.dataset.videoProgressBound === '1') return
+    card.dataset.videoProgressBound = '1'
     const vid = card.querySelector('.post-bg-video')
     if(!vid) return
     let bar = card.querySelector('.post-video-progress')
@@ -2669,6 +2699,8 @@ function attachVideoProgress(card){
 }
 
 function attachVideoLoading(card){
+    if(card.dataset.videoLoadingBound === '1') return
+    card.dataset.videoLoadingBound = '1'
     const vid = card.querySelector('.post-bg-video')
     if(!vid) return
 
@@ -2730,7 +2762,10 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const plusHtml = (myId && post.author_id !== myId && !state.myFollows.has(post.author_id))
         ? `<button class="feed-avatar-plus" data-plus-uid="${post.author_id}" aria-label="Подписаться">+</button>`
         : ''
-    const avatarBlock = `<div class="feed-avatar-wrap"><div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div>${plusHtml}</div>`
+    // ⚡ На видео НЕ показываем статус на аве — только у имени (name-status-badge ниже)
+    const avatarBlock = isVideo
+        ? `<div class="feed-avatar-wrap"><div class="feed-post-avatar" data-uid="${post.author_id}">${av}</div>${plusHtml}</div>`
+        : `<div class="feed-avatar-wrap"><div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div>${plusHtml}</div>`
 
     let channelBadge = ''
     if(ch.id){
@@ -3000,11 +3035,12 @@ function applySubState(chId, sub){
 
 async function attachFeedActions(list, myId){
     list.querySelectorAll('.feed-sub-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); handleFeedSubBtn(btn, myId) }))
-    list.querySelectorAll('.feed-avatar-plus, .feed-follow-text').forEach(btn => btn.addEventListener('click', e => {
+    // ⚡ .feed-follow-text оставляем локально (текстовая кнопка в футере, не ава)
+    list.querySelectorAll('.feed-follow-text').forEach(btn => btn.addEventListener('click', e => {
         e.stopPropagation(); e.preventDefault()
         followAuthor(btn.dataset.plusUid)
     }))
-    list.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', e => { e.stopPropagation(); openUserProfile(a.dataset.uid) }))
+    // ⚡ .feed-avatar-plus и .feed-post-avatar — обрабатываются глобальным делегатом (см. выше)
     list.querySelectorAll('.feed-channel-badge[data-chbadge]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openChannel(b.dataset.chbadge) }))
 
     list.querySelectorAll('.feed-post.feed-post-video').forEach(card => {
@@ -4381,12 +4417,17 @@ function updateProfileTopbar(){
 /* ============================================================
    PROFILE LOAD
 ============================================================ */
+let _profileLoadToken = 0
 async function loadProfile(userId = null){
+    const token = ++_profileLoadToken
+    const isStale = () => token !== _profileLoadToken
+
     const loader = $('profile-loader'), body = $('profile-body')
     loader.classList.remove('hidden'); body.classList.add('hidden')
     try {
-        const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+        const { data:{ user } } = await supabase.auth.getUser(); if(!user || isStale()) return
         await refreshFollowCache()
+        if(isStale()) return
         state.currentUser = user
         const targetId = userId || user.id
         state.currentProfileViewId = userId
@@ -4394,6 +4435,7 @@ async function loadProfile(userId = null){
         updateProfileTopbar()
 
         const { data:profile } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle()
+        if(isStale()) return
         let iBlocked = false
         if(targetId !== user.id){
             const { data:blockRow } = await supabase.from('blocks').select('id').eq('blocker_id', user.id).eq('blocked_id', targetId).maybeSingle()
@@ -4430,12 +4472,14 @@ async function loadProfile(userId = null){
                     supabase.from('follows').select('*', { count:'exact', head:true }).eq('follower_id', targetId),
                     supabase.from('follows').select('*', { count:'exact', head:true }).eq('following_id', targetId)
                 ])
+                if(isStale()) return
                 $('stat-posts').textContent = postsRes.count || 0
                 $('stat-subs').textContent = subsRes.count || 0
                 $('stat-followers').textContent = followersRes.count || 0
             }
         }
         await renderProfileActions(targetId, user.id, iBlocked)
+        if(isStale()) return
         if(iBlocked) renderBlockedContent()
         else if(state.profileTab === 'posts') await renderMyPosts(targetId)
         else renderProfileTab()
@@ -4443,12 +4487,18 @@ async function loadProfile(userId = null){
         // === Применяем сохранённую тему профиля (после рендера DOM) ===
         setTimeout(() => {
             try {
+                if(isStale()) return   // ← ДОБАВИТЬ
                 const theme = (profile && profile.profile_theme) || null
                 applyProfileTheme(profile, theme, state.viewingOwnProfile)
             } catch(e){ console.warn('[theme apply]', e) }
         }, 120)
     } catch(e){ console.warn(e.message) }
-    finally { loader.classList.add('hidden'); body.classList.remove('hidden') }
+    finally {
+        if(!isStale()){   // ← ДОБАВИТЬ проверку
+            loader.classList.add('hidden')
+            body.classList.remove('hidden')
+        }
+    }
 }
 
 function renderBlockedContent(){
@@ -4620,32 +4670,26 @@ function applyProfileTheme(profile, theme, isOwn){
         `
         wrap.style.position = 'relative'
         wrap.insertBefore(layer, wrap.firstChild)
-        // Все прямые дети — под слоем
-        ;[...wrap.children].forEach(c => {
-            if(c !== layer && !c.style.position) c.style.position = 'relative'
-            if(c !== layer) c.style.zIndex = '1'
-        })
     }
 
-    // Узор (плитка по диагонали)
+    // Узор (плитка по диагонали) — ПОЛНОСТЬЮ на всю длину профиля
     if(theme.patternType !== 'none' && theme.pattern){
         let dataUri = ''
         if(theme.patternType === 'emoji'){
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><text x="32" y="44" font-size="32" text-anchor="middle">${theme.pattern}</text></svg>`
-            dataUri = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+            // ⚡ Фикс: charset=utf-8 + dominant-baseline для правильного рендера эмодзи
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><text x="50%" y="52%" font-size="32" text-anchor="middle" dominant-baseline="middle" font-family="-apple-system, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif">${theme.pattern}</text></svg>`
+            dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
         } else {
             dataUri = theme.pattern
         }
         const patternLayer = document.createElement('div')
         patternLayer.className = 'profile-theme-layer profile-theme-pattern'
+        // opacity и z-index — в CSS, чтобы не затирать при переключении табов
         patternLayer.style.cssText = `
-            position:absolute; left:-30%; right:-30%; top:0; bottom:0;
             background-image:url('${dataUri}');
             background-size:64px 64px;
             background-repeat:repeat;
-            opacity:.16;
             transform:rotate(-14deg);
-            pointer-events:none; z-index:1;
         `
         wrap.insertBefore(patternLayer, wrap.firstChild)
     }
@@ -7305,6 +7349,7 @@ function updateAllTrackCards(){
         }
     })
 }
+const _trackDurations = new Map()   // src → duration (сек), общий кэш
 const _preloaded = new WeakSet()
 function preloadTrackDurations(){
     document.querySelectorAll('.track-card').forEach(card => {
@@ -7313,8 +7358,19 @@ function preloadTrackDurations(){
         const src = card.dataset.trackSrc
         const timeEl = card.querySelector('.track-time')
         if(!src || !timeEl) return
+        // ⚡ Уже знаем длительность — не грузим повторно
+        if(_trackDurations.has(src)){
+            timeEl.dataset.totalDur = _trackDurations.get(src)
+            return
+        }
         const a = new Audio(); a.preload = 'metadata'; a.muted = true; a.src = src
-        a.addEventListener('loadedmetadata', () => { if(isFinite(a.duration) && a.duration > 0){ timeEl.dataset.totalDur = a.duration; updateAllTrackCards() } })
+        a.addEventListener('loadedmetadata', () => {
+            if(isFinite(a.duration) && a.duration > 0){
+                _trackDurations.set(src, a.duration)
+                timeEl.dataset.totalDur = a.duration
+                updateAllTrackCards()
+            }
+        })
         a.addEventListener('error', () => { timeEl.textContent = '— / —' })
     })
 }
@@ -7566,45 +7622,56 @@ function reportView(card, vid){
     const ms = Date.now() - card._t0
     recordWatch({ ...cardMeta(card), ms, dur: (vid && isFinite(vid.duration)) ? vid.duration * 1000 : 0 })
 }
+let _trackObs = null
+
 function initFeedVideoObserver(){
-    if(feedVideoObserver) feedVideoObserver.disconnect()
-    feedVideoObserver = new IntersectionObserver(entries => {
-        entries.forEach(en => {
-            const card = en.target
-            const vid = card.querySelector('.post-bg-video')
-            const inHome = !!card.closest('#feed-list')
-            if(en.intersectionRatio > 0.5){
-                if(!card._t0) card._t0 = Date.now()
-                if(vid){
-                    if(card.dataset.videoActivated !== '1') vid.muted = true
-                    vid.play().catch(()=>{})
-                    card.classList.add('is-playing-auto')
-                    checkVideoState(card)
+    // ⚡ Один observer на всё приложение — не создаём новый на каждый рендер
+    if(!feedVideoObserver){
+        feedVideoObserver = new IntersectionObserver(entries => {
+            entries.forEach(en => {
+                const card = en.target
+                const vid = card.querySelector('.post-bg-video')
+                const inHome = !!card.closest('#feed-list')
+                if(en.intersectionRatio > 0.5){
+                    if(!card._t0) card._t0 = Date.now()
+                    if(vid){
+                        if(card.dataset.videoActivated !== '1') vid.muted = true
+                        vid.play().catch(()=>{})
+                        card.classList.add('is-playing-auto')
+                        checkVideoState(card)
+                    }
+                } else {
+                    if(card._t0){ if(inHome) reportView(card, vid); card._t0 = 0 }
+                    if(vid){
+                        vid.pause()
+                        card.classList.remove('is-playing-auto', 'is-playing')
+                        card.dataset.videoActivated = '0'
+                        hideVideoPauseIcon(card)
+                        const hint = card.querySelector('.feed-post-video-hint')
+                        if(hint) hint.style.display = ''
+                        vid.muted = true
+                        try { vid.currentTime = 0 } catch {}
+                    }
                 }
-            } else {
-                if(card._t0){ if(inHome) reportView(card, vid); card._t0 = 0 }
-                if(vid){
-                    vid.pause()
-                    card.classList.remove('is-playing-auto', 'is-playing')
-                    card.dataset.videoActivated = '0'
-                    hideVideoPauseIcon(card)
-                    const hint = card.querySelector('.feed-post-video-hint')
-                    if(hint) hint.style.display = ''
-                    vid.muted = true
-                    try { vid.currentTime = 0 } catch {}
-                }
-            }
-        })
-    }, { threshold: [0, 0.5, 1] })
+            })
+        }, { threshold: [0, 0.5, 1] })
+    }
+    // observe идемпотентен — можно звать много раз на тех же элементах
     document.querySelectorAll('.feed-post').forEach(c => feedVideoObserver.observe(c))
 }
+
 function initTrackObserver(){
     preloadTrackDurations()
     initFeedVideoObserver()
     initPostMarquees()
-    const obs = new IntersectionObserver(() => { if(music.isPlaying) refreshMiniPlayerVisibility() }, { threshold: 0.35 })
-    document.querySelectorAll('.track-card').forEach(c => obs.observe(c))
+    if(!_trackObs){
+        _trackObs = new IntersectionObserver(() => {
+            if(music.isPlaying) refreshMiniPlayerVisibility()
+        }, { threshold: 0.35 })
+    }
+    document.querySelectorAll('.track-card').forEach(c => _trackObs.observe(c))
 }
+
 
 /* ============================================================
    VIDEO FEED MODE (VFM) — treadvisor
@@ -9011,10 +9078,10 @@ async function syncVfmMeta(){
         ? avaEl.innerHTML.replace(/<div[^>]*class="story-status-badge"[^>]*>.*?<\/div>/, '')
         : '?'
 
-    // ========== АВТОР: аватар + статус ==========
+    // ========== АВТОР: аватар (без статуса на углу) ==========
     el.querySelector('#vfm-author-ava').innerHTML = avaHTML
     const statusEl = el.querySelector('#vfm-author-status')
-    statusEl.textContent = statusB ? statusB.textContent : ''
+    if(statusEl) statusEl.textContent = '' // ⚡ статус — только у имени (vfm-name-status)
 
     // ========== Подписка на автора ==========
     const followBtn = el.querySelector('#vfm-follow-btn')
@@ -11856,11 +11923,16 @@ setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
 window.addEventListener('focus', () => { heartbeat(); updatePlayIcons() })
 
+let _postChangeDebounce = null
 try {
     const ch = supabase.channel('public:realtime_v14')
         .on('postgres_changes', { event:'*', schema:'public', table:'posts' }, () => {
-            if(state.screen === 'livechat') renderLiveFeed(true)
-            if(state.screen === 'profile' && state.profileTab === 'posts') renderMyPosts(state.currentProfileViewId)
+            // ⚡ Дебаунс 700мс: пачка изменений → 1 перерендер
+            clearTimeout(_postChangeDebounce)
+            _postChangeDebounce = setTimeout(() => {
+                if(state.screen === 'livechat') renderLiveFeed(true)
+                if(state.screen === 'profile' && state.profileTab === 'posts') renderMyPosts(state.currentProfileViewId)
+            }, 700)
         })
         .on('postgres_changes', { event:'INSERT', schema:'public', table:'follows' }, () => { if(state.screen === 'inbox') renderInboxPanel(); renderStories() })
         .on('postgres_changes', { event:'INSERT', schema:'public', table:'channel_invites' }, () => { if(state.screen === 'inbox') renderInboxPanel() })

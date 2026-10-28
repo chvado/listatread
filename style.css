@@ -164,7 +164,7 @@ button:disabled{cursor:not-allowed}
 @keyframes barsBeat{0%,100%{height:8px}50%{height:24px}}
 @keyframes barsAnim{0%,100%{height:8px}50%{height:22px}}
 @keyframes miniBars{0%,100%{height:6px}50%{height:22px}}
-@keyframes statusBob{0%,100%{transform:scale(1) rotate(0)}25%{transform:scale(1.12) rotate(-6deg)}75%{transform:scale(1.12) rotate(6deg)}}
+@keyframes statusBob{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 @keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @keyframes liveCardBg{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @keyframes heroBg{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
@@ -3920,15 +3920,19 @@ html[data-theme="dark"] .pc-color.no-bg{
 }
 #profile-body .profile-theme-layer{ pointer-events:none; z-index:0 }
 
-/* ✅ Паттерн (стикеры/эмодзи) поверх градиента, но под UI */
+/* ✅ Паттерн на всю длину, шире экрана, поверх градиента, но под контентом */
 #profile-body .profile-theme-layer.profile-theme-pattern{
     z-index:1;
-    top:0;
-    bottom:0;
+    position:absolute !important;
+    top:0 !important;
+    bottom:0 !important;
+    left:-30vw !important;
+    right:-30vw !important;
     height:auto !important;
-    left:-30%;
-    right:-30%;
+    opacity:0.35 !important;
     will-change:auto;
+    /* Паттерн не обрезается */
+    min-height:100%;
 }
 
 /* ✅ Весь контент профиля — над паттерном */
@@ -7257,8 +7261,8 @@ body.ts-recording .ts-track-strip{
     .boot-loader { gap: 10px; bottom: calc(var(--safe-bottom) + 40px) }
     .boot-loader span { width: 12px; height: 12px }
 }
-/* ═══ Статус возле имени автора ═══
-   Коралловое свечение, без фона, плавная анимация */
+/* ═══ Статус возле имени (видео) — статичная аура + лёгкий пульс ═══
+   Без animation: filter — это грузит GPU. Статичный drop-shadow + transform-пульс. */
 .name-status-badge,
 .vfm-name-status{
     display: inline-flex;
@@ -7271,35 +7275,26 @@ body.ts-recording .ts-track-strip{
     pointer-events: none;
     user-select: none;
     -webkit-user-select: none;
-    animation: coralNameGlow 2.6s ease-in-out infinite;
-    will-change: filter, transform;
+    filter: drop-shadow(0 0 3px rgba(255, 127, 80, .75));
+    animation: coralNamePulse 3s ease-in-out infinite;
+    will-change: auto;
 }
 
-@keyframes coralNameGlow{
-    0%, 100%{
-        filter: drop-shadow(0 0 3px rgba(255, 127, 80, .55));
-        transform: scale(1) rotate(0deg);
-    }
-    50%{
-        filter:
-                drop-shadow(0 0 6px rgba(255, 127, 80, .95))
-                drop-shadow(0 0 14px rgba(255, 127, 80, .65));
-        transform: scale(1.14) rotate(6deg);
-    }
+@keyframes coralNamePulse{
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.08); }
 }
 
-/* На видео-постах тёмный фон — усилим свечение */
+/* На видео-постах тёмный фон — чуть ярче статичная аура */
 .feed-post-video .name-status-badge{
-    filter:
-            drop-shadow(0 0 4px rgba(255, 127, 80, .85))
-            drop-shadow(0 0 10px rgba(255, 127, 80, .6));
+    filter: drop-shadow(0 0 4px rgba(255, 127, 80, .9));
 }
 
-/* В VFM (полноэкранный плеер) — та же аура, но ярче */
 .vfm-desc-author .vfm-name-status{
     font-size: 14px;
     margin-left: 6px;
 }
+
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
