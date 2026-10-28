@@ -17,6 +17,7 @@ const SVG_TS = {
     album:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>',
     poll:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg>',
     sticker:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z"/><path d="M14 21v-4a3 3 0 0 1 3-3h4"/></svg>',
+    quote:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="3"/><path d="M7 9v3M7 9h2M10.5 9v3M10.5 9h2"/></svg>',
     chevDown:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
     musicNote:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
     effects:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12s1.5-2 4-2 4 2 4 2"/><circle cx="9" cy="9" r=".8" fill="currentColor"/><circle cx="15" cy="9" r=".8" fill="currentColor"/></svg>',
@@ -123,10 +124,11 @@ async function renderCameraScreen(){
             ${renderSideBtnWithLabel('text',  SVG_TS.text,     'Тред',  true)}
             ${renderSideBtnWithLabel('photo', SVG_TS.photo,    'Фото',   true)}
             ${renderSideBtnWithLabel('track', SVG_TS.track,    'Треки',   true)}
-            <div id="ts-side-more">
+                        <div id="ts-side-more">
                 ${renderSideBtnWithLabel('album',   SVG_TS.album,   'Альбомы', true)}
                 ${renderSideBtnWithLabel('poll',    SVG_TS.poll,    'Опросы',  true)}
-                ${renderSideBtnWithLabel('sticker', SVG_TS.sticker, 'Стикеры',  true)}
+                ${renderSideBtnWithLabel('sticker', SVG_TS.sticker, 'Стикеры', true)}
+                ${renderSideBtnWithLabel('quote',   SVG_TS.quote,   'Цитаты',  true)}
             </div>
             <button class="ts-side-expand" id="ts-side-expand">${SVG_TS.chevDown}</button>
         </div>
@@ -358,7 +360,7 @@ function refreshChannelDependentState(){
     if(eff) eff.disabled = !has
     if(trk) trk.disabled = !has
 
-    root.querySelectorAll('.ts-side-btn[data-k="text"],.ts-side-btn[data-k="photo"],.ts-side-btn[data-k="track"],.ts-side-btn[data-k="album"],.ts-side-btn[data-k="poll"],.ts-side-btn[data-k="sticker"]')
+    root.querySelectorAll('.ts-side-btn[data-k="text"],.ts-side-btn[data-k="photo"],.ts-side-btn[data-k="track"],.ts-side-btn[data-k="album"],.ts-side-btn[data-k="poll"],.ts-side-btn[data-k="sticker"],.ts-side-btn[data-k="quote"]')
         .forEach(b => b.disabled = !has)
 }
 
@@ -457,7 +459,7 @@ async function openChannelPicker(){
    ДЕЙСТВИЯ БОКОВЫХ КНОПОК
 ============================================================ */
 async function handleSideAction(key){
-    if(!TS.selectedChannel && ['text','photo','track','album','poll','sticker'].includes(key)){
+    if(!TS.selectedChannel && ['text','photo','track','album','poll','sticker','quote'].includes(key)){
         showToastLocal('Сначала выберите канал', 'info')
         return
     }
@@ -468,6 +470,7 @@ async function handleSideAction(key){
         case 'photo':
         case 'poll':
         case 'sticker':
+        case 'quote':
             await openChannelQuickComposer(key)
             return
         case 'track':
@@ -566,6 +569,7 @@ async function openChannelQuickComposer(kind){
     if(kind === 'sticker'){ composer.querySelector('#ch-new-sticker')?.click() }
     if(kind === 'photo'){ composer.querySelector('#ch-new-photo')?.click() }
     if(kind === 'poll'){ composer.querySelector('#ch-new-poll')?.click() }
+    if(kind === 'quote'){ composer.querySelector('#ch-new-quote')?.click() }
 }
 
 /* ============================================================

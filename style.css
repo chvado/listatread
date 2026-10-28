@@ -3686,14 +3686,20 @@ html[data-theme="dark"]{
 .chvad-settings-btn{
     position:relative;
     display:flex; align-items:center; gap:10px;
-    width:100%; padding:14px 16px; margin:14px 0 12px;
-    border:none; border-radius:16px;
+    /* ✅ на всю ширину устройства (пробой padding .app-screen) */
+    width:calc(100% + 32px);
+    margin:14px -16px 12px;
+    padding:16px 20px;
+    border:none;
+    border-radius:0;
     color:#fff; font-family:inherit; font-size:15px; font-weight:800;
     cursor:pointer; overflow:hidden;
     background:linear-gradient(120deg,#ff9f0a,#ff375f,#bf5af2,#0a84ff,#ff9f0a);
     background-size:300% 100%;
     animation:chvadBtnShimmer 4s ease-in-out infinite;
-    box-shadow:0 10px 28px rgba(255,55,95,.35), inset 0 1px 0 rgba(255,255,255,.35);
+    box-shadow:0 10px 28px rgba(255,55,95,.35),
+    0 0 0 1px rgba(255,255,255,.08) inset,
+    0 1px 0 rgba(255,255,255,.35) inset;
 }
 .chvad-settings-btn.hidden{ display:none!important }
 .chvad-settings-btn:active{ scale:.98 }
@@ -3912,8 +3918,24 @@ html[data-theme="dark"] .pc-color.no-bg{
     text-align:center; line-height:1.1;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;
 }
-#profile-body .profile-theme-layer{ pointer-events:none }
-#profile-body .profile-theme-layer ~ *{ position:relative; z-index:1 }
+#profile-body .profile-theme-layer{ pointer-events:none; z-index:0 }
+
+/* ✅ Паттерн (стикеры/эмодзи) поверх градиента, но под UI */
+#profile-body .profile-theme-layer.profile-theme-pattern{
+    z-index:1;
+    top:0;
+    bottom:0;
+    height:auto !important;
+    left:-30%;
+    right:-30%;
+    will-change:auto;
+}
+
+/* ✅ Весь контент профиля — над паттерном */
+#profile-body > *:not(.profile-theme-layer){
+    position:relative;
+    z-index:2;
+}
 #profile-name{ transition:color .3s ease }
 .shop-buy-inline{
     padding: 12px 20px 18px;
@@ -5809,7 +5831,7 @@ textarea.lt-edit-input{ min-height: 110px; }
     max-height: 0; overflow: hidden;
     transition: max-height .35s cubic-bezier(.22,1,.36,1);
 }
-#ts-side-more.open{ max-height: 200px }
+#ts-side-more.open{ max-height: 260px }
 
 /* Появление строк внутри «more» */
 #ts-side-more .ts-side-row{
@@ -5824,6 +5846,7 @@ textarea.lt-edit-input{ min-height: 110px; }
 #ts-side-more.open .ts-side-row:nth-child(1){ transition-delay: .04s }
 #ts-side-more.open .ts-side-row:nth-child(2){ transition-delay: .08s }
 #ts-side-more.open .ts-side-row:nth-child(3){ transition-delay: .12s }
+#ts-side-more.open .ts-side-row:nth-child(4){ transition-delay: .16s }
 
 /* Шеврон «развернуть/свернуть» */
 .ts-side-expand{
@@ -7207,7 +7230,24 @@ body.ts-recording .ts-track-strip{
     box-shadow: 0 0 12px rgba(48,209,88,.5);
     opacity: .8;
 }
-
+/* ═══ ХЕШТЕГИ ═══ */
+.hashtag{
+    color: var(--blue);
+    font-weight: 600;
+    cursor: pointer;
+    transition: color .18s ease;
+}
+.hashtag:hover,
+.hashtag:active{
+    color: var(--blue-hover);
+    text-decoration: underline;
+}
+.feed-post-video .hashtag{
+    color: #5ac8fa;
+}
+.feed-post-video .hashtag:hover{
+    color: #9be0ff;
+}
 @keyframes bootDotPulse {
     0%, 100% { transform: scale(1.4); }
     50%      { transform: scale(1.8); }
@@ -7216,6 +7256,49 @@ body.ts-recording .ts-track-strip{
 @media (max-width: 380px) {
     .boot-loader { gap: 10px; bottom: calc(var(--safe-bottom) + 40px) }
     .boot-loader span { width: 12px; height: 12px }
+}
+/* ═══ Статус возле имени автора ═══
+   Коралловое свечение, без фона, плавная анимация */
+.name-status-badge,
+.vfm-name-status{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+    margin-left: 5px;
+    flex-shrink: 0;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    animation: coralNameGlow 2.6s ease-in-out infinite;
+    will-change: filter, transform;
+}
+
+@keyframes coralNameGlow{
+    0%, 100%{
+        filter: drop-shadow(0 0 3px rgba(255, 127, 80, .55));
+        transform: scale(1) rotate(0deg);
+    }
+    50%{
+        filter:
+                drop-shadow(0 0 6px rgba(255, 127, 80, .95))
+                drop-shadow(0 0 14px rgba(255, 127, 80, .65));
+        transform: scale(1.14) rotate(6deg);
+    }
+}
+
+/* На видео-постах тёмный фон — усилим свечение */
+.feed-post-video .name-status-badge{
+    filter:
+            drop-shadow(0 0 4px rgba(255, 127, 80, .85))
+            drop-shadow(0 0 10px rgba(255, 127, 80, .6));
+}
+
+/* В VFM (полноэкранный плеер) — та же аура, но ярче */
+.vfm-desc-author .vfm-name-status{
+    font-size: 14px;
+    margin-left: 6px;
 }
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION

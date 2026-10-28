@@ -497,6 +497,17 @@ initTheme()
 const $ = id => document.getElementById(id)
 function withTimeout(p, ms, l){ return Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('Timeout: ' + l)), ms))]) }
 function escapeHtml(t){ const d = document.createElement('div'); d.textContent = t ?? ''; return d.innerHTML }
+
+/* Подсветка хештегов: #слово → кликабельный span */
+function linkifyHashtags(text){
+    if(!text) return ''
+    const escaped = escapeHtml(text)
+    return escaped.replace(
+        /(^|[\s\r\n\t.,;:!?()\[\]{}"«»])(#[A-Za-zА-Яа-яЁё0-9_]+)/g,
+        (_, prefix, tag) =>
+            `${prefix}<span class="hashtag" data-tag="${tag.slice(1)}">${tag}</span>`
+    )
+}
 /* Относительное время: "5 мин назад", "3 ч назад", "5 д назад", "5 нед назад" */
 function timeAgo(dateStr){
     if(!dateStr) return '';
@@ -2762,13 +2773,13 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const header = `<div class="feed-post-header">
       ${avatarBlock}
       <div class="feed-post-info">
-        <div class="feed-post-name verified"><span class="feed-post-name-text">${escapeHtml(name)}${adminMark}</span>${channelBadge}</div>
+        <div class="feed-post-name verified"><span class="feed-post-name-text">${escapeHtml(name)}${adminMark}</span><span class="name-status-badge" aria-hidden="true">${emoji}</span>${channelBadge}</div>
         ${buildMetaRow(time, contextLabel, post)}
       </div>
       ${subBtn}
     </div>`
 
-    const textHtml = post.content ? `<div class="feed-post-content">${escapeHtml(post.content)}</div>` : ''
+    const textHtml = post.content ? `<div class="feed-post-content">${linkifyHashtags(post.content)}</div>` : ''
 
     if(!isVideo){
         const media = isStickerMedia
@@ -2789,22 +2800,13 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
   </article>`
     }
 
-    // видео: текст → кнопки
-    const trackAv = post.profiles?.avatar_url || null
-    const trackInitial = (post.profiles?.full_name || post.profiles?.username || 'U').charAt(0).toUpperCase()
-    const vinylHtml = `<div class="post-vinyl" data-sound-post="${post.id}" title="Смотреть все треды под этот звук">
-    <div class="post-vinyl-disc">
-        <div class="post-vinyl-cover">${trackAv ? `<img src="${trackAv}">` : trackInitial}</div>
-    </div>
-</div>`
-
+    // видео: текст → кнопки (без пластинки)
     return `<article class="feed-post fp-new feed-post-video" data-pid="${post.id}" data-channel="${post.channel_id || ''}" data-video-src="${post.media_url}">
     <video class="post-bg-video" src="${post.media_url}" autoplay muted loop playsinline preload="metadata"></video>
     <div class="post-bg-overlay"></div>
     <div class="feed-post-video-hint" style="white-space:nowrap">нажмите чтобы посмотреть</div>
-    ${vinylHtml}
     ${header}
-    <div class="feed-post-content">${escapeHtml(post.content || '')}</div>
+    <div class="feed-post-content">${linkifyHashtags(post.content || '')}</div>
     ${pollHtml}
     ${footer}
     ${discuss}
@@ -2890,6 +2892,12 @@ function mediaLabel(post){
 }
 
 function buildMetaRow(time, contextLabel, post){
+    // Бегущая строка — ТОЛЬКО для видео
+    if(!isVideoUrl(post.media_url)){
+        return `<div class="feed-post-time post-meta-row">
+            <span class="post-date">${time}</span>
+        </div>`
+    }
     const p = post.profiles || {}
     const username = (p.username || 'user').replace(/^@/, '')
     const initial = (p.full_name || p.username || 'U').charAt(0).toUpperCase()
@@ -3087,7 +3095,7 @@ async function openSoundPage(postId){
             </div>
             <div class="sound-page-list">
                 ${same.map(p => `<div class="feed-post" data-pid="${p.id}" style="margin-bottom:12px">
-                    <div class="feed-post-content">${escapeHtml(p.content || '')}</div>
+<div class="feed-post-content">${linkifyHashtags(p.content || '')}</div>
                     ${isVideoUrl(p.media_url) ? `<video class="post-bg-video" src="${p.media_url}" muted loop playsinline style="position:relative;width:100%;height:auto;max-height:420px"></video>` : ''}
                 </div>`).join('')}
             </div>
@@ -4269,7 +4277,7 @@ function renderLivePost(post, myId, postsMap, counts = {}, likedSet = new Set(),
 <div class="feed-post-name"><span class="feed-post-name-text">${escapeHtml(name)}${adminMark}</span></div>
     ${buildMetaRow(time, 'live chat', post)}
 </div>
-</div><div class="feed-post-content">${escapeHtml(post.content || '')}</div>${media}${footer}</article>`
+</div><div class="feed-post-content">${linkifyHashtags(post.content || '')}</div>${media}${footer}</article>`
     }
 
     const footer = isMine
@@ -4604,11 +4612,11 @@ function applyProfileTheme(profile, theme, isOwn){
         const layer = document.createElement('div')
         layer.className = 'profile-theme-layer'
         layer.style.cssText = `
-            position:absolute; left:0; right:0; top:0;
+            position:absolute; left:-16px; right:-16px; top:0;
             height:${tabsEl ? (tabsEl.offsetTop + 80) : 420}px;
             background:${bgDef.css};
             pointer-events:none; z-index:0;
-            border-radius:0 0 24px 24px;
+            border-radius:0;
         `
         wrap.style.position = 'relative'
         wrap.insertBefore(layer, wrap.firstChild)
@@ -4631,14 +4639,13 @@ function applyProfileTheme(profile, theme, isOwn){
         const patternLayer = document.createElement('div')
         patternLayer.className = 'profile-theme-layer profile-theme-pattern'
         patternLayer.style.cssText = `
-            position:absolute; left:-30%; right:-30%; top:0;
-            height:${screen.querySelector('.profile-tabs')?.offsetTop + 80 || 460}px;
+            position:absolute; left:-30%; right:-30%; top:0; bottom:0;
             background-image:url('${dataUri}');
             background-size:64px 64px;
             background-repeat:repeat;
             opacity:.16;
             transform:rotate(-14deg);
-            pointer-events:none; z-index:0;
+            pointer-events:none; z-index:1;
         `
         wrap.insertBefore(patternLayer, wrap.firstChild)
     }
@@ -4780,7 +4787,7 @@ async function renderProfileTracks(userId){
     ${buildMetaRow(time, 'live chat', p)}
 </div>
             </div>
-            <div class="feed-post-content">${escapeHtml(p.content || '')}</div>
+            <div class="feed-post-content">${linkifyHashtags(p.content || '')}</div>
             ${renderMedia(p.media_url, 'feed-post-image', { title: p.media_title, postId: p.id, username: prof.username || 'user' })}
         </div>`
     }).join('')
@@ -6493,8 +6500,11 @@ async function loadChContent(channelId, tab, canPost = false){
           <button class="tool-btn" id="ch-new-photo" title="Фото">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>
           </button>
-          <button class="tool-btn" id="ch-new-poll" title="Опрос">
+                    <button class="tool-btn" id="ch-new-poll" title="Опрос">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg>
+          </button>
+          <button class="tool-btn" id="ch-new-quote" title="Цитата">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="3"/><path d="M7 9v3M7 9h2M10.5 9v3M10.5 9h2"/></svg>
           </button>
         </div>
         <input type="file" id="ch-new-photo-input" accept="image/*" hidden>
@@ -6602,6 +6612,10 @@ function setupChannelComposer(channelId, canPost){
             pollData = data
             renderPollPreview()
         })
+    })
+
+    $('ch-new-quote')?.addEventListener('click', () => {
+        showToast('info', 'Цитата — скоро', { icon: '❝' })
     })
 
     publishBtn.addEventListener('click', async () => {
@@ -9050,7 +9064,12 @@ async function syncVfmMeta(){
     const moreBtn      = el.querySelector('#vfm-desc-more')
     const text         = (card.querySelector('.feed-post-content')?.textContent || '').trim()
 
-    descAuthorEl.textContent = authorName
+    const vfmStatusEmoji = statusB ? statusB.textContent : ''
+    if(vfmStatusEmoji){
+        descAuthorEl.innerHTML = `${escapeHtml(authorName)}<span class="vfm-name-status" aria-hidden="true">${vfmStatusEmoji}</span>`
+    } else {
+        descAuthorEl.textContent = authorName
+    }
     descEl.textContent = text || ''
     descEl.classList.remove('expanded')
     moreBtn.classList.add('hidden')
@@ -9322,7 +9341,7 @@ async function enterVideoFS(src, postId){
                         </div>
                     </div>
                     <div class="feed-post-name"><span class="feed-post-name-text">${escapeHtml(name)}${p.is_admin ? adminBadge(true) : ''}</span></div>
-                    <div class="feed-post-content">${escapeHtml(post.content || '')}</div>
+<div class="feed-post-content">${linkifyHashtags(post.content || '')}</div>
                     ${ch.id ? `<div class="feed-channel-badge" data-chbadge="${ch.id}"><span class="feed-channel-logo">${chLogo}</span><span class="feed-channel-name">${escapeHtml(ch.name||'Канал')}</span></div>` : ''}
                     <span class="feed-action" data-like="${post.id}"><span class="feed-count" data-like-count="${post.id}">0</span></span>
                     <span class="feed-action" data-repost="${post.id}"><span class="feed-count" data-repost-count="${post.id}">0</span></span>
@@ -11024,6 +11043,27 @@ document.addEventListener('click', (e) => {
     }
 })();
 window.__ltSetChatTitle = (t) => { state.chatTitle = t }
+
+
+document.addEventListener('click', e => {
+    const tag = e.target.closest('.hashtag')
+    if(!tag) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const query = tag.dataset.tag
+    if(!query) return
+
+    openSearchOverlay('posts')
+    setTimeout(() => {
+        const input = document.getElementById('search-input')
+        if(input){
+            input.value = query
+            document.getElementById('search-clear')?.classList.remove('hidden')
+        }
+        performSearch(query, 'posts')
+    }, 160)
+}, true)   // <-- capture: true — чтобы не открывалось видео под постом
 /* ============================================================
    SHOP — отдельная страница /shop
 ============================================================ */
