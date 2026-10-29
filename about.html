@@ -1,33 +1,37 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="dark">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>О listatread — listatread.online/about</title>
     <style>
-        /* ═════════════ ТОКЕНЫ (из style.css) ═════════════ */
+        /* tokens - light theme */
         :root{
-            --bg:#000; --bg-soft:#0a0a0c;
-            --card:rgba(30,30,33,.74);
-            --surface-2:rgba(120,120,128,.24);
-            --surface-3:rgba(120,120,128,.36);
-            --text:#fff;
-            --text-secondary:rgba(255,255,255,.6);
-            --text-tertiary:rgba(255,255,255,.35);
-            --border:rgba(255,255,255,.1);
-            --border-strong:rgba(255,255,255,.18);
-            --glass:rgba(28,28,30,.58);
-            --glass-strong:rgba(28,28,30,.88);
-            --glass-edge:rgba(255,255,255,.08);
-            --glass-hi:inset 0 1px 0 rgba(255,255,255,.08);
+            --bg:#fff;
+            --card:#fff;
+            --card-soft:#f5f5f7;
+            --surface-2:rgba(120,120,128,.08);
+            --text:#000;
+            --text-secondary:rgba(0,0,0,.55);
+            --text-tertiary:rgba(0,0,0,.35);
+            --border:rgba(0,0,0,.08);
+            --border-strong:rgba(0,0,0,.14);
 
-            --blue:#0a84ff; --red-pink:#ff375f; --red:#ff3b30;
-            --green:#30d158; --yellow:#ffd60a; --orange:#ff9f0a;
-            --purple:#bf5af2; --coral:#ff7f50; --lime:#a8e063;
+            --blue:#0a84ff;
+            --red-pink:#ff375f;
+            --red:#ff3b30;
+            --green:#30d158;
+            --yellow:#ffd60a;
+            --orange:#ff9f0a;
+            --purple:#bf5af2;
+            --coral:#ff7f50;
+            --lime:#a8e063;
 
-            --radius-lg:24px; --radius-md:16px; --radius-sm:12px;
-            --shadow-sm:0 4px 18px rgba(0,0,0,.45);
-            --shadow-md:0 10px 36px rgba(0,0,0,.6);
+            --radius-lg:24px;
+            --radius-md:16px;
+            --radius-sm:12px;
+            --shadow-sm:0 4px 18px rgba(0,0,0,.06);
+            --shadow-md:0 10px 36px rgba(0,0,0,.1);
 
             --spring:cubic-bezier(.34,1.56,.64,1);
             --ease-out:cubic-bezier(.22,1,.36,1);
@@ -35,17 +39,15 @@
             --safe-bottom:env(safe-area-inset-bottom,0px);
         }
 
-        /* ═════════════ RESET / BASE ═════════════ */
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        *{box-sizing:border-box;margin:0;padding:0}
         html{
-            background:#000;
+            background:#fff;
             scroll-behavior:smooth;
             scroll-snap-type:y proximity;
-            -webkit-text-size-adjust:100%;
         }
         body{
             font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',sans-serif;
-            background:#000; color:#fff; line-height:1.5;
+            background:#fff;color:#000;line-height:1.5;
             -webkit-font-smoothing:antialiased;
             overflow-x:hidden;
             min-height:100dvh;
@@ -53,92 +55,73 @@
         button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
         img,video{max-width:100%;display:block}
         a{color:inherit;text-decoration:none}
-        ::-webkit-scrollbar{width:4px;height:4px}
-        ::-webkit-scrollbar-thumb{background:rgba(120,120,128,.35);border-radius:4px}
 
-        /* ═════════════ ШАПКА ═════════════ */
+        /* Header */
         .page-header{
             position:fixed;top:0;left:50%;transform:translateX(-50%);
             width:100%;max-width:480px;z-index:100;
             display:flex;align-items:center;justify-content:space-between;
             padding:calc(var(--safe-top) + 14px) 20px 14px;
-            background:linear-gradient(180deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,.6) 60%,transparent 100%);
-            -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+            background:linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,.7) 60%,transparent 100%);
+            backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
             transition:opacity .4s var(--ease-out),transform .4s var(--ease-out);
             pointer-events:none;
         }
-        .page-header.hidden{
-            opacity:0;
-            transform:translateX(-50%) translateY(-100%);
-        }
-        .page-header > *{pointer-events:auto}
-
-        .logo{
-            display:flex;align-items:center;gap:10px;
-        }
-        .logo-img{
-            width:32px;height:32px;border-radius:50%;overflow:hidden;
-            background:#fff;flex-shrink:0;
-            box-shadow:0 2px 10px rgba(255,255,255,.15);
-        }
+        .page-header.hidden{opacity:0;transform:translateX(-50%) translateY(-100%)}
+        .page-header>*{pointer-events:auto}
+        .logo{display:flex;align-items:center;gap:10px}
+        .logo-img{width:32px;height:32px;border-radius:50%;overflow:hidden;background:#000;flex-shrink:0}
         .logo-img img{width:100%;height:100%;object-fit:cover}
-        .logo-text{font-size:19px;font-weight:800;letter-spacing:-.03em}
-
+        .logo-text{font-size:19px;font-weight:800;letter-spacing:-.03em;color:#000}
         .about-link{
             font-size:14px;font-weight:600;
-            color:rgba(255,255,255,.7);
+            color:rgba(0,0,0,.7);
             padding:8px 14px;border-radius:100px;
-            border:1px solid rgba(255,255,255,.12);
-            background:rgba(255,255,255,.06);
+            border:1px solid rgba(0,0,0,.12);
+            background:rgba(0,0,0,.04);
             transition:all .2s;
         }
-        .about-link:hover{color:#fff;background:rgba(255,255,255,.14)}
+        .about-link:hover{color:#000;background:rgba(0,0,0,.08)}
 
-        /* ═════════════ ПРОГРЕСС + ТОЧКИ ═════════════ */
+        /* Progress, dots */
         .progress-bar{
             position:fixed;top:0;left:0;height:3px;width:0%;z-index:200;
             background:linear-gradient(90deg,#ff9f0a,#ff375f,#bf5af2,#0a84ff,#30d158);
             transition:width .1s linear;
             box-shadow:0 0 12px rgba(255,55,95,.6);
         }
-
         .slide-dots{
             position:fixed;right:12px;top:50%;transform:translateY(-50%);
             z-index:100;display:flex;flex-direction:column;gap:6px;
         }
         .slide-dots .dot{
             width:6px;height:6px;border-radius:50%;
-            background:rgba(255,255,255,.2);
+            background:rgba(0,0,0,.15);
             cursor:pointer;
             transition:all .35s var(--spring);
         }
-        .slide-dots .dot.active{
-            background:#fff;height:20px;border-radius:4px;
-            box-shadow:0 0 10px rgba(255,255,255,.6);
-        }
+        .slide-dots .dot.active{background:#000;height:20px;border-radius:4px}
 
-        /* ═════════════ SLIDES БАЗА ═════════════ */
-        .slides{
-            max-width:480px;margin:0 auto;
-            position:relative;
-        }
+        /* Slides base */
+        .slides{max-width:480px;margin:0 auto;position:relative}
         .slide{
             min-height:100vh;min-height:100dvh;
             scroll-snap-align:start;
             display:flex;flex-direction:column;
             position:relative;
             overflow:hidden;
+            background:#fff;
         }
 
-        /* ═════════════ БАННЕРЫ ═════════════ */
+        /* Banners - larger font +3 */
         .banner{
             width:100%;
             padding:32px 24px;
-            font-size:clamp(18px,4.5vw,22px);
+            font-size:clamp(21px,5.5vw,25px);
             font-weight:500;
             line-height:1.35;
             letter-spacing:-.01em;
-            text-align:center;
+            text-align:left;
             position:relative;
             overflow:hidden;
             flex-shrink:0;
@@ -147,72 +130,28 @@
             content:'';position:absolute;inset:0;pointer-events:none;
             background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.18),transparent 60%);
         }
-        .banner-orange{
-            background:linear-gradient(135deg,#ff9f0a 0%,#ff8c00 100%);
-            color:#fff;
-            box-shadow:0 8px 32px rgba(255,159,10,.4);
-        }
-        .banner-green{
-            background:linear-gradient(135deg,#30d158 0%,#22c55e 100%);
-            color:#fff;
-            box-shadow:0 8px 32px rgba(48,209,88,.4);
-        }
-        .banner-blue{
-            background:linear-gradient(135deg,#0a84ff 0%,#0066cc 100%);
-            color:#fff;
-            box-shadow:0 8px 32px rgba(10,132,255,.4);
-        }
-        .banner-yellow{
-            background:linear-gradient(135deg,#ffd60a 0%,#ffb800 100%);
-            color:#1a1a1a;
-            box-shadow:0 8px 32px rgba(255,214,10,.35);
-        }
-        .banner-purple{
-            background:linear-gradient(135deg,#bf5af2 0%,#9d4edd 100%);
-            color:#fff;
-            box-shadow:0 8px 32px rgba(191,90,242,.4);
-        }
-        .banner-red{
-            background:linear-gradient(135deg,#ff3b30 0%,#d70015 100%);
-            color:#fff;
-            box-shadow:0 8px 32px rgba(255,59,48,.4);
-        }
-        .banner-lime{
-            background:linear-gradient(135deg,#a8e063 0%,#56ab2f 100%);
-            color:#fff;
-            box-shadow:0 8px 32px rgba(168,224,99,.4);
-        }
-        .banner-coral{
-            background:linear-gradient(135deg,#ff7f50 0%,#ff5f30 100%);
-            color:#fff;
-            box-shadow:0 8px 32px rgba(255,127,80,.4);
-        }
-        .banner-half{
-            width:75%;
-            margin-right:auto;
-            border-radius:0 0 24px 0;
-        }
-        .banner-small{
-            font-size:clamp(16px,4vw,19px);
-            padding:24px 20px;
-        }
+        .banner-orange{background:linear-gradient(135deg,#ff9f0a,#ff8c00);color:#fff;box-shadow:0 8px 32px rgba(255,159,10,.4)}
+        .banner-green{background:linear-gradient(135deg,#30d158,#22c55e);color:#fff;box-shadow:0 8px 32px rgba(48,209,88,.4)}
+        .banner-blue{background:linear-gradient(135deg,#0a84ff,#0066cc);color:#fff;box-shadow:0 8px 32px rgba(10,132,255,.4)}
+        .banner-yellow{background:linear-gradient(135deg,#ffd60a,#ffb800);color:#1a1a1a;box-shadow:0 8px 32px rgba(255,214,10,.35)}
+        .banner-purple{background:linear-gradient(135deg,#bf5af2,#9d4edd);color:#fff;box-shadow:0 8px 32px rgba(191,90,242,.4)}
+        .banner-red{background:linear-gradient(135deg,#ff3b30,#d70015);color:#fff;box-shadow:0 8px 32px rgba(255,59,48,.4)}
+        .banner-lime{background:linear-gradient(135deg,#a8e063,#56ab2f);color:#fff;box-shadow:0 8px 32px rgba(168,224,99,.4)}
+        .banner-coral{background:linear-gradient(135deg,#ff7f50,#ff5f30);color:#fff;box-shadow:0 8px 32px rgba(255,127,80,.4)}
 
-        /* ═════════════ КОНТЕНТ ═════════════ */
+        /* Content */
         .content{
             flex:1;
             padding:40px 24px;
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            justify-content:center;
+            display:flex;flex-direction:column;
+            align-items:flex-start;justify-content:center;
             gap:24px;
-            text-align:center;
+            text-align:left;
             position:relative;
             z-index:1;
         }
-        .content-left{text-align:left;align-items:flex-start}
 
-        /* ═════════════ АНИМАЦИИ ПОЯВЛЕНИЯ ═════════════ */
+        /* Reveal */
         .reveal{
             opacity:0;transform:translateY(40px);
             transition:opacity 1.1s var(--ease-out),transform 1.1s var(--ease-out);
@@ -224,104 +163,68 @@
         .reveal[data-delay="4"]{transition-delay:.48s}
         .reveal[data-delay="5"]{transition-delay:.6s}
         .reveal[data-delay="6"]{transition-delay:.72s}
-        .reveal[data-delay="7"]{transition-delay:.85s}
-        .reveal[data-delay="8"]{transition-delay:.98s}
 
-        .reveal-left{transform:translateX(-40px)}
-        .reveal-right{transform:translateX(40px)}
-        .slide.in-view .reveal-left,
-        .slide.in-view .reveal-right{transform:none}
+        /* Typography */
+        .hero-tagline{font-size:clamp(15px,3.8vw,17px);color:rgba(0,0,0,.65);line-height:1.5;text-align:left;max-width:340px}
+        .hero-tagline b{color:#000;font-weight:700}
+        .text-body{font-size:clamp(14px,3.5vw,16px);color:rgba(0,0,0,.55);line-height:1.55;text-align:left;max-width:100%}
+        .text-small{font-size:12.5px;color:rgba(0,0,0,.35);text-align:left}
+        .hashtag{display:inline-block;font-size:14px;font-weight:700;padding:4px 0}
+        .hashtag-pink{color:#ff375f}
+        .hashtag-black{color:#000}
 
-        /* ═════════════ ТИПОГРАФИКА ═════════════ */
-        .h-mega{
-            font-size:clamp(28px,7vw,42px);
-            font-weight:900;
-            letter-spacing:-.04em;
-            line-height:1.05;
-            text-align:center;
-        }
-        .h-large{
-            font-size:clamp(22px,5.5vw,32px);
-            font-weight:800;
-            letter-spacing:-.02em;
-            line-height:1.2;
-            text-align:center;
-        }
-        .h-medium{
-            font-size:clamp(17px,4vw,22px);
-            font-weight:700;
-            letter-spacing:-.01em;
-            line-height:1.35;
-            text-align:center;
-        }
-        .text-body{
-            font-size:clamp(14px,3.5vw,16px);
-            color:var(--text-secondary);
-            line-height:1.55;
-            text-align:center;
-            max-width:360px;
-        }
-        .text-small{
-            font-size:12.5px;
-            color:var(--text-tertiary);
-            text-align:center;
-        }
-        .text-accent{
-            background:linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2);
-            -webkit-background-clip:text;background-clip:text;
-            -webkit-text-fill-color:transparent;color:transparent;
-        }
-        .text-red{color:#ff5c5c}
-        .text-pink{color:#ff6b9d}
-        .text-green{color:#4ade80}
-        .text-coral{color:var(--coral)}
-
-        .hashtags{
-            display:flex;flex-wrap:wrap;gap:8px;
-            justify-content:center;
-        }
-        .hashtag{
-            display:inline-block;
-            font-size:14px;font-weight:700;
-            color:#ff6b9d;
-            padding:4px 0;
-        }
-
-        /* ═════════════ SLIDE 1 — HERO ═════════════ */
-        .slide-hero{
-            justify-content:flex-start;
-        }
+        /* Slide 1 */
+        .slide-hero{justify-content:flex-start}
         .hero-banner{
             margin-top:0;
             min-height:180px;
-            display:flex;align-items:center;justify-content:center;
+            display:flex;align-items:center;justify-content:flex-start;
             padding:40px 28px;
-        }
-        .hero-banner p{
-            font-size:clamp(18px,4.5vw,22px);
-            font-weight:400;
-            line-height:1.45;
-            letter-spacing:.005em;
+            text-align:left;
         }
         .hero-body{
             flex:1;
             display:flex;flex-direction:column;
-            align-items:center;justify-content:center;
+            align-items:flex-start;justify-content:center;
             gap:28px;padding:40px 24px;
         }
-        .hero-tagline{
-            font-size:clamp(15px,3.8vw,17px);
-            color:rgba(255,255,255,.65);
-            line-height:1.5;
-            text-align:center;
-            max-width:340px;
+
+        /* Marquee photos strip */
+        .strip-marquee{
+            width:100%;
+            overflow:hidden;
+            position:relative;
+            padding:8px 0;
+            -webkit-mask-image:linear-gradient(to right,transparent 0,#000 30px,#000 calc(100% - 30px),transparent 100%);
+            mask-image:linear-gradient(to right,transparent 0,#000 30px,#000 calc(100% - 30px),transparent 100%);
         }
-        .hero-tagline b{
-            color:#fff;font-weight:700;
+        .strip-track{
+            display:flex;
+            gap:10px;
+            width:max-content;
+            animation:marquee-left 40s linear infinite;
         }
+        .strip-track.slow{animation-duration:60s}
+        .strip-track.slower{animation-duration:80s}
+        @keyframes marquee-left{
+            from{transform:translateX(0)}
+            to{transform:translateX(-50%)}
+        }
+        .strip-photo{
+            width:100px;
+            height:150px;
+            border-radius:12px;
+            overflow:hidden;
+            flex-shrink:0;
+            background:#f0f0f0;
+            box-shadow:0 4px 14px rgba(0,0,0,.08);
+        }
+        .strip-photo img{width:100%;height:100%;object-fit:cover}
+
+        /* Avatars showcase */
         .avatars-showcase{
             display:flex;align-items:center;
-            justify-content:center;
+            justify-content:flex-start;
             gap:14px;flex-wrap:wrap;
             padding:8px 0;
         }
@@ -332,30 +235,25 @@
         .avatar-circle{
             width:60px;height:60px;border-radius:50%;
             overflow:hidden;flex-shrink:0;
-            border:2px solid rgba(255,255,255,.15);
+            border:2px solid rgba(0,0,0,.08);
             background:linear-gradient(135deg,#ffd60a,#ff375f);
-            box-shadow:0 6px 20px rgba(255,55,95,.35);
-            transition:transform .4s var(--spring);
+            box-shadow:0 6px 20px rgba(255,55,95,.25);
         }
         .avatar-circle img{width:100%;height:100%;object-fit:cover}
-        .avatar-badge:hover .avatar-circle{transform:scale(1.08) rotate(3deg)}
         .avatar-emoji{
             width:32px;height:32px;
             display:flex;align-items:center;justify-content:center;
-            filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));
             animation:emojiFloat 4s ease-in-out infinite;
         }
-        .avatar-emoji:nth-child(1){animation-delay:0s}
-        .avatar-emoji:nth-child(2){animation-delay:1.3s}
-        .avatar-emoji:nth-child(3){animation-delay:2.6s}
         .avatar-emoji svg{width:28px;height:28px}
         @keyframes emojiFloat{
             0%,100%{transform:translateY(0) rotate(0)}
             50%{transform:translateY(-6px) rotate(6deg)}
         }
+
         .scroll-hint{
             font-size:12px;
-            color:rgba(255,255,255,.35);
+            color:rgba(0,0,0,.35);
             display:flex;align-items:center;gap:8px;
             margin-top:8px;
             letter-spacing:.04em;
@@ -372,28 +270,23 @@
             50%{transform:translateY(4px);opacity:1}
         }
 
-        /* ═════════════ SLIDE 2 — LIKE/COMMENT ICONS ═════════════ */
+        /* Icon showcase */
         .icon-showcase{
-            display:flex;gap:20px;align-items:center;justify-content:center;
+            display:flex;gap:20px;align-items:center;justify-content:flex-start;
             padding:16px 0;
         }
         .icon-box{
             width:72px;height:72px;
             border-radius:20px;
-            background:rgba(255,255,255,.06);
-            border:1px solid rgba(255,255,255,.1);
+            background:#f5f5f7;
+            border:1px solid rgba(0,0,0,.06);
             display:flex;align-items:center;justify-content:center;
             position:relative;
-            box-shadow:inset 0 1px 0 rgba(255,255,255,.1);
-            transition:all .3s var(--spring);
-        }
-        .icon-box:hover{
-            background:rgba(255,255,255,.1);
-            transform:translateY(-4px);
+            box-shadow:0 4px 14px rgba(0,0,0,.04);
         }
         .icon-box svg{width:32px;height:32px}
         .icon-box .icon-heart{color:#ff375f}
-        .icon-box .icon-pause{color:#fff}
+        .icon-box .icon-pause{color:#000}
         .icon-box .icon-comment{color:#0a84ff}
         .icon-box .icon-badge{
             position:absolute;top:-6px;right:-6px;
@@ -404,44 +297,92 @@
             box-shadow:0 2px 8px rgba(255,59,48,.5);
         }
 
-        /* ═════════════ SLIDE 3 — CARD SHOWCASE ═════════════ */
+        /* Team to channel (slide 2) */
+        .team-to-channel{
+            display:flex;
+            align-items:center;
+            gap:14px;
+            padding:16px;
+            background:#f5f5f7;
+            border-radius:16px;
+            width:100%;
+            flex-wrap:wrap;
+        }
+        .team-member{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            gap:4px;
+        }
+        .team-member img{
+            width:44px;height:44px;border-radius:50%;
+            object-fit:cover;
+            border:2px solid #fff;
+            box-shadow:0 2px 8px rgba(0,0,0,.1);
+        }
+        .team-member span{
+            font-size:11px;
+            color:rgba(0,0,0,.6);
+            font-weight:600;
+            max-width:60px;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+            text-align:center;
+        }
+        .team-arrow{
+            font-size:24px;
+            color:rgba(0,0,0,.35);
+            font-weight:300;
+            flex-shrink:0;
+        }
+        .team-channel-ava{
+            width:56px;height:56px;
+            border-radius:14px;
+            overflow:hidden;
+            border:2px solid #fff;
+            box-shadow:0 4px 14px rgba(0,0,0,.15);
+            flex-shrink:0;
+            background:linear-gradient(135deg,#ff9f0a,#ff375f);
+            display:flex;align-items:center;justify-content:center;
+            color:#fff;font-weight:800;font-size:18px;
+        }
+        .team-channel-ava img{width:100%;height:100%;object-fit:cover}
+
+        /* Showcase cards slide 3 */
         .card-showcase{
             position:relative;
             width:100%;
-            max-width:340px;
-            height:280px;
+            max-width:400px;
+            height:380px;
             margin:12px auto;
         }
         .showcase-card{
             position:absolute;
-            width:170px;height:220px;
+            width:180px;height:240px;
             border-radius:20px;
             overflow:hidden;
-            box-shadow:0 16px 40px rgba(0,0,0,.5);
+            box-shadow:0 16px 40px rgba(0,0,0,.3);
             transition:transform .5s var(--spring);
         }
         .showcase-card img{width:100%;height:100%;object-fit:cover}
-        .showcase-card-1{
-            left:8px;top:20px;
-            transform:rotate(-10deg);
-            z-index:1;
-        }
-        .showcase-card-2{
-            right:8px;top:40px;
-            transform:rotate(8deg);
-            z-index:2;
-        }
+        .showcase-card-1{left:8px;top:20px;transform:rotate(-10deg);z-index:1}
+        .showcase-card-2{right:8px;top:40px;transform:rotate(8deg);z-index:2}
+        .showcase-card-3{left:50%;top:0;transform:translateX(-50%) rotate(-3deg) scale(.85);z-index:0;opacity:.7}
+        .showcase-card-4{left:30%;top:80px;transform:rotate(5deg) scale(.75);z-index:0;opacity:.5}
+        .showcase-card-5{right:30%;top:60px;transform:rotate(-4deg) scale(.75);z-index:0;opacity:.5}
+
         .showcase-like{
             position:absolute;
             z-index:5;
             width:44px;height:44px;
             border-radius:50%;
-            background:rgba(0,0,0,.65);
+            background:rgba(255,255,255,.95);
             backdrop-filter:blur(10px);
             -webkit-backdrop-filter:blur(10px);
-            border:1px solid rgba(255,255,255,.2);
+            border:1px solid rgba(0,0,0,.08);
             display:flex;align-items:center;justify-content:center;
-            box-shadow:0 4px 14px rgba(0,0,0,.5);
+            box-shadow:0 4px 14px rgba(0,0,0,.15);
             animation:likeFloat 3s ease-in-out infinite;
         }
         .showcase-like svg{width:22px;height:22px}
@@ -452,13 +393,62 @@
             50%{transform:translateY(-8px) scale(1.08)}
         }
 
-        /* ═════════════ НОТЕБУК (слайды 5-9) ═════════════ */
+        /* Floating hearts slide 3 */
+        .floating-hearts{
+            position:absolute;
+            inset:0;
+            pointer-events:none;
+            overflow:hidden;
+            z-index:0;
+        }
+        .floating-heart{
+            position:absolute;
+            color:#ff375f;
+            animation:heartSlowFloat 15s ease-in-out infinite;
+            opacity:0;
+        }
+        .floating-heart svg{width:100%;height:100%}
+        .floating-heart:nth-child(1){left:8%;bottom:-40px;width:28px;height:28px;animation-delay:0s}
+        .floating-heart:nth-child(2){left:70%;bottom:-40px;width:22px;height:22px;animation-delay:3s}
+        .floating-heart:nth-child(3){left:40%;bottom:-40px;width:32px;height:32px;animation-delay:6s}
+        .floating-heart:nth-child(4){left:85%;bottom:-40px;width:24px;height:24px;animation-delay:9s}
+        .floating-heart:nth-child(5){left:25%;bottom:-40px;width:20px;height:20px;animation-delay:12s}
+        @keyframes heartSlowFloat{
+            0%{opacity:0;transform:translateY(0) scale(.3) rotate(0)}
+            10%{opacity:.8}
+            90%{opacity:.6}
+            100%{opacity:0;transform:translateY(-100vh) scale(1) rotate(20deg)}
+        }
+
+        /* Slide 4 yellow fullscreen */
+        .slide-yellow-full{
+            background:linear-gradient(135deg,#ffd60a,#ffb800);
+        }
+        .slide-yellow-full .banner-yellow-half{
+            width:75%;
+            background:transparent;
+            color:#1a1a1a;
+            padding:80px 24px 40px;
+            font-weight:600;
+            font-size:clamp(21px,5.5vw,25px);
+            text-align:left;
+            box-shadow:none;
+        }
+        .slide-yellow-full .content{
+            padding-bottom:60px;
+        }
+        .hashtags{
+            display:flex;flex-wrap:wrap;gap:8px;
+            justify-content:flex-start;
+        }
+
+        /* Notebook */
         .notebook-section{
             padding:0;
             display:flex;
             flex-direction:column;
             overflow:hidden;
-            background:#050505;
+            background:#fff;
         }
         .notebook-header{
             padding:24px 20px 12px;
@@ -466,12 +456,13 @@
             align-items:center;
             justify-content:space-between;
             flex-shrink:0;
-            border-bottom:1px solid rgba(255,255,255,.06);
+            background:#fff;
+            border-bottom:1px solid rgba(0,0,0,.06);
         }
         .notebook-title{
             font-size:14px;
             font-weight:700;
-            color:rgba(255,255,255,.5);
+            color:rgba(0,0,0,.5);
             letter-spacing:.06em;
             text-transform:uppercase;
             display:flex;align-items:center;gap:8px;
@@ -486,10 +477,10 @@
         .notebook-pagination{
             display:flex;align-items:center;gap:8px;
             font-size:13px;font-weight:700;
-            color:rgba(255,255,255,.4);
+            color:rgba(0,0,0,.4);
             font-variant-numeric:tabular-nums;
         }
-        .notebook-pagination .current{color:#fff;font-size:15px}
+        .notebook-pagination .current{color:#000;font-size:15px}
 
         .notebook-track{
             flex:1;
@@ -520,12 +511,26 @@
         }
         .notebook-page::-webkit-scrollbar{display:none}
 
+        /* Colored page backgrounds */
+        .notebook-page[data-page="5"]{background:linear-gradient(180deg,#bf5af2 0%,#9d4edd 100%)}
+        .notebook-page[data-page="6"]{background:linear-gradient(180deg,#ff3b30 0%,#d70015 100%)}
+        .notebook-page[data-page="7"]{background:linear-gradient(180deg,#a8e063 0%,#56ab2f 100%)}
+        .notebook-page[data-page="8"]{background:linear-gradient(180deg,#0a84ff 0%,#0066cc 100%)}
+        .notebook-page[data-page="9"]{background:linear-gradient(180deg,#ff7f50 0%,#ff5f30 100%)}
+
         .notebook-page .banner{
             border-radius:20px;
-            font-size:16px;
+            font-size:17px;
             padding:22px 20px;
             margin-bottom:4px;
             flex-shrink:0;
+            background:rgba(255,255,255,.15);
+            color:#fff;
+            box-shadow:none;
+            backdrop-filter:blur(8px);
+            -webkit-backdrop-filter:blur(8px);
+            border:1px solid rgba(255,255,255,.2);
+            text-align:left;
         }
         .notebook-page .banner::after{display:none}
 
@@ -536,74 +541,43 @@
             justify-content:center;
             gap:14px;
             padding:14px 20px calc(14px + var(--safe-bottom));
-            border-top:1px solid rgba(255,255,255,.06);
-            background:rgba(0,0,0,.7);
+            border-top:1px solid rgba(0,0,0,.06);
+            background:rgba(255,255,255,.9);
             backdrop-filter:blur(20px);
             -webkit-backdrop-filter:blur(20px);
         }
         .notebook-btn{
             width:42px;height:42px;
             border-radius:50%;
-            background:rgba(255,255,255,.08);
-            border:1px solid rgba(255,255,255,.1);
-            color:#fff;
+            background:rgba(0,0,0,.06);
+            border:1px solid rgba(0,0,0,.08);
+            color:#000;
             display:flex;align-items:center;justify-content:center;
             font-size:20px;font-weight:700;
             transition:all .2s var(--spring);
         }
-        .notebook-btn:hover{background:rgba(255,255,255,.16)}
-        .notebook-btn:active{transform:scale(.92)}
+        .notebook-btn:hover{background:rgba(0,0,0,.1)}
         .notebook-btn:disabled{opacity:.35;cursor:not-allowed}
         .notebook-dots{
             display:flex;gap:6px;flex:1;justify-content:center;
         }
         .notebook-dots .ndot{
             width:6px;height:6px;border-radius:50%;
-            background:rgba(255,255,255,.2);
+            background:rgba(0,0,0,.15);
             transition:all .3s var(--spring);
             cursor:pointer;
         }
-        .notebook-dots .ndot.active{
-            background:#fff;width:18px;border-radius:3px;
-        }
+        .notebook-dots .ndot.active{background:#000;width:18px;border-radius:3px}
 
-        /* ═════════════ THREAD CARD (стиль main.js) ═════════════ */
+        /* Thread card - LIGHT THEME */
         .thread-card{
-            background:var(--card);
+            background:#fff;
             border-radius:20px;
             padding:16px;
-            border:1px solid rgba(255,255,255,.08);
-            box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,.06);
+            border:1px solid rgba(0,0,0,.06);
+            box-shadow:0 8px 28px rgba(0,0,0,.12);
             text-align:left;
             position:relative;
-        }
-        .thread-card.square-media{
-            padding:0;
-            overflow:hidden;
-            position:relative;
-        }
-        .thread-card.square-media .tc-media-wrap{
-            width:100%;
-            aspect-ratio:1;
-            overflow:hidden;
-            position:relative;
-            background:#111;
-        }
-        .thread-card.square-media .tc-media-wrap img,
-        .thread-card.square-media .tc-media-wrap video{
-            width:100%;height:100%;object-fit:cover;
-        }
-        .thread-card.square-media .tc-overlay-head{
-            position:absolute;top:0;left:0;right:0;
-            padding:12px 14px;
-            z-index:3;
-            background:linear-gradient(180deg,rgba(0,0,0,.65) 0%,transparent 100%);
-        }
-        .thread-card.square-media .tc-overlay-foot{
-            position:absolute;bottom:0;left:0;right:0;
-            padding:14px;
-            z-index:3;
-            background:linear-gradient(0deg,rgba(0,0,0,.75) 0%,transparent 100%);
         }
 
         .tc-header{
@@ -612,38 +586,22 @@
             position:relative;
         }
         .tc-avatar-wrap{
-            position:relative;
-            flex-shrink:0;
-            padding-bottom:6px;
+            position:relative;flex-shrink:0;padding-bottom:6px;
         }
         .tc-avatar{
-            width:42px;height:42px;
-            border-radius:50%;
+            width:42px;height:42px;border-radius:50%;
             background:linear-gradient(135deg,#ffd60a,#ff375f);
             display:flex;align-items:center;justify-content:center;
             color:#fff;font-weight:800;font-size:16px;
-            overflow:visible;
-            position:relative;
-            box-shadow:0 4px 14px rgba(255,55,95,.35);
+            overflow:visible;position:relative;
+            box-shadow:0 4px 14px rgba(255,55,95,.3);
         }
         .tc-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
         .tc-status{
             position:absolute;bottom:-4px;right:-4px;
             font-size:14px;line-height:1;
-            filter:drop-shadow(0 1px 3px rgba(0,0,0,.5));
-            pointer-events:none;
-            z-index:2;
-        }
-        .tc-plus{
-            position:absolute;left:50%;bottom:-2px;
-            transform:translateX(-50%);
-            width:18px;height:18px;border-radius:50%;
-            background:#ff8a00;color:#fff;
-            border:2px solid #000;
-            font-size:12px;font-weight:900;line-height:1;
-            display:flex;align-items:center;justify-content:center;
-            padding:0;padding-bottom:1px;
-            z-index:3;
+            filter:drop-shadow(0 1px 3px rgba(0,0,0,.3));
+            pointer-events:none;z-index:2;
         }
         .tc-info{flex:1;min-width:0}
         .tc-name-row{
@@ -652,26 +610,18 @@
         }
         .tc-name{
             font-size:14px;font-weight:700;
-            color:#fff;
+            color:#000;
             white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
             flex:1;min-width:0;
         }
-        .tc-admin{
-            display:inline-flex;align-items:center;justify-content:center;
-            width:15px;height:15px;border-radius:50%;
-            background:linear-gradient(135deg,#bf5af2,#8e44ff);
-            font-size:9px;flex-shrink:0;
-        }
         .tc-channel-badge{
             display:inline-flex;align-items:center;gap:5px;
-            background:rgba(255,255,255,.1);
+            background:rgba(0,0,0,.05);
             border-radius:8px;
             padding:2px 8px 2px 3px;
             margin-left:auto;max-width:50%;
             overflow:hidden;flex-shrink:0;
             font-size:11px;
-            backdrop-filter:blur(10px);
-            -webkit-backdrop-filter:blur(10px);
         }
         .tc-channel-logo{
             width:16px;height:16px;border-radius:4px;
@@ -683,25 +633,18 @@
         .tc-channel-logo img{width:100%;height:100%;object-fit:cover}
         .tc-channel-name{
             font-size:11px;font-weight:600;
+            color:rgba(0,0,0,.7);
             white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
         }
         .tc-time{
-            font-size:11px;color:rgba(255,255,255,.55);
+            font-size:11px;color:rgba(0,0,0,.5);
             margin-top:3px;
-        }
-        .tc-sub-btn{
-            width:32px;height:32px;border-radius:50%;
-            background:var(--red-pink);color:#fff;
-            display:flex;align-items:center;justify-content:center;
-            flex-shrink:0;
-            font-size:18px;font-weight:700;
-            box-shadow:0 4px 14px rgba(255,55,95,.35);
         }
 
         .tc-content{
             font-size:14px;
             line-height:1.5;
-            color:#fff;
+            color:#000;
             margin:8px 0;
             white-space:pre-wrap;
             word-break:break-word;
@@ -711,24 +654,24 @@
             display:flex;align-items:center;gap:12px;
             margin-top:10px;
             padding-top:10px;
+            flex-wrap:wrap;
         }
         .tc-footer-avatar{
             width:28px;height:28px;border-radius:50%;
-            overflow:hidden;
+            overflow:hidden;flex-shrink:0;
             background:linear-gradient(135deg,#ffd60a,#ff375f);
-            flex-shrink:0;
         }
         .tc-footer-avatar img{width:100%;height:100%;object-fit:cover}
         .tc-follow-text{
             font-size:12px;font-weight:700;
             padding:5px 10px;border-radius:8px;
-            border:1.5px solid rgba(255,255,255,.35);
-            color:#fff;background:transparent;
+            border:1.5px solid rgba(0,0,0,.35);
+            color:#000;background:transparent;
             flex-shrink:0;
         }
         .tc-action{
             display:flex;align-items:center;gap:5px;
-            color:rgba(255,255,255,.55);
+            color:rgba(0,0,0,.55);
             font-size:12px;font-weight:600;
             padding:4px 0;
         }
@@ -740,100 +683,94 @@
             margin-left:auto;
             width:30px;height:30px;
             border-radius:50%;
-            color:rgba(255,255,255,.55);
+            color:rgba(0,0,0,.5);
             display:flex;align-items:center;justify-content:center;
         }
         .tc-more svg{width:18px;height:18px}
 
-        /* Обсуждение */
+        /* Discussion full width */
         .tc-discuss{
             display:flex;align-items:center;gap:8px;
-            margin-top:10px;
-            padding-top:10px;
-            border-top:1px solid rgba(255,255,255,.08);
+            margin-top:12px;
+            padding:12px 0 0;
+            border-top:1px solid rgba(0,0,0,.08);
             font-size:13px;font-weight:700;
-            color:#fff;
+            color:#000;
             text-transform:uppercase;letter-spacing:.03em;
+            width:100%;
+            background:transparent;
+            text-align:left;
         }
         .tc-discuss svg{width:16px;height:16px;flex-shrink:0}
         .tc-discuss-label{flex:1}
-        .tc-discuss-right{display:flex;align-items:center;gap:6px}
+        .tc-discuss-right{display:flex;align-items:center;gap:6px;margin-left:auto}
         .tc-cstack{display:inline-flex;align-items:center}
         .tc-cava{
             width:20px;height:20px;border-radius:50%;
-            border:2px solid rgba(30,30,33,.8);
+            border:2px solid #fff;
             background:linear-gradient(135deg,#ffd60a,#ff375f);
             color:#fff;font-size:9px;font-weight:800;
             display:flex;align-items:center;justify-content:center;
-            overflow:hidden;
-            margin-left:-6px;
+            overflow:hidden;margin-left:-6px;
         }
         .tc-cava:first-child{margin-left:0}
         .tc-cava img{width:100%;height:100%;object-fit:cover}
-        .tc-count{font-size:11px;font-weight:600;color:rgba(255,255,255,.55);text-transform:none;letter-spacing:0}
-        .tc-chev{font-size:18px;color:rgba(255,255,255,.35);line-height:1}
+        .tc-count{font-size:11px;font-weight:600;color:rgba(0,0,0,.55);text-transform:none;letter-spacing:0}
+        .tc-chev{font-size:18px;color:rgba(0,0,0,.35);line-height:1}
 
-        /* Трек */
+        /* Track */
         .tc-track{
             display:flex;align-items:center;gap:10px;
-            background:rgba(255,255,255,.06);
-            border:1px solid rgba(255,255,255,.08);
+            background:rgba(0,0,0,.04);
+            border:1px solid rgba(0,0,0,.06);
             border-radius:14px;
             padding:8px 10px;
             margin-top:8px;
         }
         .tc-track-play{
             width:38px;height:38px;border-radius:50%;
-            background:#fff;color:#000;
+            background:#000;color:#fff;
             display:flex;align-items:center;justify-content:center;
             flex-shrink:0;
         }
         .tc-track-play svg{width:18px;height:18px}
         .tc-track-info{flex:1;min-width:0}
         .tc-track-title{
-            font-size:13px;font-weight:700;color:#fff;
+            font-size:13px;font-weight:700;color:#000;
             white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
         }
         .tc-track-meta{
             display:flex;align-items:center;gap:6px;
-            font-size:11px;color:rgba(255,255,255,.55);
+            font-size:11px;color:rgba(0,0,0,.55);
             margin-top:2px;
         }
-        .tc-progress{
-            position:absolute;left:0;right:0;bottom:0;height:3px;
-            background:rgba(255,255,255,.1);
-            border-radius:0 0 14px 14px;
-            overflow:hidden;
-        }
-        .tc-progress-fill{height:100%;width:35%;background:#fff;border-radius:0 0 14px 14px}
 
-        /* Опрос */
+        /* Poll */
         .tc-poll{
-            background:rgba(255,255,255,.06);
-            border:1px solid rgba(255,255,255,.08);
+            background:rgba(0,0,0,.04);
+            border:1px solid rgba(0,0,0,.06);
             border-radius:14px;
             padding:10px;
             margin-top:8px;
         }
         .tc-poll-title{
             font-size:12px;font-weight:700;
-            margin-bottom:8px;
-            color:#fff;
+            margin-bottom:8px;color:#000;
         }
         .tc-poll-options{display:flex;flex-direction:column;gap:5px}
         .tc-poll-option{
             position:relative;
             padding:9px 11px;border-radius:9px;
-            background:rgba(0,0,0,.5);
-            border:1.5px solid rgba(255,255,255,.1);
+            background:#fff;
+            border:1.5px solid rgba(0,0,0,.08);
             font-size:11px;
             display:flex;align-items:center;gap:6px;
-            overflow:hidden;
-            isolation:isolate;
+            overflow:hidden;isolation:isolate;
+            color:#000;
         }
         .tc-poll-fill{
             position:absolute;left:0;top:0;bottom:0;
-            background:rgba(10,132,255,.28);
+            background:rgba(10,132,255,.2);
             border-radius:9px 0 0 9px;
             z-index:-1;
         }
@@ -842,117 +779,57 @@
             display:flex;justify-content:space-between;gap:8px;
             align-items:center;width:100%;
         }
-        .tc-poll-pct{font-weight:800;color:#fff}
+        .tc-poll-pct{font-weight:800;color:#000}
 
-        /* Стикер */
+        /* Sticker */
         .tc-sticker{
             display:block;
             max-width:120px;max-height:120px;
             object-fit:contain;
             margin:8px 0 0;
-            filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));
+            filter:drop-shadow(0 4px 12px rgba(0,0,0,.1));
         }
 
-        /* ═════════════ VIDEO SHOWCASE (slide 6) ═════════════ */
-        .video-showcase{
-            display:flex;align-items:center;justify-content:center;
-            gap:8px;
-            padding:8px 0;
-            width:100%;
-            max-width:400px;
-            margin:0 auto;
-        }
-        .video-side-photo{
-            flex:0 0 70px;
-            width:70px;height:130px;
-            border-radius:14px;
-            overflow:hidden;
-            opacity:.55;
-            filter:blur(1px);
-            box-shadow:0 6px 20px rgba(0,0,0,.5);
-            transform:scale(.92);
-        }
-        .video-side-photo img{width:100%;height:100%;object-fit:cover}
-        .video-main{
+        /* Slide 10 - Communities */
+        .slide-10-content{
+            display:flex;flex-direction:column;
             flex:1;
-            max-width:240px;
-            aspect-ratio:9/16;
-            border-radius:20px;
+            padding:20px 0;
+            gap:24px;
+            justify-content:center;
+        }
+        .slide-10-text{
+            padding:0 24px;
+            text-align:left;
+        }
+        .photos-strip-v2{
             overflow:hidden;
-            background:#111;
+            padding:16px 0;
             position:relative;
-            box-shadow:0 20px 50px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.1);
+            -webkit-mask-image:linear-gradient(to right,transparent 0,#000 20px,#000 calc(100% - 20px),transparent 100%);
+            mask-image:linear-gradient(to right,transparent 0,#000 20px,#000 calc(100% - 20px),transparent 100%);
         }
-        .video-main video{
-            width:100%;height:100%;object-fit:cover;
-        }
-        .video-play-overlay{
-            position:absolute;inset:0;
-            display:flex;align-items:center;justify-content:center;
-            pointer-events:none;
-        }
-        .video-play-overlay svg{
-            width:64px;height:64px;
-            filter:drop-shadow(0 4px 16px rgba(0,0,0,.7));
-            opacity:.85;
-            animation:pulse 2.4s ease-in-out infinite;
-        }
-        @keyframes pulse{
-            0%,100%{transform:scale(1);opacity:.85}
-            50%{transform:scale(1.1);opacity:1}
-        }
-        .video-side-right{
-            position:absolute;
-            right:8px;bottom:80px;
-            display:flex;flex-direction:column;gap:14px;
-            align-items:center;
-            z-index:5;
-        }
-        .video-side-btn{
-            display:flex;flex-direction:column;align-items:center;gap:3px;
-            color:#fff;font-size:10px;font-weight:600;
-            filter:drop-shadow(0 1px 4px rgba(0,0,0,.7));
-        }
-        .video-side-btn svg{
-            width:24px;height:24px;
-        }
-
-        /* ═════════════ PHOTOS STRIP (slide 10) ═════════════ */
-        .photos-strip{
+        .photos-track-v2{
             display:flex;
-            gap:10px;
-            padding:16px 0 16px 0;
+            gap:12px;
+            width:max-content;
+            animation:marquee-left 35s linear infinite;
+        }
+        .photo-big{
+            width:200px;
+            height:280px;
+            border-radius:18px;
             overflow:hidden;
-            width:100%;
-            margin:0 -24px;
-            padding-left:24px;
-            padding-right:0;
-            position:relative;
+            flex-shrink:0;
+            background:#f0f0f0;
+            box-shadow:0 10px 30px rgba(0,0,0,.12);
         }
-        .photo-card{
-            flex:0 0 120px;
-            width:120px;height:170px;
-            border-radius:16px;
-            overflow:hidden;
-            background:#111;
-            box-shadow:0 10px 28px rgba(0,0,0,.5);
-            transform:rotate(-2deg);
-            transition:transform .4s var(--spring);
-            position:relative;
-        }
-        .photo-card:nth-child(2n){transform:rotate(2deg)}
-        .photo-card:nth-child(3n){transform:rotate(-3deg)}
-        .photo-card img{width:100%;height:100%;object-fit:cover}
-        .photo-card::after{
-            content:'';position:absolute;inset:0;
-            background:linear-gradient(180deg,transparent 60%,rgba(0,0,0,.4));
-            pointer-events:none;
-        }
+        .photo-big img{width:100%;height:100%;object-fit:cover}
 
-        /* ═════════════ SVG ICONS ROW (slide 11) ═════════════ */
+        /* Slide 11 - Adaptation */
         .svg-icons-row{
             display:flex;
-            align-items:center;justify-content:center;
+            align-items:center;justify-content:flex-start;
             gap:16px;
             padding:24px 0;
             flex-wrap:wrap;
@@ -960,11 +837,10 @@
         .svg-icon-item{
             width:52px;height:52px;
             border-radius:16px;
-            background:rgba(255,255,255,.06);
-            border:1px solid rgba(255,255,255,.1);
+            background:#f5f5f7;
+            border:1px solid rgba(0,0,0,.06);
             display:flex;align-items:center;justify-content:center;
-            color:#fff;
-            box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+            color:#000;
             animation:iconPulse 3s ease-in-out infinite;
         }
         .svg-icon-item:nth-child(2){animation-delay:.4s}
@@ -977,7 +853,7 @@
             50%{transform:translateY(-6px)}
         }
 
-        /* ═════════════ TREAD STUDIO MOCK (slide 12) ═════════════ */
+        /* Slide 12 - Tread studio (kept from original, adapted) */
         .ts-mock{
             position:relative;
             width:min(260px,68vw);
@@ -985,7 +861,7 @@
             border-radius:24px;
             overflow:hidden;
             margin:20px auto;
-            box-shadow:0 24px 60px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.1);
+            box-shadow:0 24px 60px rgba(0,0,0,.3);
             background:#000;
         }
         .ts-camera-bg{
@@ -1001,104 +877,182 @@
                     radial-gradient(circle at 70% 60%,rgba(255,55,95,.3),transparent 50%),
                     radial-gradient(circle at 50% 80%,rgba(191,90,242,.25),transparent 50%);
         }
-        .ts-topbar{
-            position:absolute;top:0;left:0;right:0;
-            padding:12px;
-            display:flex;align-items:center;gap:8px;
-            z-index:10;
-        }
-        .ts-back{
-            width:32px;height:32px;
-            border-radius:50%;
-            color:#fff;
-            display:flex;align-items:center;justify-content:center;
-            filter:drop-shadow(0 1px 4px rgba(0,0,0,.6));
-        }
-        .ts-channel-pill{
-            display:flex;align-items:center;gap:6px;
-            color:#fff;
-        }
-        .ts-channel-ava{
-            width:28px;height:28px;border-radius:8px;
-            background:linear-gradient(135deg,#ff9f0a,#ff375f);
-            display:flex;align-items:center;justify-content:center;
-            font-size:11px;font-weight:800;color:#fff;
-            box-shadow:0 2px 8px rgba(0,0,0,.5);
-        }
-        .ts-channel-name{
-            font-size:12px;font-weight:600;
-            text-shadow:0 1px 4px rgba(0,0,0,.6);
-        }
-        .ts-side{
-            position:absolute;
-            top:52px;right:8px;
-            z-index:10;
-            display:flex;flex-direction:column;gap:14px;
-            align-items:center;
-        }
-        .ts-side-btn{
-            width:30px;height:30px;
-            color:#fff;
-            display:flex;align-items:center;justify-content:center;
-            filter:drop-shadow(0 1px 4px rgba(0,0,0,.7));
-        }
+        .ts-topbar{position:absolute;top:0;left:0;right:0;padding:12px;display:flex;align-items:center;gap:8px;z-index:10}
+        .ts-back{width:32px;height:32px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 1px 4px rgba(0,0,0,.6))}
+        .ts-channel-pill{display:flex;align-items:center;gap:6px;color:#fff}
+        .ts-channel-ava{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#ff9f0a,#ff375f);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff}
+        .ts-channel-name{font-size:12px;font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+        .ts-side{position:absolute;top:52px;right:8px;z-index:10;display:flex;flex-direction:column;gap:14px;align-items:center}
+        .ts-side-btn{width:30px;height:30px;color:#fff;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 1px 4px rgba(0,0,0,.7))}
         .ts-side-btn svg{width:22px;height:22px;stroke-width:2}
-        .ts-controls{
-            position:absolute;
-            left:0;right:0;bottom:14px;
-            z-index:10;
-            padding:0 12px;
-            display:flex;flex-direction:column;gap:10px;
-        }
-        .ts-time-row{
-            display:flex;justify-content:center;gap:2px;
-        }
-        .ts-time-btn{
-            padding:4px 10px;border-radius:100px;
-            color:rgba(255,255,255,.5);
-            font-size:11px;font-weight:600;
-        }
-        .ts-time-btn.active{
-            color:#fff;font-weight:800;
-            transform:scale(1.1);
-            text-shadow:0 1px 4px rgba(0,0,0,.6);
-        }
-        .ts-record-row{
-            display:flex;align-items:center;justify-content:center;
-            gap:22px;
-        }
-        .ts-gallery{
-            width:44px;height:44px;border-radius:10px;
-            border:2px solid rgba(255,255,255,.5);
-            color:#fff;
-            display:flex;align-items:center;justify-content:center;
-        }
+        .ts-controls{position:absolute;left:0;right:0;bottom:14px;z-index:10;padding:0 12px;display:flex;flex-direction:column;gap:10px}
+        .ts-time-row{display:flex;justify-content:center;gap:2px}
+        .ts-time-btn{padding:4px 10px;border-radius:100px;color:rgba(255,255,255,.5);font-size:11px;font-weight:600}
+        .ts-time-btn.active{color:#fff;font-weight:800;transform:scale(1.1)}
+        .ts-record-row{display:flex;align-items:center;justify-content:center;gap:22px}
+        .ts-gallery{width:44px;height:44px;border-radius:10px;border:2px solid rgba(255,255,255,.5);color:#fff;display:flex;align-items:center;justify-content:center}
         .ts-gallery svg{width:20px;height:20px}
-        .ts-record{
-            width:70px;height:70px;border-radius:50%;
-            border:5px solid #fff;
-            display:flex;align-items:center;justify-content:center;
-            box-shadow:0 4px 20px rgba(0,0,0,.4);
-        }
-        .ts-record-inner{
-            width:100%;height:100%;border-radius:50%;
-            background:#ff375f;
-        }
-        .ts-effects{
-            width:44px;height:44px;border-radius:50%;
-            color:#fff;
-            display:flex;align-items:center;justify-content:center;
-        }
+        .ts-record{width:70px;height:70px;border-radius:50%;border:5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+        .ts-record-inner{width:100%;height:100%;border-radius:50%;background:#ff375f}
+        .ts-effects{width:44px;height:44px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center}
         .ts-effects svg{width:26px;height:26px;stroke-width:2}
-        .ts-track-strip{
-            display:flex;align-items:center;justify-content:center;
-            gap:6px;padding:6px 0;
-            color:#fff;font-size:11px;font-weight:600;
-            text-shadow:0 1px 4px rgba(0,0,0,.6);
-        }
+        .ts-track-strip{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 0;color:#fff;font-size:11px;font-weight:600}
         .ts-track-strip svg{width:18px;height:18px;stroke-width:2}
 
-        /* ═════════════ ФИНАЛЬНЫЙ СЛАЙД ═════════════ */
+        /* Problems slides */
+        .problems-grid{
+            display:flex;
+            flex-direction:column;
+            gap:16px;
+            width:100%;
+        }
+        .problem-item{
+            display:flex;
+            gap:14px;
+            padding:18px;
+            background:#f5f5f7;
+            border-radius:18px;
+            border:1px solid rgba(0,0,0,.06);
+            text-align:left;
+            transition:transform .3s var(--spring);
+        }
+        .problem-item:hover{transform:translateY(-3px)}
+        .problem-icon{
+            width:52px;height:52px;
+            border-radius:14px;
+            display:flex;align-items:center;justify-content:center;
+            flex-shrink:0;
+            color:#fff;
+        }
+        .problem-icon.red{background:linear-gradient(135deg,#ff3b30,#ff375f)}
+        .problem-icon.blue{background:linear-gradient(135deg,#0a84ff,#bf5af2)}
+        .problem-icon.green{background:linear-gradient(135deg,#30d158,#0a84ff)}
+        .problem-icon.orange{background:linear-gradient(135deg,#ff9f0a,#ff375f)}
+        .problem-icon svg{width:26px;height:26px}
+        .problem-body{flex:1;min-width:0}
+        .problem-title{
+            font-size:15px;
+            font-weight:800;
+            color:#000;
+            margin-bottom:4px;
+        }
+        .problem-desc{
+            font-size:13px;
+            line-height:1.5;
+            color:rgba(0,0,0,.6);
+        }
+
+        /* Direct mock - adapted to white */
+        .direct-mock{
+            width:100%;max-width:340px;
+            height:460px;
+            margin:0 auto;
+            background:#f5f5f7;
+            border-radius:24px;
+            overflow:hidden;
+            display:flex;flex-direction:column;
+            box-shadow:0 24px 60px rgba(0,0,0,.15);
+            position:relative;
+            text-align:left;
+        }
+        .dr-mock-topbar{
+            display:flex;align-items:center;gap:8px;
+            padding:12px 14px;
+            background:rgba(255,255,255,.85);
+            backdrop-filter:blur(14px);
+            -webkit-backdrop-filter:blur(14px);
+            border-bottom:1px solid rgba(0,0,0,.06);
+            flex-shrink:0;
+        }
+        .dr-mock-icon-btn{
+            width:32px;height:32px;border-radius:50%;
+            background:rgba(0,0,0,.06);color:#000;
+            display:flex;align-items:center;justify-content:center;
+            flex-shrink:0;padding:0;
+        }
+        .dr-mock-peer{flex:1;display:flex;align-items:center;gap:10px;min-width:0}
+        .dr-mock-avatar{
+            width:36px;height:36px;border-radius:50%;
+            background:linear-gradient(135deg,#ffd60a,#ff375f);
+            overflow:hidden;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            color:#fff;font-weight:800;font-size:14px;
+        }
+        .dr-mock-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+        .dr-mock-peer-info{min-width:0;flex:1;line-height:1.15}
+        .dr-mock-peer-name{font-size:13.5px;font-weight:700;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .dr-mock-peer-status{font-size:11px;color:#30d158;display:flex;align-items:center;gap:4px;margin-top:2px;font-weight:600}
+        .dr-mock-peer-status::before{content:'';width:5px;height:5px;border-radius:50%;background:#30d158;box-shadow:0 0 6px #30d158;flex-shrink:0}
+        .dr-mock-pinned{
+            display:flex;align-items:center;gap:10px;
+            padding:8px 14px;
+            background:rgba(10,132,255,.1);
+            border-bottom:1px solid rgba(10,132,255,.1);
+            font-size:11.5px;color:rgba(0,0,0,.85);
+            flex-shrink:0;
+        }
+        .dr-mock-pinned svg{color:#0a84ff;flex-shrink:0}
+        .dr-mock-pinned-body{flex:1;min-width:0}
+        .dr-mock-pinned-title{font-size:10px;font-weight:800;color:#0a84ff;text-transform:uppercase;letter-spacing:.05em;margin-bottom:1px}
+        .dr-mock-pinned-text{font-size:11.5px;color:rgba(0,0,0,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .dr-mock-messages{flex:1;overflow:hidden;padding:12px 10px;display:flex;flex-direction:column;gap:6px;background:#f5f5f7}
+        .dr-mock-date{align-self:center;font-size:10px;color:rgba(0,0,0,.45);background:rgba(0,0,0,.05);padding:3px 10px;border-radius:100px;margin-bottom:6px;font-weight:700}
+        .dr-mock-row{display:flex;align-items:flex-end;gap:6px;max-width:85%;opacity:0;transform:translateY(8px);animation:drMockMsgIn .5s var(--ease-out) forwards}
+        .dr-mock-row:nth-child(2){animation-delay:.1s}
+        .dr-mock-row:nth-child(3){animation-delay:.28s}
+        .dr-mock-row:nth-child(4){animation-delay:.46s}
+        .dr-mock-row:nth-child(5){animation-delay:.64s}
+        .dr-mock-row:nth-child(6){animation-delay:.82s}
+        @keyframes drMockMsgIn{to{opacity:1;transform:none}}
+        .dr-mock-row.mine{align-self:flex-end;flex-direction:row-reverse}
+        .dr-mock-mini-ava{
+            width:24px;height:24px;border-radius:50%;
+            background:linear-gradient(135deg,#ffd60a,#ff375f);
+            color:#fff;font-size:10px;font-weight:800;
+            display:flex;align-items:center;justify-content:center;
+            overflow:hidden;flex-shrink:0;margin-bottom:2px;
+        }
+        .dr-mock-mini-ava img{width:100%;height:100%;object-fit:cover}
+        .dr-mock-mini-ava.ghost{visibility:hidden}
+        .dr-mock-bubble{
+            padding:8px 12px;
+            background:#fff;
+            color:#000;
+            border-radius:18px 18px 18px 6px;
+            font-size:13px;line-height:1.4;
+            max-width:100%;
+            box-shadow:0 1px 3px rgba(0,0,0,.06);
+            word-break:break-word;
+        }
+        .dr-mock-row.mine .dr-mock-bubble{
+            background:linear-gradient(135deg,#0a84ff,#0066cc);
+            color:#fff;
+            border-radius:18px 18px 6px 18px;
+        }
+        .dr-mock-bubble.sticker{background:transparent!important;box-shadow:none!important;padding:0!important;font-size:52px;line-height:1}
+        .dr-mock-bubble-foot{display:flex;align-items:center;justify-content:flex-end;gap:4px;font-size:10px;opacity:.55;margin-top:3px;line-height:1}
+        .dr-mock-bubble-foot .dr-mock-check{color:#5fdfff;display:inline-flex}
+        .dr-mock-check svg{width:14px;height:8px;display:block}
+        .dr-mock-typing{padding:6px 14px 8px;font-size:11px;color:rgba(0,0,0,.55);background:#f5f5f7;display:flex;align-items:center;gap:4px;flex-shrink:0;font-weight:600}
+        .dr-mock-typing-dots{display:inline-flex;gap:2px}
+        .dr-mock-typing-dots i{width:3px;height:3px;border-radius:50%;background:currentColor;animation:drMockDot 1.2s ease-in-out infinite;display:block}
+        .dr-mock-typing-dots i:nth-child(2){animation-delay:.15s}
+        .dr-mock-typing-dots i:nth-child(3){animation-delay:.3s}
+        @keyframes drMockDot{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-3px);opacity:1}}
+        .dr-mock-composer{
+            display:flex;align-items:center;gap:6px;
+            padding:8px 10px;
+            background:rgba(255,255,255,.85);
+            backdrop-filter:blur(14px);
+            -webkit-backdrop-filter:blur(14px);
+            border-top:1px solid rgba(0,0,0,.06);
+            flex-shrink:0;
+        }
+        .dr-mock-cbtn{width:34px;height:34px;border-radius:50%;background:transparent;color:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+        .dr-mock-cbtn.send{background:#0a84ff;color:#fff;box-shadow:0 4px 14px rgba(10,132,255,.45)}
+        .dr-mock-input{flex:1;padding:9px 14px;background:rgba(0,0,0,.06);border-radius:20px;font-size:13px;color:rgba(0,0,0,.4);min-height:36px;display:flex;align-items:center}
+
+        /* Freedom slide */
         .slide-final{
             background:linear-gradient(180deg,#1a0d2e 0%,#0a0d1e 100%);
             display:flex;align-items:center;justify-content:center;
@@ -1115,286 +1069,35 @@
             animation:bgFloat 12s ease-in-out infinite;
             pointer-events:none;
         }
-        @keyframes bgFloat{
-            0%,100%{transform:scale(1) rotate(0)}
-            50%{transform:scale(1.15) rotate(5deg)}
-        }
-        .final-content{
-            position:relative;z-index:2;
-            text-align:center;
-            display:flex;flex-direction:column;
-            gap:20px;
-            max-width:380px;
-        }
-        .final-title{
-            font-size:clamp(26px,6.5vw,36px);
-            font-weight:900;
-            letter-spacing:-.03em;
-            line-height:1.15;
-        }
+        @keyframes bgFloat{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.15) rotate(5deg)}}
+        .final-content{position:relative;z-index:2;text-align:left;display:flex;flex-direction:column;gap:20px;max-width:380px}
+        .final-title{font-size:clamp(26px,6.5vw,36px);font-weight:900;letter-spacing:-.03em;line-height:1.15;color:#fff}
         .final-title .gradient{
             background:linear-gradient(135deg,#bf5af2,#0a84ff);
             -webkit-background-clip:text;background-clip:text;
             -webkit-text-fill-color:transparent;
         }
-        .final-text{
-            font-size:15px;
-            color:rgba(255,255,255,.7);
-            line-height:1.55;
-        }
+        .final-text{font-size:15px;color:rgba(255,255,255,.7);line-height:1.55}
         .final-link{
             display:inline-flex;align-items:center;gap:6px;
             padding:12px 22px;
             background:linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2);
             background-size:200% 200%;
             animation:liveCardBg 6s ease-in-out infinite;
-            color:#fff;
-            font-size:14px;font-weight:800;
+            color:#fff;font-size:14px;font-weight:800;
             border-radius:100px;
-            margin:8px auto 0;
+            margin:8px 0 0;
             box-shadow:0 10px 30px rgba(255,55,95,.4);
-            transition:transform .2s var(--spring);
+            align-self:flex-start;
         }
-        .final-link:hover{transform:scale(1.05)}
-        @keyframes liveCardBg{
-            0%,100%{background-position:0% 50%}
-            50%{background-position:100% 50%}
-        }
+        @keyframes liveCardBg{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 
-        /* ═════════════ АДАПТИВ ═════════════ */
-        @media (max-width:380px){
-            .content{padding:32px 20px}
-            .banner{padding:26px 20px}
-            .avatar-circle{width:52px;height:52px}
-            .avatar-emoji{width:26px;height:26px}
-            .ts-mock{width:min(240px,72vw)}
-        }
-        @media (prefers-reduced-motion:reduce){
-            *,*::before,*::after{
-                animation-duration:.01ms!important;
-                animation-iteration-count:1!important;
-                transition-duration:.01ms!important;
-            }
-        }
-        /* ═════════════ SLIDE 13 — DIRECT CHAT MOCK ═════════════ */
-        .direct-mock{
-            width:100%;max-width:340px;
-            height:480px;
-            margin:0 auto;
-            background:#0e1621;
-            border-radius:24px;
-            overflow:hidden;
-            display:flex;flex-direction:column;
-            box-shadow:0 24px 60px rgba(0,0,0,.7),
-            0 0 0 1px rgba(255,255,255,.08),
-            inset 0 1px 0 rgba(255,255,255,.06);
-            position:relative;
-            text-align:left;
-        }
-        .dr-mock-topbar{
-            display:flex;align-items:center;gap:8px;
-            padding:12px 14px;
-            background:rgba(28,28,30,.88);
-            border-bottom:1px solid rgba(255,255,255,.06);
-            flex-shrink:0;
-            backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-        }
-        .dr-mock-icon-btn{
-            width:32px;height:32px;border-radius:50%;
-            background:rgba(255,255,255,.08);
-            color:#fff;
-            display:flex;align-items:center;justify-content:center;
-            flex-shrink:0;
-            padding:0;
-        }
-        .dr-mock-peer{
-            flex:1;display:flex;align-items:center;gap:10px;
-            min-width:0;
-        }
-        .dr-mock-avatar{
-            width:36px;height:36px;border-radius:50%;
-            background:linear-gradient(135deg,#ffd60a,#ff375f);
-            overflow:hidden;flex-shrink:0;
-            display:flex;align-items:center;justify-content:center;
-            color:#fff;font-weight:800;font-size:14px;
-        }
-        .dr-mock-avatar img{width:100%;height:100%;object-fit:cover;display:block}
-        .dr-mock-peer-info{min-width:0;flex:1;line-height:1.15}
-        .dr-mock-peer-name{
-            font-size:13.5px;font-weight:700;color:#fff;
-            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-        }
-        .dr-mock-peer-status{
-            font-size:11px;color:#30d158;
-            display:flex;align-items:center;gap:4px;margin-top:2px;
-            font-weight:600;
-        }
-        .dr-mock-peer-status::before{
-            content:'';width:5px;height:5px;border-radius:50%;
-            background:#30d158;box-shadow:0 0 6px #30d158;
-            flex-shrink:0;
-        }
-        .dr-mock-pinned{
-            display:flex;align-items:center;gap:10px;
-            padding:8px 14px;
-            background:rgba(10,132,255,.16);
-            border-bottom:1px solid rgba(10,132,255,.15);
-            font-size:11.5px;
-            color:rgba(255,255,255,.85);
-            flex-shrink:0;
-        }
-        .dr-mock-pinned svg{color:#0a84ff;flex-shrink:0}
-        .dr-mock-pinned-body{flex:1;min-width:0}
-        .dr-mock-pinned-title{
-            font-size:10px;font-weight:800;color:#0a84ff;
-            text-transform:uppercase;letter-spacing:.05em;
-            margin-bottom:1px;
-        }
-        .dr-mock-pinned-text{
-            font-size:11.5px;color:rgba(255,255,255,.75);
-            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-        }
-
-        .dr-mock-messages{
-            flex:1;overflow:hidden;
-            padding:12px 10px;
-            display:flex;flex-direction:column;gap:6px;
-            background:#0e1621;
-            position:relative;
-        }
-        .dr-mock-date{
-            align-self:center;
-            font-size:10px;color:rgba(255,255,255,.45);
-            background:rgba(255,255,255,.06);
-            padding:3px 10px;border-radius:100px;
-            margin-bottom:6px;font-weight:700;
-            letter-spacing:.02em;
-        }
-        .dr-mock-row{
-            display:flex;align-items:flex-end;gap:6px;
-            max-width:85%;
-            opacity:0;transform:translateY(8px);
-            animation:drMockMsgIn .5s var(--ease-out) forwards;
-        }
-        .dr-mock-row:nth-child(2){animation-delay:.1s}
-        .dr-mock-row:nth-child(3){animation-delay:.28s}
-        .dr-mock-row:nth-child(4){animation-delay:.46s}
-        .dr-mock-row:nth-child(5){animation-delay:.64s}
-        .dr-mock-row:nth-child(6){animation-delay:.82s}
-        @keyframes drMockMsgIn{
-            to{opacity:1;transform:none}
-        }
-        .dr-mock-row.mine{align-self:flex-end;flex-direction:row-reverse}
-
-        .dr-mock-mini-ava{
-            width:24px;height:24px;border-radius:50%;
-            background:linear-gradient(135deg,#ffd60a,#ff375f);
-            color:#fff;font-size:10px;font-weight:800;
-            display:flex;align-items:center;justify-content:center;
-            overflow:hidden;flex-shrink:0;
-            margin-bottom:2px;
-        }
-        .dr-mock-mini-ava img{width:100%;height:100%;object-fit:cover}
-        .dr-mock-mini-ava.ghost{visibility:hidden}
-
-        .dr-mock-bubble{
-            padding:8px 12px;
-            background:#182533;
-            color:#fff;
-            border-radius:18px 18px 18px 6px;
-            font-size:13px;
-            line-height:1.4;
-            max-width:100%;
-            box-shadow:0 1px 3px rgba(0,0,0,.25);
-            position:relative;
-            word-break:break-word;
-        }
-        .dr-mock-row.mine .dr-mock-bubble{
-            background:linear-gradient(135deg,#2b5278 0%,#1e3a5c 100%);
-            border-radius:18px 18px 6px 18px;
-        }
-        .dr-mock-bubble.sticker{
-            background:transparent!important;
-            box-shadow:none!important;
-            padding:0!important;
-            font-size:52px;
-            line-height:1;
-            filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));
-        }
-        .dr-mock-bubble-foot{
-            display:flex;align-items:center;justify-content:flex-end;gap:4px;
-            font-size:10px;opacity:.55;margin-top:3px;
-            line-height:1;
-        }
-        .dr-mock-bubble-foot .dr-mock-check{
-            color:#5fdfff;display:inline-flex;
-        }
-        .dr-mock-check svg{width:14px;height:8px;display:block}
-
-        .dr-mock-typing{
-            padding:6px 14px 8px;
-            font-size:11px;
-            color:rgba(255,255,255,.55);
-            background:#0e1621;
-            display:flex;align-items:center;gap:4px;
-            flex-shrink:0;
-            font-weight:600;
-        }
-        .dr-mock-typing-dots{display:inline-flex;gap:2px}
-        .dr-mock-typing-dots i{
-            width:3px;height:3px;border-radius:50%;
-            background:currentColor;
-            animation:drMockDot 1.2s ease-in-out infinite;
-            display:block;
-        }
-        .dr-mock-typing-dots i:nth-child(2){animation-delay:.15s}
-        .dr-mock-typing-dots i:nth-child(3){animation-delay:.3s}
-        @keyframes drMockDot{
-            0%,80%,100%{transform:translateY(0);opacity:.35}
-            40%{transform:translateY(-3px);opacity:1}
-        }
-
-        .dr-mock-composer{
-            display:flex;align-items:center;gap:6px;
-            padding:8px 10px calc(8px);
-            background:rgba(28,28,30,.92);
-            border-top:1px solid rgba(255,255,255,.06);
-            flex-shrink:0;
-            backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-        }
-        .dr-mock-cbtn{
-            width:34px;height:34px;border-radius:50%;
-            background:transparent;
-            color:rgba(255,255,255,.55);
-            display:flex;align-items:center;justify-content:center;
-            flex-shrink:0;
-            padding:0;
-        }
-        .dr-mock-cbtn.send{
-            background:#0a84ff;
-            color:#fff;
-            box-shadow:0 4px 14px rgba(10,132,255,.45);
-        }
-        .dr-mock-input{
-            flex:1;
-            padding:9px 14px;
-            background:rgba(120,120,128,.24);
-            border-radius:20px;
-            font-size:13px;
-            color:rgba(255,255,255,.4);
-            min-height:36px;
-            display:flex;align-items:center;
-        }
-
-        /* ═════════════ SLIDE 15 — JOIN + FOOTER ═════════════ */
+        /* Join + Footer */
         .slide-join{
             background:linear-gradient(180deg,#1a0d2e 0%,#0a0d1e 60%,#050510 100%);
-            display:flex;flex-direction:column;
-            justify-content:space-between;
-            align-items:center;
-            padding:80px 24px 32px;
-            position:relative;
-            overflow:hidden;
+            display:flex;flex-direction:column;justify-content:space-between;
+            align-items:center;padding:80px 24px 32px;
+            position:relative;overflow:hidden;
         }
         .slide-join::before{
             content:'';position:absolute;inset:0;
@@ -1403,145 +1106,50 @@
                     radial-gradient(circle at 80% 30%,rgba(255,55,95,.25),transparent 50%),
                     radial-gradient(circle at 50% 80%,rgba(10,132,255,.3),transparent 55%);
             animation:joinBgFloat 14s ease-in-out infinite;
-            pointer-events:none;
-            z-index:0;
+            pointer-events:none;z-index:0;
         }
-        @keyframes joinBgFloat{
-            0%,100%{transform:scale(1) rotate(0)}
-            50%{transform:scale(1.15) rotate(4deg)}
-        }
-        .join-main{
-            position:relative;z-index:2;
-            display:flex;flex-direction:column;
-            align-items:center;gap:18px;
-            text-align:center;
-            max-width:340px;
-            flex:1;
-            justify-content:center;
-        }
-        .join-logo{
-            width:104px;height:104px;border-radius:50%;
-            background:#fff;
-            overflow:hidden;
-            display:flex;align-items:center;justify-content:center;
-            box-shadow:0 20px 60px rgba(255,255,255,.18),
-            0 0 0 1px rgba(255,255,255,.1);
-            animation:joinLogoPulse 4s ease-in-out infinite;
-            flex-shrink:0;
-        }
+        @keyframes joinBgFloat{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.15) rotate(4deg)}}
+        .join-main{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;max-width:340px;flex:1;justify-content:center}
+        .join-logo{width:104px;height:104px;border-radius:50%;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 20px 60px rgba(255,255,255,.18);animation:joinLogoPulse 4s ease-in-out infinite;flex-shrink:0}
         .join-logo img{width:100%;height:100%;object-fit:cover;display:block}
-        @keyframes joinLogoPulse{
-            0%,100%{transform:scale(1)}
-            50%{transform:scale(1.06)}
-        }
+        @keyframes joinLogoPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
         .join-title{
-            font-size:clamp(28px,7vw,40px);
-            font-weight:900;
-            letter-spacing:-.03em;
-            line-height:1.05;
+            font-size:clamp(28px,7vw,40px);font-weight:900;letter-spacing:-.03em;line-height:1.05;
             background:linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2,#0a84ff,#30d158,#ff9f0a);
             background-size:300% 300%;
             -webkit-background-clip:text;background-clip:text;
-            -webkit-text-fill-color:transparent;color:transparent;
+            -webkit-text-fill-color:transparent;
             animation:joinTitleGrad 6s ease-in-out infinite;
         }
-        @keyframes joinTitleGrad{
-            0%,100%{background-position:0% 50%}
-            50%{background-position:100% 50%}
-        }
-        .join-text{
-            font-size:15px;
-            color:rgba(255,255,255,.7);
-            line-height:1.5;
-            max-width:300px;
-        }
-        .join-cta{
-            display:inline-flex;align-items:center;gap:8px;
-            padding:16px 32px;
-            background:#fff;
-            color:#000;
-            font-size:15px;
-            font-weight:800;
-            border-radius:100px;
-            box-shadow:0 14px 36px rgba(255,255,255,.18),
-            inset 0 1px 0 rgba(255,255,255,.6);
-            transition:transform .2s var(--spring),box-shadow .2s;
-            margin-top:8px;
-            text-decoration:none;
-        }
-        .join-cta:hover{
-            transform:scale(1.05);
-            box-shadow:0 18px 44px rgba(255,255,255,.25);
-        }
-        .join-cta svg{
-            width:16px;height:16px;
-            transition:transform .25s var(--ease-out);
-        }
-        .join-cta:hover svg{transform:translateX(3px)}
-
-        .join-footer{
-            position:relative;z-index:2;
-            display:flex;flex-direction:column;
-            align-items:center;
-            gap:14px;
-            padding-top:32px;
-            width:100%;
-            max-width:400px;
-        }
-        .join-footer-links{
-            display:flex;flex-wrap:wrap;justify-content:center;
-            gap:6px 16px;
-        }
-        .join-footer-links a{
-            font-size:12px;
-            color:rgba(255,255,255,.5);
-            padding:4px 0;
-            transition:color .2s;
-        }
+        @keyframes joinTitleGrad{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+        .join-text{font-size:15px;color:rgba(255,255,255,.7);line-height:1.5;max-width:300px}
+        .join-cta{display:inline-flex;align-items:center;gap:8px;padding:16px 32px;background:#fff;color:#000;font-size:15px;font-weight:800;border-radius:100px;box-shadow:0 14px 36px rgba(255,255,255,.18);transition:transform .2s var(--spring);margin-top:8px;text-decoration:none}
+        .join-cta:hover{transform:scale(1.05)}
+        .join-footer{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:32px;width:100%;max-width:400px}
+        .join-footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 16px}
+        .join-footer-links a{font-size:12px;color:rgba(255,255,255,.5);padding:4px 0;transition:color .2s}
         .join-footer-links a:hover{color:#fff}
-        .join-footer-social{
-            display:flex;gap:10px;align-items:center;
-            margin-top:2px;
-        }
-        .join-social{
-            width:36px;height:36px;border-radius:50%;
-            background:rgba(255,255,255,.08);
-            border:1px solid rgba(255,255,255,.1);
-            color:rgba(255,255,255,.7);
-            display:flex;align-items:center;justify-content:center;
-            transition:all .2s var(--spring);
-        }
-        .join-social:hover{
-            background:rgba(255,255,255,.16);
-            color:#fff;
-            transform:translateY(-2px);
-        }
+        .join-footer-social{display:flex;gap:10px;align-items:center;margin-top:2px}
+        .join-social{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;transition:all .2s var(--spring)}
+        .join-social:hover{background:rgba(255,255,255,.16);color:#fff;transform:translateY(-2px)}
         .join-social svg{width:16px;height:16px}
-        .join-footer-copy{
-            font-size:11px;
-            color:rgba(255,255,255,.3);
-            text-align:center;
-            letter-spacing:.01em;
-            line-height:1.5;
-        }
-        .join-footer-copy b{
-            color:rgba(255,255,255,.55);
-            font-weight:700;
-        }
+        .join-footer-copy{font-size:11px;color:rgba(255,255,255,.3);text-align:center;line-height:1.5}
+        .join-footer-copy b{color:rgba(255,255,255,.55);font-weight:700}
 
         @media (max-width:380px){
-            .direct-mock{height:440px}
+            .direct-mock{height:420px}
             .dr-mock-bubble.sticker{font-size:44px}
             .join-logo{width:88px;height:88px}
+        }
+        @media (prefers-reduced-motion:reduce){
+            *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
         }
     </style>
 </head>
 <body>
 
-<!-- ПРОГРЕСС -->
 <div class="progress-bar" id="progressBar"></div>
 
-<!-- ШАПКА -->
 <header class="page-header" id="pageHeader">
     <div class="logo">
         <div class="logo-img"><img src="/logo.jpeg" alt="listatread"></div>
@@ -1550,17 +1158,15 @@
     <a href="#final" class="about-link">about</a>
 </header>
 
-<!-- ТОЧКИ -->
 <div class="slide-dots" id="slideDots"></div>
 
-<!-- ═════════════ СЛАЙДЫ ═════════════ -->
 <main class="slides" id="slides">
 
-    <!-- ─────────── SLIDE 1 ─────────── -->
+    <!-- SLIDE 1 - HERO -->
     <section class="slide slide-hero" data-slide="1">
         <div class="banner banner-orange hero-banner">
             <p class="reveal" data-delay="1">
-                Наша миссия рассказать о&nbsp;вас большему количеству людей, используя повседневную жизнь.
+                Наша миссия рассказать о вас большему количеству людей, используя повседневную жизнь.
             </p>
         </div>
         <div class="hero-body">
@@ -1569,7 +1175,30 @@
                 созданная осенью 2026
             </p>
 
-            <div class="avatars-showcase reveal" data-delay="3">
+            <div class="strip-marquee reveal" data-delay="3">
+                <div class="strip-track">
+                    <!-- duplicates for seamless loop -->
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p1/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p2/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p3/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p4/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p5/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p6/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p7/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p8/200/300" alt=""></div>
+                    <!-- duplicate set -->
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p1/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p2/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p3/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p4/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p5/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p6/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p7/200/300" alt=""></div>
+                    <div class="strip-photo"><img src="https://picsum.photos/seed/p8/200/300" alt=""></div>
+                </div>
+            </div>
+
+            <div class="avatars-showcase reveal" data-delay="4">
                 <div class="avatar-badge">
                     <div class="avatar-circle">
                         <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex&backgroundColor=ffd60a" alt="">
@@ -1605,22 +1234,103 @@
                 </div>
             </div>
 
-            <p class="scroll-hint reveal" data-delay="4">листайте чтобы смотреть далее</p>
+            <p class="scroll-hint reveal" data-delay="5">листайте чтобы смотреть далее</p>
         </div>
     </section>
 
-    <!-- ─────────── SLIDE 2 ─────────── -->
+    <!-- SLIDE 2 - CHANNEL CREATION -->
     <section class="slide" data-slide="2">
         <div class="banner banner-green">
             <p class="reveal" data-delay="1">
-                Создание своего личного канала на&nbsp;платформе <b>listatread</b> — это уже большой шаг к&nbsp;успеху
+                Создание своего личного канала на платформе <b>listatread</b> — это уже большой шаг к успеху
             </p>
         </div>
         <div class="content">
             <p class="text-body reveal" data-delay="2">
-                Здесь не нужно выкладывать контент через свой профиль — создайте свой канал сегодня и&nbsp;делитесь своим контентом прямо сейчас
+                Здесь не нужно выкладывать контент через свой профиль — создайте свой канал сегодня и делитесь своим контентом прямо сейчас
             </p>
-            <div class="icon-showcase reveal" data-delay="3">
+
+            <!-- Channel avatars marquee -->
+            <div class="strip-marquee reveal" data-delay="3">
+                <div class="strip-track">
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch1/200/200" alt=""></div>
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch2/200/200" alt=""></div>
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch3/200/200" alt=""></div>
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch4/200/200" alt=""></div>
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch5/200/200" alt=""></div>
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch6/200/200" alt=""></div>
+                    <!-- duplicates -->
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch1/200/200" alt=""></div>
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch2/200/200" alt=""></div>
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch3/200/200" alt=""></div>
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch4/200/200" alt=""></div>
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch5/200/200" alt=""></div>
+                    <div class="strip-photo" style="width:72px;height:72px;border-radius:16px"><img src="https://picsum.photos/seed/ch6/200/200" alt=""></div>
+                </div>
+            </div>
+
+            <!-- Photos with likes -->
+            <div class="strip-marquee reveal" data-delay="4">
+                <div class="strip-track slow">
+                    <div class="strip-photo" style="width:140px;height:180px;position:relative">
+                        <img src="https://picsum.photos/seed/like1/280/360" alt="">
+                        <div style="position:absolute;bottom:8px;left:8px;background:rgba(255,255,255,.95);padding:4px 8px;border-radius:100px;font-size:11px;font-weight:700;color:#000;display:flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,.15)">
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="#ff375f"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            2.4K
+                        </div>
+                    </div>
+                    <div class="strip-photo" style="width:140px;height:180px;position:relative">
+                        <img src="https://picsum.photos/seed/like2/280/360" alt="">
+                        <div style="position:absolute;bottom:8px;left:8px;background:rgba(255,255,255,.95);padding:4px 8px;border-radius:100px;font-size:11px;font-weight:700;color:#000;display:flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,.15)">
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="#ff375f"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            8.1K
+                        </div>
+                    </div>
+                    <div class="strip-photo" style="width:140px;height:180px;position:relative">
+                        <img src="https://picsum.photos/seed/like3/280/360" alt="">
+                        <div style="position:absolute;bottom:8px;left:8px;background:rgba(255,255,255,.95);padding:4px 8px;border-radius:100px;font-size:11px;font-weight:700;color:#000;display:flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,.15)">
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="#ff375f"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            5.6K
+                        </div>
+                    </div>
+                    <!-- duplicates -->
+                    <div class="strip-photo" style="width:140px;height:180px;position:relative">
+                        <img src="https://picsum.photos/seed/like1/280/360" alt="">
+                    </div>
+                    <div class="strip-photo" style="width:140px;height:180px;position:relative">
+                        <img src="https://picsum.photos/seed/like2/280/360" alt="">
+                    </div>
+                    <div class="strip-photo" style="width:140px;height:180px;position:relative">
+                        <img src="https://picsum.photos/seed/like3/280/360" alt="">
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-body reveal" data-delay="5">
+                Здесь каждый может стать частью чего-то большего
+            </p>
+
+            <!-- Team to channel -->
+            <div class="team-to-channel reveal" data-delay="6">
+                <div class="team-member">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=U1&backgroundColor=ffd60a" alt="">
+                    <span>Alex</span>
+                </div>
+                <div class="team-member">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=U2&backgroundColor=ff375f" alt="">
+                    <span>Maria</span>
+                </div>
+                <div class="team-member">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=U3&backgroundColor=0a84ff" alt="">
+                    <span>Kate</span>
+                </div>
+                <div class="team-arrow">→</div>
+                <div class="team-channel-ava">
+                    <img src="https://picsum.photos/seed/teamch/200/200" alt="">
+                </div>
+            </div>
+
+            <div class="icon-showcase reveal" data-delay="6">
                 <div class="icon-box">
                     <svg class="icon-heart" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -1643,15 +1353,32 @@
         </div>
     </section>
 
-    <!-- ─────────── SLIDE 3 ─────────── -->
-    <section class="slide" data-slide="3">
+    <!-- SLIDE 3 - SHARE YOURSELF -->
+    <section class="slide" data-slide="3" style="position:relative">
         <div class="banner banner-blue">
             <p class="reveal" data-delay="1">
-                Делитесь собой! Здесь не&nbsp;нужно сложных навыков или переделывать себя под&nbsp;тенденции.
+                Делитесь собой! Здесь не нужно сложных навыков или переделывать себя под тенденции.
             </p>
         </div>
-        <div class="content">
+        <div class="content" style="position:relative">
+            <div class="floating-hearts" aria-hidden="true">
+                <span class="floating-heart"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+                <span class="floating-heart"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+                <span class="floating-heart"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+                <span class="floating-heart"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+                <span class="floating-heart"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+            </div>
+
             <div class="card-showcase reveal" data-delay="2">
+                <div class="showcase-card showcase-card-3">
+                    <img src="https://picsum.photos/seed/sh3/360/480" alt="">
+                </div>
+                <div class="showcase-card showcase-card-4">
+                    <img src="https://picsum.photos/seed/sh4/360/480" alt="">
+                </div>
+                <div class="showcase-card showcase-card-5">
+                    <img src="https://picsum.photos/seed/sh5/360/480" alt="">
+                </div>
                 <div class="showcase-card showcase-card-1">
                     <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=400&auto=format&fit=crop" alt="">
                 </div>
@@ -1669,36 +1396,38 @@
                     </svg>
                 </div>
             </div>
-            <div class="reveal" data-delay="3" style="text-align:center;margin-top:8px">
+            <div class="reveal" data-delay="3" style="text-align:left;margin-top:8px">
                 <p style="font-size:15px;font-weight:600;color:#4ade80;line-height:1.5">
                     Вы и есть частичка чего-то большого
                 </p>
-                <p class="hashtag" style="font-size:18px;margin-top:6px">#listatread</p>
+                <p class="hashtag hashtag-black" style="font-size:18px;margin-top:6px">#listatread</p>
             </div>
         </div>
     </section>
 
-    <!-- ─────────── SLIDE 4 ─────────── -->
-    <section class="slide" data-slide="4">
-        <div class="banner banner-yellow banner-half">
-            <p class="reveal" data-delay="1" style="font-weight:600">
+    <!-- SLIDE 4 - HAPPY MOMENTS -->
+    <section class="slide slide-yellow-full" data-slide="4">
+        <div class="banner banner-yellow-half">
+            <p class="reveal" data-delay="1">
                 Поделитесь счастливыми моментами из жизни сейчас!
             </p>
         </div>
-        <div class="content content-left" style="padding-left:32px;align-items:center;text-align:center">
-            <p class="text-body reveal" data-delay="2" style="margin:0 auto">
-                На самом деле создавать контент не&nbsp;сложно
-            </p>
-            <div class="hashtags reveal" data-delay="3">
-                <span class="hashtag">#new</span>
-                <span class="hashtag">#tread</span>
-                <span class="hashtag">#channels</span>
+        <div class="content" style="align-items:flex-start;text-align:left;justify-content:space-between;padding-bottom:40px">
+            <div>
+                <p class="text-body reveal" data-delay="2" style="margin:0;color:#1a1a1a;font-weight:600;font-size:18px">
+                    На самом деле создавать контент не сложно
+                </p>
+                <div class="hashtags reveal" data-delay="3" style="margin-top:16px">
+                    <span class="hashtag hashtag-pink">#new</span>
+                    <span class="hashtag hashtag-pink">#tread</span>
+                    <span class="hashtag hashtag-pink">#channels</span>
+                </div>
             </div>
-            <p class="scroll-hint reveal" data-delay="4" style="margin-top:24px">свайп влево-вправо</p>
+            <p class="scroll-hint reveal" data-delay="4" style="margin-top:auto;color:rgba(0,0,0,.5)">свайп влево-вправо</p>
         </div>
     </section>
 
-    <!-- ─────────── NOTEBOOK SECTION (5-9) ─────────── -->
+    <!-- NOTEBOOK 5-9 -->
     <section class="slide notebook-section" data-slide="5-9">
         <div class="notebook-header">
             <div class="notebook-title"><span class="at-symbol">@</span> тетрадка</div>
@@ -1711,10 +1440,10 @@
 
         <div class="notebook-track" id="notebookTrack">
 
-            <!-- PAGE 5: Purple — текстовый тред -->
+            <!-- PAGE 5: purple -->
             <div class="notebook-page" data-page="5">
-                <div class="banner banner-purple banner-small">
-                    <p>Создайте обычную ветку — расскажите о&nbsp;том, чем живете, не&nbsp;стоит думать как я&nbsp;выгляжу со&nbsp;стороны</p>
+                <div class="banner banner-small">
+                    <p>Создайте обычную ветку — расскажите о том, чем живете, не стоит думать как я выгляжу со стороны</p>
                 </div>
 
                 <article class="thread-card">
@@ -1724,20 +1453,17 @@
                                 <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=John&backgroundColor=ffd60a" alt="">
                                 <div class="tc-status">🥰</div>
                             </div>
-                            <div class="tc-plus">+</div>
                         </div>
                         <div class="tc-info">
                             <div class="tc-name-row">
                                 <span class="tc-name">John Doe</span>
-                                <span class="tc-admin">🦝</span>
                                 <span class="tc-channel-badge">
-                                    <span class="tc-channel-logo">T</span>
+                                    <span class="tc-channel-logo"><img src="https://picsum.photos/seed/chth/40/40" alt=""></span>
                                     <span class="tc-channel-name">Thoughts</span>
                                 </span>
                             </div>
                             <div class="tc-time">10 мин назад</div>
                         </div>
-                        <button class="tc-sub-btn">+</button>
                     </div>
                     <div class="tc-content">Иногда самые гениальные идеи приходят в голову, когда просто сидишь в тишине и никуда не спешишь. Цените моменты. ✨</div>
                     <div class="tc-footer">
@@ -1776,46 +1502,46 @@
                 </article>
             </div>
 
-            <!-- PAGE 6: Red — видео -->
+            <!-- PAGE 6: red - video -->
             <div class="notebook-page" data-page="6">
-                <div class="banner banner-red banner-small">
+                <div class="banner banner-small">
                     <p>Запечатлите счастливый момент — выложите фото или видео прямо тут и сейчас, пусть это увидит мир</p>
                 </div>
 
-                <div class="video-showcase">
-                    <div class="video-side-photo">
-                        <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=200&auto=format&fit=crop" alt="">
-                    </div>
-                    <div class="video-main">
-                        <video src="https://www.w3schools.com/html/mov_bbb.mp4" autoplay muted loop playsinline></video>
-                        <div class="video-play-overlay">
-                            <svg viewBox="0 0 24 24" fill="#fff">
-                                <path d="M8 5v14l11-7z"/>
-                            </svg>
+                <div style="position:relative;border-radius:20px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.4);background:#000;aspect-ratio:9/14">
+                    <video src="https://www.w3schools.com/html/mov_bbb.mp4" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover"></video>
+                    <div style="position:absolute;top:0;left:0;right:0;padding:12px 14px;background:linear-gradient(180deg,rgba(0,0,0,.6),transparent);color:#fff;display:flex;align-items:center;gap:10px">
+                        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ffd60a,#ff375f);overflow:hidden;flex-shrink:0">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Vid&backgroundColor=ffd60a" style="width:100%;height:100%;object-fit:cover" alt="">
                         </div>
-                        <div class="video-side-right">
-                            <div class="video-side-btn">
-                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                                4.2K
-                            </div>
-                            <div class="video-side-btn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                                320
-                            </div>
-                            <div class="video-side-btn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-                            </div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-size:13px;font-weight:700">Alex</div>
+                            <div style="font-size:11px;opacity:.8">5 мин назад</div>
                         </div>
                     </div>
-                    <div class="video-side-photo">
-                        <img src="https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=200&auto=format&fit=crop" alt="">
+                    <div style="position:absolute;right:8px;bottom:80px;display:flex;flex-direction:column;gap:14px;align-items:center;color:#fff;filter:drop-shadow(0 1px 4px rgba(0,0,0,.7))">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            4.2K
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            320
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                        </div>
                     </div>
+                </div>
+
+                <div class="banner banner-lime banner-small" style="margin-top:12px">
+                    <p>Поделитесь своим подкастом, плейлистом или треком — пусть ваш вкус музыки распространяется!</p>
                 </div>
             </div>
 
-            <!-- PAGE 7: Lime — трек -->
+            <!-- PAGE 7: lime - music -->
             <div class="notebook-page" data-page="7">
-                <div class="banner banner-lime banner-small">
+                <div class="banner banner-small">
                     <p>Поделитесь своим подкастом, плейлистом или треком — пусть ваш вкус музыки распространяется!</p>
                 </div>
 
@@ -1831,13 +1557,12 @@
                             <div class="tc-name-row">
                                 <span class="tc-name">DJ Tread</span>
                                 <span class="tc-channel-badge">
-                                    <span class="tc-channel-logo">M</span>
+                                    <span class="tc-channel-logo"><img src="https://picsum.photos/seed/musicch/40/40" alt=""></span>
                                     <span class="tc-channel-name">Music</span>
                                 </span>
                             </div>
                             <div class="tc-time">1 час назад</div>
                         </div>
-                        <button class="tc-sub-btn">+</button>
                     </div>
                     <div class="tc-content">Новый трек, билеты на концерт уже в прокате! 💪</div>
                     <div class="tc-track">
@@ -1850,6 +1575,10 @@
                         </div>
                     </div>
                     <div class="tc-footer">
+                        <div class="tc-footer-avatar">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=DJ" alt="">
+                        </div>
+                        <button class="tc-follow-text">Подписаться</button>
                         <button class="tc-action liked">
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                             9.8K
@@ -1865,13 +1594,26 @@
                             <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
                         </button>
                     </div>
+                    <button class="tc-discuss">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <span class="tc-discuss-label">Обсуждение</span>
+                        <span class="tc-discuss-right">
+                            <span class="tc-cstack">
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=D1" alt=""></span>
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=D2" alt=""></span>
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=D3" alt=""></span>
+                            </span>
+                            <span class="tc-count">720</span>
+                            <span class="tc-chev">›</span>
+                        </span>
+                    </button>
                 </article>
             </div>
 
-            <!-- PAGE 8: Blue — опрос -->
+            <!-- PAGE 8: blue - poll -->
             <div class="notebook-page" data-page="8">
-                <div class="banner banner-blue banner-small">
-                    <p style="color:#fff">Спросите общество — создайте опрос и смотрите за результатами</p>
+                <div class="banner banner-small">
+                    <p>Спросите общество — создайте опрос и смотрите за результатами</p>
                 </div>
 
                 <article class="thread-card">
@@ -1886,13 +1628,12 @@
                             <div class="tc-name-row">
                                 <span class="tc-name">Tech News</span>
                                 <span class="tc-channel-badge">
-                                    <span class="tc-channel-logo">T</span>
+                                    <span class="tc-channel-logo"><img src="https://picsum.photos/seed/techch/40/40" alt=""></span>
                                     <span class="tc-channel-name">Tech</span>
                                 </span>
                             </div>
                             <div class="tc-time">4 часа назад</div>
                         </div>
-                        <button class="tc-sub-btn">+</button>
                     </div>
                     <div class="tc-content">Какой язык программирования вы изучаете сейчас?</div>
                     <div class="tc-poll">
@@ -1911,6 +1652,10 @@
                         </div>
                     </div>
                     <div class="tc-footer">
+                        <div class="tc-footer-avatar">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tech" alt="">
+                        </div>
+                        <button class="tc-follow-text">Подписаться</button>
                         <button class="tc-action liked">
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                             1.5K
@@ -1919,59 +1664,90 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                             300
                         </button>
+                        <button class="tc-action">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                        </button>
                         <button class="tc-more">
                             <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
                         </button>
                     </div>
+                    <button class="tc-discuss">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <span class="tc-discuss-label">Обсуждение</span>
+                        <span class="tc-discuss-right">
+                            <span class="tc-cstack">
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=T1" alt=""></span>
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=T2" alt=""></span>
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=T3" alt=""></span>
+                            </span>
+                            <span class="tc-count">180</span>
+                            <span class="tc-chev">›</span>
+                        </span>
+                    </button>
                 </article>
             </div>
 
-            <!-- PAGE 9: Sticker -->
+            <!-- PAGE 9: coral - sticker -->
             <div class="notebook-page" data-page="9">
-                <div class="content" style="padding:0;align-items:center;text-align:center;flex:1;justify-content:center">
-                    <p class="h-medium reveal" data-delay="1" style="color:#fff">
-                        Добавьте стикер или цитату —<br>разнообразьте контент
-                    </p>
-
-                    <article class="thread-card" style="margin-top:20px;width:100%;max-width:340px">
-                        <div class="tc-header">
-                            <div class="tc-avatar-wrap">
-                                <div class="tc-avatar">
-                                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Cat&backgroundColor=bf5af2" alt="">
-                                    <div class="tc-status">😻</div>
-                                </div>
-                            </div>
-                            <div class="tc-info">
-                                <div class="tc-name-row">
-                                    <span class="tc-name">Cat Lover</span>
-                                    <span class="tc-channel-badge">
-                                        <span class="tc-channel-logo">C</span>
-                                        <span class="tc-channel-name">Cats</span>
-                                    </span>
-                                </div>
-                                <div class="tc-time">30 мин назад</div>
-                            </div>
-                            <button class="tc-sub-btn">+</button>
-                        </div>
-                        <div class="tc-content">Когда лег спать в 3 ночи:</div>
-                        <img class="tc-sticker" src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=SleepyCat&backgroundColor=transparent" alt="">
-                        <div class="tc-footer">
-                            <button class="tc-action liked">
-                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                                6.3K
-                            </button>
-                            <button class="tc-action">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                                800
-                            </button>
-                            <button class="tc-more">
-                                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
-                            </button>
-                        </div>
-                    </article>
-
-                    <p class="scroll-hint" style="margin-top:32px">теперь вниз ↓</p>
+                <div class="banner banner-small">
+                    <p>Добавьте стикер или цитату — разнообразьте контент</p>
                 </div>
+
+                <article class="thread-card">
+                    <div class="tc-header">
+                        <div class="tc-avatar-wrap">
+                            <div class="tc-avatar">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Cat&backgroundColor=bf5af2" alt="">
+                                <div class="tc-status">😻</div>
+                            </div>
+                        </div>
+                        <div class="tc-info">
+                            <div class="tc-name-row">
+                                <span class="tc-name">Cat Lover</span>
+                                <span class="tc-channel-badge">
+                                    <span class="tc-channel-logo"><img src="https://picsum.photos/seed/catch/40/40" alt=""></span>
+                                    <span class="tc-channel-name">Cats</span>
+                                </span>
+                            </div>
+                            <div class="tc-time">30 мин назад</div>
+                        </div>
+                    </div>
+                    <div class="tc-content">Когда лег спать в 3 ночи:</div>
+                    <img class="tc-sticker" src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=SleepyCat&backgroundColor=transparent" alt="">
+                    <div class="tc-footer">
+                        <div class="tc-footer-avatar">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Cat" alt="">
+                        </div>
+                        <button class="tc-follow-text">Подписаться</button>
+                        <button class="tc-action liked">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            6.3K
+                        </button>
+                        <button class="tc-action">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                            800
+                        </button>
+                        <button class="tc-action">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                        </button>
+                        <button class="tc-more">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                        </button>
+                    </div>
+                    <button class="tc-discuss">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <span class="tc-discuss-label">Обсуждение</span>
+                        <span class="tc-discuss-right">
+                            <span class="tc-cstack">
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=C1" alt=""></span>
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=C2" alt=""></span>
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=C3" alt=""></span>
+                            </span>
+                            <span class="tc-count">450</span>
+                            <span class="tc-chev">›</span>
+                        </span>
+                    </button>
+                </article>
             </div>
 
         </div>
@@ -1983,35 +1759,42 @@
         </div>
     </section>
 
-    <!-- ─────────── SLIDE 10 — RED / COMMUNITIES ─────────── -->
+    <!-- SLIDE 10 - COMMUNITIES -->
     <section class="slide" data-slide="10">
-        <div class="banner banner-red">
+        <div class="banner banner-red" style="padding:24px 24px;font-size:clamp(18px,4.5vw,21px)">
             <p class="reveal" data-delay="1">
-                Сплочать людей и&nbsp;сообщества — наша задача
+                Сплочать людей и сообщества — наша задача
             </p>
         </div>
-        <div class="content" style="align-items:stretch">
-            <p class="text-body reveal" data-delay="2" style="align-self:center;text-align:center">
-                Находите новое на&nbsp;просторах <b style="color:#fff">listatread</b>, новые хобби, идеи, мнения
+        <div class="slide-10-content">
+            <p class="text-body reveal" data-delay="2" style="padding:0 24px">
+                Находите новое на просторах <b style="color:#000">listatread</b>, новые хобби, идеи, мнения
             </p>
-            <div class="photos-strip reveal" data-delay="3">
-                <div class="photo-card"><img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=300&auto=format&fit=crop" alt=""></div>
-                <div class="photo-card"><img src="https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=300&auto=format&fit=crop" alt=""></div>
-                <div class="photo-card"><img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=300&auto=format&fit=crop" alt=""></div>
-                <div class="photo-card"><img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=300&auto=format&fit=crop" alt=""></div>
-                <div class="photo-card"><img src="https://images.unsplash.com/photo-1518837695005-2083093ee35b?q=80&w=300&auto=format&fit=crop" alt=""></div>
+            <div class="photos-strip-v2 reveal" data-delay="3">
+                <div class="photos-track-v2">
+                    <div class="photo-big"><img src="https://picsum.photos/seed/ph1/400/560" alt=""></div>
+                    <div class="photo-big"><img src="https://picsum.photos/seed/ph2/400/560" alt=""></div>
+                    <div class="photo-big"><img src="https://picsum.photos/seed/ph3/400/560" alt=""></div>
+                    <div class="photo-big"><img src="https://picsum.photos/seed/ph4/400/560" alt=""></div>
+                    <div class="photo-big"><img src="https://picsum.photos/seed/ph5/400/560" alt=""></div>
+                    <div class="photo-big"><img src="https://picsum.photos/seed/ph1/400/560" alt=""></div>
+                    <div class="photo-big"><img src="https://picsum.photos/seed/ph2/400/560" alt=""></div>
+                    <div class="photo-big"><img src="https://picsum.photos/seed/ph3/400/560" alt=""></div>
+                    <div class="photo-big"><img src="https://picsum.photos/seed/ph4/400/560" alt=""></div>
+                    <div class="photo-big"><img src="https://picsum.photos/seed/ph5/400/560" alt=""></div>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- ─────────── SLIDE 11 — ADAPTATION ─────────── -->
+    <!-- SLIDE 11 - ADAPTATION -->
     <section class="slide" data-slide="11">
         <div class="content" style="justify-content:center">
-            <h2 class="h-large reveal" data-delay="1" style="max-width:340px">
-                Подстроемся <span class="text-coral">под вас</span>
+            <h2 class="reveal" data-delay="1" style="max-width:340px;font-size:clamp(22px,5.5vw,32px);font-weight:800;letter-spacing:-.02em;line-height:1.2;text-align:left">
+                Подстроемся <span style="color:var(--coral)">под вас</span>
             </h2>
             <p class="text-body reveal" data-delay="2" style="max-width:340px">
-                Будем рекомендовать вам новые треды и&nbsp;темы на&nbsp;основе ваших предпочтений
+                Будем рекомендовать вам новые треды и темы на основе ваших предпочтений
             </p>
             <div class="svg-icons-row reveal" data-delay="3">
                 <div class="svg-icon-item">
@@ -2033,14 +1816,14 @@
         </div>
     </section>
 
-    <!-- ─────────── SLIDE 12 — TREAD STUDIO ─────────── -->
+    <!-- SLIDE 12 - TREAD STUDIO -->
     <section class="slide" data-slide="12">
         <div class="banner banner-coral">
             <p class="reveal" data-delay="1">
-                Создать новый интересный тред не&nbsp;сложно — в&nbsp;<b>listatread</b> представлена функция монтажа видео и&nbsp;фото, начните творить уже сейчас!
+                Создать новый интересный тред не сложно — в <b>listatread</b> представлена функция монтажа видео и фото, начните творить уже сейчас!
             </p>
         </div>
-        <div class="content" style="padding-top:16px;padding-bottom:16px">
+        <div class="content" style="padding-top:16px;padding-bottom:16px;align-items:center">
             <div class="ts-mock reveal" data-delay="2">
                 <div class="ts-camera-bg"></div>
                 <div class="ts-topbar">
@@ -2094,21 +1877,107 @@
                     </button>
                 </div>
             </div>
-            <p class="text-small reveal" data-delay="3">
-                маски, эффекты, треки, тренды, монтаж, наложение и&nbsp;другое в&nbsp;одном редакторе
+            <p class="text-small reveal" data-delay="3" style="text-align:center;color:rgba(0,0,0,.55)">
+                маски, эффекты, треки, тренды, монтаж, наложение и другое в одном редакторе
             </p>
         </div>
     </section>
-    <!-- ─────────── SLIDE 13 — DIRECT CHATS ─────────── -->
+
+    <!-- SLIDE 13 - PROBLEMS 1 -->
     <section class="slide" data-slide="13">
-        <div class="banner banner-purple">
+        <div class="banner banner-red">
             <p class="reveal" data-delay="1">
-                Общайтесь в <b>listadirect</b> — личные чаты, группы, стикеры, реакции и&nbsp;закреплённые сообщения
+                Мы решаем проблемы реальных людей
             </p>
         </div>
-        <div class="content" style="padding-top:20px;padding-bottom:20px">
+        <div class="content">
+            <p class="text-body reveal" data-delay="2">
+                Алгоритмы и «умные ленты» давно перестали работать для новых авторов. listatread создан, чтобы это изменить.
+            </p>
+            <div class="problems-grid reveal" data-delay="3">
+                <div class="problem-item">
+                    <div class="problem-icon red">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                    </div>
+                    <div class="problem-body">
+                        <div class="problem-title">«Меня никто не видит»</div>
+                        <div class="problem-desc">Любой тред попадает в бесконечную ленту рекомендаций даже без подписчиков — аудитория находит вас сама.</div>
+                    </div>
+                </div>
+                <div class="problem-item">
+                    <div class="problem-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s4 3 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s-3 2-3 6a6 6 0 0 0 12 0c0-5-6-11-6-11z"/></svg>
+                    </div>
+                    <div class="problem-body">
+                        <div class="problem-title">«Страшно выкладывать»</div>
+                        <div class="problem-desc">Публикуйте от лица канала, а не себя. Стикеры, цитаты и анонимные статусы — свобода самовыражения.</div>
+                    </div>
+                </div>
+                <div class="problem-item">
+                    <div class="problem-icon green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div class="problem-body">
+                        <div class="problem-title">«Сложно найти своих»</div>
+                        <div class="problem-desc">Каналы объединяют людей по интересам — найдите сообщество единомышленников или создайте своё.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 14 - PROBLEMS 2 -->
+    <section class="slide" data-slide="14">
+        <div class="banner banner-green">
+            <p class="reveal" data-delay="1">
+                Свобода самовыражения — не проблема
+            </p>
+        </div>
+        <div class="content">
+            <p class="text-body reveal" data-delay="2">
+                Мы убрали всё, что мешает делиться. Никаких сложных редакторов, сложных правил и сложных путей к аудитории.
+            </p>
+            <div class="problems-grid reveal" data-delay="3">
+                <div class="problem-item">
+                    <div class="problem-icon orange">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>
+                    </div>
+                    <div class="problem-body">
+                        <div class="problem-title">Монтаж прямо в приложении</div>
+                        <div class="problem-desc">Маски, эффекты, треки, тренды — весь редактор в одном окне. Никаких внешних программ.</div>
+                    </div>
+                </div>
+                <div class="problem-item">
+                    <div class="problem-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+                    </div>
+                    <div class="problem-body">
+                        <div class="problem-title">Приватность и безопасность</div>
+                        <div class="problem-desc">Частные каналы по коду, скрытие лайков, статусов и последнего входа. Вы решаете, что видят другие.</div>
+                    </div>
+                </div>
+                <div class="problem-item">
+                    <div class="problem-icon green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                    </div>
+                    <div class="problem-body">
+                        <div class="problem-title">Музыка без границ</div>
+                        <div class="problem-desc">Плейлисты, подкасты, треки — делитесь вкусом и находите новое вместе с каналами.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 15 - DIRECT -->
+    <section class="slide" data-slide="15">
+        <div class="banner banner-purple">
+            <p class="reveal" data-delay="1">
+                Общайтесь в <b>listadirect</b> — личные чаты, группы, стикеры, реакции и закреплённые сообщения
+            </p>
+        </div>
+        <div class="content" style="padding-top:20px;padding-bottom:20px;align-items:center">
             <div class="direct-mock reveal" data-delay="2">
-                <!-- ВЕРХНЯЯ ПОЛОСА -->
                 <div class="dr-mock-topbar">
                     <button class="dr-mock-icon-btn" aria-label="Назад">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
@@ -2127,7 +1996,6 @@
                     </button>
                 </div>
 
-                <!-- ЗАКРЕПЛЁННОЕ -->
                 <div class="dr-mock-pinned">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 17v5M9 3h6l-1 8 4 3v2H6v-2l4-3z"/>
@@ -2138,22 +2006,17 @@
                     </div>
                 </div>
 
-                <!-- СООБЩЕНИЯ -->
                 <div class="dr-mock-messages">
                     <div class="dr-mock-date">Сегодня</div>
-
                     <div class="dr-mock-row">
                         <div class="dr-mock-mini-ava">
                             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alice&backgroundColor=bf5af2" alt="">
                         </div>
                         <div class="dr-mock-bubble">
                             Привет! Как дела? 😊
-                            <div class="dr-mock-bubble-foot">
-                                <span>09:14</span>
-                            </div>
+                            <div class="dr-mock-bubble-foot"><span>09:14</span></div>
                         </div>
                     </div>
-
                     <div class="dr-mock-row mine">
                         <div class="dr-mock-mini-ava ghost"></div>
                         <div class="dr-mock-bubble">
@@ -2161,20 +2024,18 @@
                             <div class="dr-mock-bubble-foot">
                                 <span>09:15</span>
                                 <span class="dr-mock-check">
-                                <svg viewBox="0 0 22 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M1.5 6l3.2 3.2L11 2.2"/>
-                                    <path d="M8.5 6l3.2 3.2L18.5 2.2"/>
-                                </svg>
-                            </span>
+                                    <svg viewBox="0 0 22 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M1.5 6l3.2 3.2L11 2.2"/>
+                                        <path d="M8.5 6l3.2 3.2L18.5 2.2"/>
+                                    </svg>
+                                </span>
                             </div>
                         </div>
                     </div>
-
                     <div class="dr-mock-row">
                         <div class="dr-mock-mini-ava ghost"></div>
                         <div class="dr-mock-bubble sticker">💖</div>
                     </div>
-
                     <div class="dr-mock-row mine">
                         <div class="dr-mock-mini-ava ghost"></div>
                         <div class="dr-mock-bubble">
@@ -2182,35 +2043,30 @@
                             <div class="dr-mock-bubble-foot">
                                 <span>09:17</span>
                                 <span class="dr-mock-check">
-                                <svg viewBox="0 0 22 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M1.5 6l3.2 3.2L11 2.2"/>
-                                    <path d="M8.5 6l3.2 3.2L18.5 2.2"/>
-                                </svg>
-                            </span>
+                                    <svg viewBox="0 0 22 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M1.5 6l3.2 3.2L11 2.2"/>
+                                        <path d="M8.5 6l3.2 3.2L18.5 2.2"/>
+                                    </svg>
+                                </span>
                             </div>
                         </div>
                     </div>
-
                     <div class="dr-mock-row">
                         <div class="dr-mock-mini-ava">
                             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alice&backgroundColor=bf5af2" alt="">
                         </div>
                         <div class="dr-mock-bubble">
                             Обязательно приду! 🔥
-                            <div class="dr-mock-bubble-foot">
-                                <span>09:18</span>
-                            </div>
+                            <div class="dr-mock-bubble-foot"><span>09:18</span></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- TYPING -->
                 <div class="dr-mock-typing">
                     Alice печатает
                     <span class="dr-mock-typing-dots"><i></i><i></i><i></i></span>
                 </div>
 
-                <!-- КОМПОЗЕР -->
                 <div class="dr-mock-composer">
                     <button class="dr-mock-cbtn" aria-label="Стикер">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
@@ -2228,19 +2084,20 @@
                     </button>
                 </div>
             </div>
-            <p class="text-small reveal" data-delay="3" style="margin-top:14px">
+            <p class="text-small reveal" data-delay="3" style="margin-top:14px;text-align:center">
                 реакции · ответы · закрепление · темы · стикеры
             </p>
         </div>
     </section>
-    <!-- ─────────── SLIDE 14 — СВОБОДА ─────────── -->
-    <section class="slide slide-final" data-slide="14">
+
+    <!-- SLIDE 16 - FREEDOM -->
+    <section class="slide slide-final" data-slide="16">
         <div class="final-content">
             <h1 class="final-title reveal" data-delay="1">
                 Неограниченная <span class="gradient">свобода</span>
             </h1>
             <p class="final-text reveal" data-delay="2">
-                Установите статус, описание, аватарку, имя — чтобы выделяться. Вы можете также открыть для себя больше с&nbsp;<b style="color:#fff">listatread chvad</b>
+                Установите статус, описание, аватарку, имя — чтобы выделяться. Вы можете также открыть для себя больше с <b style="color:#fff">listatread chvad</b>
             </p>
             <a href="/shop" class="final-link reveal" data-delay="3">
                 Открыть chvad
@@ -2249,8 +2106,8 @@
         </div>
     </section>
 
-    <!-- ─────────── SLIDE 15 — ПРИСОЕДИНЯЙТЕСЬ + ПОДВАЛ ─────────── -->
-    <section class="slide slide-join" data-slide="15" id="final">
+    <!-- SLIDE 17 - JOIN + FOOTER -->
+    <section class="slide slide-join" data-slide="17" id="final">
         <div class="join-main">
             <div class="join-logo reveal" data-delay="1">
                 <img src="/logo.jpeg" alt="listatread">
@@ -2269,7 +2126,6 @@
             </a>
         </div>
 
-        <!-- ═══ ПОДВАЛ ═══ -->
         <footer class="join-footer reveal" data-delay="5">
             <div class="join-footer-links">
                 <a href="/about">О компании</a>
@@ -2304,8 +2160,6 @@
 <script>
     (function(){
         'use strict';
-
-        /* ═════════════ ПРОГРЕСС + ТОЧКИ ═════════════ */
         const slides = document.querySelectorAll('.slide');
         const dotsContainer = document.getElementById('slideDots');
         const progressBar = document.getElementById('progressBar');
@@ -2328,17 +2182,11 @@
             const total = document.documentElement.scrollHeight - window.innerHeight;
             const pct = total > 0 ? (top / total) * 100 : 0;
             progressBar.style.width = pct + '%';
-
-            // Шапка: видна только на слайде 1
-            const slide1 = slides[0];
             const slide2 = slides[1];
             if(slide2){
                 const s2Top = slide2.offsetTop;
-                if(top > s2Top - 60){
-                    header.classList.add('hidden');
-                } else {
-                    header.classList.remove('hidden');
-                }
+                if(top > s2Top - 60) header.classList.add('hidden');
+                else header.classList.remove('hidden');
             }
             ticking = false;
         }
@@ -2347,7 +2195,6 @@
         }, { passive:true });
         updateProgress();
 
-        /* ═════════════ REVEAL ON VIEW ═════════════ */
         const revealObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if(entry.isIntersecting && entry.intersectionRatio > 0.15){
@@ -2355,10 +2202,8 @@
                 }
             });
         }, { threshold: [0, 0.15, 0.4, 0.7] });
-
         slides.forEach(s => revealObserver.observe(s));
 
-        /* Активная точка + номер в нотебуке */
         const slideIndexObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if(entry.isIntersecting && entry.intersectionRatio > 0.5){
@@ -2369,13 +2214,12 @@
         }, { threshold: [0, 0.5, 1] });
         slides.forEach(s => slideIndexObserver.observe(s));
 
-        /* Первый слайд сразу видно */
         requestAnimationFrame(() => {
             if(slides[0]) slides[0].classList.add('in-view');
             if(dots[0]) dots[0].classList.add('active');
         });
 
-        /* ═════════════ NOTEBOOK ═════════════ */
+        // Notebook
         const track = document.getElementById('notebookTrack');
         if(track){
             const pages = track.querySelectorAll('.notebook-page');
@@ -2397,13 +2241,11 @@
                 const w = track.clientWidth;
                 return Math.round(track.scrollLeft / w);
             }
-
             function goToPage(i){
                 if(i < 0) i = 0;
                 if(i >= pages.length) i = pages.length - 1;
                 track.scrollTo({ left: i * track.clientWidth, behavior:'smooth' });
             }
-
             function updateNav(){
                 const cur = currentPage();
                 currentEl.textContent = pages[cur]?.dataset.page || '5';
@@ -2413,12 +2255,10 @@
                 prevBtn.style.opacity = cur === 0 ? '0.35' : '1';
                 nextBtn.style.opacity = cur === pages.length - 1 ? '0.35' : '1';
             }
-
             prevBtn.addEventListener('click', () => goToPage(currentPage() - 1));
             nextBtn.addEventListener('click', () => {
                 const cur = currentPage();
                 if(cur >= pages.length - 1){
-                    // последняя страница — скроллим вниз к слайду 10
                     const nb = document.querySelector('.notebook-section');
                     const nextSlide = nb.nextElementSibling;
                     if(nextSlide) nextSlide.scrollIntoView({ behavior:'smooth', block:'start' });
@@ -2426,7 +2266,6 @@
                     goToPage(cur + 1);
                 }
             });
-
             let scrollTick = false;
             track.addEventListener('scroll', () => {
                 if(!scrollTick){
@@ -2434,10 +2273,7 @@
                     scrollTick = true;
                 }
             }, { passive:true });
-
-            // Свайп вниз с последней страницы — переход к слайду 10
-            let touchStartY = 0;
-            let touchStartPage = 0;
+            let touchStartY = 0, touchStartPage = 0;
             track.addEventListener('touchstart', e => {
                 touchStartY = e.touches[0].clientY;
                 touchStartPage = currentPage();
@@ -2454,8 +2290,6 @@
                     if(prevSlide) prevSlide.scrollIntoView({ behavior:'smooth', block:'start' });
                 }
             }, { passive:true });
-
-            // Колесо мыши: на первой странице вверх — к слайду 4
             track.addEventListener('wheel', e => {
                 const cur = currentPage();
                 if(cur === 0 && e.deltaY < -30){
@@ -2468,29 +2302,21 @@
                     if(nextSlide){ e.preventDefault(); nextSlide.scrollIntoView({ behavior:'smooth', block:'start' }); }
                 }
             }, { passive:false });
-
             updateNav();
             window.addEventListener('resize', updateNav);
         }
 
-        /* ═════════════ КЛАВИАТУРА ═════════════ */
+        // Keyboard
         document.addEventListener('keydown', e => {
             if(e.key === 'ArrowDown' || e.key === 'PageDown'){
                 const cur = getCurrentSlideIndex();
-                if(cur < slides.length - 1){
-                    e.preventDefault();
-                    slides[cur + 1].scrollIntoView({ behavior:'smooth', block:'start' });
-                }
+                if(cur < slides.length - 1){ e.preventDefault(); slides[cur + 1].scrollIntoView({ behavior:'smooth', block:'start' }); }
             }
             if(e.key === 'ArrowUp' || e.key === 'PageUp'){
                 const cur = getCurrentSlideIndex();
-                if(cur > 0){
-                    e.preventDefault();
-                    slides[cur - 1].scrollIntoView({ behavior:'smooth', block:'start' });
-                }
+                if(cur > 0){ e.preventDefault(); slides[cur - 1].scrollIntoView({ behavior:'smooth', block:'start' }); }
             }
         });
-
         function getCurrentSlideIndex(){
             let best = 0, bestDist = Infinity;
             slides.forEach((s, i) => {
@@ -2500,7 +2326,6 @@
             });
             return best;
         }
-
     })();
 </script>
 
