@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>О listatread — listatread.online/about</title>
     <style>
+        /* ═════════════ ТОКЕНЫ (из style.css) ═════════════ */
         :root{
-            --bg:#000;
-            --bg-soft:#0a0a0a;
+            --bg:#000; --bg-soft:#0a0a0c;
             --card:rgba(30,30,33,.74);
             --surface-2:rgba(120,120,128,.24);
             --surface-3:rgba(120,120,128,.36);
@@ -20,1443 +20,1949 @@
             --glass-strong:rgba(28,28,30,.88);
             --glass-edge:rgba(255,255,255,.08);
             --glass-hi:inset 0 1px 0 rgba(255,255,255,.08);
-            --blue:#0a84ff;--red-pink:#ff375f;--red:#ff3b30;--green:#30d158;
-            --yellow:#ffd60a;--orange:#ff9f0a;--purple:#bf5af2;
-            --radius-lg:24px;--radius-md:16px;--radius-sm:12px;
+
+            --blue:#0a84ff; --red-pink:#ff375f; --red:#ff3b30;
+            --green:#30d158; --yellow:#ffd60a; --orange:#ff9f0a;
+            --purple:#bf5af2; --coral:#ff7f50; --lime:#a8e063;
+
+            --radius-lg:24px; --radius-md:16px; --radius-sm:12px;
             --shadow-sm:0 4px 18px rgba(0,0,0,.45);
             --shadow-md:0 10px 36px rgba(0,0,0,.6);
+
             --spring:cubic-bezier(.34,1.56,.64,1);
             --ease-out:cubic-bezier(.22,1,.36,1);
+            --safe-top:env(safe-area-inset-top,0px);
+            --safe-bottom:env(safe-area-inset-bottom,0px);
         }
+
+        /* ═════════════ RESET / BASE ═════════════ */
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        html{scroll-behavior:smooth;scroll-snap-type:y proximity;background-color:var(--bg)}
+        html{
+            background:#000;
+            scroll-behavior:smooth;
+            scroll-snap-type:y proximity;
+            -webkit-text-size-adjust:100%;
+        }
         body{
             font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',sans-serif;
-            background:var(--bg);color:var(--text);line-height:1.6;
-            -webkit-font-smoothing:antialiased;overflow-x:hidden;
+            background:#000; color:#fff; line-height:1.5;
+            -webkit-font-smoothing:antialiased;
+            overflow-x:hidden;
+            min-height:100dvh;
         }
-        /* ───── UI обвязка ───── */
+        button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+        img,video{max-width:100%;display:block}
+        a{color:inherit;text-decoration:none}
+        ::-webkit-scrollbar{width:4px;height:4px}
+        ::-webkit-scrollbar-thumb{background:rgba(120,120,128,.35);border-radius:4px}
+
+        /* ═════════════ ШАПКА ═════════════ */
+        .page-header{
+            position:fixed;top:0;left:50%;transform:translateX(-50%);
+            width:100%;max-width:480px;z-index:100;
+            display:flex;align-items:center;justify-content:space-between;
+            padding:calc(var(--safe-top) + 14px) 20px 14px;
+            background:linear-gradient(180deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,.6) 60%,transparent 100%);
+            -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+            transition:opacity .4s var(--ease-out),transform .4s var(--ease-out);
+            pointer-events:none;
+        }
+        .page-header.hidden{
+            opacity:0;
+            transform:translateX(-50%) translateY(-100%);
+        }
+        .page-header > *{pointer-events:auto}
+
+        .logo{
+            display:flex;align-items:center;gap:10px;
+        }
+        .logo-img{
+            width:32px;height:32px;border-radius:50%;overflow:hidden;
+            background:#fff;flex-shrink:0;
+            box-shadow:0 2px 10px rgba(255,255,255,.15);
+        }
+        .logo-img img{width:100%;height:100%;object-fit:cover}
+        .logo-text{font-size:19px;font-weight:800;letter-spacing:-.03em}
+
+        .about-link{
+            font-size:14px;font-weight:600;
+            color:rgba(255,255,255,.7);
+            padding:8px 14px;border-radius:100px;
+            border:1px solid rgba(255,255,255,.12);
+            background:rgba(255,255,255,.06);
+            transition:all .2s;
+        }
+        .about-link:hover{color:#fff;background:rgba(255,255,255,.14)}
+
+        /* ═════════════ ПРОГРЕСС + ТОЧКИ ═════════════ */
         .progress-bar{
-            position:fixed;top:0;left:0;height:3px;width:0%;
-            background:linear-gradient(90deg,#ff9f0a,#ff375f,#bf5af2,#0a84ff);
-            z-index:200;transition:width .1s linear;
+            position:fixed;top:0;left:0;height:3px;width:0%;z-index:200;
+            background:linear-gradient(90deg,#ff9f0a,#ff375f,#bf5af2,#0a84ff,#30d158);
+            transition:width .1s linear;
+            box-shadow:0 0 12px rgba(255,55,95,.6);
         }
-        .progress-dots{
-            position:fixed;right:14px;top:50%;transform:translateY(-50%);
-            display:flex;flex-direction:column;gap:7px;z-index:100;
+
+        .slide-dots{
+            position:fixed;right:12px;top:50%;transform:translateY(-50%);
+            z-index:100;display:flex;flex-direction:column;gap:6px;
         }
-        .progress-dots .dot{
-            width:7px;height:7px;border-radius:50%;
-            background:rgba(255,255,255,.15);
-            transition:all .35s var(--spring);cursor:pointer;
+        .slide-dots .dot{
+            width:6px;height:6px;border-radius:50%;
+            background:rgba(255,255,255,.2);
+            cursor:pointer;
+            transition:all .35s var(--spring);
         }
-        .progress-dots .dot.active{background:var(--blue);height:20px;border-radius:4px}
-        .back-home{
-            position:fixed;top:18px;left:18px;padding:10px 18px;
-            background:rgba(255,255,255,.08);
-            backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-            border:1px solid rgba(255,255,255,.1);
-            color:#fff;border-radius:100px;text-decoration:none;
-            font-size:13px;font-weight:700;z-index:100;
-            transition:transform .2s var(--spring),background .2s;
+        .slide-dots .dot.active{
+            background:#fff;height:20px;border-radius:4px;
+            box-shadow:0 0 10px rgba(255,255,255,.6);
         }
-        .back-home:hover{transform:scale(1.05);background:rgba(255,255,255,.14)}
-        /* ───── Слайды ───── */
+
+        /* ═════════════ SLIDES БАЗА ═════════════ */
+        .slides{
+            max-width:480px;margin:0 auto;
+            position:relative;
+        }
         .slide{
-            min-height:100vh;min-height:100dvh;scroll-snap-align:start;
-            display:flex;align-items:center;justify-content:center;
-            padding:64px 16px;position:relative;overflow:hidden;
+            min-height:100vh;min-height:100dvh;
+            scroll-snap-align:start;
+            display:flex;flex-direction:column;
+            position:relative;
+            overflow:hidden;
         }
-        .slide-inner{max-width:720px;width:100%;position:relative;z-index:2;text-align:center}
-        .reveal{opacity:0;transform:translateY(40px);transition:opacity 1s var(--ease-out),transform 1s var(--ease-out)}
-        .slide.in-view .reveal{opacity:1;transform:translateY(0)}
+
+        /* ═════════════ БАННЕРЫ ═════════════ */
+        .banner{
+            width:100%;
+            padding:32px 24px;
+            font-size:clamp(18px,4.5vw,22px);
+            font-weight:500;
+            line-height:1.35;
+            letter-spacing:-.01em;
+            text-align:center;
+            position:relative;
+            overflow:hidden;
+            flex-shrink:0;
+        }
+        .banner::after{
+            content:'';position:absolute;inset:0;pointer-events:none;
+            background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.18),transparent 60%);
+        }
+        .banner-orange{
+            background:linear-gradient(135deg,#ff9f0a 0%,#ff8c00 100%);
+            color:#fff;
+            box-shadow:0 8px 32px rgba(255,159,10,.4);
+        }
+        .banner-green{
+            background:linear-gradient(135deg,#30d158 0%,#22c55e 100%);
+            color:#fff;
+            box-shadow:0 8px 32px rgba(48,209,88,.4);
+        }
+        .banner-blue{
+            background:linear-gradient(135deg,#0a84ff 0%,#0066cc 100%);
+            color:#fff;
+            box-shadow:0 8px 32px rgba(10,132,255,.4);
+        }
+        .banner-yellow{
+            background:linear-gradient(135deg,#ffd60a 0%,#ffb800 100%);
+            color:#1a1a1a;
+            box-shadow:0 8px 32px rgba(255,214,10,.35);
+        }
+        .banner-purple{
+            background:linear-gradient(135deg,#bf5af2 0%,#9d4edd 100%);
+            color:#fff;
+            box-shadow:0 8px 32px rgba(191,90,242,.4);
+        }
+        .banner-red{
+            background:linear-gradient(135deg,#ff3b30 0%,#d70015 100%);
+            color:#fff;
+            box-shadow:0 8px 32px rgba(255,59,48,.4);
+        }
+        .banner-lime{
+            background:linear-gradient(135deg,#a8e063 0%,#56ab2f 100%);
+            color:#fff;
+            box-shadow:0 8px 32px rgba(168,224,99,.4);
+        }
+        .banner-coral{
+            background:linear-gradient(135deg,#ff7f50 0%,#ff5f30 100%);
+            color:#fff;
+            box-shadow:0 8px 32px rgba(255,127,80,.4);
+        }
+        .banner-half{
+            width:75%;
+            margin-right:auto;
+            border-radius:0 0 24px 0;
+        }
+        .banner-small{
+            font-size:clamp(16px,4vw,19px);
+            padding:24px 20px;
+        }
+
+        /* ═════════════ КОНТЕНТ ═════════════ */
+        .content{
+            flex:1;
+            padding:40px 24px;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            gap:24px;
+            text-align:center;
+            position:relative;
+            z-index:1;
+        }
+        .content-left{text-align:left;align-items:flex-start}
+
+        /* ═════════════ АНИМАЦИИ ПОЯВЛЕНИЯ ═════════════ */
+        .reveal{
+            opacity:0;transform:translateY(40px);
+            transition:opacity 1.1s var(--ease-out),transform 1.1s var(--ease-out);
+        }
+        .slide.in-view .reveal{opacity:1;transform:none}
         .reveal[data-delay="1"]{transition-delay:.1s}
-        .reveal[data-delay="2"]{transition-delay:.2s}
-        .reveal[data-delay="3"]{transition-delay:.3s}
-        .reveal[data-delay="4"]{transition-delay:.4s}
-        .reveal[data-delay="5"]{transition-delay:.5s}
-        /* ───── Типографика ───── */
-        h1{font-size:clamp(32px,6vw,56px);font-weight:900;letter-spacing:-.03em;line-height:1.05;margin-bottom:18px}
-        h2{font-size:clamp(22px,4vw,36px);font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-bottom:14px}
-        h3{font-size:16px;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:8px}
-        p{font-size:clamp(14px,2vw,16px);color:var(--text-secondary);line-height:1.55;max-width:580px;margin:0 auto 12px}
-        .accent-text{
+        .reveal[data-delay="2"]{transition-delay:.22s}
+        .reveal[data-delay="3"]{transition-delay:.35s}
+        .reveal[data-delay="4"]{transition-delay:.48s}
+        .reveal[data-delay="5"]{transition-delay:.6s}
+        .reveal[data-delay="6"]{transition-delay:.72s}
+        .reveal[data-delay="7"]{transition-delay:.85s}
+        .reveal[data-delay="8"]{transition-delay:.98s}
+
+        .reveal-left{transform:translateX(-40px)}
+        .reveal-right{transform:translateX(40px)}
+        .slide.in-view .reveal-left,
+        .slide.in-view .reveal-right{transform:none}
+
+        /* ═════════════ ТИПОГРАФИКА ═════════════ */
+        .h-mega{
+            font-size:clamp(28px,7vw,42px);
+            font-weight:900;
+            letter-spacing:-.04em;
+            line-height:1.05;
+            text-align:center;
+        }
+        .h-large{
+            font-size:clamp(22px,5.5vw,32px);
+            font-weight:800;
+            letter-spacing:-.02em;
+            line-height:1.2;
+            text-align:center;
+        }
+        .h-medium{
+            font-size:clamp(17px,4vw,22px);
+            font-weight:700;
+            letter-spacing:-.01em;
+            line-height:1.35;
+            text-align:center;
+        }
+        .text-body{
+            font-size:clamp(14px,3.5vw,16px);
+            color:var(--text-secondary);
+            line-height:1.55;
+            text-align:center;
+            max-width:360px;
+        }
+        .text-small{
+            font-size:12.5px;
+            color:var(--text-tertiary);
+            text-align:center;
+        }
+        .text-accent{
             background:linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2);
             -webkit-background-clip:text;background-clip:text;
             -webkit-text-fill-color:transparent;color:transparent;
         }
-        .accent-text2{
-            background:linear-gradient(135deg,#0a84ff,#bf5af2);
-            -webkit-background-clip:text;background-clip:text;
-            -webkit-text-fill-color:transparent;color:transparent;
+        .text-red{color:#ff5c5c}
+        .text-pink{color:#ff6b9d}
+        .text-green{color:#4ade80}
+        .text-coral{color:var(--coral)}
+
+        .hashtags{
+            display:flex;flex-wrap:wrap;gap:8px;
+            justify-content:center;
         }
-        /* ───── Лого ───── */
-        .hero-logo{
-            width:112px;height:112px;border-radius:50%;
-            background:#fff;border:2px solid var(--border);
+        .hashtag{
+            display:inline-block;
+            font-size:14px;font-weight:700;
+            color:#ff6b9d;
+            padding:4px 0;
+        }
+
+        /* ═════════════ SLIDE 1 — HERO ═════════════ */
+        .slide-hero{
+            justify-content:flex-start;
+        }
+        .hero-banner{
+            margin-top:0;
+            min-height:180px;
             display:flex;align-items:center;justify-content:center;
-            margin:0 auto 22px;
-            box-shadow:0 20px 60px rgba(255,255,255,.1);
-            overflow:hidden;
-            animation:logoAnim 4s cubic-bezier(0.45,0.05,0.55,0.95) infinite;
+            padding:40px 28px;
         }
-        .hero-logo img{width:100%;height:100%;object-fit:cover;display:block}
-        @keyframes logoAnim{
-            0%{transform:scale(1) rotate(0deg)}
-            15%{transform:scale(1) rotate(360deg)}
-            20%{transform:scale(1.15) rotate(360deg)}
-            25%{transform:scale(0.9) rotate(360deg)}
-            30%{transform:scale(1) rotate(360deg)}
-            100%{transform:scale(1) rotate(360deg)}
+        .hero-banner p{
+            font-size:clamp(18px,4.5vw,22px);
+            font-weight:400;
+            line-height:1.45;
+            letter-spacing:.005em;
         }
-        /* ───── Декор ───── */
-        .bg-decor{position:absolute;z-index:1;pointer-events:none;opacity:.55}
-        .decor-heart{animation:floatHeart 8s ease-in-out infinite}
-        .decor-star{animation:floatStar 10s ease-in-out infinite}
-        .decor-circle{animation:floatCircle 12s ease-in-out infinite}
-        .decor-bolt{animation:floatBolt 9s ease-in-out infinite}
-        @keyframes floatHeart{0%,100%{transform:translate(0,0) rotate(-8deg)}50%{transform:translate(20px,-30px) rotate(8deg)}}
-        @keyframes floatStar{0%,100%{transform:translate(0,0) rotate(0deg)}50%{transform:translate(-25px,-20px) rotate(180deg)}}
-        @keyframes floatCircle{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-40px) scale(1.15)}}
-        @keyframes floatBolt{0%,100%{transform:translate(0,0) scale(1);opacity:.4}50%{transform:translate(15px,-25px) scale(1.2);opacity:.8}}
-        /* ═══════════════ FEED (видео и фото на всю карточку) ═══════════════ */
-        .mock-feed{
-            max-width:380px;margin:0 auto;text-align:left;
-            background:var(--bg-soft);border-radius:var(--radius-lg);
-            border:1px solid var(--border);
-            box-shadow:var(--shadow-md);
-            overflow:hidden;position:relative;
-            max-height:calc(100dvh - 260px);
-        }
-        .feed-post{
-            background:var(--card);border-radius:var(--radius-lg);
-            padding:14px;border:1px solid var(--border);
-            box-shadow:var(--shadow-sm),var(--glass-hi);
+        .hero-body{
+            flex:1;
             display:flex;flex-direction:column;
+            align-items:center;justify-content:center;
+            gap:28px;padding:40px 24px;
+        }
+        .hero-tagline{
+            font-size:clamp(15px,3.8vw,17px);
+            color:rgba(255,255,255,.65);
+            line-height:1.5;
+            text-align:center;
+            max-width:340px;
+        }
+        .hero-tagline b{
+            color:#fff;font-weight:700;
+        }
+        .avatars-showcase{
+            display:flex;align-items:center;
+            justify-content:center;
+            gap:14px;flex-wrap:wrap;
+            padding:8px 0;
+        }
+        .avatar-badge{
+            position:relative;
+            display:flex;align-items:center;gap:8px;
+        }
+        .avatar-circle{
+            width:60px;height:60px;border-radius:50%;
+            overflow:hidden;flex-shrink:0;
+            border:2px solid rgba(255,255,255,.15);
+            background:linear-gradient(135deg,#ffd60a,#ff375f);
+            box-shadow:0 6px 20px rgba(255,55,95,.35);
+            transition:transform .4s var(--spring);
+        }
+        .avatar-circle img{width:100%;height:100%;object-fit:cover}
+        .avatar-badge:hover .avatar-circle{transform:scale(1.08) rotate(3deg)}
+        .avatar-emoji{
+            width:32px;height:32px;
+            display:flex;align-items:center;justify-content:center;
+            filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));
+            animation:emojiFloat 4s ease-in-out infinite;
+        }
+        .avatar-emoji:nth-child(1){animation-delay:0s}
+        .avatar-emoji:nth-child(2){animation-delay:1.3s}
+        .avatar-emoji:nth-child(3){animation-delay:2.6s}
+        .avatar-emoji svg{width:28px;height:28px}
+        @keyframes emojiFloat{
+            0%,100%{transform:translateY(0) rotate(0)}
+            50%{transform:translateY(-6px) rotate(6deg)}
+        }
+        .scroll-hint{
+            font-size:12px;
+            color:rgba(255,255,255,.35);
+            display:flex;align-items:center;gap:8px;
+            margin-top:8px;
+            letter-spacing:.04em;
+            text-transform:uppercase;
+            font-weight:600;
+        }
+        .scroll-hint::after{
+            content:'↓';
+            animation:scrollArrow 1.8s ease-in-out infinite;
+            font-size:16px;
+        }
+        @keyframes scrollArrow{
+            0%,100%{transform:translateY(0);opacity:.6}
+            50%{transform:translateY(4px);opacity:1}
+        }
+
+        /* ═════════════ SLIDE 2 — LIKE/COMMENT ICONS ═════════════ */
+        .icon-showcase{
+            display:flex;gap:20px;align-items:center;justify-content:center;
+            padding:16px 0;
+        }
+        .icon-box{
+            width:72px;height:72px;
+            border-radius:20px;
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(255,255,255,.1);
+            display:flex;align-items:center;justify-content:center;
+            position:relative;
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.1);
+            transition:all .3s var(--spring);
+        }
+        .icon-box:hover{
+            background:rgba(255,255,255,.1);
+            transform:translateY(-4px);
+        }
+        .icon-box svg{width:32px;height:32px}
+        .icon-box .icon-heart{color:#ff375f}
+        .icon-box .icon-pause{color:#fff}
+        .icon-box .icon-comment{color:#0a84ff}
+        .icon-box .icon-badge{
+            position:absolute;top:-6px;right:-6px;
+            background:#ff3b30;color:#fff;
+            font-size:10px;font-weight:800;
+            padding:3px 7px;border-radius:100px;
+            min-width:20px;
+            box-shadow:0 2px 8px rgba(255,59,48,.5);
+        }
+
+        /* ═════════════ SLIDE 3 — CARD SHOWCASE ═════════════ */
+        .card-showcase{
+            position:relative;
+            width:100%;
+            max-width:340px;
+            height:280px;
+            margin:12px auto;
+        }
+        .showcase-card{
+            position:absolute;
+            width:170px;height:220px;
+            border-radius:20px;
+            overflow:hidden;
+            box-shadow:0 16px 40px rgba(0,0,0,.5);
+            transition:transform .5s var(--spring);
+        }
+        .showcase-card img{width:100%;height:100%;object-fit:cover}
+        .showcase-card-1{
+            left:8px;top:20px;
+            transform:rotate(-10deg);
+            z-index:1;
+        }
+        .showcase-card-2{
+            right:8px;top:40px;
+            transform:rotate(8deg);
+            z-index:2;
+        }
+        .showcase-like{
+            position:absolute;
+            z-index:5;
+            width:44px;height:44px;
+            border-radius:50%;
+            background:rgba(0,0,0,.65);
+            backdrop-filter:blur(10px);
+            -webkit-backdrop-filter:blur(10px);
+            border:1px solid rgba(255,255,255,.2);
+            display:flex;align-items:center;justify-content:center;
+            box-shadow:0 4px 14px rgba(0,0,0,.5);
+            animation:likeFloat 3s ease-in-out infinite;
+        }
+        .showcase-like svg{width:22px;height:22px}
+        .showcase-like-1{top:30px;left:50%;transform:translateX(-50%);color:#ff375f}
+        .showcase-like-2{bottom:80px;right:20px;animation-delay:1.5s;color:#ff375f}
+        @keyframes likeFloat{
+            0%,100%{transform:translateY(0) scale(1)}
+            50%{transform:translateY(-8px) scale(1.08)}
+        }
+
+        /* ═════════════ НОТЕБУК (слайды 5-9) ═════════════ */
+        .notebook-section{
+            padding:0;
+            display:flex;
+            flex-direction:column;
+            overflow:hidden;
+            background:#050505;
+        }
+        .notebook-header{
+            padding:24px 20px 12px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            flex-shrink:0;
+            border-bottom:1px solid rgba(255,255,255,.06);
+        }
+        .notebook-title{
+            font-size:14px;
+            font-weight:700;
+            color:rgba(255,255,255,.5);
+            letter-spacing:.06em;
+            text-transform:uppercase;
+            display:flex;align-items:center;gap:8px;
+        }
+        .notebook-title .at-symbol{
+            font-size:20px;
+            background:linear-gradient(135deg,#ff9f0a,#ff375f);
+            -webkit-background-clip:text;background-clip:text;
+            -webkit-text-fill-color:transparent;
+            font-weight:900;
+        }
+        .notebook-pagination{
+            display:flex;align-items:center;gap:8px;
+            font-size:13px;font-weight:700;
+            color:rgba(255,255,255,.4);
+            font-variant-numeric:tabular-nums;
+        }
+        .notebook-pagination .current{color:#fff;font-size:15px}
+
+        .notebook-track{
+            flex:1;
+            display:flex;
+            overflow-x:auto;
+            overflow-y:hidden;
+            scroll-snap-type:x mandatory;
+            scrollbar-width:none;
+            -webkit-overflow-scrolling:touch;
+            position:relative;
+            scroll-behavior:smooth;
+        }
+        .notebook-track::-webkit-scrollbar{display:none}
+
+        .notebook-page{
+            flex:0 0 100%;
+            width:100%;
+            height:100%;
+            scroll-snap-align:center;
+            scroll-snap-stop:always;
+            position:relative;
+            padding:24px 20px 32px;
+            display:flex;
+            flex-direction:column;
+            gap:20px;
+            overflow-y:auto;
+            scrollbar-width:none;
+        }
+        .notebook-page::-webkit-scrollbar{display:none}
+
+        .notebook-page .banner{
+            border-radius:20px;
+            font-size:16px;
+            padding:22px 20px;
+            margin-bottom:4px;
+            flex-shrink:0;
+        }
+        .notebook-page .banner::after{display:none}
+
+        .notebook-nav{
+            flex-shrink:0;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap:14px;
+            padding:14px 20px calc(14px + var(--safe-bottom));
+            border-top:1px solid rgba(255,255,255,.06);
+            background:rgba(0,0,0,.7);
+            backdrop-filter:blur(20px);
+            -webkit-backdrop-filter:blur(20px);
+        }
+        .notebook-btn{
+            width:42px;height:42px;
+            border-radius:50%;
+            background:rgba(255,255,255,.08);
+            border:1px solid rgba(255,255,255,.1);
+            color:#fff;
+            display:flex;align-items:center;justify-content:center;
+            font-size:20px;font-weight:700;
+            transition:all .2s var(--spring);
+        }
+        .notebook-btn:hover{background:rgba(255,255,255,.16)}
+        .notebook-btn:active{transform:scale(.92)}
+        .notebook-btn:disabled{opacity:.35;cursor:not-allowed}
+        .notebook-dots{
+            display:flex;gap:6px;flex:1;justify-content:center;
+        }
+        .notebook-dots .ndot{
+            width:6px;height:6px;border-radius:50%;
+            background:rgba(255,255,255,.2);
+            transition:all .3s var(--spring);
+            cursor:pointer;
+        }
+        .notebook-dots .ndot.active{
+            background:#fff;width:18px;border-radius:3px;
+        }
+
+        /* ═════════════ THREAD CARD (стиль main.js) ═════════════ */
+        .thread-card{
+            background:var(--card);
+            border-radius:20px;
+            padding:16px;
+            border:1px solid rgba(255,255,255,.08);
+            box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,.06);
+            text-align:left;
             position:relative;
         }
-        .feed-post.media-full{padding:0;overflow:hidden}
-        .feed-post-header{
-            display:flex;align-items:flex-start;gap:10px;
-            margin-bottom:10px;
+        .thread-card.square-media{
+            padding:0;
+            overflow:hidden;
+            position:relative;
         }
-        .feed-post.media-full .feed-post-header{
-            position:absolute;top:0;left:0;right:0;z-index:5;
-            padding:12px 14px;margin:0;
+        .thread-card.square-media .tc-media-wrap{
+            width:100%;
+            aspect-ratio:1;
+            overflow:hidden;
+            position:relative;
+            background:#111;
+        }
+        .thread-card.square-media .tc-media-wrap img,
+        .thread-card.square-media .tc-media-wrap video{
+            width:100%;height:100%;object-fit:cover;
+        }
+        .thread-card.square-media .tc-overlay-head{
+            position:absolute;top:0;left:0;right:0;
+            padding:12px 14px;
+            z-index:3;
             background:linear-gradient(180deg,rgba(0,0,0,.65) 0%,transparent 100%);
         }
-        .feed-post-avatar{
-            width:38px;height:38px;border-radius:50%;
-            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
-            display:flex;align-items:center;justify-content:center;
-            color:#fff;font-weight:800;font-size:14px;
-            flex-shrink:0;cursor:pointer;overflow:hidden;
+        .thread-card.square-media .tc-overlay-foot{
+            position:absolute;bottom:0;left:0;right:0;
+            padding:14px;
+            z-index:3;
+            background:linear-gradient(0deg,rgba(0,0,0,.75) 0%,transparent 100%);
         }
-        .feed-post-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-        .feed-post-info{flex:1;min-width:0}
-        .feed-post-name{
-            font-weight:700;font-size:14px;
-            display:flex;align-items:center;gap:6px;
-            flex-wrap:nowrap;color:var(--text);
-        }
-        .feed-post.media-full .feed-post-name{color:#fff}
-        .feed-post-name-text{
-            flex:0 1 auto;min-width:0;overflow:hidden;
-            white-space:nowrap;text-overflow:ellipsis;
-        }
-        .feed-channel-badge{
-            display:inline-flex;align-items:center;gap:5px;
-            background:rgba(255,255,255,.12);border-radius:9px;
-            padding:2px 8px 2px 3px;margin-left:auto;
-            max-width:50%;min-width:0;overflow:hidden;flex-shrink:0;
-            backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-        }
-        .feed-channel-logo{
-            width:16px;height:16px;border-radius:4px;overflow:hidden;
-            display:flex;align-items:center;justify-content:center;
-            background:linear-gradient(135deg,#ff9f0a,#ff375f);
-            color:#fff;font-size:9px;font-weight:800;flex-shrink:0;
-        }
-        .feed-channel-logo img{width:100%;height:100%;object-fit:cover}
-        .feed-channel-name{
-            font-size:11px;font-weight:600;color:#fff;
-            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-        }
-        .feed-post-time{font-size:11px;color:var(--text-secondary);margin-top:3px}
-        .feed-post.media-full .feed-post-time{color:rgba(255,255,255,.75)}
-        .feed-post-content{
-            font-size:14px;line-height:1.5;white-space:pre-wrap;
-            word-break:break-word;color:var(--text);margin-top:8px;
-        }
-        .feed-post.media-full .feed-post-content{
-            position:absolute;bottom:64px;left:14px;right:14px;z-index:5;
-            color:#fff;margin:0;text-shadow:0 1px 6px rgba(0,0,0,.7);
-        }
-        /* ВИДЕО / ФОТО НА ВСЮ КАРТОЧКУ */
-        .feed-post-media-full{
-            position:relative;width:100%;
-            aspect-ratio:9/14;
-            max-height:calc(100dvh - 260px);
-            overflow:hidden;border-radius:var(--radius-lg);
-            background:#000;
-        }
-        .feed-post-media-full.square{aspect-ratio:1/1}
-        .feed-post-media-full video,
-        .feed-post-media-full img{
-            width:100%;height:100%;object-fit:cover;display:block;
-        }
-        .feed-post.media-full .feed-post-footer{
-            position:absolute;bottom:0;left:0;right:0;z-index:5;
-            padding:14px 14px 12px;margin:0;
-            background:linear-gradient(0deg,rgba(0,0,0,.7) 0%,transparent 100%);
-            display:flex;align-items:center;gap:12px;
-        }
-        .video-overlay-controls{
-            position:absolute;right:10px;bottom:70px;z-index:4;
-            display:flex;flex-direction:column;gap:14px;align-items:center;
-        }
-        .video-overlay-btn{
-            display:flex;flex-direction:column;align-items:center;gap:4px;
-            background:transparent;border:none;color:#fff;
-            font-size:10px;font-weight:600;cursor:pointer;
-            filter:drop-shadow(0 1px 4px rgba(0,0,0,.7));
-        }
-        .video-overlay-btn svg{width:26px;height:26px;stroke-width:1.9}
-        .video-overlay-btn.liked svg{fill:var(--red-pink);stroke:var(--red-pink)}
-        .video-vinyl{
-            width:44px;height:44px;border-radius:50%;background:#111;
-            display:flex;align-items:center;justify-content:center;
-            box-shadow:0 4px 16px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06);
-            animation:postVinylSpin 4s linear infinite;
-        }
-        .video-vinyl-disc{
-            width:100%;height:100%;border-radius:50%;
-            background:radial-gradient(circle at 50% 50%,#2a2a2a 0 22%,#0d0d0d 22% 100%);
-            display:flex;align-items:center;justify-content:center;
-        }
-        .video-vinyl-cover{
-            width:16px;height:16px;border-radius:50%;
-            background:linear-gradient(135deg,#ffd60a,#ff375f);
-            display:flex;align-items:center;justify-content:center;
-            font-size:8px;font-weight:800;color:#fff;
-            box-shadow:0 0 0 2px #000;
-        }
-        @keyframes postVinylSpin{to{transform:rotate(360deg)}}
-        /* footer обычного поста */
-        .feed-post-footer{
-            display:flex;align-items:center;gap:12px;
-            margin-top:10px;padding-top:10px;
+
+        .tc-header{
+            display:flex;align-items:flex-start;gap:10px;
+            margin-bottom:10px;
             position:relative;
         }
-        .feed-action{
-            background:transparent;border:none;color:var(--text-secondary);
-            font-size:12px;font-weight:600;
-            display:flex;align-items:center;gap:5px;padding:4px 0;cursor:pointer;
+        .tc-avatar-wrap{
+            position:relative;
+            flex-shrink:0;
+            padding-bottom:6px;
         }
-        .feed-post.media-full .feed-action{color:#fff}
-        .feed-action svg{width:18px;height:18px}
-        .feed-action.liked{color:var(--red-pink)}
-        .feed-count{font-size:11px;font-weight:600;color:currentColor}
-        .feed-more{
-            margin-left:auto;width:30px;height:30px;border-radius:50%;
-            border:none;background:transparent;
+        .tc-avatar{
+            width:42px;height:42px;
+            border-radius:50%;
+            background:linear-gradient(135deg,#ffd60a,#ff375f);
             display:flex;align-items:center;justify-content:center;
-            color:var(--text-secondary);cursor:pointer;
+            color:#fff;font-weight:800;font-size:16px;
+            overflow:visible;
+            position:relative;
+            box-shadow:0 4px 14px rgba(255,55,95,.35);
         }
-        .feed-post.media-full .feed-more{color:#fff}
+        .tc-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+        .tc-status{
+            position:absolute;bottom:-4px;right:-4px;
+            font-size:14px;line-height:1;
+            filter:drop-shadow(0 1px 3px rgba(0,0,0,.5));
+            pointer-events:none;
+            z-index:2;
+        }
+        .tc-plus{
+            position:absolute;left:50%;bottom:-2px;
+            transform:translateX(-50%);
+            width:18px;height:18px;border-radius:50%;
+            background:#ff8a00;color:#fff;
+            border:2px solid #000;
+            font-size:12px;font-weight:900;line-height:1;
+            display:flex;align-items:center;justify-content:center;
+            padding:0;padding-bottom:1px;
+            z-index:3;
+        }
+        .tc-info{flex:1;min-width:0}
+        .tc-name-row{
+            display:flex;align-items:center;gap:6px;
+            flex-wrap:nowrap;min-width:0;
+        }
+        .tc-name{
+            font-size:14px;font-weight:700;
+            color:#fff;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+            flex:1;min-width:0;
+        }
+        .tc-admin{
+            display:inline-flex;align-items:center;justify-content:center;
+            width:15px;height:15px;border-radius:50%;
+            background:linear-gradient(135deg,#bf5af2,#8e44ff);
+            font-size:9px;flex-shrink:0;
+        }
+        .tc-channel-badge{
+            display:inline-flex;align-items:center;gap:5px;
+            background:rgba(255,255,255,.1);
+            border-radius:8px;
+            padding:2px 8px 2px 3px;
+            margin-left:auto;max-width:50%;
+            overflow:hidden;flex-shrink:0;
+            font-size:11px;
+            backdrop-filter:blur(10px);
+            -webkit-backdrop-filter:blur(10px);
+        }
+        .tc-channel-logo{
+            width:16px;height:16px;border-radius:4px;
+            background:linear-gradient(135deg,#ff9f0a,#ff375f);
+            color:#fff;font-size:9px;font-weight:800;
+            display:flex;align-items:center;justify-content:center;
+            overflow:hidden;flex-shrink:0;
+        }
+        .tc-channel-logo img{width:100%;height:100%;object-fit:cover}
+        .tc-channel-name{
+            font-size:11px;font-weight:600;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        }
+        .tc-time{
+            font-size:11px;color:rgba(255,255,255,.55);
+            margin-top:3px;
+        }
+        .tc-sub-btn{
+            width:32px;height:32px;border-radius:50%;
+            background:var(--red-pink);color:#fff;
+            display:flex;align-items:center;justify-content:center;
+            flex-shrink:0;
+            font-size:18px;font-weight:700;
+            box-shadow:0 4px 14px rgba(255,55,95,.35);
+        }
+
+        .tc-content{
+            font-size:14px;
+            line-height:1.5;
+            color:#fff;
+            margin:8px 0;
+            white-space:pre-wrap;
+            word-break:break-word;
+        }
+
+        .tc-footer{
+            display:flex;align-items:center;gap:12px;
+            margin-top:10px;
+            padding-top:10px;
+        }
+        .tc-footer-avatar{
+            width:28px;height:28px;border-radius:50%;
+            overflow:hidden;
+            background:linear-gradient(135deg,#ffd60a,#ff375f);
+            flex-shrink:0;
+        }
+        .tc-footer-avatar img{width:100%;height:100%;object-fit:cover}
+        .tc-follow-text{
+            font-size:12px;font-weight:700;
+            padding:5px 10px;border-radius:8px;
+            border:1.5px solid rgba(255,255,255,.35);
+            color:#fff;background:transparent;
+            flex-shrink:0;
+        }
+        .tc-action{
+            display:flex;align-items:center;gap:5px;
+            color:rgba(255,255,255,.55);
+            font-size:12px;font-weight:600;
+            padding:4px 0;
+        }
+        .tc-action svg{width:18px;height:18px}
+        .tc-action.liked{color:#ff375f}
+        .tc-action.liked svg{fill:currentColor}
+        .tc-action.reposted{color:#ff8a00}
+        .tc-more{
+            margin-left:auto;
+            width:30px;height:30px;
+            border-radius:50%;
+            color:rgba(255,255,255,.55);
+            display:flex;align-items:center;justify-content:center;
+        }
+        .tc-more svg{width:18px;height:18px}
+
+        /* Обсуждение */
+        .tc-discuss{
+            display:flex;align-items:center;gap:8px;
+            margin-top:10px;
+            padding-top:10px;
+            border-top:1px solid rgba(255,255,255,.08);
+            font-size:13px;font-weight:700;
+            color:#fff;
+            text-transform:uppercase;letter-spacing:.03em;
+        }
+        .tc-discuss svg{width:16px;height:16px;flex-shrink:0}
+        .tc-discuss-label{flex:1}
+        .tc-discuss-right{display:flex;align-items:center;gap:6px}
+        .tc-cstack{display:inline-flex;align-items:center}
+        .tc-cava{
+            width:20px;height:20px;border-radius:50%;
+            border:2px solid rgba(30,30,33,.8);
+            background:linear-gradient(135deg,#ffd60a,#ff375f);
+            color:#fff;font-size:9px;font-weight:800;
+            display:flex;align-items:center;justify-content:center;
+            overflow:hidden;
+            margin-left:-6px;
+        }
+        .tc-cava:first-child{margin-left:0}
+        .tc-cava img{width:100%;height:100%;object-fit:cover}
+        .tc-count{font-size:11px;font-weight:600;color:rgba(255,255,255,.55);text-transform:none;letter-spacing:0}
+        .tc-chev{font-size:18px;color:rgba(255,255,255,.35);line-height:1}
+
         /* Трек */
-        .track-card{
+        .tc-track{
             display:flex;align-items:center;gap:10px;
-            background:var(--surface-2);border:1px solid var(--border);
-            border-radius:14px;padding:8px 10px;margin-top:8px;
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(255,255,255,.08);
+            border-radius:14px;
+            padding:8px 10px;
+            margin-top:8px;
         }
-        .track-play{
+        .tc-track-play{
             width:38px;height:38px;border-radius:50%;
             background:#fff;color:#000;
             display:flex;align-items:center;justify-content:center;
-            flex-shrink:0;border:none;cursor:pointer;
+            flex-shrink:0;
         }
-        .track-info{flex:1;min-width:0}
-        .track-title{
-            font-size:13px;font-weight:700;color:var(--text);
+        .tc-track-play svg{width:18px;height:18px}
+        .tc-track-info{flex:1;min-width:0}
+        .tc-track-title{
+            font-size:13px;font-weight:700;color:#fff;
             white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
         }
-        .track-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary);margin-top:2px}
-        /* Опрос */
-        .poll-view{
-            background:var(--surface-2);border:1px solid var(--border);
-            border-radius:12px;padding:10px;margin-top:8px;
-        }
-        .poll-view-title{font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text)}
-        .poll-view-options{display:flex;flex-direction:column;gap:5px}
-        .poll-view-option{
-            position:relative;padding:9px 11px;border-radius:9px;
-            background:var(--bg);border:1.5px solid var(--border-strong);
-            font-size:11px;text-align:left;color:var(--text);
-            overflow:hidden;isolation:isolate;
+        .tc-track-meta{
             display:flex;align-items:center;gap:6px;
+            font-size:11px;color:rgba(255,255,255,.55);
+            margin-top:2px;
         }
-        .poll-view-fill{
+        .tc-progress{
+            position:absolute;left:0;right:0;bottom:0;height:3px;
+            background:rgba(255,255,255,.1);
+            border-radius:0 0 14px 14px;
+            overflow:hidden;
+        }
+        .tc-progress-fill{height:100%;width:35%;background:#fff;border-radius:0 0 14px 14px}
+
+        /* Опрос */
+        .tc-poll{
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(255,255,255,.08);
+            border-radius:14px;
+            padding:10px;
+            margin-top:8px;
+        }
+        .tc-poll-title{
+            font-size:12px;font-weight:700;
+            margin-bottom:8px;
+            color:#fff;
+        }
+        .tc-poll-options{display:flex;flex-direction:column;gap:5px}
+        .tc-poll-option{
+            position:relative;
+            padding:9px 11px;border-radius:9px;
+            background:rgba(0,0,0,.5);
+            border:1.5px solid rgba(255,255,255,.1);
+            font-size:11px;
+            display:flex;align-items:center;gap:6px;
+            overflow:hidden;
+            isolation:isolate;
+        }
+        .tc-poll-fill{
             position:absolute;left:0;top:0;bottom:0;
-            background:rgba(10,132,255,.28);border-radius:9px 0 0 9px;z-index:-1;
+            background:rgba(10,132,255,.28);
+            border-radius:9px 0 0 9px;
+            z-index:-1;
         }
-        .poll-view-label{
+        .tc-poll-label{
             position:relative;z-index:1;
             display:flex;justify-content:space-between;gap:8px;
             align-items:center;width:100%;
         }
-        .feed-post-sticker{
-            display:block;max-width:110px;max-height:110px;
-            object-fit:contain;margin:8px 0 0;text-align:left;
+        .tc-poll-pct{font-weight:800;color:#fff}
+
+        /* Стикер */
+        .tc-sticker{
+            display:block;
+            max-width:120px;max-height:120px;
+            object-fit:contain;
+            margin:8px 0 0;
+            filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));
         }
-        .fp-discuss{
-            position:relative;z-index:2;width:100%;
-            display:flex;align-items:center;gap:8px;
-            margin-top:10px;padding:10px 0 0;
-            border-top:1px solid var(--border);
-            background:transparent;color:var(--text);
-            font-size:11px;font-weight:700;text-align:left;
-            cursor:pointer;border-left:none;border-right:none;border-bottom:none;
-            text-transform:uppercase;letter-spacing:.04em;
+
+        /* ═════════════ VIDEO SHOWCASE (slide 6) ═════════════ */
+        .video-showcase{
+            display:flex;align-items:center;justify-content:center;
+            gap:8px;
+            padding:8px 0;
+            width:100%;
+            max-width:400px;
+            margin:0 auto;
         }
-        .fp-discuss svg{width:16px;height:16px;flex-shrink:0}
-        .fp-chev{font-size:18px;line-height:1;color:var(--text-tertiary);margin-left:auto}
-        /* ═══════════════ DIRECT ═══════════════ */
-        .mock-direct{
-            max-width:380px;margin:0 auto;background:var(--bg);
-            border-radius:24px;box-shadow:var(--shadow-md);
-            border:1px solid var(--border);
-            overflow:hidden;display:flex;flex-direction:column;
-            height:min(520px,calc(100dvh - 240px));
+        .video-side-photo{
+            flex:0 0 70px;
+            width:70px;height:130px;
+            border-radius:14px;
+            overflow:hidden;
+            opacity:.55;
+            filter:blur(1px);
+            box-shadow:0 6px 20px rgba(0,0,0,.5);
+            transform:scale(.92);
+        }
+        .video-side-photo img{width:100%;height:100%;object-fit:cover}
+        .video-main{
+            flex:1;
+            max-width:240px;
+            aspect-ratio:9/16;
+            border-radius:20px;
+            overflow:hidden;
+            background:#111;
+            position:relative;
+            box-shadow:0 20px 50px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.1);
+        }
+        .video-main video{
+            width:100%;height:100%;object-fit:cover;
+        }
+        .video-play-overlay{
+            position:absolute;inset:0;
+            display:flex;align-items:center;justify-content:center;
+            pointer-events:none;
+        }
+        .video-play-overlay svg{
+            width:64px;height:64px;
+            filter:drop-shadow(0 4px 16px rgba(0,0,0,.7));
+            opacity:.85;
+            animation:pulse 2.4s ease-in-out infinite;
+        }
+        @keyframes pulse{
+            0%,100%{transform:scale(1);opacity:.85}
+            50%{transform:scale(1.1);opacity:1}
+        }
+        .video-side-right{
+            position:absolute;
+            right:8px;bottom:80px;
+            display:flex;flex-direction:column;gap:14px;
+            align-items:center;
+            z-index:5;
+        }
+        .video-side-btn{
+            display:flex;flex-direction:column;align-items:center;gap:3px;
+            color:#fff;font-size:10px;font-weight:600;
+            filter:drop-shadow(0 1px 4px rgba(0,0,0,.7));
+        }
+        .video-side-btn svg{
+            width:24px;height:24px;
+        }
+
+        /* ═════════════ PHOTOS STRIP (slide 10) ═════════════ */
+        .photos-strip{
+            display:flex;
+            gap:10px;
+            padding:16px 0 16px 0;
+            overflow:hidden;
+            width:100%;
+            margin:0 -24px;
+            padding-left:24px;
+            padding-right:0;
             position:relative;
         }
-        .direct-header{
-            background:var(--glass);padding:10px 12px;
-            display:flex;align-items:center;gap:8px;
-            border-bottom:1px solid var(--glass-edge);
-            backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-            flex-shrink:0;
+        .photo-card{
+            flex:0 0 120px;
+            width:120px;height:170px;
+            border-radius:16px;
+            overflow:hidden;
+            background:#111;
+            box-shadow:0 10px 28px rgba(0,0,0,.5);
+            transform:rotate(-2deg);
+            transition:transform .4s var(--spring);
+            position:relative;
         }
-        .direct-back-btn,
-        .direct-profile-btn{
-            width:32px;height:32px;border-radius:50%;
-            background:transparent;border:none;color:var(--text);
+        .photo-card:nth-child(2n){transform:rotate(2deg)}
+        .photo-card:nth-child(3n){transform:rotate(-3deg)}
+        .photo-card img{width:100%;height:100%;object-fit:cover}
+        .photo-card::after{
+            content:'';position:absolute;inset:0;
+            background:linear-gradient(180deg,transparent 60%,rgba(0,0,0,.4));
+            pointer-events:none;
+        }
+
+        /* ═════════════ SVG ICONS ROW (slide 11) ═════════════ */
+        .svg-icons-row{
+            display:flex;
+            align-items:center;justify-content:center;
+            gap:16px;
+            padding:24px 0;
+            flex-wrap:wrap;
+        }
+        .svg-icon-item{
+            width:52px;height:52px;
+            border-radius:16px;
+            background:rgba(255,255,255,.06);
+            border:1px solid rgba(255,255,255,.1);
             display:flex;align-items:center;justify-content:center;
-            cursor:pointer;flex-shrink:0;
-            transition:background .2s;
+            color:#fff;
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+            animation:iconPulse 3s ease-in-out infinite;
         }
-        .direct-back-btn:hover,.direct-profile-btn:hover{background:var(--surface-2)}
-        .direct-ava{
-            width:36px;height:36px;border-radius:50%;overflow:hidden;
-            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
-            display:flex;align-items:center;justify-content:center;
-            color:#fff;font-weight:800;font-size:14px;flex-shrink:0;
+        .svg-icon-item:nth-child(2){animation-delay:.4s}
+        .svg-icon-item:nth-child(3){animation-delay:.8s}
+        .svg-icon-item:nth-child(4){animation-delay:1.2s}
+        .svg-icon-item:nth-child(5){animation-delay:1.6s}
+        .svg-icon-item svg{width:24px;height:24px}
+        @keyframes iconPulse{
+            0%,100%{transform:translateY(0)}
+            50%{transform:translateY(-6px)}
         }
-        .direct-ava img{width:100%;height:100%;object-fit:cover}
-        .direct-info{flex:1;min-width:0}
-        .direct-name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .direct-status{
-            font-size:11px;color:var(--green);
-            display:flex;align-items:center;gap:4px;margin-top:1px;
-        }
-        .direct-status::before{
-            content:'';width:5px;height:5px;border-radius:50%;background:var(--green);
-            box-shadow:0 0 6px var(--green);
-        }
-        .direct-messages-mock{
-            flex:1;padding:12px 10px;display:flex;flex-direction:column;
-            gap:8px;overflow-y:auto;
-        }
-        .dr-row-mock{
-            display:flex;align-items:flex-end;gap:6px;max-width:85%;
-            animation:msgIn .3s var(--ease-out) both;
-        }
-        @keyframes msgIn{from{opacity:0;transform:translateY(10px) scale(.94)}to{opacity:1;transform:none}}
-        .dr-row-mock.mine{align-self:flex-end;flex-direction:row-reverse}
-        .direct-bubble-mock{
-            background:var(--bg-soft);padding:8px 12px;
-            border-radius:18px 18px 18px 6px;
-            font-size:13px;color:var(--text);
-            max-width:100%;word-break:break-word;position:relative;
-            box-shadow:0 1px 2px rgba(0,0,0,.08);
-        }
-        .dr-row-mock.mine .direct-bubble-mock{
-            background:linear-gradient(135deg,var(--blue),#0066cc);
-            color:#fff;border-radius:18px 18px 6px 18px;
-        }
-        .dr-sticker-mock{background:transparent!important;padding:0!important;box-shadow:none!important}
-        .dr-sticker-mock img{width:80px;height:80px;object-fit:contain}
-        .direct-composer-mock{
-            padding:10px 12px;border-top:1px solid var(--border);
-            display:flex;gap:8px;align-items:center;flex-shrink:0;
-            background:var(--glass);
-            backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-        }
-        .direct-input-mock{
-            flex:1;background:var(--surface-2);border-radius:20px;
-            padding:10px 14px;font-size:13px;color:var(--text-tertiary);
-            min-height:36px;display:flex;align-items:center;
-        }
-        .direct-send-btn{
-            width:36px;height:36px;border-radius:50%;
-            background:var(--blue);color:#fff;border:none;
-            display:flex;align-items:center;justify-content:center;flex-shrink:0;
-        }
-        /* ═══════════════ FEATURE GRID ═══════════════ */
-        .feature-grid{
-            display:grid;grid-template-columns:1fr 1fr;gap:12px;
-            margin-top:28px;text-align:left;
-        }
-        @media(max-width:600px){.feature-grid{grid-template-columns:1fr}}
-        .feature-card{
-            background:var(--card);border:1px solid var(--border);
-            border-radius:18px;padding:18px;
-            transition:all .35s var(--ease-out);
-        }
-        .feature-card:hover{
-            transform:translateY(-6px);
-            box-shadow:var(--shadow-md);
-            border-color:rgba(255,255,255,.16);
-        }
-        .feature-icon-wrap{
-            width:44px;height:44px;border-radius:14px;
-            background:linear-gradient(135deg,#ff9f0a,#ff375f);
-            display:flex;align-items:center;justify-content:center;
-            margin-bottom:12px;color:#fff;
-            box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(255,55,95,.3);
-        }
-        .feature-icon-wrap svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2}
-        .feature-icon-wrap.blue{background:linear-gradient(135deg,#0a84ff,#bf5af2);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(10,132,255,.3)}
-        .feature-icon-wrap.green{background:linear-gradient(135deg,#30d158,#0a84ff);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(48,209,88,.3)}
-        .feature-icon-wrap.purple{background:linear-gradient(135deg,#bf5af2,#ff375f);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(191,90,242,.3)}
-        .feature-icon-wrap.orange{background:linear-gradient(135deg,#ff9f0a,#ffd60a);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(255,159,10,.3)}
-        .section-label{
-            display:inline-block;padding:6px 14px;
-            background:rgba(255,255,255,.08);
-            color:rgba(255,255,255,.65);
-            border-radius:100px;font-size:11px;font-weight:800;
-            text-transform:uppercase;letter-spacing:.12em;
-            margin-bottom:16px;
-            border:1px solid rgba(255,255,255,.06);
-        }
-        /* ═══════════════ TREAD STUDIO mock ═══════════════ */
-        .ts-studio-mock{
-            position:relative;width:100%;max-width:320px;
-            aspect-ratio:9/16;max-height:calc(100dvh - 280px);
-            margin:0 auto;background:#000;
-            border-radius:var(--radius-lg);overflow:hidden;
-            box-shadow:var(--shadow-md);border:1px solid var(--border);
+
+        /* ═════════════ TREAD STUDIO MOCK (slide 12) ═════════════ */
+        .ts-mock{
+            position:relative;
+            width:min(260px,68vw);
+            aspect-ratio:9/16;
+            border-radius:24px;
+            overflow:hidden;
+            margin:20px auto;
+            box-shadow:0 24px 60px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.1);
+            background:#000;
         }
         .ts-camera-bg{
             position:absolute;inset:0;
             background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+            filter:blur(14px);
+            transform:scale(1.15);
         }
-        .ts-camera-bg::after{
+        .ts-camera-bg::before{
             content:'';position:absolute;inset:0;
             background:
-                    radial-gradient(circle at 30% 40%,rgba(255,159,10,.3),transparent 50%),
-                    radial-gradient(circle at 70% 60%,rgba(255,55,95,.25),transparent 50%),
-                    radial-gradient(circle at 50% 80%,rgba(191,90,242,.2),transparent 50%);
+                    radial-gradient(circle at 30% 40%,rgba(255,159,10,.35),transparent 50%),
+                    radial-gradient(circle at 70% 60%,rgba(255,55,95,.3),transparent 50%),
+                    radial-gradient(circle at 50% 80%,rgba(191,90,242,.25),transparent 50%);
         }
-        .ts-topbar-mock{
-            position:absolute;top:0;left:0;right:0;z-index:10;
-            padding:10px 12px;display:flex;align-items:center;gap:8px;
+        .ts-topbar{
+            position:absolute;top:0;left:0;right:0;
+            padding:12px;
+            display:flex;align-items:center;gap:8px;
+            z-index:10;
         }
-        .ts-back-mock{
-            width:34px;height:34px;border-radius:50%;
-            background:transparent;border:none;color:#fff;
+        .ts-back{
+            width:32px;height:32px;
+            border-radius:50%;
+            color:#fff;
             display:flex;align-items:center;justify-content:center;
-            cursor:pointer;filter:drop-shadow(0 1px 4px rgba(0,0,0,.6));
+            filter:drop-shadow(0 1px 4px rgba(0,0,0,.6));
         }
-        .ts-channel-pill-mock{
+        .ts-channel-pill{
             display:flex;align-items:center;gap:6px;
-            background:transparent;border:none;color:#fff;cursor:pointer;
+            color:#fff;
         }
-        .ts-channel-ava-mock{
+        .ts-channel-ava{
             width:28px;height:28px;border-radius:8px;
             background:linear-gradient(135deg,#ff9f0a,#ff375f);
             display:flex;align-items:center;justify-content:center;
             font-size:11px;font-weight:800;color:#fff;
             box-shadow:0 2px 8px rgba(0,0,0,.5);
         }
-        .ts-channel-name-mock{
-            font-size:12px;font-weight:600;color:#fff;
+        .ts-channel-name{
+            font-size:12px;font-weight:600;
             text-shadow:0 1px 4px rgba(0,0,0,.6);
         }
-        .ts-side-mock{
-            position:absolute;top:52px;right:8px;z-index:10;
-            display:flex;flex-direction:column;gap:12px;align-items:center;
+        .ts-side{
+            position:absolute;
+            top:52px;right:8px;
+            z-index:10;
+            display:flex;flex-direction:column;gap:14px;
+            align-items:center;
         }
-        .ts-side-btn-mock{
+        .ts-side-btn{
             width:30px;height:30px;
-            background:transparent;border:none;color:#fff;
-            display:flex;align-items:center;justify-content:center;cursor:pointer;
+            color:#fff;
+            display:flex;align-items:center;justify-content:center;
             filter:drop-shadow(0 1px 4px rgba(0,0,0,.7));
         }
-        .ts-side-btn-mock svg{width:22px;height:22px;stroke-width:2}
-        .ts-controls-mock{
-            position:absolute;left:0;right:0;bottom:14px;z-index:10;
-            display:flex;flex-direction:column;gap:10px;padding:0 12px;
+        .ts-side-btn svg{width:22px;height:22px;stroke-width:2}
+        .ts-controls{
+            position:absolute;
+            left:0;right:0;bottom:14px;
+            z-index:10;
+            padding:0 12px;
+            display:flex;flex-direction:column;gap:10px;
         }
-        .ts-time-row-mock{display:flex;justify-content:center;gap:2px}
-        .ts-time-btn-mock{
-            padding:4px 10px;border-radius:100px;border:none;background:transparent;
-            color:rgba(255,255,255,.5);font-size:11px;font-weight:600;cursor:pointer;
+        .ts-time-row{
+            display:flex;justify-content:center;gap:2px;
         }
-        .ts-time-btn-mock.active{
+        .ts-time-btn{
+            padding:4px 10px;border-radius:100px;
+            color:rgba(255,255,255,.5);
+            font-size:11px;font-weight:600;
+        }
+        .ts-time-btn.active{
             color:#fff;font-weight:800;
-            text-shadow:0 1px 4px rgba(0,0,0,.6);
             transform:scale(1.1);
+            text-shadow:0 1px 4px rgba(0,0,0,.6);
         }
-        .ts-record-row-mock{
-            display:flex;align-items:center;justify-content:center;gap:22px;
+        .ts-record-row{
+            display:flex;align-items:center;justify-content:center;
+            gap:22px;
         }
-        .ts-gallery-mock{
+        .ts-gallery{
             width:44px;height:44px;border-radius:10px;
             border:2px solid rgba(255,255,255,.5);
-            background:transparent;
+            color:#fff;
             display:flex;align-items:center;justify-content:center;
-            color:#fff;cursor:pointer;
         }
-        .ts-gallery-mock svg{width:20px;height:20px;stroke-width:1.8}
-        .ts-record-mock{
+        .ts-gallery svg{width:20px;height:20px}
+        .ts-record{
             width:70px;height:70px;border-radius:50%;
-            border:5px solid #fff;background:transparent;
+            border:5px solid #fff;
             display:flex;align-items:center;justify-content:center;
-            cursor:pointer;padding:0;
             box-shadow:0 4px 20px rgba(0,0,0,.4);
         }
-        .ts-record-inner-mock{
-            width:100%;height:100%;border-radius:50%;background:#ff375f;
+        .ts-record-inner{
+            width:100%;height:100%;border-radius:50%;
+            background:#ff375f;
         }
-        .ts-effects-mock{
+        .ts-effects{
             width:44px;height:44px;border-radius:50%;
-            background:transparent;border:none;color:#fff;
-            display:flex;align-items:center;justify-content:center;cursor:pointer;
+            color:#fff;
+            display:flex;align-items:center;justify-content:center;
         }
-        .ts-effects-mock svg{width:26px;height:26px;stroke-width:2}
-        .ts-track-strip-mock{
-            display:flex;align-items:center;justify-content:center;gap:6px;
-            padding:6px 0;color:#fff;font-size:11px;font-weight:600;
-            background:transparent;border:none;cursor:pointer;
+        .ts-effects svg{width:26px;height:26px;stroke-width:2}
+        .ts-track-strip{
+            display:flex;align-items:center;justify-content:center;
+            gap:6px;padding:6px 0;
+            color:#fff;font-size:11px;font-weight:600;
             text-shadow:0 1px 4px rgba(0,0,0,.6);
         }
-        .ts-track-strip-mock svg{width:18px;height:18px;stroke-width:2}
-        /* ═══════════════ CHVAD preview ═══════════════ */
-        .chvad-preview{
-            max-width:340px;margin:0 auto;
-            background:var(--card);border-radius:20px;
-            border:1px solid var(--border);overflow:hidden;
-            box-shadow:var(--shadow-md);position:relative;
-        }
-        .chvad-preview-header{
-            position:relative;padding:20px 16px 16px;
-            background:linear-gradient(180deg,rgba(191,90,242,.35) 0%,rgba(255,55,95,.2) 50%,transparent 100%);
-            text-align:center;overflow:hidden;
-        }
-        .chvad-pattern{
-            position:absolute;inset:-20%;opacity:.18;
-            background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><text x='50%' y='52%' font-size='32' text-anchor='middle' dominant-baseline='middle'>✨</text></svg>");
-            background-size:64px 64px;background-repeat:repeat;
-            transform:rotate(-14deg);pointer-events:none;
-        }
-        .chvad-avatar{
-            width:68px;height:68px;border-radius:50%;
-            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+        .ts-track-strip svg{width:18px;height:18px;stroke-width:2}
+
+        /* ═════════════ ФИНАЛЬНЫЙ СЛАЙД ═════════════ */
+        .slide-final{
+            background:linear-gradient(180deg,#1a0d2e 0%,#0a0d1e 100%);
             display:flex;align-items:center;justify-content:center;
-            color:#fff;font-weight:800;font-size:26px;
-            margin:0 auto 8px;
-            border:3px solid rgba(255,255,255,.2);
-            position:relative;z-index:1;
+            padding:40px 24px;
+            position:relative;
+            overflow:hidden;
         }
-        .chvad-name{
-            font-size:18px;font-weight:800;
-            background:linear-gradient(135deg,#bf5af2,#ff375f);
+        .slide-final::before{
+            content:'';position:absolute;inset:0;
+            background:
+                    radial-gradient(circle at 20% 20%,rgba(191,90,242,.35),transparent 50%),
+                    radial-gradient(circle at 80% 80%,rgba(10,132,255,.3),transparent 50%),
+                    radial-gradient(circle at 50% 50%,rgba(255,55,95,.2),transparent 60%);
+            animation:bgFloat 12s ease-in-out infinite;
+            pointer-events:none;
+        }
+        @keyframes bgFloat{
+            0%,100%{transform:scale(1) rotate(0)}
+            50%{transform:scale(1.15) rotate(5deg)}
+        }
+        .final-content{
+            position:relative;z-index:2;
+            text-align:center;
+            display:flex;flex-direction:column;
+            gap:20px;
+            max-width:380px;
+        }
+        .final-title{
+            font-size:clamp(26px,6.5vw,36px);
+            font-weight:900;
+            letter-spacing:-.03em;
+            line-height:1.15;
+        }
+        .final-title .gradient{
+            background:linear-gradient(135deg,#bf5af2,#0a84ff);
             -webkit-background-clip:text;background-clip:text;
-            -webkit-text-fill-color:transparent;color:transparent;
-            position:relative;z-index:1;
+            -webkit-text-fill-color:transparent;
         }
-        .chvad-badge{
-            display:inline-flex;align-items:center;gap:4px;
-            padding:3px 10px;border-radius:100px;
+        .final-text{
+            font-size:15px;
+            color:rgba(255,255,255,.7);
+            line-height:1.55;
+        }
+        .final-link{
+            display:inline-flex;align-items:center;gap:6px;
+            padding:12px 22px;
             background:linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2);
-            color:#fff;font-size:10px;font-weight:800;
-            margin-top:6px;position:relative;z-index:1;
-        }
-        .chvad-username{
-            font-size:12px;color:var(--text-secondary);
-            margin-top:4px;position:relative;z-index:1;
-        }
-        .chvad-features{
-            padding:12px 14px 14px;
-            display:flex;flex-direction:column;gap:6px;
-        }
-        .chvad-feature-row{
-            display:flex;align-items:center;gap:10px;
-            padding:8px 10px;background:var(--surface-2);
-            border-radius:10px;font-size:12px;color:var(--text);
-        }
-        .chvad-feature-check{
-            width:16px;height:16px;border-radius:50%;
-            background:var(--green);
-            display:flex;align-items:center;justify-content:center;
-            color:#fff;font-size:10px;font-weight:900;flex-shrink:0;
-        }
-        .chvad-feature-check.off{background:var(--surface-3)}
-        /* ═══════════════ LIVE / RAVE ═══════════════ */
-        .live-mock{
-            max-width:380px;margin:0 auto;
-            background:#0a0a0a;border-radius:24px;
-            border:1px solid var(--border);overflow:hidden;
-            box-shadow:var(--shadow-md);position:relative;
-        }
-        .live-top{
-            display:flex;align-items:center;gap:10px;
-            padding:12px;background:rgba(0,0,0,.5);
-        }
-        .live-host-ava{
-            width:36px;height:36px;border-radius:50%;padding:2px;
-            background:conic-gradient(from 0deg,#ff375f,#ff3b30,#ff375f);
-            animation:liveRotate 3s linear infinite;flex-shrink:0;
-        }
-        .live-host-ava-inner{
-            width:100%;height:100%;border-radius:50%;
-            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
-            color:#fff;display:flex;align-items:center;justify-content:center;
-            font-size:13px;font-weight:800;
-        }
-        .live-host-info{flex:1;min-width:0}
-        .live-host-name{font-size:13px;font-weight:700;color:#fff}
-        .live-host-label{
-            display:flex;align-items:center;gap:4px;
-            font-size:10px;font-weight:900;color:#ff375f;
-            letter-spacing:.08em;margin-top:2px;
-        }
-        .live-host-label::before{
-            content:'';display:block;width:6px;height:6px;border-radius:50%;
-            background:#ff375f;box-shadow:0 0 8px #ff375f;
-            animation:liveDotPulse 1.4s ease-in-out infinite;
-        }
-        @keyframes liveDotPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}
-        @keyframes liveRotate{to{transform:rotate(360deg)}}
-        .live-stage-mock{
-            padding:20px 16px;
-            display:flex;flex-direction:column;align-items:center;gap:12px;
-            background:radial-gradient(circle at 50% 30%,rgba(255,159,10,.15),transparent 60%);
-        }
-        .live-stage-ava-mock{
-            width:80px;height:80px;border-radius:50%;padding:3px;
-            background:conic-gradient(from 0deg,#ff375f,#ff9f0a,#ff375f);
-            animation:liveRotate 3s linear infinite;
-        }
-        .live-stage-ava-inner-mock{
-            width:100%;height:100%;border-radius:50%;
-            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
-            color:#fff;display:flex;align-items:center;justify-content:center;
-            font-size:28px;font-weight:800;
-        }
-        .live-stage-name-mock{font-size:15px;font-weight:800;color:#fff}
-        .live-stage-sub-mock{
-            font-size:11px;font-weight:900;
-            letter-spacing:.14em;text-transform:uppercase;
-            color:#ff9f0a;
-            animation:liveChatPulse 1.6s ease-in-out infinite;
-        }
-        @keyframes liveChatPulse{0%,100%{opacity:1}50%{opacity:.65}}
-        .live-bars-mock{
-            display:flex;gap:4px;height:22px;align-items:flex-end;
-        }
-        .live-bars-mock span{
-            width:4px;
-            background:linear-gradient(180deg,#ffd60a,#ff9f0a,#ff375f);
-            border-radius:2px;animation:barsBeat .8s ease-in-out infinite;
-        }
-        .live-bars-mock span:nth-child(2){animation-delay:.15s}
-        .live-bars-mock span:nth-child(3){animation-delay:.3s}
-        .live-bars-mock span:nth-child(4){animation-delay:.45s}
-        .live-bars-mock span:nth-child(5){animation-delay:.6s}
-        @keyframes barsBeat{0%,100%{height:8px}50%{height:20px}}
-        .live-messages-mock{
-            padding:8px 12px;
-            display:flex;flex-direction:column;gap:5px;
-            max-height:110px;overflow-y:auto;
-            border-top:1px solid rgba(255,255,255,.06);
-        }
-        .live-msg-mock{
-            display:flex;gap:7px;align-items:flex-start;font-size:12px;
-        }
-        .live-msg-ava{
-            width:20px;height:20px;border-radius:50%;
-            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
-            display:flex;align-items:center;justify-content:center;
-            font-size:9px;font-weight:800;color:#fff;flex-shrink:0;
-        }
-        .live-msg-text{color:rgba(255,255,255,.85);line-height:1.4}
-        .live-msg-text strong{color:#ffd60a;font-weight:700}
-        .live-composer-mock{
-            padding:8px 12px;
-            display:flex;gap:8px;align-items:center;
-            border-top:1px solid rgba(255,255,255,.06);
-        }
-        .live-composer-input{
-            flex:1;background:rgba(255,255,255,.08);
-            border-radius:20px;padding:8px 14px;
-            font-size:12px;color:rgba(255,255,255,.4);
-        }
-        /* ═══════════════ CTA ═══════════════ */
-        .cta-btn{
-            display:inline-block;padding:16px 32px;
-            background:linear-gradient(135deg,#ff375f,#bf5af2);
-            color:#fff;text-decoration:none;border-radius:16px;
-            font-weight:800;font-size:15px;
-            box-shadow:0 8px 24px rgba(255,55,95,.35);
+            background-size:200% 200%;
+            animation:liveCardBg 6s ease-in-out infinite;
+            color:#fff;
+            font-size:14px;font-weight:800;
+            border-radius:100px;
+            margin:8px auto 0;
+            box-shadow:0 10px 30px rgba(255,55,95,.4);
             transition:transform .2s var(--spring);
         }
-        .cta-btn:hover{transform:scale(1.04)}
-        /* ═══════════════ Адаптив ═══════════════ */
-        @media(max-width:600px){
-            .progress-dots{right:8px;gap:5px}
-            .progress-dots .dot{width:5px;height:5px}
-            .progress-dots .dot.active{height:14px}
-            .back-home{top:10px;left:10px;padding:7px 12px;font-size:11px}
-            .slide{padding:56px 14px}
-            .mock-feed{max-height:calc(100dvh - 220px)}
-            .feed-post-media-full{max-height:calc(100dvh - 240px)}
-            .ts-studio-mock{max-height:calc(100dvh - 220px)}
-            h1{font-size:30px}
-            h2{font-size:22px}
-            .feature-grid{gap:10px}
-            .feature-card{padding:14px}
+        .final-link:hover{transform:scale(1.05)}
+        @keyframes liveCardBg{
+            0%,100%{background-position:0% 50%}
+            50%{background-position:100% 50%}
+        }
+
+        /* ═════════════ АДАПТИВ ═════════════ */
+        @media (max-width:380px){
+            .content{padding:32px 20px}
+            .banner{padding:26px 20px}
+            .avatar-circle{width:52px;height:52px}
+            .avatar-emoji{width:26px;height:26px}
+            .ts-mock{width:min(240px,72vw)}
+        }
+        @media (prefers-reduced-motion:reduce){
+            *,*::before,*::after{
+                animation-duration:.01ms!important;
+                animation-iteration-count:1!important;
+                transition-duration:.01ms!important;
+            }
         }
     </style>
 </head>
 <body>
 
-<!-- SVG градиенты -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <defs>
-        <linearGradient id="grad-op" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ff9f0a"/><stop offset="100%" stop-color="#ff375f"/>
-        </linearGradient>
-        <linearGradient id="grad-pp" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ff375f"/><stop offset="100%" stop-color="#bf5af2"/>
-        </linearGradient>
-        <linearGradient id="grad-bp" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#0a84ff"/><stop offset="100%" stop-color="#bf5af2"/>
-        </linearGradient>
-        <linearGradient id="grad-oy" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ff9f0a"/><stop offset="100%" stop-color="#ffd60a"/>
-        </linearGradient>
-        <linearGradient id="grad-gb" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#30d158"/><stop offset="100%" stop-color="#0a84ff"/>
-        </linearGradient>
-        <linearGradient id="grad-ro" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ff3b30"/><stop offset="100%" stop-color="#ff9f0a"/>
-        </linearGradient>
-    </defs>
-</svg>
-
-<!-- ДЕКОР ФОНА -->
-<div class="bg-decor decor-heart" style="top:8%;left:5%"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff375f" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
-<div class="bg-decor decor-star" style="top:12%;right:8%"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffd60a" stroke-width="2"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></div>
-<div class="bg-decor decor-circle" style="top:60%;left:10%"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#bf5af2" stroke-width="1.5"><circle cx="12" cy="12" r="9"/></svg></div>
-<div class="bg-decor decor-bolt" style="top:40%;right:6%"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0a84ff" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg></div>
-
+<!-- ПРОГРЕСС -->
 <div class="progress-bar" id="progressBar"></div>
-<a href="/" class="back-home">← На главную</a>
-<div class="progress-dots" id="progressDots"></div>
 
-<!-- ═══════════════ 1. HERO ═══════════════ -->
-<section class="slide" data-slide="1">
-    <div class="slide-inner">
-        <div class="hero-logo reveal"><img src="/logo.jpeg" alt="listatread"></div>
-        <h1 class="reveal" data-delay="1">listatread</h1>
-        <p class="reveal" data-delay="2" style="font-size:clamp(16px,2.5vw,20px)">
-            Новая мультимедийная платформа.<br>
-            Не профили — <span class="accent-text">каналы</span>.<br>
-            Не поиск — <span class="accent-text">дофамин</span>.
-        </p>
-        <p class="reveal" data-delay="3" style="font-size:12px;margin-top:16px;color:var(--text-tertiary)">
-            Листайте вниз
-        </p>
+<!-- ШАПКА -->
+<header class="page-header" id="pageHeader">
+    <div class="logo">
+        <div class="logo-img"><img src="/logo.jpeg" alt="listatread"></div>
+        <span class="logo-text">listatread</span>
     </div>
-</section>
+    <a href="#final" class="about-link">about</a>
+</header>
 
-<!-- ═══════════════ 2. ЧТО ТАКОЕ ═══════════════ -->
-<section class="slide" data-slide="2">
-    <div class="slide-inner">
-        <div class="section-label reveal">Что такое listatread</div>
-        <h2 class="reveal" data-delay="1">Платформа, где контент <span class="accent-text">живёт в каналах</span></h2>
-        <p class="reveal" data-delay="2">
-            Люди делятся контентом не лично в профилях — они создают каналы. Каналы могут быть общими, и авторов может быть много. Главная фишка — эти каналы показываются в бесконечной ленте рекомендаций.
-        </p>
-        <div class="feature-grid" style="margin-top:24px">
-            <div class="feature-card reveal" data-delay="3">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg></div>
-                <h3>Каналы вместо профилей</h3>
-                <p style="font-size:13px;margin:0">Один канал — много авторов. Создавайте контент вместе с командой.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="4">
-                <div class="feature-icon-wrap blue"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 16 0 8 8 0 0 1-16 0z"/><path d="M8 12h8M12 8v8"/></svg></div>
-                <h3>Бесконечная лента</h3>
-                <p style="font-size:13px;margin:0">Алгоритм подбирает контент под вас. Дофамин на каждой прокрутке.</p>
-            </div>
+<!-- ТОЧКИ -->
+<div class="slide-dots" id="slideDots"></div>
+
+<!-- ═════════════ СЛАЙДЫ ═════════════ -->
+<main class="slides" id="slides">
+
+    <!-- ─────────── SLIDE 1 ─────────── -->
+    <section class="slide slide-hero" data-slide="1">
+        <div class="banner banner-orange hero-banner">
+            <p class="reveal" data-delay="1">
+                Наша миссия рассказать о&nbsp;вас большему количеству людей, используя повседневную жизнь.
+            </p>
         </div>
-    </div>
-</section>
+        <div class="hero-body">
+            <p class="hero-tagline reveal" data-delay="2">
+                новая социальная сеть <b>listatread</b><br>
+                созданная осенью 2026
+            </p>
 
-<!-- ═══════════════ 3. КАНАЛЫ (НОВЫЙ) ═══════════════ -->
-<section class="slide" data-slide="3">
-    <div class="slide-inner">
-        <div class="section-label reveal">Каналы</div>
-        <h2 class="reveal" data-delay="1">Всё, что умеют <span class="accent-text">каналы</span></h2>
-        <p class="reveal" data-delay="2">Канал — это не просто профиль. Это полноценная экосистема для контента, общения и аудитории.</p>
-        <div class="feature-grid" style="margin-top:20px">
-            <div class="feature-card reveal" data-delay="3">
-                <div class="feature-icon-wrap orange"><svg viewBox="0 0 24 24" stroke="url(#grad-oy)" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-                <h3>Видео</h3>
-                <p style="font-size:13px;margin:0">Публикуйте видео с эффектами, масками и звуками. Монтаж прямо в приложении.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="4">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24" stroke="url(#grad-op)" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg></div>
-                <h3>Фото</h3>
-                <p style="font-size:13px;margin:0">Квадратные снимки на всю карточку, качество без сжатия.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="5">
-                <div class="feature-icon-wrap purple"><svg viewBox="0 0 24 24" stroke="url(#grad-pp)" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-                <h3>Музыка</h3>
-                <p style="font-size:13px;margin:0">Треки, альбомы, плейлисты. С просмотром текста и исполнителя.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="6">
-                <div class="feature-icon-wrap green"><svg viewBox="0 0 24 24" stroke="url(#grad-gb)" stroke-width="1.8"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg></div>
-                <h3>Опросы и викторины</h3>
-                <p style="font-size:13px;margin:0">Собирайте мнения и проводите квизы прямо в ленте.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="7">
-                <div class="feature-icon-wrap blue"><svg viewBox="0 0 24 24" stroke="url(#grad-bp)" stroke-width="1.8"><path d="M14 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z"/><path d="M14 21v-4a3 3 0 0 1 3-3h4"/></svg></div>
-                <h3>Стикеры и цитаты</h3>
-                <p style="font-size:13px;margin:0">Отдельные стикер-паки и красивые цитаты для любого настроения.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="8">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24" stroke="url(#grad-op)" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h.01"/></svg></div>
-                <h3>Коды приглашений</h3>
-                <p style="font-size:13px;margin:0">Публичные, частные и общественные каналы с гибкой настройкой доступа.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 4. ПРЕИМУЩЕСТВА ═══════════════ -->
-<section class="slide" data-slide="4">
-    <div class="slide-inner">
-        <div class="section-label reveal">Наши преимущества</div>
-        <h2 class="reveal" data-delay="1">Почему <span class="accent-text">listatread</span></h2>
-        <div class="feature-grid">
-            <div class="feature-card reveal" data-delay="2">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg></div>
-                <h3>Каналы вместо профилей</h3>
-                <p style="font-size:13px;margin:0">Один канал — много авторов. Создавайте контент вместе с командой.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="3">
-                <div class="feature-icon-wrap blue"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 16 0 8 8 0 0 1-16 0z"/><path d="M8 12h8M12 8v8"/></svg></div>
-                <h3>Бесконечная лента</h3>
-                <p style="font-size:13px;margin:0">Алгоритм подбирает контент под вас. Дофамин на каждой прокрутке.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 5. ВИДЕО ТРЕД (на всю карточку) ═══════════════ -->
-<section class="slide" data-slide="5">
-    <div class="slide-inner">
-        <div class="section-label reveal">Видео тред</div>
-        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Смотрите <span class="accent-text">прямо в ленте</span></h2>
-        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
-            <article class="feed-post media-full">
-                <div class="feed-post-media-full">
-                    <video src="https://www.w3schools.com/html/mov_bbb.mp4" autoplay muted loop playsinline></video>
-                    <div class="feed-post-header">
-                        <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt=""></div>
-                        <div class="feed-post-info">
-                            <div class="feed-post-name">
-                                <span class="feed-post-name-text">Alex</span>
-                                <span class="feed-channel-badge"><span class="feed-channel-logo">K</span><span class="feed-channel-name">Канал</span></span>
-                            </div>
-                            <div class="feed-post-time">2 часа назад</div>
-                        </div>
+            <div class="avatars-showcase reveal" data-delay="3">
+                <div class="avatar-badge">
+                    <div class="avatar-circle">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex&backgroundColor=ffd60a" alt="">
                     </div>
-                    <div class="video-overlay-controls">
-                        <div class="video-vinyl"><div class="video-vinyl-disc"><div class="video-vinyl-cover">A</div></div></div>
-                        <button class="video-overlay-btn liked">
+                    <span class="avatar-emoji">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#30d158" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/>
+                            <path d="M6 1v3M10 1v3M14 1v3"/>
+                        </svg>
+                    </span>
+                </div>
+                <div class="avatar-badge">
+                    <div class="avatar-circle">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Maria&backgroundColor=ff375f" alt="">
+                    </div>
+                    <span class="avatar-emoji">
+                        <svg viewBox="0 0 24 24" fill="#ff375f">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                    </span>
+                </div>
+                <div class="avatar-badge">
+                    <div class="avatar-circle">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Kate&backgroundColor=0a84ff" alt="">
+                    </div>
+                    <span class="avatar-emoji">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#0a84ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="7" width="18" height="14" rx="3"/>
+                            <circle cx="12" cy="14" r="3.5"/>
+                            <path d="M8 7l1.5-3h5L16 7"/>
+                        </svg>
+                    </span>
+                </div>
+            </div>
+
+            <p class="scroll-hint reveal" data-delay="4">листайте чтобы смотреть далее</p>
+        </div>
+    </section>
+
+    <!-- ─────────── SLIDE 2 ─────────── -->
+    <section class="slide" data-slide="2">
+        <div class="banner banner-green">
+            <p class="reveal" data-delay="1">
+                Создание своего личного канала на&nbsp;платформе <b>listatread</b> — это уже большой шаг к&nbsp;успеху
+            </p>
+        </div>
+        <div class="content">
+            <p class="text-body reveal" data-delay="2">
+                Здесь не нужно выкладывать контент через свой профиль — создайте свой канал сегодня и&nbsp;делитесь своим контентом прямо сейчас
+            </p>
+            <div class="icon-showcase reveal" data-delay="3">
+                <div class="icon-box">
+                    <svg class="icon-heart" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                    <span class="icon-badge">4.2K</span>
+                </div>
+                <div class="icon-box">
+                    <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="4" width="4" height="16" rx="1.5"/>
+                        <rect x="14" y="4" width="4" height="16" rx="1.5"/>
+                    </svg>
+                </div>
+                <div class="icon-box">
+                    <svg class="icon-comment" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span class="icon-badge">320</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─────────── SLIDE 3 ─────────── -->
+    <section class="slide" data-slide="3">
+        <div class="banner banner-blue">
+            <p class="reveal" data-delay="1">
+                Делитесь собой! Здесь не&nbsp;нужно сложных навыков или переделывать себя под&nbsp;тенденции.
+            </p>
+        </div>
+        <div class="content">
+            <div class="card-showcase reveal" data-delay="2">
+                <div class="showcase-card showcase-card-1">
+                    <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=400&auto=format&fit=crop" alt="">
+                </div>
+                <div class="showcase-card showcase-card-2">
+                    <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400&auto=format&fit=crop" alt="">
+                </div>
+                <div class="showcase-like showcase-like-1">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                </div>
+                <div class="showcase-like showcase-like-2">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="reveal" data-delay="3" style="text-align:center;margin-top:8px">
+                <p style="font-size:15px;font-weight:600;color:#4ade80;line-height:1.5">
+                    Вы и есть частичка чего-то большого
+                </p>
+                <p class="hashtag" style="font-size:18px;margin-top:6px">#listatread</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─────────── SLIDE 4 ─────────── -->
+    <section class="slide" data-slide="4">
+        <div class="banner banner-yellow banner-half">
+            <p class="reveal" data-delay="1" style="font-weight:600">
+                Поделитесь счастливыми моментами из жизни сейчас!
+            </p>
+        </div>
+        <div class="content content-left" style="padding-left:32px;align-items:center;text-align:center">
+            <p class="text-body reveal" data-delay="2" style="margin:0 auto">
+                На самом деле создавать контент не&nbsp;сложно
+            </p>
+            <div class="hashtags reveal" data-delay="3">
+                <span class="hashtag">#new</span>
+                <span class="hashtag">#tread</span>
+                <span class="hashtag">#channels</span>
+            </div>
+            <p class="scroll-hint reveal" data-delay="4" style="margin-top:24px">свайп влево-вправо</p>
+        </div>
+    </section>
+
+    <!-- ─────────── NOTEBOOK SECTION (5-9) ─────────── -->
+    <section class="slide notebook-section" data-slide="5-9">
+        <div class="notebook-header">
+            <div class="notebook-title"><span class="at-symbol">@</span> тетрадка</div>
+            <div class="notebook-pagination">
+                <span class="current" id="nbCurrent">5</span>
+                <span>/</span>
+                <span>9</span>
+            </div>
+        </div>
+
+        <div class="notebook-track" id="notebookTrack">
+
+            <!-- PAGE 5: Purple — текстовый тред -->
+            <div class="notebook-page" data-page="5">
+                <div class="banner banner-purple banner-small">
+                    <p>Создайте обычную ветку — расскажите о&nbsp;том, чем живете, не&nbsp;стоит думать как я&nbsp;выгляжу со&nbsp;стороны</p>
+                </div>
+
+                <article class="thread-card">
+                    <div class="tc-header">
+                        <div class="tc-avatar-wrap">
+                            <div class="tc-avatar">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=John&backgroundColor=ffd60a" alt="">
+                                <div class="tc-status">🥰</div>
+                            </div>
+                            <div class="tc-plus">+</div>
+                        </div>
+                        <div class="tc-info">
+                            <div class="tc-name-row">
+                                <span class="tc-name">John Doe</span>
+                                <span class="tc-admin">🦝</span>
+                                <span class="tc-channel-badge">
+                                    <span class="tc-channel-logo">T</span>
+                                    <span class="tc-channel-name">Thoughts</span>
+                                </span>
+                            </div>
+                            <div class="tc-time">10 мин назад</div>
+                        </div>
+                        <button class="tc-sub-btn">+</button>
+                    </div>
+                    <div class="tc-content">Иногда самые гениальные идеи приходят в голову, когда просто сидишь в тишине и никуда не спешишь. Цените моменты. ✨</div>
+                    <div class="tc-footer">
+                        <div class="tc-footer-avatar">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=John" alt="">
+                        </div>
+                        <button class="tc-follow-text">Подписаться</button>
+                        <button class="tc-action liked">
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                            <span>4.2K</span>
+                            2.4K
                         </button>
-                        <button class="video-overlay-btn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                            <span>320</span>
+                        <button class="tc-action">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                            210
                         </button>
-                        <button class="video-overlay-btn">
+                        <button class="tc-action">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
                         </button>
+                        <button class="tc-more">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                        </button>
                     </div>
-                    <div class="feed-post-content">Смотрите какой закат сегодня! Невероятная красота 🌅</div>
-                    <div class="feed-post-footer">
-                        <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">4.2K</span></button>
-                        <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">450</span></button>
-                        <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
-                    </div>
-                </div>
-            </article>
-        </div>
-    </div>
-</section>
+                    <button class="tc-discuss">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <span class="tc-discuss-label">Обсуждение</span>
+                        <span class="tc-discuss-right">
+                            <span class="tc-cstack">
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=A" alt=""></span>
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=B" alt=""></span>
+                                <span class="tc-cava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=C" alt=""></span>
+                            </span>
+                            <span class="tc-count">320</span>
+                            <span class="tc-chev">›</span>
+                        </span>
+                    </button>
+                </article>
+            </div>
 
-<!-- ═══════════════ 6. ФОТО ТРЕД (на всю карточку) ═══════════════ -->
-<section class="slide" data-slide="6">
-    <div class="slide-inner">
-        <div class="section-label reveal">Фото тред</div>
-        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Качественные <span class="accent-text">снимки</span></h2>
-        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
-            <article class="feed-post media-full">
-                <div class="feed-post-media-full square">
-                    <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop" alt="">
-                    <div class="feed-post-header">
-                        <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Maria" alt=""></div>
-                        <div class="feed-post-info">
-                            <div class="feed-post-name">
-                                <span class="feed-post-name-text">Maria</span>
-                                <span class="feed-channel-badge"><span class="feed-channel-logo">P</span><span class="feed-channel-name">Photography</span></span>
+            <!-- PAGE 6: Red — видео -->
+            <div class="notebook-page" data-page="6">
+                <div class="banner banner-red banner-small">
+                    <p>Запечатлите счастливый момент — выложите фото или видео прямо тут и сейчас, пусть это увидит мир</p>
+                </div>
+
+                <div class="video-showcase">
+                    <div class="video-side-photo">
+                        <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=200&auto=format&fit=crop" alt="">
+                    </div>
+                    <div class="video-main">
+                        <video src="https://www.w3schools.com/html/mov_bbb.mp4" autoplay muted loop playsinline></video>
+                        <div class="video-play-overlay">
+                            <svg viewBox="0 0 24 24" fill="#fff">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                        <div class="video-side-right">
+                            <div class="video-side-btn">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                4.2K
                             </div>
-                            <div class="feed-post-time">5 часов назад</div>
+                            <div class="video-side-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                320
+                            </div>
+                            <div class="video-side-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                            </div>
                         </div>
                     </div>
-                    <div class="feed-post-content">Делюсь рецептом этих невероятных пирожных! читать далее...</div>
-                    <div class="feed-post-footer">
-                        <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">8.1K</span></button>
-                        <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">720</span></button>
-                        <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
+                    <div class="video-side-photo">
+                        <img src="https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=200&auto=format&fit=crop" alt="">
                     </div>
                 </div>
-            </article>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 7. ТЕКСТОВЫЙ ТРЕД ═══════════════ -->
-<section class="slide" data-slide="7">
-    <div class="slide-inner">
-        <div class="section-label reveal">Текстовый тред</div>
-        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Мысли <span class="accent-text">на бумаге</span></h2>
-        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
-            <article class="feed-post">
-                <div class="feed-post-header">
-                    <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=John" alt=""></div>
-                    <div class="feed-post-info">
-                        <div class="feed-post-name">
-                            <span class="feed-post-name-text">John Doe</span>
-                            <span class="feed-channel-badge"><span class="feed-channel-logo">T</span><span class="feed-channel-name">Thoughts</span></span>
-                        </div>
-                        <div class="feed-post-time">10 мин назад</div>
-                    </div>
-                </div>
-                <div class="feed-post-content" style="font-size:16px;padding:8px 0">Иногда самые гениальные идеи приходят в голову, когда просто сидишь в тишине и никуда не спешишь. Цените моменты. ✨</div>
-                <div class="feed-post-footer">
-                    <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">2.4K</span></button>
-                    <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">210</span></button>
-                    <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
-                </div>
-            </article>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 8. МУЗЫКАЛЬНЫЙ ТРЕД ═══════════════ -->
-<section class="slide" data-slide="8">
-    <div class="slide-inner">
-        <div class="section-label reveal">Музыкальный тред</div>
-        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Слушайте <span class="accent-text">прямо здесь</span></h2>
-        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
-            <article class="feed-post">
-                <div class="feed-post-header">
-                    <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=DJ" alt=""></div>
-                    <div class="feed-post-info">
-                        <div class="feed-post-name">
-                            <span class="feed-post-name-text">DJ Tread</span>
-                            <span class="feed-channel-badge"><span class="feed-channel-logo">M</span><span class="feed-channel-name">Music</span></span>
-                        </div>
-                        <div class="feed-post-time">1 час назад</div>
-                    </div>
-                </div>
-                <div class="feed-post-content">Новый трек, билеты на концерт уже в прокате! 💪</div>
-                <div class="track-card">
-                    <button class="track-play"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-                    <div class="track-info">
-                        <div class="track-title">Midnight Vibes</div>
-                        <div class="track-meta">@dj.tread · 3:45</div>
-                    </div>
-                </div>
-                <div class="feed-post-footer">
-                    <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">9.8K</span></button>
-                    <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">1K</span></button>
-                    <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
-                </div>
-            </article>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 9. ОПРОС ═══════════════ -->
-<section class="slide" data-slide="9">
-    <div class="slide-inner">
-        <div class="section-label reveal">Опрос</div>
-        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Узнайте <span class="accent-text">мнение</span></h2>
-        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
-            <article class="feed-post">
-                <div class="feed-post-header">
-                    <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tech" alt=""></div>
-                    <div class="feed-post-info">
-                        <div class="feed-post-name">
-                            <span class="feed-post-name-text">Tech News</span>
-                            <span class="feed-channel-badge"><span class="feed-channel-logo">T</span><span class="feed-channel-name">Tech</span></span>
-                        </div>
-                        <div class="feed-post-time">4 часа назад</div>
-                    </div>
-                </div>
-                <div class="feed-post-content">Какой язык программирования вы изучаете сейчас?</div>
-                <div class="poll-view">
-                    <div class="poll-view-title">📊 Опрос</div>
-                    <div class="poll-view-options">
-                        <div class="poll-view-option">
-                            <div class="poll-view-fill" style="width:65%"></div>
-                            <div class="poll-view-label"><span>JavaScript</span><span>65%</span></div>
-                        </div>
-                        <div class="poll-view-option">
-                            <div class="poll-view-label"><span>Python</span><span>20%</span></div>
-                        </div>
-                        <div class="poll-view-option">
-                            <div class="poll-view-label"><span>C++</span><span>15%</span></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="feed-post-footer">
-                    <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">1.5K</span></button>
-                    <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">300</span></button>
-                    <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
-                </div>
-            </article>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 10. СТИКЕР ═══════════════ -->
-<section class="slide" data-slide="10">
-    <div class="slide-inner">
-        <div class="section-label reveal">Стикер тред</div>
-        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Выражайте <span class="accent-text">эмоции</span></h2>
-        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
-            <article class="feed-post">
-                <div class="feed-post-header">
-                    <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Cat" alt=""></div>
-                    <div class="feed-post-info">
-                        <div class="feed-post-name">
-                            <span class="feed-post-name-text">Cat Lover</span>
-                            <span class="feed-channel-badge"><span class="feed-channel-logo">C</span><span class="feed-channel-name">Cats</span></span>
-                        </div>
-                        <div class="feed-post-time">30 мин назад</div>
-                    </div>
-                </div>
-                <div class="feed-post-content">Когда лег спать в 3 ночи:</div>
-                <img class="feed-post-sticker" src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=SleepyCat" alt="sticker">
-                <div class="feed-post-footer">
-                    <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">6.3K</span></button>
-                    <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">800</span></button>
-                    <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
-                </div>
-            </article>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 11. СОЗДАНИЕ КОНТЕНТА (НОВЫЙ) ═══════════════ -->
-<section class="slide" data-slide="11">
-    <div class="slide-inner">
-        <div class="section-label reveal">Tread Studio</div>
-        <h2 class="reveal" data-delay="1" style="margin-bottom:10px">Создавайте видео <span class="accent-text">прямо в приложении</span></h2>
-        <p class="reveal" data-delay="2" style="font-size:14px;margin-bottom:14px">
-            Маски, эффекты, музыка из listatread — всё под рукой. Снимайте, монтируйте и публикуйте за пару минут.
-        </p>
-        <div class="ts-studio-mock reveal" data-delay="3">
-            <div class="ts-camera-bg"></div>
-            <div class="ts-topbar-mock">
-                <button class="ts-back-mock">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
-                </button>
-                <button class="ts-channel-pill-mock">
-                    <span class="ts-channel-ava-mock">K</span>
-                    <span class="ts-channel-name-mock">Мой канал</span>
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-                </button>
             </div>
-            <div class="ts-side-mock">
-                <button class="ts-side-btn-mock" title="Повернуть">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.5"/></svg>
-                </button>
-                <button class="ts-side-btn-mock" title="Вспышка">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>
-                </button>
-                <button class="ts-side-btn-mock" title="Тред">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 5h14M12 5v15M8 20h8"/></svg>
-                </button>
-                <button class="ts-side-btn-mock" title="Фото">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>
-                </button>
-                <button class="ts-side-btn-mock" title="Треки">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                </button>
-                <button class="ts-side-btn-mock" title="Ещё">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></svg>
-                </button>
-            </div>
-            <div class="ts-controls-mock">
-                <div class="ts-time-row-mock">
-                    <button class="ts-time-btn-mock">0:10</button>
-                    <button class="ts-time-btn-mock active">0:15</button>
-                    <button class="ts-time-btn-mock">0:30</button>
-                    <button class="ts-time-btn-mock">1:00</button>
-                    <button class="ts-time-btn-mock">3:00</button>
+
+            <!-- PAGE 7: Lime — трек -->
+            <div class="notebook-page" data-page="7">
+                <div class="banner banner-lime banner-small">
+                    <p>Поделитесь своим подкастом, плейлистом или треком — пусть ваш вкус музыки распространяется!</p>
                 </div>
-                <div class="ts-record-row-mock">
-                    <button class="ts-gallery-mock">
+
+                <article class="thread-card">
+                    <div class="tc-header">
+                        <div class="tc-avatar-wrap">
+                            <div class="tc-avatar">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=DJ&backgroundColor=30d158" alt="">
+                                <div class="tc-status">🎧</div>
+                            </div>
+                        </div>
+                        <div class="tc-info">
+                            <div class="tc-name-row">
+                                <span class="tc-name">DJ Tread</span>
+                                <span class="tc-channel-badge">
+                                    <span class="tc-channel-logo">M</span>
+                                    <span class="tc-channel-name">Music</span>
+                                </span>
+                            </div>
+                            <div class="tc-time">1 час назад</div>
+                        </div>
+                        <button class="tc-sub-btn">+</button>
+                    </div>
+                    <div class="tc-content">Новый трек, билеты на концерт уже в прокате! 💪</div>
+                    <div class="tc-track">
+                        <button class="tc-track-play">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                        <div class="tc-track-info">
+                            <div class="tc-track-title">Midnight Vibes</div>
+                            <div class="tc-track-meta">@dj.tread · 3:45</div>
+                        </div>
+                    </div>
+                    <div class="tc-footer">
+                        <button class="tc-action liked">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            9.8K
+                        </button>
+                        <button class="tc-action">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                            1K
+                        </button>
+                        <button class="tc-action">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                        </button>
+                        <button class="tc-more">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                        </button>
+                    </div>
+                </article>
+            </div>
+
+            <!-- PAGE 8: Blue — опрос -->
+            <div class="notebook-page" data-page="8">
+                <div class="banner banner-blue banner-small">
+                    <p style="color:#fff">Спросите общество — создайте опрос и смотрите за результатами</p>
+                </div>
+
+                <article class="thread-card">
+                    <div class="tc-header">
+                        <div class="tc-avatar-wrap">
+                            <div class="tc-avatar">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tech&backgroundColor=0a84ff" alt="">
+                                <div class="tc-status">📊</div>
+                            </div>
+                        </div>
+                        <div class="tc-info">
+                            <div class="tc-name-row">
+                                <span class="tc-name">Tech News</span>
+                                <span class="tc-channel-badge">
+                                    <span class="tc-channel-logo">T</span>
+                                    <span class="tc-channel-name">Tech</span>
+                                </span>
+                            </div>
+                            <div class="tc-time">4 часа назад</div>
+                        </div>
+                        <button class="tc-sub-btn">+</button>
+                    </div>
+                    <div class="tc-content">Какой язык программирования вы изучаете сейчас?</div>
+                    <div class="tc-poll">
+                        <div class="tc-poll-title">📊 Опрос</div>
+                        <div class="tc-poll-options">
+                            <div class="tc-poll-option">
+                                <div class="tc-poll-fill" style="width:65%"></div>
+                                <div class="tc-poll-label"><span>JavaScript</span><span class="tc-poll-pct">65%</span></div>
+                            </div>
+                            <div class="tc-poll-option">
+                                <div class="tc-poll-label"><span>Python</span><span class="tc-poll-pct">20%</span></div>
+                            </div>
+                            <div class="tc-poll-option">
+                                <div class="tc-poll-label"><span>C++</span><span class="tc-poll-pct">15%</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tc-footer">
+                        <button class="tc-action liked">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            1.5K
+                        </button>
+                        <button class="tc-action">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                            300
+                        </button>
+                        <button class="tc-more">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                        </button>
+                    </div>
+                </article>
+            </div>
+
+            <!-- PAGE 9: Sticker -->
+            <div class="notebook-page" data-page="9">
+                <div class="content" style="padding:0;align-items:center;text-align:center;flex:1;justify-content:center">
+                    <p class="h-medium reveal" data-delay="1" style="color:#fff">
+                        Добавьте стикер или цитату —<br>разнообразьте контент
+                    </p>
+
+                    <article class="thread-card" style="margin-top:20px;width:100%;max-width:340px">
+                        <div class="tc-header">
+                            <div class="tc-avatar-wrap">
+                                <div class="tc-avatar">
+                                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Cat&backgroundColor=bf5af2" alt="">
+                                    <div class="tc-status">😻</div>
+                                </div>
+                            </div>
+                            <div class="tc-info">
+                                <div class="tc-name-row">
+                                    <span class="tc-name">Cat Lover</span>
+                                    <span class="tc-channel-badge">
+                                        <span class="tc-channel-logo">C</span>
+                                        <span class="tc-channel-name">Cats</span>
+                                    </span>
+                                </div>
+                                <div class="tc-time">30 мин назад</div>
+                            </div>
+                            <button class="tc-sub-btn">+</button>
+                        </div>
+                        <div class="tc-content">Когда лег спать в 3 ночи:</div>
+                        <img class="tc-sticker" src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=SleepyCat&backgroundColor=transparent" alt="">
+                        <div class="tc-footer">
+                            <button class="tc-action liked">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                6.3K
+                            </button>
+                            <button class="tc-action">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                                800
+                            </button>
+                            <button class="tc-more">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                            </button>
+                        </div>
+                    </article>
+
+                    <p class="scroll-hint" style="margin-top:32px">теперь вниз ↓</p>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="notebook-nav">
+            <button class="notebook-btn" id="nbPrev" aria-label="Назад">‹</button>
+            <div class="notebook-dots" id="nbDots"></div>
+            <button class="notebook-btn" id="nbNext" aria-label="Вперёд">›</button>
+        </div>
+    </section>
+
+    <!-- ─────────── SLIDE 10 — RED / COMMUNITIES ─────────── -->
+    <section class="slide" data-slide="10">
+        <div class="banner banner-red">
+            <p class="reveal" data-delay="1">
+                Сплочать людей и&nbsp;сообщества — наша задача
+            </p>
+        </div>
+        <div class="content" style="align-items:stretch">
+            <p class="text-body reveal" data-delay="2" style="align-self:center;text-align:center">
+                Находите новое на&nbsp;просторах <b style="color:#fff">listatread</b>, новые хобби, идеи, мнения
+            </p>
+            <div class="photos-strip reveal" data-delay="3">
+                <div class="photo-card"><img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=300&auto=format&fit=crop" alt=""></div>
+                <div class="photo-card"><img src="https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=300&auto=format&fit=crop" alt=""></div>
+                <div class="photo-card"><img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=300&auto=format&fit=crop" alt=""></div>
+                <div class="photo-card"><img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=300&auto=format&fit=crop" alt=""></div>
+                <div class="photo-card"><img src="https://images.unsplash.com/photo-1518837695005-2083093ee35b?q=80&w=300&auto=format&fit=crop" alt=""></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─────────── SLIDE 11 — ADAPTATION ─────────── -->
+    <section class="slide" data-slide="11">
+        <div class="content" style="justify-content:center">
+            <h2 class="h-large reveal" data-delay="1" style="max-width:340px">
+                Подстроемся <span class="text-coral">под вас</span>
+            </h2>
+            <p class="text-body reveal" data-delay="2" style="max-width:340px">
+                Будем рекомендовать вам новые треды и&nbsp;темы на&nbsp;основе ваших предпочтений
+            </p>
+            <div class="svg-icons-row reveal" data-delay="3">
+                <div class="svg-icon-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </div>
+                <div class="svg-icon-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <div class="svg-icon-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                </div>
+                <div class="svg-icon-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <div class="svg-icon-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─────────── SLIDE 12 — TREAD STUDIO ─────────── -->
+    <section class="slide" data-slide="12">
+        <div class="banner banner-coral">
+            <p class="reveal" data-delay="1">
+                Создать новый интересный тред не&nbsp;сложно — в&nbsp;<b>listatread</b> представлена функция монтажа видео и&nbsp;фото, начните творить уже сейчас!
+            </p>
+        </div>
+        <div class="content" style="padding-top:16px;padding-bottom:16px">
+            <div class="ts-mock reveal" data-delay="2">
+                <div class="ts-camera-bg"></div>
+                <div class="ts-topbar">
+                    <button class="ts-back">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+                    </button>
+                    <div class="ts-channel-pill">
+                        <span class="ts-channel-ava">K</span>
+                        <span class="ts-channel-name">Мой канал</span>
+                    </div>
+                </div>
+                <div class="ts-side">
+                    <button class="ts-side-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.5"/></svg>
+                    </button>
+                    <button class="ts-side-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>
+                    </button>
+                    <button class="ts-side-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 5h14M12 5v15M8 20h8"/></svg>
+                    </button>
+                    <button class="ts-side-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>
                     </button>
-                    <button class="ts-record-mock"><div class="ts-record-inner-mock"></div></button>
-                    <button class="ts-effects-mock">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M8 12s1.5-2 4-2 4 2 4 2"/><circle cx="9" cy="9" r=".8" fill="currentColor"/><circle cx="15" cy="9" r=".8" fill="currentColor"/></svg>
+                    <button class="ts-side-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                     </button>
                 </div>
-                <button class="ts-track-strip-mock">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                    добавить трек
-                </button>
-            </div>
-        </div>
-        <p class="reveal" data-delay="4" style="font-size:12px;color:var(--text-tertiary);margin-top:12px">
-            Треды с фото, опросами, стикерами и цитатами — всё в одном месте
-        </p>
-    </div>
-</section>
-
-<!-- ═══════════════ 12. LISTADIRECT ═══════════════ -->
-<section class="slide" data-slide="12">
-    <div class="slide-inner">
-        <div class="section-label reveal">listadirect</div>
-        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Общайтесь <span class="accent-text">красиво</span></h2>
-        <div class="mock-direct reveal" data-delay="2">
-            <div class="direct-header">
-                <button class="direct-back-btn" aria-label="Назад">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
-                </button>
-                <div class="direct-ava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alice" alt=""></div>
-                <div class="direct-info">
-                    <div class="direct-name">Alice</div>
-                    <div class="direct-status">в сети</div>
-                </div>
-                <button class="direct-profile-btn" aria-label="Профиль">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
-                </button>
-            </div>
-            <div class="direct-messages-mock">
-                <div class="dr-row-mock"><div class="direct-bubble-mock">Привет! Как дела?</div></div>
-                <div class="dr-row-mock mine"><div class="direct-bubble-mock">Хорошо! В Токио всего 9 утра, пойду собираться на работу!</div></div>
-                <div class="dr-row-mock"><div class="direct-bubble-mock dr-sticker-mock"><img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=Heart" alt="Sticker"></div></div>
-                <div class="dr-row-mock"><div class="direct-bubble-mock">Крутое видео! 🔥 Мне нравится!</div></div>
-                <div class="dr-row-mock mine"><div class="direct-bubble-mock">Спасибо! Рад, что понравилось 😊✨</div></div>
-            </div>
-            <div class="direct-composer-mock">
-                <div class="direct-input-mock">Написать сообщение…</div>
-                <button class="direct-send-btn">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="#fff"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                </button>
-            </div>
-        </div>
-        <p class="reveal" data-delay="3" style="font-size:12px;color:var(--text-tertiary);margin-top:12px">
-            Стикеры, эмодзи, обои чатов, закреплённые сообщения
-        </p>
-    </div>
-</section>
-
-<!-- ═══════════════ 13. LIVE CHAT & RAVE (НОВЫЙ) ═══════════════ -->
-<section class="slide" data-slide="13">
-    <div class="slide-inner">
-        <div class="section-label reveal">Live & Rave</div>
-        <h2 class="reveal" data-delay="1" style="margin-bottom:10px">Live-чаты и <span class="accent-text">рейвы каналов</span></h2>
-        <p class="reveal" data-delay="2" style="font-size:14px;margin-bottom:14px">
-            Создавайте live-чат в канале — обсуждайте всё в реальном времени. Или запускайте <b style="color:#fff">rave</b> — где ведущий в эфире, а зрители пишут и реагируют.
-        </p>
-        <div class="live-mock reveal" data-delay="3">
-            <div class="live-top">
-                <div class="live-host-ava"><div class="live-host-ava-inner">A</div></div>
-                <div class="live-host-info">
-                    <div class="live-host-name">Alex</div>
-                    <div class="live-host-label">LIVE NOW</div>
-                </div>
-                <button style="background:transparent;border:none;color:#fff;padding:6px;cursor:pointer">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-            </div>
-            <div class="live-stage-mock">
-                <div class="live-stage-ava-mock"><div class="live-stage-ava-inner-mock">A</div></div>
-                <div class="live-stage-name-mock">Alex</div>
-                <div class="live-stage-sub-mock">RAVE · LIVE</div>
-                <div class="live-bars-mock"><span></span><span></span><span></span><span></span><span></span></div>
-            </div>
-            <div class="live-messages-mock">
-                <div class="live-msg-mock"><div class="live-msg-ava">M</div><div class="live-msg-text"><strong>Maria:</strong> Привет всем! 🔥</div></div>
-                <div class="live-msg-mock"><div class="live-msg-ava">J</div><div class="live-msg-text"><strong>John:</strong> Отличная тема сегодня!</div></div>
-                <div class="live-msg-mock"><div class="live-msg-ava">K</div><div class="live-msg-text"><strong>Kate:</strong> Присоединилась к вам 😊</div></div>
-            </div>
-            <div class="live-composer-mock">
-                <div class="live-composer-input">Написать сообщение…</div>
-                <button style="background:#0a84ff;border:none;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="#fff"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                </button>
-            </div>
-        </div>
-        <p class="reveal" data-delay="4" style="font-size:12px;color:var(--text-tertiary);margin-top:12px">
-            Глобальный чат убран — только каналы и рейвы. Никакого спама.
-        </p>
-    </div>
-</section>
-
-<!-- ═══════════════ 14. ОФОРМЛЕНИЕ / CHVAD (НОВЫЙ) ═══════════════ -->
-<section class="slide" data-slide="14">
-    <div class="slide-inner">
-        <div class="section-label reveal">Оформление</div>
-        <h2 class="reveal" data-delay="1" style="margin-bottom:10px">Украсьте профиль <span class="accent-text">как хотите</span></h2>
-        <p class="reveal" data-delay="2" style="font-size:14px;margin-bottom:14px">
-            Бесплатно: аватарка, имя, описание и <b style="color:#fff">48 бесплатных статусов</b>.
-            С <b style="color:#ffd60a">listatread chvad</b> открываются градиенты, узоры, цвет имени и премиум-статусы.
-        </p>
-        <div class="chvad-preview reveal" data-delay="3">
-            <div class="chvad-preview-header">
-                <div class="chvad-pattern"></div>
-                <div class="chvad-avatar">M</div>
-                <div class="chvad-name">Maria</div>
-                <div class="chvad-badge">⭐ chvad</div>
-                <div class="chvad-username">@maria</div>
-            </div>
-            <div class="chvad-features">
-                <div class="chvad-feature-row">
-                    <div class="chvad-feature-check">✓</div>
-                    Аватарка, имя, описание
-                </div>
-                <div class="chvad-feature-row">
-                    <div class="chvad-feature-check">✓</div>
-                    48 бесплатных статусов
-                </div>
-                <div class="chvad-feature-row">
-                    <div class="chvad-feature-check">✓</div>
-                    Градиентные фоны
-                </div>
-                <div class="chvad-feature-row">
-                    <div class="chvad-feature-check">✓</div>
-                    Узоры поверх фона
-                </div>
-                <div class="chvad-feature-row">
-                    <div class="chvad-feature-check">✓</div>
-                    Цвет имени и премиум-статусы
+                <div class="ts-controls">
+                    <div class="ts-time-row">
+                        <button class="ts-time-btn">0:10</button>
+                        <button class="ts-time-btn active">0:15</button>
+                        <button class="ts-time-btn">0:30</button>
+                        <button class="ts-time-btn">1:00</button>
+                        <button class="ts-time-btn">3:00</button>
+                    </div>
+                    <div class="ts-record-row">
+                        <button class="ts-gallery">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>
+                        </button>
+                        <button class="ts-record">
+                            <div class="ts-record-inner"></div>
+                        </button>
+                        <button class="ts-effects">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M8 12s1.5-2 4-2 4 2 4 2"/><circle cx="9" cy="9" r=".8" fill="currentColor"/><circle cx="15" cy="9" r=".8" fill="currentColor"/></svg>
+                        </button>
+                    </div>
+                    <button class="ts-track-strip">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                        добавить трек
+                    </button>
                 </div>
             </div>
+            <p class="text-small reveal" data-delay="3">
+                маски, эффекты, треки, тренды, монтаж, наложение и&nbsp;другое в&nbsp;одном редакторе
+            </p>
         </div>
-        <p class="reveal" data-delay="4" style="font-size:12px;color:var(--text-tertiary);margin-top:12px">
-            + кастомизация профиля listadirect, рамки аватара, обои чатов
-        </p>
-    </div>
-</section>
+    </section>
 
-<!-- ═══════════════ 15. РЕГИСТРАЦИЯ / БЕТА (НОВЫЙ) ═══════════════ -->
-<section class="slide" data-slide="15">
-    <div class="slide-inner">
-        <div class="section-label reveal">Бета-тестирование</div>
-        <h2 class="reveal" data-delay="1">Как <span class="accent-text">попасть</span> в listatread</h2>
-        <p class="reveal" data-delay="2">
-            Сейчас идёт закрытый этап разработки. Регистрация временно ограничена — нужен <b style="color:#fff">код доступа</b>.
-        </p>
-        <div class="feature-grid" style="margin-top:20px">
-            <div class="feature-card reveal" data-delay="3">
-                <div class="feature-icon-wrap blue"><svg viewBox="0 0 24 24" stroke="url(#grad-bp)" stroke-width="1.8"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/></svg></div>
-                <h3>Код доступа</h3>
-                <p style="font-size:13px;margin:0">5 символов — только для тестировщиков. Выдаётся вручную.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="4">
-                <div class="feature-icon-wrap green"><svg viewBox="0 0 24 24" stroke="url(#grad-gb)" stroke-width="1.8"><path d="M20 6L9 17l-5-5"/></svg></div>
-                <h3>Как получить</h3>
-                <p style="font-size:13px;margin:0">Примите участие в тестировании. Подробнее на <b style="color:#0a84ff">listatread.online/fts</b>.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="5">
-                <div class="feature-icon-wrap purple"><svg viewBox="0 0 24 24" stroke="url(#grad-pp)" stroke-width="1.8"><path d="M12 2l3 7 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg></div>
-                <h3>Правила беты</h3>
-                <p style="font-size:13px;margin:0">Уважайте других, не спамьте, сообщайте о багах. Мы читаем всё.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="6">
-                <div class="feature-icon-wrap orange"><svg viewBox="0 0 24 24" stroke="url(#grad-oy)" stroke-width="1.8"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg></div>
-                <h3>Серверы в РФ</h3>
-                <p style="font-size:13px;margin:0">Данные передаются через Cloudflare и защищены шифрованием.</p>
-            </div>
+    <!-- ─────────── SLIDE 13 — FINAL ─────────── -->
+    <section class="slide slide-final" data-slide="13" id="final">
+        <div class="final-content">
+            <h1 class="final-title reveal" data-delay="1">
+                Неограниченная <span class="gradient">свобода</span>
+            </h1>
+            <p class="final-text reveal" data-delay="2">
+                Установите статус, описание, аватарку, имя — чтобы выделяться. Вы можете также открыть для себя больше с&nbsp;<b style="color:#fff">listatread chvad</b>
+            </p>
+            <a href="/shop" class="final-link reveal" data-delay="3">
+                Открыть chvad
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+            <p class="text-small reveal" data-delay="4" style="margin-top:12px">
+                listatread.online · 2026
+            </p>
         </div>
-    </div>
-</section>
+    </section>
 
-<!-- ═══════════════ 16. ВОЗМОЖНОСТИ ═══════════════ -->
-<section class="slide" data-slide="16">
-    <div class="slide-inner">
-        <div class="section-label reveal">Возможности</div>
-        <h2 class="reveal" data-delay="1" style="margin-bottom:14px">Оформление и <span class="accent-text">фишки</span></h2>
-        <div class="feature-grid">
-            <div class="feature-card reveal" data-delay="2">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24" stroke="url(#grad-op)" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></div>
-                <h3>Оформление канала</h3>
-                <p style="font-size:13px;margin:0">Градиенты, узоры, цвет имени и эксклюзивные рамки.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="3">
-                <div class="feature-icon-wrap blue"><svg viewBox="0 0 24 24" stroke="url(#grad-bp)" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></div>
-                <h3>Оформление профиля</h3>
-                <p style="font-size:13px;margin:0">Фон, цвет имени и статусы с подпиской chvad.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="4">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24" stroke="url(#grad-op)" stroke-width="1.8"><path d="M12 2s4 3 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s-3 2-3 6a6 6 0 0 0 12 0c0-5-6-11-6-11z"/></svg></div>
-                <h3>Live chats & Raves</h3>
-                <p style="font-size:13px;margin:0">Трансляции и общение в реальном времени с аудиторией.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="5">
-                <div class="feature-icon-wrap green"><svg viewBox="0 0 24 24" stroke="url(#grad-gb)" stroke-width="1.8"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg></div>
-                <h3>Подарки</h3>
-                <p style="font-size:13px;margin:0">Отправляйте и получайте подарки от поклонников.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="6">
-                <div class="feature-icon-wrap purple"><svg viewBox="0 0 24 24" stroke="url(#grad-pp)" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></div>
-                <h3>Магазин</h3>
-                <p style="font-size:13px;margin:0">Мерч, товары брендов с доставкой через WB, Ozon, СДЭК.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 17. СКОРО БУДЕТ ═══════════════ -->
-<section class="slide" data-slide="17">
-    <div class="slide-inner">
-        <div class="section-label reveal">Скоро будет</div>
-        <h2 class="reveal" data-delay="1">Что уже <span class="accent-text">в разработке</span></h2>
-        <div class="feature-grid" style="margin-top:20px">
-            <div class="feature-card reveal" data-delay="2">
-                <h3>🎯 Интересное</h3>
-                <p style="font-size:13px;margin:0">Ленты тем: футбол, кулинария, спорт, IT. Каналы, рейвы и авторы.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="3">
-                <h3>📍 Рядом с вами</h3>
-                <p style="font-size:13px;margin:0">Публикации из вашего города — куда сходить, концерты.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="4">
-                <h3>🎫 listaticker</h3>
-                <p style="font-size:13px;margin:0">Покупка билетов на концерты прямо в приложении.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="5">
-                <h3>📦 listadex</h3>
-                <p style="font-size:13px;margin:0">Магазин каналов с доставкой через WB, Ozon, СДЭК, Почту.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 18. ЗАЩИТА ═══════════════ -->
-<section class="slide" data-slide="18">
-    <div class="slide-inner">
-        <div class="section-label reveal">Безопасность</div>
-        <h2 class="reveal" data-delay="1">Ваши данные <span class="accent-text">под защитой</span></h2>
-        <p class="reveal" data-delay="2">
-            Двухэтапная проверка аккаунта. Серверы listatread находятся в России, а сам сервис работает по всему миру. Данные передаются на сервер в РФ через Cloudflare и защищены шифрованием.
-        </p>
-    </div>
-</section>
-
-<!-- ═══════════════ 19. О КОМПАНИИ ═══════════════ -->
-<section class="slide" data-slide="19">
-    <div class="slide-inner">
-        <div class="section-label reveal">О компании</div>
-        <h2 class="reveal" data-delay="1">Мы делаем <span class="accent-text">новую экосистему</span></h2>
-        <p class="reveal" data-delay="2">
-            listatread — независимая мультимедийная платформа, разработанная командой энтузиастов. Мы верим, что контент должен приносить радость, а не превращаться в бесконечный поиск аудитории.
-        </p>
-        <p class="reveal" data-delay="3">
-            Сейчас идёт закрытый этап разработки. Создать аккаунт можно только по секретному коду доступа.
-        </p>
-    </div>
-</section>
-
-<!-- ═══════════════ 20. CTA ═══════════════ -->
-<section class="slide" data-slide="20">
-    <div class="slide-inner">
-        <div class="hero-logo reveal" style="animation-delay:1s"><img src="/logo.jpeg" alt="listatread"></div>
-        <h1 class="reveal" data-delay="1" style="font-size:clamp(30px,6vw,48px)">Присоединяйтесь</h1>
-        <p class="reveal" data-delay="2">Станьте частью сообщества listatread</p>
-        <div class="reveal" data-delay="3">
-            <a href="/" class="cta-btn">Открыть listatread</a>
-        </div>
-    </div>
-</section>
+</main>
 
 <script>
     (function(){
         'use strict';
-        const slides = document.querySelectorAll('.slide');
-        const dotsContainer = document.getElementById('progressDots');
-        const progressBar = document.getElementById('progressBar');
 
-        // Точки
+        /* ═════════════ ПРОГРЕСС + ТОЧКИ ═════════════ */
+        const slides = document.querySelectorAll('.slide');
+        const dotsContainer = document.getElementById('slideDots');
+        const progressBar = document.getElementById('progressBar');
+        const header = document.getElementById('pageHeader');
+
         slides.forEach((_, i) => {
             const dot = document.createElement('div');
             dot.className = 'dot';
             dot.dataset.index = i;
             dot.addEventListener('click', () => {
-                slides[i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                slides[i].scrollIntoView({ behavior:'smooth', block:'start' });
             });
             dotsContainer.appendChild(dot);
         });
         const dots = dotsContainer.querySelectorAll('.dot');
 
-        // Observer
-        const observer = new IntersectionObserver((entries) => {
+        let ticking = false;
+        function updateProgress(){
+            const top = window.scrollY;
+            const total = document.documentElement.scrollHeight - window.innerHeight;
+            const pct = total > 0 ? (top / total) * 100 : 0;
+            progressBar.style.width = pct + '%';
+
+            // Шапка: видна только на слайде 1
+            const slide1 = slides[0];
+            const slide2 = slides[1];
+            if(slide2){
+                const s2Top = slide2.offsetTop;
+                if(top > s2Top - 60){
+                    header.classList.add('hidden');
+                } else {
+                    header.classList.remove('hidden');
+                }
+            }
+            ticking = false;
+        }
+        window.addEventListener('scroll', () => {
+            if(!ticking){ requestAnimationFrame(updateProgress); ticking = true; }
+        }, { passive:true });
+        updateProgress();
+
+        /* ═════════════ REVEAL ON VIEW ═════════════ */
+        const revealObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+                if(entry.isIntersecting && entry.intersectionRatio > 0.15){
                     entry.target.classList.add('in-view');
+                }
+            });
+        }, { threshold: [0, 0.15, 0.4, 0.7] });
+
+        slides.forEach(s => revealObserver.observe(s));
+
+        /* Активная точка + номер в нотебуке */
+        const slideIndexObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if(entry.isIntersecting && entry.intersectionRatio > 0.5){
                     const idx = Array.from(slides).indexOf(entry.target);
                     dots.forEach((d, i) => d.classList.toggle('active', i === idx));
                 }
             });
-        }, { threshold: [0, 0.3, 0.6, 1] });
-        slides.forEach(slide => observer.observe(slide));
+        }, { threshold: [0, 0.5, 1] });
+        slides.forEach(s => slideIndexObserver.observe(s));
 
-        // Прогресс
-        let ticking = false;
-        window.addEventListener('scroll', () => {
-            if (!ticking) {
-                requestAnimationFrame(() => {
-                    const scrollTop = window.scrollY;
-                    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-                    progressBar.style.width = (docHeight > 0 ? (scrollTop / docHeight) * 100 : 0) + '%';
-                    ticking = false;
-                });
-                ticking = true;
-            }
-        }, { passive: true });
-
-        // Первый слайд
+        /* Первый слайд сразу видно */
         requestAnimationFrame(() => {
-            if (slides[0]) {
-                slides[0].classList.add('in-view');
-                if (dots[0]) dots[0].classList.add('active');
+            if(slides[0]) slides[0].classList.add('in-view');
+            if(dots[0]) dots[0].classList.add('active');
+        });
+
+        /* ═════════════ NOTEBOOK ═════════════ */
+        const track = document.getElementById('notebookTrack');
+        if(track){
+            const pages = track.querySelectorAll('.notebook-page');
+            const prevBtn = document.getElementById('nbPrev');
+            const nextBtn = document.getElementById('nbNext');
+            const dotsBox = document.getElementById('nbDots');
+            const currentEl = document.getElementById('nbCurrent');
+
+            pages.forEach((_, i) => {
+                const d = document.createElement('div');
+                d.className = 'ndot';
+                d.dataset.page = i;
+                d.addEventListener('click', () => goToPage(i));
+                dotsBox.appendChild(d);
+            });
+            const nbDots = dotsBox.querySelectorAll('.ndot');
+
+            function currentPage(){
+                const w = track.clientWidth;
+                return Math.round(track.scrollLeft / w);
+            }
+
+            function goToPage(i){
+                if(i < 0) i = 0;
+                if(i >= pages.length) i = pages.length - 1;
+                track.scrollTo({ left: i * track.clientWidth, behavior:'smooth' });
+            }
+
+            function updateNav(){
+                const cur = currentPage();
+                currentEl.textContent = pages[cur]?.dataset.page || '5';
+                nbDots.forEach((d, i) => d.classList.toggle('active', i === cur));
+                prevBtn.disabled = cur === 0;
+                nextBtn.disabled = cur === pages.length - 1;
+                prevBtn.style.opacity = cur === 0 ? '0.35' : '1';
+                nextBtn.style.opacity = cur === pages.length - 1 ? '0.35' : '1';
+            }
+
+            prevBtn.addEventListener('click', () => goToPage(currentPage() - 1));
+            nextBtn.addEventListener('click', () => {
+                const cur = currentPage();
+                if(cur >= pages.length - 1){
+                    // последняя страница — скроллим вниз к слайду 10
+                    const nb = document.querySelector('.notebook-section');
+                    const nextSlide = nb.nextElementSibling;
+                    if(nextSlide) nextSlide.scrollIntoView({ behavior:'smooth', block:'start' });
+                } else {
+                    goToPage(cur + 1);
+                }
+            });
+
+            let scrollTick = false;
+            track.addEventListener('scroll', () => {
+                if(!scrollTick){
+                    requestAnimationFrame(() => { updateNav(); scrollTick = false; });
+                    scrollTick = true;
+                }
+            }, { passive:true });
+
+            // Свайп вниз с последней страницы — переход к слайду 10
+            let touchStartY = 0;
+            let touchStartPage = 0;
+            track.addEventListener('touchstart', e => {
+                touchStartY = e.touches[0].clientY;
+                touchStartPage = currentPage();
+            }, { passive:true });
+            track.addEventListener('touchend', e => {
+                const dy = e.changedTouches[0].clientY - touchStartY;
+                if(touchStartPage >= pages.length - 1 && dy < -50){
+                    const nb = document.querySelector('.notebook-section');
+                    const nextSlide = nb.nextElementSibling;
+                    if(nextSlide) nextSlide.scrollIntoView({ behavior:'smooth', block:'start' });
+                } else if(touchStartPage === 0 && dy > 50){
+                    const nb = document.querySelector('.notebook-section');
+                    const prevSlide = nb.previousElementSibling;
+                    if(prevSlide) prevSlide.scrollIntoView({ behavior:'smooth', block:'start' });
+                }
+            }, { passive:true });
+
+            // Колесо мыши: на первой странице вверх — к слайду 4
+            track.addEventListener('wheel', e => {
+                const cur = currentPage();
+                if(cur === 0 && e.deltaY < -30){
+                    const nb = document.querySelector('.notebook-section');
+                    const prevSlide = nb.previousElementSibling;
+                    if(prevSlide){ e.preventDefault(); prevSlide.scrollIntoView({ behavior:'smooth', block:'start' }); }
+                } else if(cur >= pages.length - 1 && e.deltaY > 30){
+                    const nb = document.querySelector('.notebook-section');
+                    const nextSlide = nb.nextElementSibling;
+                    if(nextSlide){ e.preventDefault(); nextSlide.scrollIntoView({ behavior:'smooth', block:'start' }); }
+                }
+            }, { passive:false });
+
+            updateNav();
+            window.addEventListener('resize', updateNav);
+        }
+
+        /* ═════════════ КЛАВИАТУРА ═════════════ */
+        document.addEventListener('keydown', e => {
+            if(e.key === 'ArrowDown' || e.key === 'PageDown'){
+                const cur = getCurrentSlideIndex();
+                if(cur < slides.length - 1){
+                    e.preventDefault();
+                    slides[cur + 1].scrollIntoView({ behavior:'smooth', block:'start' });
+                }
+            }
+            if(e.key === 'ArrowUp' || e.key === 'PageUp'){
+                const cur = getCurrentSlideIndex();
+                if(cur > 0){
+                    e.preventDefault();
+                    slides[cur - 1].scrollIntoView({ behavior:'smooth', block:'start' });
+                }
             }
         });
+
+        function getCurrentSlideIndex(){
+            let best = 0, bestDist = Infinity;
+            slides.forEach((s, i) => {
+                const rect = s.getBoundingClientRect();
+                const dist = Math.abs(rect.top);
+                if(dist < bestDist){ bestDist = dist; best = i; }
+            });
+            return best;
+        }
+
     })();
 </script>
 
