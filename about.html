@@ -2,442 +2,765 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>О listatread — listatread.online/about</title>
     <style>
-        /* ============================================================
-           ТОКЕНЫ СВЕТЛОЙ ТЕМЫ (из style.css)
-        ============================================================ */
-        :root {
-            --bg: #ffffff;
-            --card: rgba(255, 255, 255, .82);
-            --surface-2: rgba(120, 120, 128, .08);
-            --surface-3: rgba(120, 120, 128, .14);
-            --text: #000;
-            --text-secondary: rgba(0, 0, 0, .55);
-            --text-tertiary: rgba(0, 0, 0, .35);
-            --border: rgba(0, 0, 0, .08);
-            --border-strong: rgba(0, 0, 0, .14);
-            --glass: rgba(255, 255, 255, .66);
-            --glass-strong: rgba(255, 255, 255, .88);
-            --glass-edge: rgba(0, 0, 0, .06);
-            --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .85);
-            --blue: #0a84ff;
-            --red-pink: #ff375f;
-            --green: #30d158;
-            --yellow: #ffd60a;
-            --orange: #ff8a00;
-            --radius-lg: 24px;
-            --radius-md: 16px;
-            --radius-sm: 12px;
-            --shadow-sm: 0 4px 18px rgba(20, 20, 50, .07);
-            --shadow-md: 0 10px 36px rgba(20, 20, 50, .14);
-            --spring: cubic-bezier(.34, 1.56, .64, 1);
-            --ease-out: cubic-bezier(.22, 1, .36, 1);
+        :root{
+            --bg:#000;
+            --bg-soft:#0a0a0a;
+            --card:rgba(30,30,33,.74);
+            --surface-2:rgba(120,120,128,.24);
+            --surface-3:rgba(120,120,128,.36);
+            --text:#fff;
+            --text-secondary:rgba(255,255,255,.6);
+            --text-tertiary:rgba(255,255,255,.35);
+            --border:rgba(255,255,255,.1);
+            --border-strong:rgba(255,255,255,.18);
+            --glass:rgba(28,28,30,.58);
+            --glass-strong:rgba(28,28,30,.88);
+            --glass-edge:rgba(255,255,255,.08);
+            --glass-hi:inset 0 1px 0 rgba(255,255,255,.08);
+            --blue:#0a84ff;--red-pink:#ff375f;--red:#ff3b30;--green:#30d158;
+            --yellow:#ffd60a;--orange:#ff9f0a;--purple:#bf5af2;
+            --radius-lg:24px;--radius-md:16px;--radius-sm:12px;
+            --shadow-sm:0 4px 18px rgba(0,0,0,.45);
+            --shadow-md:0 10px 36px rgba(0,0,0,.6);
+            --spring:cubic-bezier(.34,1.56,.64,1);
+            --ease-out:cubic-bezier(.22,1,.36,1);
         }
-
-        /* ============================================================
-           БАЗА
-        ============================================================ */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html {
-            scroll-behavior: smooth;
-            scroll-snap-type: y proximity;
-            background-color: var(--bg);
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        html{scroll-behavior:smooth;scroll-snap-type:y proximity;background-color:var(--bg)}
+        body{
+            font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',sans-serif;
+            background:var(--bg);color:var(--text);line-height:1.6;
+            -webkit-font-smoothing:antialiased;overflow-x:hidden;
         }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
+        /* ───── UI обвязка ───── */
+        .progress-bar{
+            position:fixed;top:0;left:0;height:3px;width:0%;
+            background:linear-gradient(90deg,#ff9f0a,#ff375f,#bf5af2,#0a84ff);
+            z-index:200;transition:width .1s linear;
         }
-
-        /* ============================================================
-           UI ОБВЯЗКА
-        ============================================================ */
-        .progress-bar {
-            position: fixed; top: 0; left: 0; height: 3px; width: 0%;
-            background: linear-gradient(90deg, #ff9f0a, #ff375f, #bf5af2, #0a84ff);
-            z-index: 200; transition: width .1s linear;
+        .progress-dots{
+            position:fixed;right:14px;top:50%;transform:translateY(-50%);
+            display:flex;flex-direction:column;gap:7px;z-index:100;
         }
-        .progress-dots {
-            position: fixed; right: 22px; top: 50%; transform: translateY(-50%);
-            display: flex; flex-direction: column; gap: 10px; z-index: 100;
+        .progress-dots .dot{
+            width:7px;height:7px;border-radius:50%;
+            background:rgba(255,255,255,.15);
+            transition:all .35s var(--spring);cursor:pointer;
         }
-        .progress-dots .dot {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: rgba(0, 0, 0, .15);
-            transition: all .35s var(--spring); cursor: pointer;
+        .progress-dots .dot.active{background:var(--blue);height:20px;border-radius:4px}
+        .back-home{
+            position:fixed;top:18px;left:18px;padding:10px 18px;
+            background:rgba(255,255,255,.08);
+            backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+            border:1px solid rgba(255,255,255,.1);
+            color:#fff;border-radius:100px;text-decoration:none;
+            font-size:13px;font-weight:700;z-index:100;
+            transition:transform .2s var(--spring),background .2s;
         }
-        .progress-dots .dot.active {
-            background: var(--blue); height: 26px; border-radius: 4px;
+        .back-home:hover{transform:scale(1.05);background:rgba(255,255,255,.14)}
+        /* ───── Слайды ───── */
+        .slide{
+            min-height:100vh;min-height:100dvh;scroll-snap-align:start;
+            display:flex;align-items:center;justify-content:center;
+            padding:64px 16px;position:relative;overflow:hidden;
         }
-        .back-home {
-            position: fixed; top: 20px; left: 20px; padding: 10px 18px;
-            background: rgba(0, 0, 0, .85); color: #fff;
-            border-radius: 100px; text-decoration: none; font-size: 13px; font-weight: 700;
-            z-index: 100; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            transition: transform .2s var(--spring);
+        .slide-inner{max-width:720px;width:100%;position:relative;z-index:2;text-align:center}
+        .reveal{opacity:0;transform:translateY(40px);transition:opacity 1s var(--ease-out),transform 1s var(--ease-out)}
+        .slide.in-view .reveal{opacity:1;transform:translateY(0)}
+        .reveal[data-delay="1"]{transition-delay:.1s}
+        .reveal[data-delay="2"]{transition-delay:.2s}
+        .reveal[data-delay="3"]{transition-delay:.3s}
+        .reveal[data-delay="4"]{transition-delay:.4s}
+        .reveal[data-delay="5"]{transition-delay:.5s}
+        /* ───── Типографика ───── */
+        h1{font-size:clamp(32px,6vw,56px);font-weight:900;letter-spacing:-.03em;line-height:1.05;margin-bottom:18px}
+        h2{font-size:clamp(22px,4vw,36px);font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-bottom:14px}
+        h3{font-size:16px;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+        p{font-size:clamp(14px,2vw,16px);color:var(--text-secondary);line-height:1.55;max-width:580px;margin:0 auto 12px}
+        .accent-text{
+            background:linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2);
+            -webkit-background-clip:text;background-clip:text;
+            -webkit-text-fill-color:transparent;color:transparent;
         }
-        .back-home:hover { transform: scale(1.05); }
-
-        /* ============================================================
-           СЛАЙДЫ
-        ============================================================ */
-        .slide {
-            min-height: 100vh; scroll-snap-align: start;
-            display: flex; align-items: center; justify-content: center;
-            padding: 80px 24px; position: relative; overflow: hidden;
+        .accent-text2{
+            background:linear-gradient(135deg,#0a84ff,#bf5af2);
+            -webkit-background-clip:text;background-clip:text;
+            -webkit-text-fill-color:transparent;color:transparent;
         }
-        .slide-inner {
-            max-width: 720px; width: 100%; position: relative; z-index: 2;
-            text-align: center;
+        /* ───── Лого ───── */
+        .hero-logo{
+            width:112px;height:112px;border-radius:50%;
+            background:#fff;border:2px solid var(--border);
+            display:flex;align-items:center;justify-content:center;
+            margin:0 auto 22px;
+            box-shadow:0 20px 60px rgba(255,255,255,.1);
+            overflow:hidden;
+            animation:logoAnim 4s cubic-bezier(0.45,0.05,0.55,0.95) infinite;
         }
-
-        /* Анимации появления */
-        .reveal {
-            opacity: 0; transform: translateY(40px);
-            transition: opacity 1s var(--ease-out), transform 1s var(--ease-out);
+        .hero-logo img{width:100%;height:100%;object-fit:cover;display:block}
+        @keyframes logoAnim{
+            0%{transform:scale(1) rotate(0deg)}
+            15%{transform:scale(1) rotate(360deg)}
+            20%{transform:scale(1.15) rotate(360deg)}
+            25%{transform:scale(0.9) rotate(360deg)}
+            30%{transform:scale(1) rotate(360deg)}
+            100%{transform:scale(1) rotate(360deg)}
         }
-        .slide.in-view .reveal { opacity: 1; transform: translateY(0); }
-        .reveal[data-delay="1"] { transition-delay: .1s; }
-        .reveal[data-delay="2"] { transition-delay: .2s; }
-        .reveal[data-delay="3"] { transition-delay: .3s; }
-        .reveal[data-delay="4"] { transition-delay: .4s; }
-        .reveal[data-delay="5"] { transition-delay: .5s; }
-
-        /* ============================================================
-           ЛОГОТИП
-        ============================================================ */
-        .hero-logo {
-            width: 120px; height: 120px; border-radius: 50%;
-            background: #fff; border: 2px solid var(--border);
-            display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 24px; box-shadow: var(--shadow-md);
-            overflow: hidden; animation: logoAnim 4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+        /* ───── Декор ───── */
+        .bg-decor{position:absolute;z-index:1;pointer-events:none;opacity:.55}
+        .decor-heart{animation:floatHeart 8s ease-in-out infinite}
+        .decor-star{animation:floatStar 10s ease-in-out infinite}
+        .decor-circle{animation:floatCircle 12s ease-in-out infinite}
+        .decor-bolt{animation:floatBolt 9s ease-in-out infinite}
+        @keyframes floatHeart{0%,100%{transform:translate(0,0) rotate(-8deg)}50%{transform:translate(20px,-30px) rotate(8deg)}}
+        @keyframes floatStar{0%,100%{transform:translate(0,0) rotate(0deg)}50%{transform:translate(-25px,-20px) rotate(180deg)}}
+        @keyframes floatCircle{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-40px) scale(1.15)}}
+        @keyframes floatBolt{0%,100%{transform:translate(0,0) scale(1);opacity:.4}50%{transform:translate(15px,-25px) scale(1.2);opacity:.8}}
+        /* ═══════════════ FEED (видео и фото на всю карточку) ═══════════════ */
+        .mock-feed{
+            max-width:380px;margin:0 auto;text-align:left;
+            background:var(--bg-soft);border-radius:var(--radius-lg);
+            border:1px solid var(--border);
+            box-shadow:var(--shadow-md);
+            overflow:hidden;position:relative;
+            max-height:calc(100dvh - 260px);
         }
-        .hero-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        @keyframes logoAnim {
-            0% { transform: scale(1) rotate(0deg); }
-            15% { transform: scale(1) rotate(360deg); }
-            20% { transform: scale(1.15) rotate(360deg); }
-            25% { transform: scale(0.9) rotate(360deg); }
-            30% { transform: scale(1) rotate(360deg); }
-            100% { transform: scale(1) rotate(360deg); }
+        .feed-post{
+            background:var(--card);border-radius:var(--radius-lg);
+            padding:14px;border:1px solid var(--border);
+            box-shadow:var(--shadow-sm),var(--glass-hi);
+            display:flex;flex-direction:column;
+            position:relative;
         }
-
-        /* ============================================================
-           ПЛАВАЮЩИЕ ДЕКОРАЦИИ (SVG)
-        ============================================================ */
-        .bg-decor {
-            position: absolute; z-index: 1; pointer-events: none;
-            opacity: 0.5;
+        .feed-post.media-full{padding:0;overflow:hidden}
+        .feed-post-header{
+            display:flex;align-items:flex-start;gap:10px;
+            margin-bottom:10px;
         }
-        .decor-heart { animation: floatHeart 8s ease-in-out infinite; }
-        .decor-star { animation: floatStar 10s ease-in-out infinite; }
-        .decor-circle { animation: floatCircle 12s ease-in-out infinite; }
-        .decor-bolt { animation: floatBolt 9s ease-in-out infinite; }
-
-        @keyframes floatHeart {
-            0%, 100% { transform: translate(0, 0) rotate(-8deg); }
-            50% { transform: translate(20px, -30px) rotate(8deg); }
+        .feed-post.media-full .feed-post-header{
+            position:absolute;top:0;left:0;right:0;z-index:5;
+            padding:12px 14px;margin:0;
+            background:linear-gradient(180deg,rgba(0,0,0,.65) 0%,transparent 100%);
         }
-        @keyframes floatStar {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            50% { transform: translate(-25px, -20px) rotate(180deg); }
+        .feed-post-avatar{
+            width:38px;height:38px;border-radius:50%;
+            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+            display:flex;align-items:center;justify-content:center;
+            color:#fff;font-weight:800;font-size:14px;
+            flex-shrink:0;cursor:pointer;overflow:hidden;
         }
-        @keyframes floatCircle {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(30px, -40px) scale(1.15); }
+        .feed-post-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+        .feed-post-info{flex:1;min-width:0}
+        .feed-post-name{
+            font-weight:700;font-size:14px;
+            display:flex;align-items:center;gap:6px;
+            flex-wrap:nowrap;color:var(--text);
         }
-        @keyframes floatBolt {
-            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
-            50% { transform: translate(15px, -25px) scale(1.2); opacity: 0.8; }
+        .feed-post.media-full .feed-post-name{color:#fff}
+        .feed-post-name-text{
+            flex:0 1 auto;min-width:0;overflow:hidden;
+            white-space:nowrap;text-overflow:ellipsis;
         }
-
-        /* ============================================================
-           ТИПОГРАФИКА
-        ============================================================ */
-        h1 { font-size: clamp(32px, 6vw, 56px); font-weight: 900; letter-spacing: -.03em; line-height: 1.05; margin-bottom: 20px; }
-        h2 { font-size: clamp(24px, 4vw, 40px); font-weight: 800; letter-spacing: -.02em; line-height: 1.15; margin-bottom: 16px; }
-        h3 { font-size: 17px; font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-        p { font-size: clamp(15px, 2vw, 18px); color: var(--text-secondary); line-height: 1.55; max-width: 580px; margin: 0 auto 14px; }
-        .accent-text {
-            background: linear-gradient(135deg, #ff9f0a, #ff375f, #bf5af2);
-            -webkit-background-clip: text; background-clip: text;
-            -webkit-text-fill-color: transparent; color: transparent;
+        .feed-channel-badge{
+            display:inline-flex;align-items:center;gap:5px;
+            background:rgba(255,255,255,.12);border-radius:9px;
+            padding:2px 8px 2px 3px;margin-left:auto;
+            max-width:50%;min-width:0;overflow:hidden;flex-shrink:0;
+            backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
         }
-
-        /* ============================================================
-           МАКЕТЫ ПОСТОВ (точно из style.css)
-        ============================================================ */
-        .mock-feed {
-            max-width: 420px; margin: 0 auto; text-align: left;
-            background: var(--bg); border-radius: var(--radius-lg); border: 1px solid var(--border);
-            box-shadow: var(--shadow-md); overflow: hidden; position: relative;
+        .feed-channel-logo{
+            width:16px;height:16px;border-radius:4px;overflow:hidden;
+            display:flex;align-items:center;justify-content:center;
+            background:linear-gradient(135deg,#ff9f0a,#ff375f);
+            color:#fff;font-size:9px;font-weight:800;flex-shrink:0;
         }
-        .feed-post {
-            background: var(--card); border-radius: var(--radius-lg);
-            padding: 16px; border: 1px solid var(--border);
-            box-shadow: var(--shadow-sm), var(--glass-hi);
-            display: flex; flex-direction: column; gap: 0;
-            position: relative;
+        .feed-channel-logo img{width:100%;height:100%;object-fit:cover}
+        .feed-channel-name{
+            font-size:11px;font-weight:600;color:#fff;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
         }
-        .feed-post-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
-        .feed-avatar-wrap { position: relative; flex-shrink: 0; }
-        .feed-post-avatar {
-            width: 42px; height: 42px; border-radius: 50%;
-            background: linear-gradient(135deg, var(--yellow), var(--red-pink));
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; font-weight: 800; font-size: 16px;
-            flex-shrink: 0; cursor: pointer; overflow: hidden;
-            margin-top: 2px;
+        .feed-post-time{font-size:11px;color:var(--text-secondary);margin-top:3px}
+        .feed-post.media-full .feed-post-time{color:rgba(255,255,255,.75)}
+        .feed-post-content{
+            font-size:14px;line-height:1.5;white-space:pre-wrap;
+            word-break:break-word;color:var(--text);margin-top:8px;
         }
-        .feed-post-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-        .feed-post-avatar.avatar-with-status { overflow: visible; position: relative; z-index: 2; }
-        .story-status-badge {
-            position: absolute; right: -6px; bottom: -6px;
-            font-size: 12px; line-height: 1; z-index: 10;
-            pointer-events: none; background: var(--bg); border-radius: 50%; padding: 2px;
+        .feed-post.media-full .feed-post-content{
+            position:absolute;bottom:64px;left:14px;right:14px;z-index:5;
+            color:#fff;margin:0;text-shadow:0 1px 6px rgba(0,0,0,.7);
         }
-        .feed-post-info { flex: 1; min-width: 0; }
-        .feed-post-name {
-            font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 4px;
-            flex-wrap: nowrap; color: var(--text); min-width: 0; overflow: hidden;
+        /* ВИДЕО / ФОТО НА ВСЮ КАРТОЧКУ */
+        .feed-post-media-full{
+            position:relative;width:100%;
+            aspect-ratio:9/14;
+            max-height:calc(100dvh - 260px);
+            overflow:hidden;border-radius:var(--radius-lg);
+            background:#000;
         }
-        .feed-post-name-text {
-            flex: 0 1 auto; min-width: 0; overflow: hidden;
-            white-space: nowrap; text-overflow: ellipsis;
+        .feed-post-media-full.square{aspect-ratio:1/1}
+        .feed-post-media-full video,
+        .feed-post-media-full img{
+            width:100%;height:100%;object-fit:cover;display:block;
         }
-        .name-status-badge {
-            font-size: 14px; line-height: 1; flex-shrink: 0;
-            filter: drop-shadow(0 0 3px rgba(255, 127, 80, .75));
-            animation: coralNamePulse 3s ease-in-out infinite;
+        .feed-post.media-full .feed-post-footer{
+            position:absolute;bottom:0;left:0;right:0;z-index:5;
+            padding:14px 14px 12px;margin:0;
+            background:linear-gradient(0deg,rgba(0,0,0,.7) 0%,transparent 100%);
+            display:flex;align-items:center;gap:12px;
         }
-        @keyframes coralNamePulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.08); }
+        .video-overlay-controls{
+            position:absolute;right:10px;bottom:70px;z-index:4;
+            display:flex;flex-direction:column;gap:14px;align-items:center;
         }
-        .feed-channel-badge {
-            display: inline-flex; align-items: center; gap: 6px;
-            background: var(--surface-2); border-radius: 9px;
-            padding: 2px 8px 2px 3px; margin-left: auto; max-width: 50%;
-            min-width: 0; overflow: hidden; flex-shrink: 0;
+        .video-overlay-btn{
+            display:flex;flex-direction:column;align-items:center;gap:4px;
+            background:transparent;border:none;color:#fff;
+            font-size:10px;font-weight:600;cursor:pointer;
+            filter:drop-shadow(0 1px 4px rgba(0,0,0,.7));
         }
-        .feed-channel-logo {
-            width: 18px; height: 18px; border-radius: 5px; overflow: hidden;
-            display: flex; align-items: center; justify-content: center;
-            background: linear-gradient(135deg, #ff9f0a, #ff375f);
-            color: #fff; font-size: 10px; font-weight: 800; flex-shrink: 0;
+        .video-overlay-btn svg{width:26px;height:26px;stroke-width:1.9}
+        .video-overlay-btn.liked svg{fill:var(--red-pink);stroke:var(--red-pink)}
+        .video-vinyl{
+            width:44px;height:44px;border-radius:50%;background:#111;
+            display:flex;align-items:center;justify-content:center;
+            box-shadow:0 4px 16px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06);
+            animation:postVinylSpin 4s linear infinite;
         }
-        .feed-channel-logo img { width: 100%; height: 100%; object-fit: cover; }
-        .feed-channel-name {
-            font-size: 12px; font-weight: 600; color: var(--text-secondary);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        .video-vinyl-disc{
+            width:100%;height:100%;border-radius:50%;
+            background:radial-gradient(circle at 50% 50%,#2a2a2a 0 22%,#0d0d0d 22% 100%);
+            display:flex;align-items:center;justify-content:center;
         }
-        .feed-channel-check {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 14px; height: 14px; border-radius: 50%;
-            background: var(--blue); color: #fff; font-size: 9px; font-weight: 900;
-            flex-shrink: 0;
+        .video-vinyl-cover{
+            width:16px;height:16px;border-radius:50%;
+            background:linear-gradient(135deg,#ffd60a,#ff375f);
+            display:flex;align-items:center;justify-content:center;
+            font-size:8px;font-weight:800;color:#fff;
+            box-shadow:0 0 0 2px #000;
         }
-        .feed-sub-btn {
-            margin-left: auto; display: inline-flex; align-items: center; justify-content: center;
-            width: 34px; height: 34px; border-radius: 50%; border: none;
-            background: var(--red-pink); color: #fff; flex-shrink: 0;
-            box-shadow: 0 4px 14px rgba(255, 55, 95, .35);
-            cursor: pointer; font-size: 18px; padding-bottom: 2px;
+        @keyframes postVinylSpin{to{transform:rotate(360deg)}}
+        /* footer обычного поста */
+        .feed-post-footer{
+            display:flex;align-items:center;gap:12px;
+            margin-top:10px;padding-top:10px;
+            position:relative;
         }
-        .feed-post-time { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
-
-        .feed-post-content {
-            font-size: 15px; line-height: 1.5; white-space: pre-wrap;
-            word-break: break-word; color: var(--text); margin-top: 10px;
+        .feed-action{
+            background:transparent;border:none;color:var(--text-secondary);
+            font-size:12px;font-weight:600;
+            display:flex;align-items:center;gap:5px;padding:4px 0;cursor:pointer;
         }
-
-        /* Медиа */
-        .feed-post-image, .feed-post-video {
-            width: calc(100% + 32px); max-width: none; margin: 10px -16px 0;
-            object-fit: cover; border-radius: 0; display: block;
+        .feed-post.media-full .feed-action{color:#fff}
+        .feed-action svg{width:18px;height:18px}
+        .feed-action.liked{color:var(--red-pink)}
+        .feed-count{font-size:11px;font-weight:600;color:currentColor}
+        .feed-more{
+            margin-left:auto;width:30px;height:30px;border-radius:50%;
+            border:none;background:transparent;
+            display:flex;align-items:center;justify-content:center;
+            color:var(--text-secondary);cursor:pointer;
         }
-        .feed-post-video {
-            aspect-ratio: 9/16; background: #000; position: relative;
-        }
-
+        .feed-post.media-full .feed-more{color:#fff}
         /* Трек */
-        .track-card {
-            display: flex; align-items: center; gap: 12px;
-            background: var(--surface-2); border: 1px solid var(--border);
-            border-radius: 18px; padding: 10px 12px; margin-top: 10px;
-            position: relative; overflow: hidden;
+        .track-card{
+            display:flex;align-items:center;gap:10px;
+            background:var(--surface-2);border:1px solid var(--border);
+            border-radius:14px;padding:8px 10px;margin-top:8px;
         }
-        .track-play {
-            width: 44px; height: 44px; border-radius: 50%; background: #000;
-            color: #fff; display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; border: none;
+        .track-play{
+            width:38px;height:38px;border-radius:50%;
+            background:#fff;color:#000;
+            display:flex;align-items:center;justify-content:center;
+            flex-shrink:0;border:none;cursor:pointer;
         }
-        .track-info { flex: 1; min-width: 0; }
-        .track-title { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .track-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
-
+        .track-info{flex:1;min-width:0}
+        .track-title{
+            font-size:13px;font-weight:700;color:var(--text);
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        }
+        .track-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary);margin-top:2px}
         /* Опрос */
-        .poll-view { background: var(--surface-2); border: 1px solid var(--border); border-radius: 16px; padding: 12px; margin-top: 10px; }
-        .poll-view-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
-        .poll-view-options { display: flex; flex-direction: column; gap: 6px; }
-        .poll-view-option {
-            position: relative; padding: 11px 12px; border-radius: 12px;
-            background: var(--bg); border: 1.5px solid var(--border-strong);
-            font-size: 13px; text-align: left; color: var(--text);
-            overflow: hidden; isolation: isolate; display: flex; align-items: center; gap: 8px;
+        .poll-view{
+            background:var(--surface-2);border:1px solid var(--border);
+            border-radius:12px;padding:10px;margin-top:8px;
         }
-        .poll-view-option.selected { border-color: var(--blue); }
-        .poll-view-fill {
-            position: absolute; left: 0; top: 0; bottom: 0;
-            background: rgba(10, 132, 255, .2); border-radius: 10px 0 0 10px;
-            transition: width .5s var(--ease-out); z-index: -1;
+        .poll-view-title{font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text)}
+        .poll-view-options{display:flex;flex-direction:column;gap:5px}
+        .poll-view-option{
+            position:relative;padding:9px 11px;border-radius:9px;
+            background:var(--bg);border:1.5px solid var(--border-strong);
+            font-size:11px;text-align:left;color:var(--text);
+            overflow:hidden;isolation:isolate;
+            display:flex;align-items:center;gap:6px;
         }
-        .poll-check {
-            width: 16px; height: 16px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            background: var(--blue); color: #fff; font-size: 10px; font-weight: 900;
-            z-index: 1; flex-shrink: 0;
+        .poll-view-fill{
+            position:absolute;left:0;top:0;bottom:0;
+            background:rgba(10,132,255,.28);border-radius:9px 0 0 9px;z-index:-1;
         }
-        .poll-view-label { position: relative; z-index: 1; display: flex; justify-content: space-between; gap: 8px; align-items: center; width: 100%; }
-
-        /* Стикер */
-        .feed-post-sticker {
-            display: block; max-width: 140px; max-height: 140px;
-            object-fit: contain; margin: 10px 0 0; text-align: left;
+        .poll-view-label{
+            position:relative;z-index:1;
+            display:flex;justify-content:space-between;gap:8px;
+            align-items:center;width:100%;
         }
-
-        /* Футер: лайки, репосты, подписка */
-        .feed-post-footer {
-            display: flex; align-items: center; gap: 12px;
-            margin-top: 12px; padding-top: 10px; border-top: none;
+        .feed-post-sticker{
+            display:block;max-width:110px;max-height:110px;
+            object-fit:contain;margin:8px 0 0;text-align:left;
         }
-        .feed-follow-text {
-            display: inline-flex; align-items: center; justify-content: center;
-            height: 26px; padding: 0 10px; border-radius: 8px;
-            border: 1.5px solid var(--text); background: transparent; color: var(--text);
-            font-size: 12px; font-weight: 700; white-space: nowrap; flex-shrink: 0;
-            cursor: pointer;
+        .fp-discuss{
+            position:relative;z-index:2;width:100%;
+            display:flex;align-items:center;gap:8px;
+            margin-top:10px;padding:10px 0 0;
+            border-top:1px solid var(--border);
+            background:transparent;color:var(--text);
+            font-size:11px;font-weight:700;text-align:left;
+            cursor:pointer;border-left:none;border-right:none;border-bottom:none;
+            text-transform:uppercase;letter-spacing:.04em;
         }
-        .feed-action {
-            background: transparent; border: none; color: var(--text-secondary);
-            font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; padding: 4px 0;
+        .fp-discuss svg{width:16px;height:16px;flex-shrink:0}
+        .fp-chev{font-size:18px;line-height:1;color:var(--text-tertiary);margin-left:auto}
+        /* ═══════════════ DIRECT ═══════════════ */
+        .mock-direct{
+            max-width:380px;margin:0 auto;background:var(--bg);
+            border-radius:24px;box-shadow:var(--shadow-md);
+            border:1px solid var(--border);
+            overflow:hidden;display:flex;flex-direction:column;
+            height:min(520px,calc(100dvh - 240px));
+            position:relative;
         }
-        .feed-action svg { width: 20px; height: 20px; transition: transform .25s var(--spring); }
-        .feed-action.liked { color: var(--red-pink); }
-        .feed-action.reposted { color: var(--orange); }
-        .feed-count { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-left: 2px; min-width: 12px; }
-        .feed-more {
-            margin-left: auto; width: 32px; height: 32px; border-radius: 50%;
-            border: none; background: transparent; display: flex; align-items: center;
-            justify-content: center; color: var(--text-secondary); cursor: pointer;
+        .direct-header{
+            background:var(--glass);padding:10px 12px;
+            display:flex;align-items:center;gap:8px;
+            border-bottom:1px solid var(--glass-edge);
+            backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+            flex-shrink:0;
         }
-
-        /* Кнопка «Обсуждение» снизу */
-        .fp-discuss {
-            position: relative; z-index: 2; width: 100%; display: flex;
-            align-items: center; gap: 8px; margin-top: 12px;
-            padding: 12px 0 0; border-top: 1px solid var(--border);
-            background: transparent; color: var(--text); font-size: 13.5px;
-            font-weight: 700; text-align: left; cursor: pointer; border-left: none; border-right: none; border-bottom: none;
+        .direct-back-btn,
+        .direct-profile-btn{
+            width:32px;height:32px;border-radius:50%;
+            background:transparent;border:none;color:var(--text);
+            display:flex;align-items:center;justify-content:center;
+            cursor:pointer;flex-shrink:0;
+            transition:background .2s;
         }
-        .fp-discuss svg { width: 20px; height: 20px; flex-shrink: 0; }
-        .fp-discuss-label { text-transform: uppercase; letter-spacing: .04em; font-size: 12px; }
-        .fp-chev { font-size: 20px; line-height: 1; color: var(--text-tertiary); margin-left: auto; }
-
-        /* ============================================================
-           DIRECT МАКЕТ (светлая тема)
-        ============================================================ */
-        .mock-direct {
-            max-width: 400px; margin: 0 auto; background: var(--bg);
-            border-radius: 24px; box-shadow: var(--shadow-md); border: 1px solid var(--border);
-            overflow: hidden; display: flex; flex-direction: column; height: 460px;
-            position: relative;
+        .direct-back-btn:hover,.direct-profile-btn:hover{background:var(--surface-2)}
+        .direct-ava{
+            width:36px;height:36px;border-radius:50%;overflow:hidden;
+            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+            display:flex;align-items:center;justify-content:center;
+            color:#fff;font-weight:800;font-size:14px;flex-shrink:0;
         }
-        .direct-header {
-            background: var(--surface-2); padding: 14px; display: flex;
-            align-items: center; gap: 12px; border-bottom: 1px solid var(--border);
+        .direct-ava img{width:100%;height:100%;object-fit:cover}
+        .direct-info{flex:1;min-width:0}
+        .direct-name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .direct-status{
+            font-size:11px;color:var(--green);
+            display:flex;align-items:center;gap:4px;margin-top:1px;
         }
-        .direct-ava { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: #222; }
-        .direct-ava img { width: 100%; height: 100%; object-fit: cover; }
-        .direct-name { font-size: 15px; font-weight: 600; color: var(--text); }
-        .direct-status { font-size: 12px; color: var(--green); }
-
-        .direct-messages-mock {
-            flex: 1; padding: 16px 12px; display: flex; flex-direction: column;
-            gap: 12px; overflow-y: auto; position: relative;
+        .direct-status::before{
+            content:'';width:5px;height:5px;border-radius:50%;background:var(--green);
+            box-shadow:0 0 6px var(--green);
         }
-        .dr-row-mock {
-            display: flex; align-items: flex-end; gap: 6px; max-width: 85%;
-            animation: msgIn 0.3s var(--ease-out) both;
+        .direct-messages-mock{
+            flex:1;padding:12px 10px;display:flex;flex-direction:column;
+            gap:8px;overflow-y:auto;
         }
-        @keyframes msgIn {
-            from { opacity: 0; transform: translateY(10px) scale(0.94); }
-            to { opacity: 1; transform: none; }
+        .dr-row-mock{
+            display:flex;align-items:flex-end;gap:6px;max-width:85%;
+            animation:msgIn .3s var(--ease-out) both;
         }
-        .dr-row-mock.mine { align-self: flex-end; flex-direction: row-reverse; }
-
-        .direct-bubble-mock {
-            background: var(--surface-2); padding: 8px 12px; border-radius: 18px 18px 18px 6px;
-            font-size: 14px; color: var(--text); max-width: 100%; word-break: break-word;
-            position: relative;
+        @keyframes msgIn{from{opacity:0;transform:translateY(10px) scale(.94)}to{opacity:1;transform:none}}
+        .dr-row-mock.mine{align-self:flex-end;flex-direction:row-reverse}
+        .direct-bubble-mock{
+            background:var(--bg-soft);padding:8px 12px;
+            border-radius:18px 18px 18px 6px;
+            font-size:13px;color:var(--text);
+            max-width:100%;word-break:break-word;position:relative;
+            box-shadow:0 1px 2px rgba(0,0,0,.08);
         }
-        .dr-row-mock.mine .direct-bubble-mock {
-            background: linear-gradient(135deg, var(--blue), #0066cc);
-            color: #fff; border-radius: 18px 18px 6px 18px;
+        .dr-row-mock.mine .direct-bubble-mock{
+            background:linear-gradient(135deg,var(--blue),#0066cc);
+            color:#fff;border-radius:18px 18px 6px 18px;
         }
-        .dr-sticker-mock { background: transparent; padding: 0; }
-        .dr-sticker-mock img { width: 100px; height: 100px; object-fit: contain; }
-
-        /* ============================================================
-           ОСТАЛЬНЫЕ БЛОКИ
-        ============================================================ */
-        .feature-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 40px; text-align: left;
+        .dr-sticker-mock{background:transparent!important;padding:0!important;box-shadow:none!important}
+        .dr-sticker-mock img{width:80px;height:80px;object-fit:contain}
+        .direct-composer-mock{
+            padding:10px 12px;border-top:1px solid var(--border);
+            display:flex;gap:8px;align-items:center;flex-shrink:0;
+            background:var(--glass);
+            backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
         }
-        @media (max-width: 600px) { .feature-grid { grid-template-columns: 1fr; } }
-        .feature-card {
-            background: var(--bg); border: 1px solid var(--border); border-radius: 20px;
-            padding: 24px; transition: all .35s var(--ease-out);
+        .direct-input-mock{
+            flex:1;background:var(--surface-2);border-radius:20px;
+            padding:10px 14px;font-size:13px;color:var(--text-tertiary);
+            min-height:36px;display:flex;align-items:center;
         }
-        .feature-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); border-color: transparent; }
-        .feature-icon-wrap {
-            width: 48px; height: 48px; border-radius: 14px;
-            background: linear-gradient(135deg, #ff9f0a, #ff375f);
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 14px; color: #fff;
+        .direct-send-btn{
+            width:36px;height:36px;border-radius:50%;
+            background:var(--blue);color:#fff;border:none;
+            display:flex;align-items:center;justify-content:center;flex-shrink:0;
         }
-        .feature-icon-wrap svg { width: 24px; height: 24px; stroke: currentColor; fill: none; }
-
-        .section-label {
-            display: inline-block; padding: 6px 14px; background: rgba(0, 0, 0, .05);
-            color: #666; border-radius: 100px; font-size: 11px; font-weight: 800;
-            text-transform: uppercase; letter-spacing: .12em; margin-bottom: 18px;
+        /* ═══════════════ FEATURE GRID ═══════════════ */
+        .feature-grid{
+            display:grid;grid-template-columns:1fr 1fr;gap:12px;
+            margin-top:28px;text-align:left;
         }
-
-        /* Адаптив */
-        @media (max-width: 600px) {
-            .progress-dots { right: 12px; gap: 8px; }
-            .progress-dots .dot { width: 6px; height: 6px; }
-            .progress-dots .dot.active { height: 18px; }
-            .back-home { top: 12px; left: 12px; padding: 8px 14px; font-size: 12px; }
-            .slide { padding: 72px 20px 56px; }
+        @media(max-width:600px){.feature-grid{grid-template-columns:1fr}}
+        .feature-card{
+            background:var(--card);border:1px solid var(--border);
+            border-radius:18px;padding:18px;
+            transition:all .35s var(--ease-out);
+        }
+        .feature-card:hover{
+            transform:translateY(-6px);
+            box-shadow:var(--shadow-md);
+            border-color:rgba(255,255,255,.16);
+        }
+        .feature-icon-wrap{
+            width:44px;height:44px;border-radius:14px;
+            background:linear-gradient(135deg,#ff9f0a,#ff375f);
+            display:flex;align-items:center;justify-content:center;
+            margin-bottom:12px;color:#fff;
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(255,55,95,.3);
+        }
+        .feature-icon-wrap svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2}
+        .feature-icon-wrap.blue{background:linear-gradient(135deg,#0a84ff,#bf5af2);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(10,132,255,.3)}
+        .feature-icon-wrap.green{background:linear-gradient(135deg,#30d158,#0a84ff);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(48,209,88,.3)}
+        .feature-icon-wrap.purple{background:linear-gradient(135deg,#bf5af2,#ff375f);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(191,90,242,.3)}
+        .feature-icon-wrap.orange{background:linear-gradient(135deg,#ff9f0a,#ffd60a);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(255,159,10,.3)}
+        .section-label{
+            display:inline-block;padding:6px 14px;
+            background:rgba(255,255,255,.08);
+            color:rgba(255,255,255,.65);
+            border-radius:100px;font-size:11px;font-weight:800;
+            text-transform:uppercase;letter-spacing:.12em;
+            margin-bottom:16px;
+            border:1px solid rgba(255,255,255,.06);
+        }
+        /* ═══════════════ TREAD STUDIO mock ═══════════════ */
+        .ts-studio-mock{
+            position:relative;width:100%;max-width:320px;
+            aspect-ratio:9/16;max-height:calc(100dvh - 280px);
+            margin:0 auto;background:#000;
+            border-radius:var(--radius-lg);overflow:hidden;
+            box-shadow:var(--shadow-md);border:1px solid var(--border);
+        }
+        .ts-camera-bg{
+            position:absolute;inset:0;
+            background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+        }
+        .ts-camera-bg::after{
+            content:'';position:absolute;inset:0;
+            background:
+                    radial-gradient(circle at 30% 40%,rgba(255,159,10,.3),transparent 50%),
+                    radial-gradient(circle at 70% 60%,rgba(255,55,95,.25),transparent 50%),
+                    radial-gradient(circle at 50% 80%,rgba(191,90,242,.2),transparent 50%);
+        }
+        .ts-topbar-mock{
+            position:absolute;top:0;left:0;right:0;z-index:10;
+            padding:10px 12px;display:flex;align-items:center;gap:8px;
+        }
+        .ts-back-mock{
+            width:34px;height:34px;border-radius:50%;
+            background:transparent;border:none;color:#fff;
+            display:flex;align-items:center;justify-content:center;
+            cursor:pointer;filter:drop-shadow(0 1px 4px rgba(0,0,0,.6));
+        }
+        .ts-channel-pill-mock{
+            display:flex;align-items:center;gap:6px;
+            background:transparent;border:none;color:#fff;cursor:pointer;
+        }
+        .ts-channel-ava-mock{
+            width:28px;height:28px;border-radius:8px;
+            background:linear-gradient(135deg,#ff9f0a,#ff375f);
+            display:flex;align-items:center;justify-content:center;
+            font-size:11px;font-weight:800;color:#fff;
+            box-shadow:0 2px 8px rgba(0,0,0,.5);
+        }
+        .ts-channel-name-mock{
+            font-size:12px;font-weight:600;color:#fff;
+            text-shadow:0 1px 4px rgba(0,0,0,.6);
+        }
+        .ts-side-mock{
+            position:absolute;top:52px;right:8px;z-index:10;
+            display:flex;flex-direction:column;gap:12px;align-items:center;
+        }
+        .ts-side-btn-mock{
+            width:30px;height:30px;
+            background:transparent;border:none;color:#fff;
+            display:flex;align-items:center;justify-content:center;cursor:pointer;
+            filter:drop-shadow(0 1px 4px rgba(0,0,0,.7));
+        }
+        .ts-side-btn-mock svg{width:22px;height:22px;stroke-width:2}
+        .ts-controls-mock{
+            position:absolute;left:0;right:0;bottom:14px;z-index:10;
+            display:flex;flex-direction:column;gap:10px;padding:0 12px;
+        }
+        .ts-time-row-mock{display:flex;justify-content:center;gap:2px}
+        .ts-time-btn-mock{
+            padding:4px 10px;border-radius:100px;border:none;background:transparent;
+            color:rgba(255,255,255,.5);font-size:11px;font-weight:600;cursor:pointer;
+        }
+        .ts-time-btn-mock.active{
+            color:#fff;font-weight:800;
+            text-shadow:0 1px 4px rgba(0,0,0,.6);
+            transform:scale(1.1);
+        }
+        .ts-record-row-mock{
+            display:flex;align-items:center;justify-content:center;gap:22px;
+        }
+        .ts-gallery-mock{
+            width:44px;height:44px;border-radius:10px;
+            border:2px solid rgba(255,255,255,.5);
+            background:transparent;
+            display:flex;align-items:center;justify-content:center;
+            color:#fff;cursor:pointer;
+        }
+        .ts-gallery-mock svg{width:20px;height:20px;stroke-width:1.8}
+        .ts-record-mock{
+            width:70px;height:70px;border-radius:50%;
+            border:5px solid #fff;background:transparent;
+            display:flex;align-items:center;justify-content:center;
+            cursor:pointer;padding:0;
+            box-shadow:0 4px 20px rgba(0,0,0,.4);
+        }
+        .ts-record-inner-mock{
+            width:100%;height:100%;border-radius:50%;background:#ff375f;
+        }
+        .ts-effects-mock{
+            width:44px;height:44px;border-radius:50%;
+            background:transparent;border:none;color:#fff;
+            display:flex;align-items:center;justify-content:center;cursor:pointer;
+        }
+        .ts-effects-mock svg{width:26px;height:26px;stroke-width:2}
+        .ts-track-strip-mock{
+            display:flex;align-items:center;justify-content:center;gap:6px;
+            padding:6px 0;color:#fff;font-size:11px;font-weight:600;
+            background:transparent;border:none;cursor:pointer;
+            text-shadow:0 1px 4px rgba(0,0,0,.6);
+        }
+        .ts-track-strip-mock svg{width:18px;height:18px;stroke-width:2}
+        /* ═══════════════ CHVAD preview ═══════════════ */
+        .chvad-preview{
+            max-width:340px;margin:0 auto;
+            background:var(--card);border-radius:20px;
+            border:1px solid var(--border);overflow:hidden;
+            box-shadow:var(--shadow-md);position:relative;
+        }
+        .chvad-preview-header{
+            position:relative;padding:20px 16px 16px;
+            background:linear-gradient(180deg,rgba(191,90,242,.35) 0%,rgba(255,55,95,.2) 50%,transparent 100%);
+            text-align:center;overflow:hidden;
+        }
+        .chvad-pattern{
+            position:absolute;inset:-20%;opacity:.18;
+            background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><text x='50%' y='52%' font-size='32' text-anchor='middle' dominant-baseline='middle'>✨</text></svg>");
+            background-size:64px 64px;background-repeat:repeat;
+            transform:rotate(-14deg);pointer-events:none;
+        }
+        .chvad-avatar{
+            width:68px;height:68px;border-radius:50%;
+            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+            display:flex;align-items:center;justify-content:center;
+            color:#fff;font-weight:800;font-size:26px;
+            margin:0 auto 8px;
+            border:3px solid rgba(255,255,255,.2);
+            position:relative;z-index:1;
+        }
+        .chvad-name{
+            font-size:18px;font-weight:800;
+            background:linear-gradient(135deg,#bf5af2,#ff375f);
+            -webkit-background-clip:text;background-clip:text;
+            -webkit-text-fill-color:transparent;color:transparent;
+            position:relative;z-index:1;
+        }
+        .chvad-badge{
+            display:inline-flex;align-items:center;gap:4px;
+            padding:3px 10px;border-radius:100px;
+            background:linear-gradient(135deg,#ff9f0a,#ff375f,#bf5af2);
+            color:#fff;font-size:10px;font-weight:800;
+            margin-top:6px;position:relative;z-index:1;
+        }
+        .chvad-username{
+            font-size:12px;color:var(--text-secondary);
+            margin-top:4px;position:relative;z-index:1;
+        }
+        .chvad-features{
+            padding:12px 14px 14px;
+            display:flex;flex-direction:column;gap:6px;
+        }
+        .chvad-feature-row{
+            display:flex;align-items:center;gap:10px;
+            padding:8px 10px;background:var(--surface-2);
+            border-radius:10px;font-size:12px;color:var(--text);
+        }
+        .chvad-feature-check{
+            width:16px;height:16px;border-radius:50%;
+            background:var(--green);
+            display:flex;align-items:center;justify-content:center;
+            color:#fff;font-size:10px;font-weight:900;flex-shrink:0;
+        }
+        .chvad-feature-check.off{background:var(--surface-3)}
+        /* ═══════════════ LIVE / RAVE ═══════════════ */
+        .live-mock{
+            max-width:380px;margin:0 auto;
+            background:#0a0a0a;border-radius:24px;
+            border:1px solid var(--border);overflow:hidden;
+            box-shadow:var(--shadow-md);position:relative;
+        }
+        .live-top{
+            display:flex;align-items:center;gap:10px;
+            padding:12px;background:rgba(0,0,0,.5);
+        }
+        .live-host-ava{
+            width:36px;height:36px;border-radius:50%;padding:2px;
+            background:conic-gradient(from 0deg,#ff375f,#ff3b30,#ff375f);
+            animation:liveRotate 3s linear infinite;flex-shrink:0;
+        }
+        .live-host-ava-inner{
+            width:100%;height:100%;border-radius:50%;
+            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+            color:#fff;display:flex;align-items:center;justify-content:center;
+            font-size:13px;font-weight:800;
+        }
+        .live-host-info{flex:1;min-width:0}
+        .live-host-name{font-size:13px;font-weight:700;color:#fff}
+        .live-host-label{
+            display:flex;align-items:center;gap:4px;
+            font-size:10px;font-weight:900;color:#ff375f;
+            letter-spacing:.08em;margin-top:2px;
+        }
+        .live-host-label::before{
+            content:'';display:block;width:6px;height:6px;border-radius:50%;
+            background:#ff375f;box-shadow:0 0 8px #ff375f;
+            animation:liveDotPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes liveDotPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}
+        @keyframes liveRotate{to{transform:rotate(360deg)}}
+        .live-stage-mock{
+            padding:20px 16px;
+            display:flex;flex-direction:column;align-items:center;gap:12px;
+            background:radial-gradient(circle at 50% 30%,rgba(255,159,10,.15),transparent 60%);
+        }
+        .live-stage-ava-mock{
+            width:80px;height:80px;border-radius:50%;padding:3px;
+            background:conic-gradient(from 0deg,#ff375f,#ff9f0a,#ff375f);
+            animation:liveRotate 3s linear infinite;
+        }
+        .live-stage-ava-inner-mock{
+            width:100%;height:100%;border-radius:50%;
+            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+            color:#fff;display:flex;align-items:center;justify-content:center;
+            font-size:28px;font-weight:800;
+        }
+        .live-stage-name-mock{font-size:15px;font-weight:800;color:#fff}
+        .live-stage-sub-mock{
+            font-size:11px;font-weight:900;
+            letter-spacing:.14em;text-transform:uppercase;
+            color:#ff9f0a;
+            animation:liveChatPulse 1.6s ease-in-out infinite;
+        }
+        @keyframes liveChatPulse{0%,100%{opacity:1}50%{opacity:.65}}
+        .live-bars-mock{
+            display:flex;gap:4px;height:22px;align-items:flex-end;
+        }
+        .live-bars-mock span{
+            width:4px;
+            background:linear-gradient(180deg,#ffd60a,#ff9f0a,#ff375f);
+            border-radius:2px;animation:barsBeat .8s ease-in-out infinite;
+        }
+        .live-bars-mock span:nth-child(2){animation-delay:.15s}
+        .live-bars-mock span:nth-child(3){animation-delay:.3s}
+        .live-bars-mock span:nth-child(4){animation-delay:.45s}
+        .live-bars-mock span:nth-child(5){animation-delay:.6s}
+        @keyframes barsBeat{0%,100%{height:8px}50%{height:20px}}
+        .live-messages-mock{
+            padding:8px 12px;
+            display:flex;flex-direction:column;gap:5px;
+            max-height:110px;overflow-y:auto;
+            border-top:1px solid rgba(255,255,255,.06);
+        }
+        .live-msg-mock{
+            display:flex;gap:7px;align-items:flex-start;font-size:12px;
+        }
+        .live-msg-ava{
+            width:20px;height:20px;border-radius:50%;
+            background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+            display:flex;align-items:center;justify-content:center;
+            font-size:9px;font-weight:800;color:#fff;flex-shrink:0;
+        }
+        .live-msg-text{color:rgba(255,255,255,.85);line-height:1.4}
+        .live-msg-text strong{color:#ffd60a;font-weight:700}
+        .live-composer-mock{
+            padding:8px 12px;
+            display:flex;gap:8px;align-items:center;
+            border-top:1px solid rgba(255,255,255,.06);
+        }
+        .live-composer-input{
+            flex:1;background:rgba(255,255,255,.08);
+            border-radius:20px;padding:8px 14px;
+            font-size:12px;color:rgba(255,255,255,.4);
+        }
+        /* ═══════════════ CTA ═══════════════ */
+        .cta-btn{
+            display:inline-block;padding:16px 32px;
+            background:linear-gradient(135deg,#ff375f,#bf5af2);
+            color:#fff;text-decoration:none;border-radius:16px;
+            font-weight:800;font-size:15px;
+            box-shadow:0 8px 24px rgba(255,55,95,.35);
+            transition:transform .2s var(--spring);
+        }
+        .cta-btn:hover{transform:scale(1.04)}
+        /* ═══════════════ Адаптив ═══════════════ */
+        @media(max-width:600px){
+            .progress-dots{right:8px;gap:5px}
+            .progress-dots .dot{width:5px;height:5px}
+            .progress-dots .dot.active{height:14px}
+            .back-home{top:10px;left:10px;padding:7px 12px;font-size:11px}
+            .slide{padding:56px 14px}
+            .mock-feed{max-height:calc(100dvh - 220px)}
+            .feed-post-media-full{max-height:calc(100dvh - 240px)}
+            .ts-studio-mock{max-height:calc(100dvh - 220px)}
+            h1{font-size:30px}
+            h2{font-size:22px}
+            .feature-grid{gap:10px}
+            .feature-card{padding:14px}
         }
     </style>
 </head>
 <body>
 
-<!-- ДЕКОРАЦИИ ФОНА -->
-<div class="bg-decor decor-heart" style="top: 10%; left: 5%;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ff375f" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
-<div class="bg-decor decor-star" style="top: 15%; right: 10%;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffd60a" stroke-width="2"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></div>
-<div class="bg-decor decor-circle" style="top: 60%; left: 15%;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#bf5af2" stroke-width="1.5"><circle cx="12" cy="12" r="9"/></svg></div>
-<div class="bg-decor decor-bolt" style="top: 40%; right: 5%;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0a84ff" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg></div>
-<div class="bg-decor decor-heart" style="bottom: 15%; right: 20%; animation-delay: -3s;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff9f0a" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+<!-- SVG градиенты -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+        <linearGradient id="grad-op" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff9f0a"/><stop offset="100%" stop-color="#ff375f"/>
+        </linearGradient>
+        <linearGradient id="grad-pp" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff375f"/><stop offset="100%" stop-color="#bf5af2"/>
+        </linearGradient>
+        <linearGradient id="grad-bp" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0a84ff"/><stop offset="100%" stop-color="#bf5af2"/>
+        </linearGradient>
+        <linearGradient id="grad-oy" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff9f0a"/><stop offset="100%" stop-color="#ffd60a"/>
+        </linearGradient>
+        <linearGradient id="grad-gb" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#30d158"/><stop offset="100%" stop-color="#0a84ff"/>
+        </linearGradient>
+        <linearGradient id="grad-ro" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff3b30"/><stop offset="100%" stop-color="#ff9f0a"/>
+        </linearGradient>
+    </defs>
+</svg>
+
+<!-- ДЕКОР ФОНА -->
+<div class="bg-decor decor-heart" style="top:8%;left:5%"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff375f" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+<div class="bg-decor decor-star" style="top:12%;right:8%"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffd60a" stroke-width="2"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></div>
+<div class="bg-decor decor-circle" style="top:60%;left:10%"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#bf5af2" stroke-width="1.5"><circle cx="12" cy="12" r="9"/></svg></div>
+<div class="bg-decor decor-bolt" style="top:40%;right:6%"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0a84ff" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg></div>
 
 <div class="progress-bar" id="progressBar"></div>
 <a href="/" class="back-home">← На главную</a>
@@ -446,23 +769,20 @@
 <!-- ═══════════════ 1. HERO ═══════════════ -->
 <section class="slide" data-slide="1">
     <div class="slide-inner">
-        <div class="hero-logo reveal">
-            <img src="/logo.jpeg" alt="listatread">
-        </div>
-        <h1 class="hero-brand reveal" data-delay="1">listatread</h1>
-        <p class="hero-tagline reveal" data-delay="2">
+        <div class="hero-logo reveal"><img src="/logo.jpeg" alt="listatread"></div>
+        <h1 class="reveal" data-delay="1">listatread</h1>
+        <p class="reveal" data-delay="2" style="font-size:clamp(16px,2.5vw,20px)">
             Новая мультимедийная платформа.<br>
             Не профили — <span class="accent-text">каналы</span>.<br>
             Не поиск — <span class="accent-text">дофамин</span>.
         </p>
-        <div class="scroll-hint reveal" data-delay="3">
-            <span>Листайте вниз</span>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-        </div>
+        <p class="reveal" data-delay="3" style="font-size:12px;margin-top:16px;color:var(--text-tertiary)">
+            Листайте вниз
+        </p>
     </div>
 </section>
 
-<!-- ═══════════════ 2. ЧТО ЭТО ═══════════════ -->
+<!-- ═══════════════ 2. ЧТО ТАКОЕ ═══════════════ -->
 <section class="slide" data-slide="2">
     <div class="slide-inner">
         <div class="section-label reveal">Что такое listatread</div>
@@ -470,11 +790,64 @@
         <p class="reveal" data-delay="2">
             Люди делятся контентом не лично в профилях — они создают каналы. Каналы могут быть общими, и авторов может быть много. Главная фишка — эти каналы показываются в бесконечной ленте рекомендаций.
         </p>
+        <div class="feature-grid" style="margin-top:24px">
+            <div class="feature-card reveal" data-delay="3">
+                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg></div>
+                <h3>Каналы вместо профилей</h3>
+                <p style="font-size:13px;margin:0">Один канал — много авторов. Создавайте контент вместе с командой.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="4">
+                <div class="feature-icon-wrap blue"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 16 0 8 8 0 0 1-16 0z"/><path d="M8 12h8M12 8v8"/></svg></div>
+                <h3>Бесконечная лента</h3>
+                <p style="font-size:13px;margin:0">Алгоритм подбирает контент под вас. Дофамин на каждой прокрутке.</p>
+            </div>
+        </div>
     </div>
 </section>
 
-<!-- ═══════════════ 3. ПРЕИМУЩЕСТВА ═══════════════ -->
+<!-- ═══════════════ 3. КАНАЛЫ (НОВЫЙ) ═══════════════ -->
 <section class="slide" data-slide="3">
+    <div class="slide-inner">
+        <div class="section-label reveal">Каналы</div>
+        <h2 class="reveal" data-delay="1">Всё, что умеют <span class="accent-text">каналы</span></h2>
+        <p class="reveal" data-delay="2">Канал — это не просто профиль. Это полноценная экосистема для контента, общения и аудитории.</p>
+        <div class="feature-grid" style="margin-top:20px">
+            <div class="feature-card reveal" data-delay="3">
+                <div class="feature-icon-wrap orange"><svg viewBox="0 0 24 24" stroke="url(#grad-oy)" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+                <h3>Видео</h3>
+                <p style="font-size:13px;margin:0">Публикуйте видео с эффектами, масками и звуками. Монтаж прямо в приложении.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="4">
+                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24" stroke="url(#grad-op)" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg></div>
+                <h3>Фото</h3>
+                <p style="font-size:13px;margin:0">Квадратные снимки на всю карточку, качество без сжатия.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="5">
+                <div class="feature-icon-wrap purple"><svg viewBox="0 0 24 24" stroke="url(#grad-pp)" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+                <h3>Музыка</h3>
+                <p style="font-size:13px;margin:0">Треки, альбомы, плейлисты. С просмотром текста и исполнителя.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="6">
+                <div class="feature-icon-wrap green"><svg viewBox="0 0 24 24" stroke="url(#grad-gb)" stroke-width="1.8"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg></div>
+                <h3>Опросы и викторины</h3>
+                <p style="font-size:13px;margin:0">Собирайте мнения и проводите квизы прямо в ленте.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="7">
+                <div class="feature-icon-wrap blue"><svg viewBox="0 0 24 24" stroke="url(#grad-bp)" stroke-width="1.8"><path d="M14 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h8l7-7V6a3 3 0 0 0-3-3z"/><path d="M14 21v-4a3 3 0 0 1 3-3h4"/></svg></div>
+                <h3>Стикеры и цитаты</h3>
+                <p style="font-size:13px;margin:0">Отдельные стикер-паки и красивые цитаты для любого настроения.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="8">
+                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24" stroke="url(#grad-op)" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h.01"/></svg></div>
+                <h3>Коды приглашений</h3>
+                <p style="font-size:13px;margin:0">Публичные, частные и общественные каналы с гибкой настройкой доступа.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════ 4. ПРЕИМУЩЕСТВА ═══════════════ -->
+<section class="slide" data-slide="4">
     <div class="slide-inner">
         <div class="section-label reveal">Наши преимущества</div>
         <h2 class="reveal" data-delay="1">Почему <span class="accent-text">listatread</span></h2>
@@ -482,304 +855,179 @@
             <div class="feature-card reveal" data-delay="2">
                 <div class="feature-icon-wrap"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg></div>
                 <h3>Каналы вместо профилей</h3>
-                <p style="font-size:14px;margin:0;">Один канал — много авторов. Создавайте контент вместе с командой.</p>
+                <p style="font-size:13px;margin:0">Один канал — много авторов. Создавайте контент вместе с командой.</p>
             </div>
             <div class="feature-card reveal" data-delay="3">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 16 0 8 8 0 0 1-16 0z"/><path d="M8 12h8M12 8v8"/></svg></div>
+                <div class="feature-icon-wrap blue"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 16 0 8 8 0 0 1-16 0z"/><path d="M8 12h8M12 8v8"/></svg></div>
                 <h3>Бесконечная лента</h3>
-                <p style="font-size:14px;margin:0;">Алгоритм подбирает контент под вас. Дофамин на каждой прокрутке.</p>
+                <p style="font-size:13px;margin:0">Алгоритм подбирает контент под вас. Дофамин на каждой прокрутке.</p>
             </div>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 4. ВИДЕО ТРЕД ═══════════════ -->
-<section class="slide" data-slide="4">
-    <div class="slide-inner">
-        <div class="section-label reveal">Видео тред</div>
-        <h2 class="reveal" data-delay="1">Смотрите <span class="accent-text">прямо в ленте</span></h2>
-        <div class="mock-feed reveal" data-delay="2">
-            <article class="feed-post">
-                <div class="feed-post-header">
-                    <div class="feed-avatar-wrap">
-                        <div class="feed-post-avatar avatar-with-status">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="">
-                            <div class="story-status-badge">😎</div>
-                        </div>
-                    </div>
-                    <div class="feed-post-info">
-                        <div class="feed-post-name">
-                            <span class="feed-post-name-text">Alex</span>
-                            <span class="name-status-badge">😎</span>
-                            <span class="feed-channel-badge">
-                                <span class="feed-channel-logo"><img src="https://api.dicebear.com/7.x/identicon/svg?seed=ch1" alt=""></span>
-                                <span class="feed-channel-name">Наш Канал</span>
-                                <span class="feed-channel-check">✓</span>
-                            </span>
-                        </div>
-                        <div class="feed-post-time">2 часа назад</div>
-                    </div>
-                    <button class="feed-sub-btn">+</button>
-                </div>
-
-                <!-- ВИДЕО (заменить src на реальный) -->
-                <div style="position:relative; width:calc(100% + 32px); margin:0 -16px;">
-                    <video class="feed-post-video" src="https://www.w3schools.com/html/mov_bbb.mp4" autoplay muted loop playsinline style="object-fit:cover; max-height:400px;"></video>
-                </div>
-
-                <div class="feed-post-content">Смотрите какой закат сегодня! Невероятная красота 🌅</div>
-
-                <div class="feed-post-footer">
-                    <button class="feed-follow-text">Подписаться</button>
-                    <button class="feed-action liked">
-                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        <span class="feed-count">4.2K</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                        <span class="feed-count">450</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-                    </button>
-                    <button class="feed-more">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
-                    </button>
-                </div>
-                <button class="fp-discuss">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    <span class="fp-discuss-label">Обсуждение</span>
-                    <span class="fp-chev">›</span>
-                </button>
-            </article>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 5. ФОТО ТРЕД ═══════════════ -->
+<!-- ═══════════════ 5. ВИДЕО ТРЕД (на всю карточку) ═══════════════ -->
 <section class="slide" data-slide="5">
     <div class="slide-inner">
-        <div class="section-label reveal">Фото тред</div>
-        <h2 class="reveal" data-delay="1">Качественные <span class="accent-text">снимки</span></h2>
-        <div class="mock-feed reveal" data-delay="2">
-            <article class="feed-post">
-                <div class="feed-post-header">
-                    <div class="feed-avatar-wrap">
-                        <div class="feed-post-avatar avatar-with-status">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Maria" alt="">
-                            <div class="story-status-badge">😍</div>
+        <div class="section-label reveal">Видео тред</div>
+        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Смотрите <span class="accent-text">прямо в ленте</span></h2>
+        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
+            <article class="feed-post media-full">
+                <div class="feed-post-media-full">
+                    <video src="https://www.w3schools.com/html/mov_bbb.mp4" autoplay muted loop playsinline></video>
+                    <div class="feed-post-header">
+                        <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt=""></div>
+                        <div class="feed-post-info">
+                            <div class="feed-post-name">
+                                <span class="feed-post-name-text">Alex</span>
+                                <span class="feed-channel-badge"><span class="feed-channel-logo">K</span><span class="feed-channel-name">Канал</span></span>
+                            </div>
+                            <div class="feed-post-time">2 часа назад</div>
                         </div>
                     </div>
-                    <div class="feed-post-info">
-                        <div class="feed-post-name">
-                            <span class="feed-post-name-text">Maria</span>
-                            <span class="name-status-badge">😍</span>
-                            <span class="feed-channel-badge">
-                                <span class="feed-channel-logo"><img src="https://api.dicebear.com/7.x/identicon/svg?seed=ch2" alt=""></span>
-                                <span class="feed-channel-name">Photography</span>
-                                <span class="feed-channel-check">✓</span>
-                            </span>
-                        </div>
-                        <div class="feed-post-time">5 часов назад</div>
+                    <div class="video-overlay-controls">
+                        <div class="video-vinyl"><div class="video-vinyl-disc"><div class="video-vinyl-cover">A</div></div></div>
+                        <button class="video-overlay-btn liked">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            <span>4.2K</span>
+                        </button>
+                        <button class="video-overlay-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            <span>320</span>
+                        </button>
+                        <button class="video-overlay-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                        </button>
                     </div>
-                    <button class="feed-sub-btn">+</button>
+                    <div class="feed-post-content">Смотрите какой закат сегодня! Невероятная красота 🌅</div>
+                    <div class="feed-post-footer">
+                        <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">4.2K</span></button>
+                        <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">450</span></button>
+                        <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
+                    </div>
                 </div>
-
-                <img class="feed-post-image" src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop" alt="">
-
-                <div class="feed-post-content">Делюсь рецептом этих невероятных пирожных! читать далее...</div>
-
-                <div class="feed-post-footer">
-                    <button class="feed-follow-text">Подписаться</button>
-                    <button class="feed-action liked">
-                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        <span class="feed-count">8.1K</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                        <span class="feed-count">720</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-                    </button>
-                    <button class="feed-more">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
-                    </button>
-                </div>
-                <button class="fp-discuss">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    <span class="fp-discuss-label">Обсуждение</span>
-                    <span class="fp-chev">›</span>
-                </button>
             </article>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 6. ТЕКСТОВЫЙ ТРЕД ═══════════════ -->
+<!-- ═══════════════ 6. ФОТО ТРЕД (на всю карточку) ═══════════════ -->
 <section class="slide" data-slide="6">
     <div class="slide-inner">
-        <div class="section-label reveal">Текстовый тред</div>
-        <h2 class="reveal" data-delay="1">Мысли <span class="accent-text">на бумаге</span></h2>
-        <div class="mock-feed reveal" data-delay="2">
-            <article class="feed-post">
-                <div class="feed-post-header">
-                    <div class="feed-avatar-wrap">
-                        <div class="feed-post-avatar avatar-with-status">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=John" alt="">
-                            <div class="story-status-badge">🤔</div>
+        <div class="section-label reveal">Фото тред</div>
+        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Качественные <span class="accent-text">снимки</span></h2>
+        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
+            <article class="feed-post media-full">
+                <div class="feed-post-media-full square">
+                    <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop" alt="">
+                    <div class="feed-post-header">
+                        <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Maria" alt=""></div>
+                        <div class="feed-post-info">
+                            <div class="feed-post-name">
+                                <span class="feed-post-name-text">Maria</span>
+                                <span class="feed-channel-badge"><span class="feed-channel-logo">P</span><span class="feed-channel-name">Photography</span></span>
+                            </div>
+                            <div class="feed-post-time">5 часов назад</div>
                         </div>
                     </div>
+                    <div class="feed-post-content">Делюсь рецептом этих невероятных пирожных! читать далее...</div>
+                    <div class="feed-post-footer">
+                        <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">8.1K</span></button>
+                        <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">720</span></button>
+                        <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════ 7. ТЕКСТОВЫЙ ТРЕД ═══════════════ -->
+<section class="slide" data-slide="7">
+    <div class="slide-inner">
+        <div class="section-label reveal">Текстовый тред</div>
+        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Мысли <span class="accent-text">на бумаге</span></h2>
+        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
+            <article class="feed-post">
+                <div class="feed-post-header">
+                    <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=John" alt=""></div>
                     <div class="feed-post-info">
                         <div class="feed-post-name">
                             <span class="feed-post-name-text">John Doe</span>
-                            <span class="name-status-badge">🤔</span>
-                            <span class="feed-channel-badge">
-                                <span class="feed-channel-logo"><img src="https://api.dicebear.com/7.x/identicon/svg?seed=ch3" alt=""></span>
-                                <span class="feed-channel-name">Thoughts</span>
-                                <span class="feed-channel-check">✓</span>
-                            </span>
+                            <span class="feed-channel-badge"><span class="feed-channel-logo">T</span><span class="feed-channel-name">Thoughts</span></span>
                         </div>
                         <div class="feed-post-time">10 мин назад</div>
                     </div>
-                    <button class="feed-sub-btn">+</button>
                 </div>
-
-                <div class="feed-post-content" style="font-size:18px; padding: 10px 0;">
-                    Иногда самые гениальные идеи приходят в голову, когда просто сидишь в тишине и никуда не спешишь. Цените моменты. ✨
-                </div>
-
+                <div class="feed-post-content" style="font-size:16px;padding:8px 0">Иногда самые гениальные идеи приходят в голову, когда просто сидишь в тишине и никуда не спешишь. Цените моменты. ✨</div>
                 <div class="feed-post-footer">
-                    <button class="feed-follow-text">Подписаться</button>
-                    <button class="feed-action liked">
-                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        <span class="feed-count">2.4K</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                        <span class="feed-count">210</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-                    </button>
-                    <button class="feed-more">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
-                    </button>
+                    <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">2.4K</span></button>
+                    <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">210</span></button>
+                    <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
                 </div>
-                <button class="fp-discuss">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    <span class="fp-discuss-label">Обсуждение</span>
-                    <span class="fp-chev">›</span>
-                </button>
             </article>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 7. МУЗЫКАЛЬНЫЙ ТРЕД ═══════════════ -->
-<section class="slide" data-slide="7">
+<!-- ═══════════════ 8. МУЗЫКАЛЬНЫЙ ТРЕД ═══════════════ -->
+<section class="slide" data-slide="8">
     <div class="slide-inner">
         <div class="section-label reveal">Музыкальный тред</div>
-        <h2 class="reveal" data-delay="1">Слушайте <span class="accent-text">прямо здесь</span></h2>
-        <div class="mock-feed reveal" data-delay="2">
+        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Слушайте <span class="accent-text">прямо здесь</span></h2>
+        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
             <article class="feed-post">
                 <div class="feed-post-header">
-                    <div class="feed-avatar-wrap">
-                        <div class="feed-post-avatar avatar-with-status">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=DJ" alt="">
-                            <div class="story-status-badge">🎧</div>
-                        </div>
-                    </div>
+                    <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=DJ" alt=""></div>
                     <div class="feed-post-info">
                         <div class="feed-post-name">
                             <span class="feed-post-name-text">DJ Tread</span>
-                            <span class="name-status-badge">🎧</span>
-                            <span class="feed-channel-badge">
-                                <span class="feed-channel-logo"><img src="https://api.dicebear.com/7.x/identicon/svg?seed=ch4" alt=""></span>
-                                <span class="feed-channel-name">Music</span>
-                                <span class="feed-channel-check">✓</span>
-                            </span>
+                            <span class="feed-channel-badge"><span class="feed-channel-logo">M</span><span class="feed-channel-name">Music</span></span>
                         </div>
                         <div class="feed-post-time">1 час назад</div>
                     </div>
-                    <button class="feed-sub-btn">+</button>
                 </div>
-
                 <div class="feed-post-content">Новый трек, билеты на концерт уже в прокате! 💪</div>
-
                 <div class="track-card">
-                    <button class="track-play">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                    </button>
+                    <button class="track-play"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
                     <div class="track-info">
                         <div class="track-title">Midnight Vibes</div>
                         <div class="track-meta">@dj.tread · 3:45</div>
                     </div>
                 </div>
-
                 <div class="feed-post-footer">
-                    <button class="feed-follow-text">Подписаться</button>
-                    <button class="feed-action liked">
-                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        <span class="feed-count">9.8K</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                        <span class="feed-count">1K</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-                    </button>
-                    <button class="feed-more">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
-                    </button>
+                    <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">9.8K</span></button>
+                    <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">1K</span></button>
+                    <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
                 </div>
-                <button class="fp-discuss">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    <span class="fp-discuss-label">Обсуждение</span>
-                    <span class="fp-chev">›</span>
-                </button>
             </article>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 8. ОПРОС ═══════════════ -->
-<section class="slide" data-slide="8">
+<!-- ═══════════════ 9. ОПРОС ═══════════════ -->
+<section class="slide" data-slide="9">
     <div class="slide-inner">
         <div class="section-label reveal">Опрос</div>
-        <h2 class="reveal" data-delay="1">Узнайте <span class="accent-text">мнение</span></h2>
-        <div class="mock-feed reveal" data-delay="2">
+        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Узнайте <span class="accent-text">мнение</span></h2>
+        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
             <article class="feed-post">
                 <div class="feed-post-header">
-                    <div class="feed-avatar-wrap">
-                        <div class="feed-post-avatar avatar-with-status">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tech" alt="">
-                            <div class="story-status-badge">📊</div>
-                        </div>
-                    </div>
+                    <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tech" alt=""></div>
                     <div class="feed-post-info">
                         <div class="feed-post-name">
                             <span class="feed-post-name-text">Tech News</span>
-                            <span class="name-status-badge">📊</span>
-                            <span class="feed-channel-badge">
-                                <span class="feed-channel-logo"><img src="https://api.dicebear.com/7.x/identicon/svg?seed=ch5" alt=""></span>
-                                <span class="feed-channel-name">Tech</span>
-                                <span class="feed-channel-check">✓</span>
-                            </span>
+                            <span class="feed-channel-badge"><span class="feed-channel-logo">T</span><span class="feed-channel-name">Tech</span></span>
                         </div>
                         <div class="feed-post-time">4 часа назад</div>
                     </div>
-                    <button class="feed-sub-btn">+</button>
                 </div>
-
                 <div class="feed-post-content">Какой язык программирования вы изучаете сейчас?</div>
-
                 <div class="poll-view">
+                    <div class="poll-view-title">📊 Опрос</div>
                     <div class="poll-view-options">
-                        <div class="poll-view-option selected">
-                            <div class="poll-view-fill" style="width: 65%;"></div>
-                            <div class="poll-check">✓</div>
+                        <div class="poll-view-option">
+                            <div class="poll-view-fill" style="width:65%"></div>
                             <div class="poll-view-label"><span>JavaScript</span><span>65%</span></div>
                         </div>
                         <div class="poll-view-option">
@@ -790,207 +1038,349 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="feed-post-footer">
-                    <button class="feed-follow-text">Подписаться</button>
-                    <button class="feed-action liked">
-                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        <span class="feed-count">1.5K</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                        <span class="feed-count">300</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-                    </button>
-                    <button class="feed-more">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
-                    </button>
+                    <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">1.5K</span></button>
+                    <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">300</span></button>
+                    <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
                 </div>
-                <button class="fp-discuss">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    <span class="fp-discuss-label">Обсуждение</span>
-                    <span class="fp-chev">›</span>
-                </button>
             </article>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 9. СТИКЕР ═══════════════ -->
-<section class="slide" data-slide="9">
+<!-- ═══════════════ 10. СТИКЕР ═══════════════ -->
+<section class="slide" data-slide="10">
     <div class="slide-inner">
         <div class="section-label reveal">Стикер тред</div>
-        <h2 class="reveal" data-delay="1">Выражайте <span class="accent-text">эмоции</span></h2>
-        <div class="mock-feed reveal" data-delay="2">
+        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Выражайте <span class="accent-text">эмоции</span></h2>
+        <div class="mock-feed reveal" data-delay="2" style="max-width:340px">
             <article class="feed-post">
                 <div class="feed-post-header">
-                    <div class="feed-avatar-wrap">
-                        <div class="feed-post-avatar avatar-with-status">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Cat" alt="">
-                            <div class="story-status-badge">😻</div>
-                        </div>
-                    </div>
+                    <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Cat" alt=""></div>
                     <div class="feed-post-info">
                         <div class="feed-post-name">
                             <span class="feed-post-name-text">Cat Lover</span>
-                            <span class="name-status-badge">😻</span>
-                            <span class="feed-channel-badge">
-                                <span class="feed-channel-logo"><img src="https://api.dicebear.com/7.x/identicon/svg?seed=ch6" alt=""></span>
-                                <span class="feed-channel-name">Cats</span>
-                                <span class="feed-channel-check">✓</span>
-                            </span>
+                            <span class="feed-channel-badge"><span class="feed-channel-logo">C</span><span class="feed-channel-name">Cats</span></span>
                         </div>
                         <div class="feed-post-time">30 мин назад</div>
                     </div>
-                    <button class="feed-sub-btn">+</button>
                 </div>
-
                 <div class="feed-post-content">Когда лег спать в 3 ночи:</div>
-
-                <!-- Стикер слева -->
                 <img class="feed-post-sticker" src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=SleepyCat" alt="sticker">
-
                 <div class="feed-post-footer">
-                    <button class="feed-follow-text">Подписаться</button>
-                    <button class="feed-action liked">
-                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.9"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        <span class="feed-count">6.3K</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                        <span class="feed-count">800</span>
-                    </button>
-                    <button class="feed-action">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-                    </button>
-                    <button class="feed-more">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
-                    </button>
+                    <button class="feed-action liked"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span class="feed-count">6.3K</span></button>
+                    <button class="feed-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="feed-count">800</span></button>
+                    <button class="feed-more"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
                 </div>
-                <button class="fp-discuss">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    <span class="fp-discuss-label">Обсуждение</span>
-                    <span class="fp-chev">›</span>
-                </button>
             </article>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 10. DIRECT ═══════════════ -->
-<section class="slide" data-slide="10">
-    <div class="slide-inner">
-        <div class="section-label reveal">listadirect</div>
-        <h2 class="reveal" data-delay="1">Общайтесь <span class="accent-text">красиво</span></h2>
-        <p class="reveal" data-delay="2">Листайте вниз — все сообщения уже здесь, без загрузок и ожиданий.</p>
-
-        <div class="mock-direct reveal" data-delay="3">
-            <div class="direct-header">
-                <div class="direct-ava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alice" alt=""></div>
-                <div>
-                    <div class="direct-name">Alice</div>
-                    <div class="direct-status">в сети</div>
-                </div>
-            </div>
-            <div class="direct-messages-mock">
-                <div class="dr-row-mock">
-                    <div class="direct-bubble-mock">Привет! Как дела?</div>
-                </div>
-                <div class="dr-row-mock mine">
-                    <div class="direct-bubble-mock">Хорошо! В Токио всего 9 утра, пойду собираться на работу!</div>
-                </div>
-                <div class="dr-row-mock">
-                    <div class="direct-bubble-mock dr-sticker-mock">
-                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=Heart" alt="Sticker">
-                    </div>
-                </div>
-                <div class="dr-row-mock">
-                    <div class="direct-bubble-mock">Крутое видео! 🔥 Мне нравится!</div>
-                </div>
-                <div class="dr-row-mock mine">
-                    <div class="direct-bubble-mock">Спасибо! Рад, что понравилось 😊✨</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 11. ОФОРМЛЕНИЕ И ФУНКЦИИ ═══════════════ -->
+<!-- ═══════════════ 11. СОЗДАНИЕ КОНТЕНТА (НОВЫЙ) ═══════════════ -->
 <section class="slide" data-slide="11">
     <div class="slide-inner">
-        <div class="section-label reveal">Возможности</div>
-        <h2 class="reveal" data-delay="1">Оформление и <span class="accent-text">фишки</span></h2>
-        <div class="feature-grid">
-            <div class="feature-card reveal" data-delay="2">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></div>
-                <h3>Оформление канала</h3>
-                <p style="font-size:14px;margin:0;">Градиенты, узоры, цвет имени и эксклюзивные рамки для вашего канала.</p>
+        <div class="section-label reveal">Tread Studio</div>
+        <h2 class="reveal" data-delay="1" style="margin-bottom:10px">Создавайте видео <span class="accent-text">прямо в приложении</span></h2>
+        <p class="reveal" data-delay="2" style="font-size:14px;margin-bottom:14px">
+            Маски, эффекты, музыка из listatread — всё под рукой. Снимайте, монтируйте и публикуйте за пару минут.
+        </p>
+        <div class="ts-studio-mock reveal" data-delay="3">
+            <div class="ts-camera-bg"></div>
+            <div class="ts-topbar-mock">
+                <button class="ts-back-mock">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+                </button>
+                <button class="ts-channel-pill-mock">
+                    <span class="ts-channel-ava-mock">K</span>
+                    <span class="ts-channel-name-mock">Мой канал</span>
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
             </div>
-            <div class="feature-card reveal" data-delay="3">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></div>
-                <h3>Оформление профиля</h3>
-                <p style="font-size:14px;margin:0;">Настройте фон, цвет имени и статусы под свой стиль с подпиской chvad.</p>
+            <div class="ts-side-mock">
+                <button class="ts-side-btn-mock" title="Повернуть">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.5"/></svg>
+                </button>
+                <button class="ts-side-btn-mock" title="Вспышка">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>
+                </button>
+                <button class="ts-side-btn-mock" title="Тред">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 5h14M12 5v15M8 20h8"/></svg>
+                </button>
+                <button class="ts-side-btn-mock" title="Фото">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>
+                </button>
+                <button class="ts-side-btn-mock" title="Треки">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                </button>
+                <button class="ts-side-btn-mock" title="Ещё">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
             </div>
-            <div class="feature-card reveal" data-delay="4">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 2s4 3 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s-3 2-3 6a6 6 0 0 0 12 0c0-5-6-11-6-11z"/></svg></div>
-                <h3>Live chats и Raves</h3>
-                <p style="font-size:14px;margin:0;">Создавайте трансляции и общайтесь в реальном времени со своей аудиторией.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="5">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg></div>
-                <h3>Подарки</h3>
-                <p style="font-size:14px;margin:0;">Отправляйте и получайте подарки от поклонников прямо в постах и на канале.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="6">
-                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></div>
-                <h3>Магазин</h3>
-                <p style="font-size:14px;margin:0;">Покупайте мерч, товары брендов с доставкой через WB, Ozon, СДЭК и Почту.</p>
+            <div class="ts-controls-mock">
+                <div class="ts-time-row-mock">
+                    <button class="ts-time-btn-mock">0:10</button>
+                    <button class="ts-time-btn-mock active">0:15</button>
+                    <button class="ts-time-btn-mock">0:30</button>
+                    <button class="ts-time-btn-mock">1:00</button>
+                    <button class="ts-time-btn-mock">3:00</button>
+                </div>
+                <div class="ts-record-row-mock">
+                    <button class="ts-gallery-mock">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>
+                    </button>
+                    <button class="ts-record-mock"><div class="ts-record-inner-mock"></div></button>
+                    <button class="ts-effects-mock">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M8 12s1.5-2 4-2 4 2 4 2"/><circle cx="9" cy="9" r=".8" fill="currentColor"/><circle cx="15" cy="9" r=".8" fill="currentColor"/></svg>
+                    </button>
+                </div>
+                <button class="ts-track-strip-mock">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                    добавить трек
+                </button>
             </div>
         </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 12. СКОРО БУДЕТ ОБНОВЛЕНИЯ ═══════════════ -->
-<section class="slide" data-slide="12">
-    <div class="slide-inner">
-        <div class="section-label reveal">Скоро будет обновления</div>
-        <h2 class="reveal" data-delay="1">Что уже <span class="accent-text">в разработке</span></h2>
-        <div class="feature-grid" style="margin-top:20px;">
-            <div class="feature-card reveal" data-delay="2">
-                <h3>🎯 Интересное</h3>
-                <p style="font-size:14px;">Ленты тем: футбол, кулинария, спорт, IT. Интересные каналы, рейвы и авторы.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="3">
-                <h3>📍 Рядом с вами</h3>
-                <p style="font-size:14px;">Публикации из вашего города — куда сходить, где отдохнуть, концерты.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="4">
-                <h3>🎫 listaticker</h3>
-                <p style="font-size:14px;">Покупка билетов на концерты прямо в приложении.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="5">
-                <h3>📦 listadex</h3>
-                <p style="font-size:14px;">Магазин каналов с доставкой через WB, Ozon, СДЭК, Почту РФ и Беларуси.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ 13. ЗАЩИТА ═══════════════ -->
-<section class="slide" data-slide="13">
-    <div class="slide-inner">
-        <div class="section-label reveal">Безопасность</div>
-        <h2 class="reveal" data-delay="1">Ваши данные <span class="accent-text">под защитой</span></h2>
-        <p class="reveal" data-delay="2">
-            Двухэтапная проверка аккаунта. Сервера listatread находятся в России, а сам сервис работает по всему миру. Данные передаются на сервер в РФ через Cloudflare и защищены шифрованием.
+        <p class="reveal" data-delay="4" style="font-size:12px;color:var(--text-tertiary);margin-top:12px">
+            Треды с фото, опросами, стикерами и цитатами — всё в одном месте
         </p>
     </div>
 </section>
 
-<!-- ═══════════════ 14. О КОМПАНИИ ═══════════════ -->
+<!-- ═══════════════ 12. LISTADIRECT ═══════════════ -->
+<section class="slide" data-slide="12">
+    <div class="slide-inner">
+        <div class="section-label reveal">listadirect</div>
+        <h2 class="reveal" data-delay="1" style="margin-bottom:12px">Общайтесь <span class="accent-text">красиво</span></h2>
+        <div class="mock-direct reveal" data-delay="2">
+            <div class="direct-header">
+                <button class="direct-back-btn" aria-label="Назад">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+                </button>
+                <div class="direct-ava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alice" alt=""></div>
+                <div class="direct-info">
+                    <div class="direct-name">Alice</div>
+                    <div class="direct-status">в сети</div>
+                </div>
+                <button class="direct-profile-btn" aria-label="Профиль">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+                </button>
+            </div>
+            <div class="direct-messages-mock">
+                <div class="dr-row-mock"><div class="direct-bubble-mock">Привет! Как дела?</div></div>
+                <div class="dr-row-mock mine"><div class="direct-bubble-mock">Хорошо! В Токио всего 9 утра, пойду собираться на работу!</div></div>
+                <div class="dr-row-mock"><div class="direct-bubble-mock dr-sticker-mock"><img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=Heart" alt="Sticker"></div></div>
+                <div class="dr-row-mock"><div class="direct-bubble-mock">Крутое видео! 🔥 Мне нравится!</div></div>
+                <div class="dr-row-mock mine"><div class="direct-bubble-mock">Спасибо! Рад, что понравилось 😊✨</div></div>
+            </div>
+            <div class="direct-composer-mock">
+                <div class="direct-input-mock">Написать сообщение…</div>
+                <button class="direct-send-btn">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="#fff"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </div>
+        </div>
+        <p class="reveal" data-delay="3" style="font-size:12px;color:var(--text-tertiary);margin-top:12px">
+            Стикеры, эмодзи, обои чатов, закреплённые сообщения
+        </p>
+    </div>
+</section>
+
+<!-- ═══════════════ 13. LIVE CHAT & RAVE (НОВЫЙ) ═══════════════ -->
+<section class="slide" data-slide="13">
+    <div class="slide-inner">
+        <div class="section-label reveal">Live & Rave</div>
+        <h2 class="reveal" data-delay="1" style="margin-bottom:10px">Live-чаты и <span class="accent-text">рейвы каналов</span></h2>
+        <p class="reveal" data-delay="2" style="font-size:14px;margin-bottom:14px">
+            Создавайте live-чат в канале — обсуждайте всё в реальном времени. Или запускайте <b style="color:#fff">rave</b> — где ведущий в эфире, а зрители пишут и реагируют.
+        </p>
+        <div class="live-mock reveal" data-delay="3">
+            <div class="live-top">
+                <div class="live-host-ava"><div class="live-host-ava-inner">A</div></div>
+                <div class="live-host-info">
+                    <div class="live-host-name">Alex</div>
+                    <div class="live-host-label">LIVE NOW</div>
+                </div>
+                <button style="background:transparent;border:none;color:#fff;padding:6px;cursor:pointer">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="live-stage-mock">
+                <div class="live-stage-ava-mock"><div class="live-stage-ava-inner-mock">A</div></div>
+                <div class="live-stage-name-mock">Alex</div>
+                <div class="live-stage-sub-mock">RAVE · LIVE</div>
+                <div class="live-bars-mock"><span></span><span></span><span></span><span></span><span></span></div>
+            </div>
+            <div class="live-messages-mock">
+                <div class="live-msg-mock"><div class="live-msg-ava">M</div><div class="live-msg-text"><strong>Maria:</strong> Привет всем! 🔥</div></div>
+                <div class="live-msg-mock"><div class="live-msg-ava">J</div><div class="live-msg-text"><strong>John:</strong> Отличная тема сегодня!</div></div>
+                <div class="live-msg-mock"><div class="live-msg-ava">K</div><div class="live-msg-text"><strong>Kate:</strong> Присоединилась к вам 😊</div></div>
+            </div>
+            <div class="live-composer-mock">
+                <div class="live-composer-input">Написать сообщение…</div>
+                <button style="background:#0a84ff;border:none;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="#fff"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </div>
+        </div>
+        <p class="reveal" data-delay="4" style="font-size:12px;color:var(--text-tertiary);margin-top:12px">
+            Глобальный чат убран — только каналы и рейвы. Никакого спама.
+        </p>
+    </div>
+</section>
+
+<!-- ═══════════════ 14. ОФОРМЛЕНИЕ / CHVAD (НОВЫЙ) ═══════════════ -->
 <section class="slide" data-slide="14">
+    <div class="slide-inner">
+        <div class="section-label reveal">Оформление</div>
+        <h2 class="reveal" data-delay="1" style="margin-bottom:10px">Украсьте профиль <span class="accent-text">как хотите</span></h2>
+        <p class="reveal" data-delay="2" style="font-size:14px;margin-bottom:14px">
+            Бесплатно: аватарка, имя, описание и <b style="color:#fff">48 бесплатных статусов</b>.
+            С <b style="color:#ffd60a">listatread chvad</b> открываются градиенты, узоры, цвет имени и премиум-статусы.
+        </p>
+        <div class="chvad-preview reveal" data-delay="3">
+            <div class="chvad-preview-header">
+                <div class="chvad-pattern"></div>
+                <div class="chvad-avatar">M</div>
+                <div class="chvad-name">Maria</div>
+                <div class="chvad-badge">⭐ chvad</div>
+                <div class="chvad-username">@maria</div>
+            </div>
+            <div class="chvad-features">
+                <div class="chvad-feature-row">
+                    <div class="chvad-feature-check">✓</div>
+                    Аватарка, имя, описание
+                </div>
+                <div class="chvad-feature-row">
+                    <div class="chvad-feature-check">✓</div>
+                    48 бесплатных статусов
+                </div>
+                <div class="chvad-feature-row">
+                    <div class="chvad-feature-check">✓</div>
+                    Градиентные фоны
+                </div>
+                <div class="chvad-feature-row">
+                    <div class="chvad-feature-check">✓</div>
+                    Узоры поверх фона
+                </div>
+                <div class="chvad-feature-row">
+                    <div class="chvad-feature-check">✓</div>
+                    Цвет имени и премиум-статусы
+                </div>
+            </div>
+        </div>
+        <p class="reveal" data-delay="4" style="font-size:12px;color:var(--text-tertiary);margin-top:12px">
+            + кастомизация профиля listadirect, рамки аватара, обои чатов
+        </p>
+    </div>
+</section>
+
+<!-- ═══════════════ 15. РЕГИСТРАЦИЯ / БЕТА (НОВЫЙ) ═══════════════ -->
+<section class="slide" data-slide="15">
+    <div class="slide-inner">
+        <div class="section-label reveal">Бета-тестирование</div>
+        <h2 class="reveal" data-delay="1">Как <span class="accent-text">попасть</span> в listatread</h2>
+        <p class="reveal" data-delay="2">
+            Сейчас идёт закрытый этап разработки. Регистрация временно ограничена — нужен <b style="color:#fff">код доступа</b>.
+        </p>
+        <div class="feature-grid" style="margin-top:20px">
+            <div class="feature-card reveal" data-delay="3">
+                <div class="feature-icon-wrap blue"><svg viewBox="0 0 24 24" stroke="url(#grad-bp)" stroke-width="1.8"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/></svg></div>
+                <h3>Код доступа</h3>
+                <p style="font-size:13px;margin:0">5 символов — только для тестировщиков. Выдаётся вручную.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="4">
+                <div class="feature-icon-wrap green"><svg viewBox="0 0 24 24" stroke="url(#grad-gb)" stroke-width="1.8"><path d="M20 6L9 17l-5-5"/></svg></div>
+                <h3>Как получить</h3>
+                <p style="font-size:13px;margin:0">Примите участие в тестировании. Подробнее на <b style="color:#0a84ff">listatread.online/fts</b>.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="5">
+                <div class="feature-icon-wrap purple"><svg viewBox="0 0 24 24" stroke="url(#grad-pp)" stroke-width="1.8"><path d="M12 2l3 7 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg></div>
+                <h3>Правила беты</h3>
+                <p style="font-size:13px;margin:0">Уважайте других, не спамьте, сообщайте о багах. Мы читаем всё.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="6">
+                <div class="feature-icon-wrap orange"><svg viewBox="0 0 24 24" stroke="url(#grad-oy)" stroke-width="1.8"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg></div>
+                <h3>Серверы в РФ</h3>
+                <p style="font-size:13px;margin:0">Данные передаются через Cloudflare и защищены шифрованием.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════ 16. ВОЗМОЖНОСТИ ═══════════════ -->
+<section class="slide" data-slide="16">
+    <div class="slide-inner">
+        <div class="section-label reveal">Возможности</div>
+        <h2 class="reveal" data-delay="1" style="margin-bottom:14px">Оформление и <span class="accent-text">фишки</span></h2>
+        <div class="feature-grid">
+            <div class="feature-card reveal" data-delay="2">
+                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24" stroke="url(#grad-op)" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></div>
+                <h3>Оформление канала</h3>
+                <p style="font-size:13px;margin:0">Градиенты, узоры, цвет имени и эксклюзивные рамки.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="3">
+                <div class="feature-icon-wrap blue"><svg viewBox="0 0 24 24" stroke="url(#grad-bp)" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></div>
+                <h3>Оформление профиля</h3>
+                <p style="font-size:13px;margin:0">Фон, цвет имени и статусы с подпиской chvad.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="4">
+                <div class="feature-icon-wrap"><svg viewBox="0 0 24 24" stroke="url(#grad-op)" stroke-width="1.8"><path d="M12 2s4 3 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s-3 2-3 6a6 6 0 0 0 12 0c0-5-6-11-6-11z"/></svg></div>
+                <h3>Live chats & Raves</h3>
+                <p style="font-size:13px;margin:0">Трансляции и общение в реальном времени с аудиторией.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="5">
+                <div class="feature-icon-wrap green"><svg viewBox="0 0 24 24" stroke="url(#grad-gb)" stroke-width="1.8"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M3 12h18M12 8v13M12 8s-2-5-5-5-1 5 5 5zM12 8s2-5 5-5 1 5-5 5z"/></svg></div>
+                <h3>Подарки</h3>
+                <p style="font-size:13px;margin:0">Отправляйте и получайте подарки от поклонников.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="6">
+                <div class="feature-icon-wrap purple"><svg viewBox="0 0 24 24" stroke="url(#grad-pp)" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></div>
+                <h3>Магазин</h3>
+                <p style="font-size:13px;margin:0">Мерч, товары брендов с доставкой через WB, Ozon, СДЭК.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════ 17. СКОРО БУДЕТ ═══════════════ -->
+<section class="slide" data-slide="17">
+    <div class="slide-inner">
+        <div class="section-label reveal">Скоро будет</div>
+        <h2 class="reveal" data-delay="1">Что уже <span class="accent-text">в разработке</span></h2>
+        <div class="feature-grid" style="margin-top:20px">
+            <div class="feature-card reveal" data-delay="2">
+                <h3>🎯 Интересное</h3>
+                <p style="font-size:13px;margin:0">Ленты тем: футбол, кулинария, спорт, IT. Каналы, рейвы и авторы.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="3">
+                <h3>📍 Рядом с вами</h3>
+                <p style="font-size:13px;margin:0">Публикации из вашего города — куда сходить, концерты.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="4">
+                <h3>🎫 listaticker</h3>
+                <p style="font-size:13px;margin:0">Покупка билетов на концерты прямо в приложении.</p>
+            </div>
+            <div class="feature-card reveal" data-delay="5">
+                <h3>📦 listadex</h3>
+                <p style="font-size:13px;margin:0">Магазин каналов с доставкой через WB, Ozon, СДЭК, Почту.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════ 18. ЗАЩИТА ═══════════════ -->
+<section class="slide" data-slide="18">
+    <div class="slide-inner">
+        <div class="section-label reveal">Безопасность</div>
+        <h2 class="reveal" data-delay="1">Ваши данные <span class="accent-text">под защитой</span></h2>
+        <p class="reveal" data-delay="2">
+            Двухэтапная проверка аккаунта. Серверы listatread находятся в России, а сам сервис работает по всему миру. Данные передаются на сервер в РФ через Cloudflare и защищены шифрованием.
+        </p>
+    </div>
+</section>
+
+<!-- ═══════════════ 19. О КОМПАНИИ ═══════════════ -->
+<section class="slide" data-slide="19">
     <div class="slide-inner">
         <div class="section-label reveal">О компании</div>
         <h2 class="reveal" data-delay="1">Мы делаем <span class="accent-text">новую экосистему</span></h2>
@@ -1003,29 +1393,26 @@
     </div>
 </section>
 
-<!-- ═══════════════ 15. CTA ═══════════════ -->
-<section class="slide" data-slide="15">
+<!-- ═══════════════ 20. CTA ═══════════════ -->
+<section class="slide" data-slide="20">
     <div class="slide-inner">
-        <div class="hero-logo reveal" style="animation-delay: 1s;">
-            <img src="/logo.jpeg" alt="listatread">
-        </div>
-        <h1 class="hero-brand reveal" data-delay="1" style="font-size: clamp(34px, 7vw, 58px);">Присоединяйтесь</h1>
-        <p class="hero-tagline reveal" data-delay="2">Станьте частью сообщества listatread</p>
+        <div class="hero-logo reveal" style="animation-delay:1s"><img src="/logo.jpeg" alt="listatread"></div>
+        <h1 class="reveal" data-delay="1" style="font-size:clamp(30px,6vw,48px)">Присоединяйтесь</h1>
+        <p class="reveal" data-delay="2">Станьте частью сообщества listatread</p>
         <div class="reveal" data-delay="3">
-            <a href="/" style="display:inline-block; padding:16px 32px; background:var(--blue); color:#fff; text-decoration:none; border-radius:16px; font-weight:800; box-shadow: 0 8px 24px rgba(10,132,255,.3);">Открыть listatread</a>
+            <a href="/" class="cta-btn">Открыть listatread</a>
         </div>
     </div>
 </section>
 
 <script>
-    (function() {
+    (function(){
         'use strict';
-
         const slides = document.querySelectorAll('.slide');
         const dotsContainer = document.getElementById('progressDots');
         const progressBar = document.getElementById('progressBar');
 
-        // 1. Инициализация точек
+        // Точки
         slides.forEach((_, i) => {
             const dot = document.createElement('div');
             dot.className = 'dot';
@@ -1037,7 +1424,7 @@
         });
         const dots = dotsContainer.querySelectorAll('.dot');
 
-        // 2. Intersection Observer (появление блоков)
+        // Observer
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
@@ -1049,7 +1436,7 @@
         }, { threshold: [0, 0.3, 0.6, 1] });
         slides.forEach(slide => observer.observe(slide));
 
-        // 3. Прогресс-бар
+        // Прогресс
         let ticking = false;
         window.addEventListener('scroll', () => {
             if (!ticking) {
@@ -1063,7 +1450,7 @@
             }
         }, { passive: true });
 
-        // 4. Первый слайд
+        // Первый слайд
         requestAnimationFrame(() => {
             if (slides[0]) {
                 slides[0].classList.add('in-view');
