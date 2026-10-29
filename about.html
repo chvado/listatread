@@ -2,26 +2,49 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
     <meta name="description" content="listatread — новая мультимедийная платформа. Каналы вместо профилей, бесконечная лента, живые сообщества.">
     <title>О listatread — listatread.online/about</title>
     <style>
+        /* ============================================================
+           БАЗА И ПЕРЕМЕННЫЕ (взяты из style.css)
+        ============================================================ */
+        :root {
+            --bg: #000;
+            --card: rgba(30, 30, 33, .74);
+            --text: #fff;
+            --text-secondary: rgba(255, 255, 255, .6);
+            --text-tertiary: rgba(255, 255, 255, .35);
+            --border: rgba(255, 255, 255, .1);
+            --surface-2: rgba(120, 120, 128, .24);
+            --surface-3: rgba(120, 120, 128, .36);
+            --blue: #0a84ff;
+            --red-pink: #ff375f;
+            --green: #30d158;
+            --yellow: #ffd60a;
+            --spring: cubic-bezier(.34, 1.56, .64, 1);
+            --ease-out: cubic-bezier(.22, 1, .36, 1);
+        }
+
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html {
             scroll-behavior: smooth;
             scroll-snap-type: y proximity;
             -webkit-text-size-adjust: 100%;
+            background: var(--bg);
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
-            background: #fff;
-            color: #000;
+            background: var(--bg);
+            color: var(--text);
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
             overflow-x: hidden;
         }
 
-        /* ===== PROGRESS ===== */
+        /* ============================================================
+           UI ОБВЯЗКА (прогресс, кнопки)
+        ============================================================ */
         .progress-bar {
             position: fixed; top: 0; left: 0;
             height: 3px; width: 0%;
@@ -37,22 +60,19 @@
         }
         .progress-dots .dot {
             width: 8px; height: 8px; border-radius: 50%;
-            background: rgba(0, 0, 0, .15);
-            transition: all .35s cubic-bezier(.34, 1.56, .64, 1);
+            background: rgba(255, 255, 255, .15);
+            transition: all .35s var(--spring);
             cursor: pointer;
         }
-        .progress-dots .dot:hover { background: rgba(0, 0, 0, .35); }
         .progress-dots .dot.active {
             background: #0a84ff;
             height: 26px;
             border-radius: 4px;
         }
-
-        /* ===== BACK HOME ===== */
         .back-home {
             position: fixed; top: 20px; left: 20px;
             padding: 10px 18px;
-            background: rgba(0, 0, 0, .85);
+            background: rgba(255, 255, 255, .1);
             color: #fff;
             border-radius: 100px;
             text-decoration: none;
@@ -60,12 +80,14 @@
             z-index: 100;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            transition: transform .2s cubic-bezier(.34, 1.56, .64, 1);
+            transition: transform .2s var(--spring), background .2s;
         }
-        .back-home:hover { transform: scale(1.05); }
+        .back-home:hover { transform: scale(1.05); background: rgba(255, 255, 255, .15); }
         .back-home:active { transform: scale(.97); }
 
-        /* ===== SLIDES ===== */
+        /* ============================================================
+           СЛАЙДЫ
+        ============================================================ */
         .slide {
             min-height: 100vh;
             scroll-snap-align: start;
@@ -84,501 +106,231 @@
             text-align: center;
         }
 
-        /* ===== REVEAL ANIMATIONS ===== */
+        /* Анимации появления */
         .reveal {
             opacity: 0;
             transform: translateY(40px);
-            transition:
-                    opacity .9s cubic-bezier(.22, 1, .36, 1),
-                    transform .9s cubic-bezier(.22, 1, .36, 1);
+            transition: opacity 1s var(--ease-out), transform 1s var(--ease-out);
         }
-        .slide.in-view .reveal {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .reveal[data-delay="1"] { transition-delay: .08s; }
-        .reveal[data-delay="2"] { transition-delay: .16s; }
-        .reveal[data-delay="3"] { transition-delay: .24s; }
-        .reveal[data-delay="4"] { transition-delay: .32s; }
-        .reveal[data-delay="5"] { transition-delay: .40s; }
-        .reveal[data-delay="6"] { transition-delay: .48s; }
+        .slide.in-view .reveal { opacity: 1; transform: translateY(0); }
+        .reveal[data-delay="1"] { transition-delay: .1s; }
+        .reveal[data-delay="2"] { transition-delay: .2s; }
+        .reveal[data-delay="3"] { transition-delay: .3s; }
+        .reveal[data-delay="4"] { transition-delay: .4s; }
+        .reveal[data-delay="5"] { transition-delay: .5s; }
 
-        /* ===== TYPOGRAPHY ===== */
-        h1 {
-            font-size: clamp(32px, 6vw, 56px);
-            font-weight: 900;
-            letter-spacing: -.03em;
-            line-height: 1.05;
-            margin-bottom: 20px;
+        /* ============================================================
+           ЛОГОТИП И АНИМАЦИЯ
+        ============================================================ */
+        .hero-logo {
+            width: 120px; height: 120px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid rgba(255, 255, 255, .1);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+            overflow: hidden;
+            /* Запуск сложной анимации */
+            animation: logoAnim 4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
         }
-        h2 {
-            font-size: clamp(24px, 4vw, 40px);
-            font-weight: 800;
-            letter-spacing: -.02em;
-            line-height: 1.15;
-            margin-bottom: 16px;
+        .hero-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
         }
-        h3 {
-            font-size: 17px;
-            font-weight: 800;
-            margin-bottom: 8px;
+        @keyframes logoAnim {
+            0% { transform: scale(1) rotate(0deg); }
+            15% { transform: scale(1) rotate(360deg); } /* Проворот */
+            20% { transform: scale(1.15) rotate(360deg); } /* Клик - увеличение */
+            25% { transform: scale(0.9) rotate(360deg); } /* Клик - сужение */
+            30% { transform: scale(1) rotate(360deg); } /* Возврат */
+            100% { transform: scale(1) rotate(360deg); } /* Пауза 3 секунды */
         }
-        p {
-            font-size: clamp(15px, 2vw, 18px);
-            color: #555;
-            line-height: 1.55;
-            max-width: 580px;
-            margin: 0 auto 14px;
-        }
+
+        /* ============================================================
+           ТИПОГРАФИКА И ИКОНКИ
+        ============================================================ */
+        h1 { font-size: clamp(32px, 6vw, 56px); font-weight: 900; letter-spacing: -.03em; line-height: 1.05; margin-bottom: 20px; }
+        h2 { font-size: clamp(24px, 4vw, 40px); font-weight: 800; letter-spacing: -.02em; line-height: 1.15; margin-bottom: 16px; }
+        h3 { font-size: 17px; font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        p { font-size: clamp(15px, 2vw, 18px); color: var(--text-secondary); line-height: 1.55; max-width: 580px; margin: 0 auto 14px; }
+
         .accent-text {
             background: linear-gradient(135deg, #ff9f0a, #ff375f, #bf5af2);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            color: transparent;
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent; color: transparent;
         }
 
-        /* ===== HERO ===== */
-        .hero-logo {
-            width: 104px; height: 104px;
-            border-radius: 50%;
-            background: #fff;
-            border: 2px solid rgba(0, 0, 0, .06);
-            display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 24px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, .08);
-            font-size: 46px; font-weight: 900;
-            font-family: Georgia, 'Times New Roman', serif;
-            padding-bottom: 6px;
-            animation: heroFloat 6s ease-in-out infinite;
-        }
-        @keyframes heroFloat {
-            0%, 100% { transform: translateY(0) rotate(-3deg); }
-            50%      { transform: translateY(-10px) rotate(3deg); }
-        }
-        .hero-brand {
-            font-size: clamp(44px, 9vw, 76px);
-            font-weight: 900;
-            letter-spacing: -.045em;
-            line-height: 1;
-            margin-bottom: 20px;
-        }
-        .hero-tagline {
-            font-size: clamp(16px, 2.5vw, 20px);
-            color: #666;
-            max-width: 520px;
-            margin: 0 auto 40px;
-        }
-        .scroll-hint {
-            display: inline-flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            color: #999;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: .12em;
-            font-weight: 800;
-            animation: scrollBounce 2s ease-in-out infinite;
-        }
-        .scroll-hint svg {
-            width: 20px; height: 20px;
-        }
-        @keyframes scrollBounce {
-            0%, 100% { transform: translateY(0); }
-            50%      { transform: translateY(6px); }
-        }
-
-        /* ===== TYPING CURSOR ===== */
-        .typing {
-            border-right: 2px solid currentColor;
-            padding-right: 3px;
-            animation: blink .8s step-end infinite;
-        }
-        @keyframes blink {
-            50% { border-color: transparent; }
-        }
-
-        /* ===== FLOATING DECOR ===== */
-        .float-decor {
-            position: absolute;
-            pointer-events: none;
-            z-index: 1;
-            opacity: .6;
-            will-change: transform;
-        }
-        .float-heart {
-            color: #ff375f;
-            font-size: 28px;
-            animation: floatHeart 8s ease-in-out infinite;
-        }
-        .float-star {
-            color: #ffd60a;
-            font-size: 22px;
-            animation: floatStar 10s ease-in-out infinite;
-        }
-        .float-circle {
-            border-radius: 50%;
-            animation: floatCircle 12s ease-in-out infinite;
-        }
-        @keyframes floatHeart {
-            0%, 100% { transform: translate(0, 0) rotate(-8deg); }
-            50%      { transform: translate(20px, -30px) rotate(8deg); }
-        }
-        @keyframes floatStar {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            50%      { transform: translate(-25px, -20px) rotate(180deg); }
-        }
-        @keyframes floatCircle {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50%      { transform: translate(30px, -40px) scale(1.15); }
-        }
-
-        /* ===== FEATURE CARDS ===== */
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin-top: 40px;
-            text-align: left;
-        }
-        .feature-card {
-            background: #fff;
-            border: 1px solid rgba(0, 0, 0, .08);
-            border-radius: 20px;
-            padding: 24px;
-            transition: all .35s cubic-bezier(.22, 1, .36, 1);
-            position: relative;
-            overflow: hidden;
-        }
-        .feature-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, .1);
-            border-color: transparent;
-        }
-        .feature-card-icon {
-            width: 48px; height: 48px;
-            border-radius: 14px;
+        /* SVG Иконки */
+        .svg-icon { width: 24px; height: 24px; display: inline-block; vertical-align: middle; }
+        .feature-icon-wrap {
+            width: 48px; height: 48px; border-radius: 14px;
             background: linear-gradient(135deg, #ff9f0a, #ff375f);
             display: flex; align-items: center; justify-content: center;
-            color: #fff;
-            margin-bottom: 14px;
-            font-size: 22px;
+            margin-bottom: 14px; color: #fff;
         }
-        .feature-card p {
-            font-size: 14px;
-            color: #666;
-            margin: 0;
-            max-width: none;
-        }
+        .feature-icon-wrap svg { width: 24px; height: 24px; stroke: currentColor; fill: none; }
 
-        /* ===== SECTION LABEL ===== */
-        .section-label {
-            display: inline-block;
-            padding: 6px 14px;
-            background: rgba(0, 0, 0, .05);
-            color: #666;
-            border-radius: 100px;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: .12em;
-            margin-bottom: 18px;
-        }
-
-        /* ===== COMPARE SPLIT ===== */
-        .compare-split {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-top: 32px;
-            text-align: left;
-        }
-        @media (max-width: 600px) {
-            .compare-split { grid-template-columns: 1fr; }
-        }
-        .compare-card {
-            padding: 24px;
-            border-radius: 20px;
-            border: 1px solid rgba(0, 0, 0, .08);
-        }
-        .compare-card.free { background: #f5f5f7; }
-        .compare-card.chvad {
-            background: linear-gradient(135deg, #ff9f0a, #ff375f);
-            color: #fff;
-            border: none;
-            box-shadow: 0 20px 50px rgba(255, 55, 95, .25);
-        }
-        .compare-card h3 {
-            font-size: 20px;
-            font-weight: 900;
-            margin-bottom: 12px;
-        }
-        .compare-card ul {
-            list-style: none;
-            display: flex; flex-direction: column; gap: 8px;
-            font-size: 14px;
-        }
-        .compare-card li::before {
-            content: '✓ '; font-weight: 800; margin-right: 4px;
-        }
-        .compare-card.free li::before { color: #30d158; }
-
-        /* ===== CHAT DEMO ===== */
-        .chat-demo {
-            display: flex; flex-direction: column; gap: 12px;
-            max-width: 400px;
-            margin: 32px auto 0;
-        }
-        .bubble {
-            padding: 12px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            max-width: 80%;
-            text-align: left;
-        }
-        .slide.in-view .bubble {
-            animation: bubbleIn .6s cubic-bezier(.34, 1.56, .64, 1) both;
-        }
-        .bubble.left {
-            background: #f0f0f2;
-            color: #000;
-            align-self: flex-start;
-            border-bottom-left-radius: 6px;
-        }
-        .bubble.right {
-            background: linear-gradient(135deg, #0a84ff, #0066cc);
-            color: #fff;
-            align-self: flex-end;
-            border-bottom-right-radius: 6px;
-        }
-        .slide.in-view .bubble:nth-child(1) { animation-delay: .3s; }
-        .slide.in-view .bubble:nth-child(2) { animation-delay: .7s; }
-        .slide.in-view .bubble:nth-child(3) { animation-delay: 1.1s; }
-        .slide.in-view .bubble:nth-child(4) { animation-delay: 1.5s; }
-        @keyframes bubbleIn {
-            from { opacity: 0; transform: translateY(16px) scale(.9); }
-            to   { opacity: 1; transform: none; }
-        }
-
-        /* ===== MARQUEE ===== */
-        .marquee {
-            overflow: hidden;
-            white-space: nowrap;
-            mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
-            -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
-            margin: 32px 0;
-            padding: 20px 0;
-            border-top: 1px solid rgba(0, 0, 0, .06);
-            border-bottom: 1px solid rgba(0, 0, 0, .06);
-        }
-        .marquee-inner {
-            display: inline-flex;
-            gap: 40px;
-            animation: marqueeScroll 30s linear infinite;
-        }
-        @keyframes marqueeScroll {
-            from { transform: translateX(0); }
-            to   { transform: translateX(-50%); }
-        }
-        .marquee-item {
-            font-size: clamp(18px, 3vw, 28px);
-            font-weight: 900;
-            letter-spacing: -.02em;
-            color: rgba(0, 0, 0, .15);
-        }
-        .marquee-item.active {
-            background: linear-gradient(135deg, #ff9f0a, #ff375f, #bf5af2);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            color: transparent;
-        }
-
-        /* ===== VIDEO DEMO BANNER ===== */
-        .video-demo {
-            width: 100%;
-            max-width: 300px;
-            aspect-ratio: 9 / 16;
-            border-radius: 26px;
-            background: linear-gradient(135deg, #1c1c1e, #2c2c2e);
-            margin: 32px auto 0;
-            display: flex; align-items: center; justify-content: center;
-            color: #fff;
+        /* ============================================================
+           МАКЕТЫ ПОСТОВ (Стиль feed)
+        ============================================================ */
+        .mock-feed {
+            max-width: 420px; margin: 0 auto; text-align: left;
+            background: #000; border-radius: 24px; border: 1px solid var(--border);
+            box-shadow: 0 20px 50px rgba(0,0,0,.5); overflow: hidden;
             position: relative;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
         }
-        .video-demo::before {
-            content: '';
-            position: absolute; inset: 0;
-            background:
-                    radial-gradient(circle at 30% 30%, rgba(255, 55, 95, .5), transparent 50%),
-                    radial-gradient(circle at 70% 70%, rgba(10, 132, 255, .5), transparent 50%),
-                    radial-gradient(circle at 50% 50%, rgba(191, 90, 242, .4), transparent 60%);
-            animation: demoGlow 4s ease-in-out infinite;
+        .feed-post-video {
+            position: relative; aspect-ratio: 9/16; background: #111; display: flex; flex-direction: column; justify-content: space-between;
         }
-        @keyframes demoGlow {
-            0%, 100% { opacity: .65; transform: scale(1); }
-            50%      { opacity: 1;   transform: scale(1.08); }
+        .feed-post-video video {
+            position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0;
         }
-        .video-demo-play {
-            position: relative; z-index: 2;
-            width: 68px; height: 68px; border-radius: 50%;
-            background: rgba(255, 255, 255, .18);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            display: flex; align-items: center; justify-content: center;
-            border: 1px solid rgba(255, 255, 255, .35);
-            animation: playPulse 2.5s ease-in-out infinite;
+        .post-bg-overlay {
+            position: absolute; inset: 0; z-index: 1;
+            background: linear-gradient(180deg, rgba(0,0,0,.5) 0%, transparent 30%, transparent 70%, rgba(0,0,0,.8) 100%);
         }
-        @keyframes playPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, .35); }
-            50%      { box-shadow: 0 0 0 14px rgba(255, 255, 255, 0); }
+        .feed-post-header {
+            position: relative; z-index: 2; padding: 16px; display: flex; align-items: flex-start; gap: 10px;
         }
-        .video-demo-play svg {
-            width: 26px; height: 26px; fill: #fff; margin-left: 3px;
+        .feed-avatar-wrap { position: relative; flex-shrink: 0; padding-bottom: 8px; }
+        .feed-post-avatar {
+            width: 42px; height: 42px; border-radius: 50%; background: #222; overflow: hidden;
+            border: 2px solid rgba(255,255,255,.2);
         }
+        .feed-post-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .feed-avatar-plus {
+            position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+            width: 18px; height: 18px; border-radius: 50%; background: #ff8a00;
+            color: #fff; font-size: 12px; font-weight: 900; display: flex; align-items: center; justify-content: center;
+            border: 2px solid #000; z-index: 3;
+        }
+        .feed-post-info { flex: 1; min-width: 0; }
+        .feed-post-name {
+            font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .feed-channel-badge {
+            display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,.18);
+            padding: 2px 8px 2px 4px; border-radius: 9px; font-size: 11px; backdrop-filter: blur(10px);
+        }
+        .feed-channel-logo { width: 16px; height: 16px; border-radius: 4px; overflow: hidden; }
+        .feed-channel-logo img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* ===== LIVE INDICATOR ===== */
-        .live-indicator {
-            display: inline-flex; align-items: center; gap: 8px;
-            padding: 8px 16px;
-            background: #ff375f;
-            color: #fff;
-            border-radius: 100px;
-            font-size: 11px;
-            font-weight: 900;
-            letter-spacing: .1em;
-            text-transform: uppercase;
-            margin: 0 auto 24px;
+        /* Бегущая строка (marquee) */
+        .post-marquee-wrap {
+            margin-top: 4px; font-size: 11px; color: rgba(255,255,255,.7);
+            display: flex; align-items: center; gap: 6px; overflow: hidden;
         }
-        .live-indicator::before {
-            content: '';
-            width: 8px; height: 8px; border-radius: 50%;
-            background: #fff;
-            animation: liveDot 1.4s ease-in-out infinite;
-        }
-        @keyframes liveDot {
-            0%, 100% { opacity: 1;   transform: scale(1); }
-            50%      { opacity: .4;  transform: scale(1.5); }
-        }
+        .post-marquee-inner { display: flex; white-space: nowrap; animation: marqueeScroll 8s linear infinite; }
+        .mq-sound { display: inline-flex; align-items: center; gap: 4px; }
+        .mq-sound-ava { width: 14px; height: 14px; border-radius: 50%; overflow: hidden; }
+        .mq-sound-ava img { width: 100%; height: 100%; object-fit: cover; }
+        @keyframes marqueeScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-        /* ===== STEPS ===== */
-        .steps {
-            display: flex; flex-direction: column; gap: 20px;
-            margin-top: 36px;
-            text-align: left;
-            max-width: 520px;
-            margin-left: auto; margin-right: auto;
+        .feed-post-content {
+            position: relative; z-index: 2; padding: 0 16px; margin-top: auto; font-size: 14px; margin-bottom: 12px;
         }
-        .step { display: flex; gap: 16px; align-items: flex-start; }
-        .step-num {
-            flex-shrink: 0;
-            width: 38px; height: 38px; border-radius: 50%;
-            background: #0a84ff; color: #fff;
-            font-weight: 900;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 14px;
+        .feed-post-footer {
+            position: relative; z-index: 2; padding: 12px 16px; display: flex; align-items: center; gap: 16px;
+            border-top: 1px solid rgba(255,255,255,.15); background: rgba(0,0,0,.6);
         }
-        .step-body h4 {
-            font-size: 16px;
-            font-weight: 800;
-            margin-bottom: 4px;
+        .feed-action {
+            display: flex; align-items: center; gap: 6px; color: #fff; font-size: 13px; font-weight: 600;
         }
-        .step-body p {
-            font-size: 14px; color: #666;
-            margin: 0; max-width: none;
-        }
+        .feed-action svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+        .feed-action.liked svg { fill: var(--red-pink); stroke: var(--red-pink); }
+        .feed-action.liked { color: var(--red-pink); }
 
-        /* ===== COMING SOON ===== */
-        .coming-soon {
-            display: inline-block;
-            padding: 6px 16px;
-            background: linear-gradient(135deg, #ffd60a, #ff9f0a);
-            color: #000;
-            border-radius: 100px;
-            font-size: 11px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: .12em;
-            margin-bottom: 16px;
+        /* Плейсхолдеры для фото и стикеров */
+        .mock-photo-container {
+            width: 100%; aspect-ratio: 1/1; background: #222; overflow: hidden;
+            position: relative; display: flex; align-items: center; justify-content: center;
+            color: var(--text-tertiary); font-size: 14px;
         }
+        .mock-photo-container img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* ===== TEAM BADGE ===== */
-        .team-badge {
-            display: inline-block;
-            padding: 8px 16px;
-            background: rgba(10, 132, 255, .1);
-            color: #0a84ff;
-            border-radius: 100px;
-            font-size: 12px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            text-transform: uppercase;
-            letter-spacing: .12em;
+        /* Трек */
+        .track-card-mock {
+            background: rgba(255,255,255,.05); border-radius: 16px; padding: 12px;
+            display: flex; align-items: center; gap: 12px; margin: 12px 16px;
         }
+        .track-play-btn {
+            width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #000;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .track-play-btn svg { width: 20px; height: 20px; fill: currentColor; margin-left: 2px; }
 
-        /* ===== CTA ===== */
-        .cta-btn {
-            display: inline-block;
-            margin-top: 12px;
-            padding: 16px 32px;
-            background: linear-gradient(135deg, #0a84ff, #0066cc);
-            color: #fff;
-            border-radius: 16px;
-            text-decoration: none;
-            font-weight: 800;
-            font-size: 16px;
-            box-shadow: 0 12px 32px rgba(10, 132, 255, .3);
-            transition: transform .2s cubic-bezier(.34, 1.56, .64, 1);
+        /* Опрос */
+        .poll-view-mock {
+            background: rgba(255,255,255,.05); border-radius: 16px; padding: 12px; margin: 12px 16px;
         }
-        .cta-btn:hover { transform: translateY(-2px) scale(1.03); }
-        .cta-btn:active { transform: scale(.97); }
-        .cta-btn.coral {
-            background: linear-gradient(135deg, #ff9f0a, #ff375f, #bf5af2);
-            box-shadow: 0 12px 32px rgba(255, 55, 95, .3);
+        .poll-view-options { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+        .poll-view-option {
+            position: relative; padding: 10px 12px; border-radius: 10px; background: rgba(0,0,0,.3);
+            border: 1px solid rgba(255,255,255,.1); font-size: 13px; overflow: hidden;
         }
-        .cta-btn.secondary {
-            background: #fff;
-            color: #000;
-            border: 2px solid rgba(0, 0, 0, .1);
-            box-shadow: none;
-            margin-left: 8px;
-        }
+        .poll-view-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(10,132,255,.3); z-index: 1; }
+        .poll-view-label { position: relative; z-index: 2; display: flex; justify-content: space-between; }
 
-        /* ===== STAT NUMBER ===== */
-        .stat-number {
-            font-size: clamp(48px, 10vw, 96px);
-            font-weight: 900;
-            letter-spacing: -.045em;
-            line-height: 1;
-            background: linear-gradient(135deg, #0a84ff, #bf5af2);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            display: block;
-            margin-bottom: 8px;
+        /* ============================================================
+           МАКЕТЫ DIRECT (Стиль direct.js)
+        ============================================================ */
+        .mock-direct {
+            max-width: 400px; margin: 0 auto; background: #0e1621; border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,.5); border: 1px solid var(--border);
+            overflow: hidden; display: flex; flex-direction: column; height: 500px;
+            position: relative;
         }
+        .direct-header {
+            background: #17212b; padding: 14px; display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,.05);
+        }
+        .direct-ava { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: #222; }
+        .direct-ava img { width: 100%; height: 100%; object-fit: cover; }
+        .direct-name { font-size: 15px; font-weight: 600; color: #fff; }
+        .direct-status { font-size: 12px; color: var(--green); }
 
-        /* ===== MOBILE ===== */
+        .direct-messages-mock {
+            flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 10px;
+            overflow-y: hidden; position: relative;
+        }
+        .dr-row-mock {
+            display: flex; align-items: flex-end; gap: 6px; max-width: 85%;
+            opacity: 0; transform: translateY(20px) scale(0.95);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .dr-row-mock.show { opacity: 1; transform: translateY(0) scale(1); }
+        .dr-row-mock.mine { align-self: flex-end; flex-direction: row-reverse; }
+
+        .direct-bubble-mock {
+            background: #182533; padding: 8px 12px; border-radius: 14px 14px 14px 4px;
+            font-size: 14px; color: #fff; max-width: 100%; word-break: break-word;
+            position: relative;
+        }
+        .dr-row-mock.mine .direct-bubble-mock {
+            background: #2b5278; border-radius: 14px 14px 4px 14px;
+        }
+        .dr-sticker-mock { background: transparent; padding: 0; }
+        .dr-sticker-mock img { width: 100px; height: 100px; object-fit: contain; }
+
+        .scroll-hint-direct {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            color: rgba(255,255,255,.5); font-size: 12px; display: flex; flex-direction: column; align-items: center;
+            animation: bounce 2s infinite; z-index: 10; pointer-events: none;
+        }
+        .scroll-hint-direct.hidden { opacity: 0; transition: opacity 0.3s; }
+        @keyframes bounce { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 8px); } }
+
+        /* Общие стили */
         @media (max-width: 600px) {
             .progress-dots { right: 12px; gap: 8px; }
             .progress-dots .dot { width: 6px; height: 6px; }
             .progress-dots .dot.active { height: 18px; }
             .back-home { top: 12px; left: 12px; padding: 8px 14px; font-size: 12px; }
             .slide { padding: 72px 20px 56px; }
-            .feature-grid { grid-template-columns: 1fr; gap: 12px; }
-            .cta-btn { display: block; margin-left: auto !important; margin-right: auto !important; }
-            .cta-btn.secondary { margin-left: auto !important; margin-top: 8px; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: .01ms !important;
-                transition-duration: .01ms !important;
-            }
-            html { scroll-behavior: auto; scroll-snap-type: none; }
         }
     </style>
 </head>
@@ -590,42 +342,30 @@
 
 <!-- ═══════════════ 1. HERO ═══════════════ -->
 <section class="slide" data-slide="1">
-    <div class="float-decor float-heart" style="top: 14%; left: 10%;">♥</div>
-    <div class="float-decor float-star" style="top: 18%; right: 12%;">★</div>
-    <div class="float-decor float-circle" style="top: 72%; left: 14%; width: 62px; height: 62px; background: rgba(191, 90, 242, .16);"></div>
-    <div class="float-decor float-circle" style="top: 66%; right: 10%; width: 84px; height: 84px; background: rgba(255, 159, 10, .16); animation-delay: -3s;"></div>
-    <div class="float-decor float-heart" style="bottom: 18%; right: 18%; font-size: 20px; animation-delay: -2s;">♥</div>
-    <div class="float-decor float-star" style="top: 40%; left: 5%; font-size: 16px; animation-delay: -6s;">★</div>
-
     <div class="slide-inner">
-        <div class="hero-logo reveal">ℓ</div>
+        <div class="hero-logo reveal">
+            <img src="/logo.jpeg" alt="listatread">
+        </div>
         <h1 class="hero-brand reveal" data-delay="1">listatread</h1>
         <p class="hero-tagline reveal" data-delay="2">
             Новая мультимедийная платформа.<br>
             Не профили — <span class="accent-text">каналы</span>.<br>
             Не поиск — <span class="accent-text">дофамин</span>.
         </p>
-        <div class="scroll-hint reveal" data-delay="4">
+        <div class="scroll-hint reveal" data-delay="3">
             <span>Листайте вниз</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
         </div>
     </div>
 </section>
 
 <!-- ═══════════════ 2. ЧТО ЭТО ═══════════════ -->
 <section class="slide" data-slide="2">
-    <div class="float-decor float-circle" style="top: 18%; left: 8%; width: 110px; height: 110px; background: rgba(10, 132, 255, .1);"></div>
-    <div class="float-decor float-star" style="bottom: 22%; right: 8%; font-size: 18px; animation-delay: -4s;">★</div>
-    <div class="float-decor float-heart" style="top: 30%; right: 15%; animation-delay: -3s;">♥</div>
-
     <div class="slide-inner">
         <div class="section-label reveal">Что такое listatread</div>
         <h2 class="reveal" data-delay="1">Платформа, где контент <span class="accent-text">живёт в каналах</span></h2>
         <p class="reveal" data-delay="2">
-            Люди делятся контентом не лично в профилях — они создают каналы. Каналы могут быть общими, и авторов может быть много. Главная фишка — эти каналы показываются в бесконечной ленте рекомендаций, которая даёт новый контент для просмотра.
-        </p>
-        <p class="reveal" data-delay="3">
-            Не надо как в Telegram выкладывать ссылку во все сети и ждать, пока люди найдут твой канал. Здесь алгоритм сам найдёт аудиторию.
+            Люди делятся контентом не лично в профилях — они создают каналы. Каналы могут быть общими, и авторов может быть много. Главная фишка — эти каналы показываются в бесконечной ленте рекомендаций.
         </p>
     </div>
 </section>
@@ -635,220 +375,257 @@
     <div class="slide-inner">
         <div class="section-label reveal">Наши преимущества</div>
         <h2 class="reveal" data-delay="1">Почему <span class="accent-text">listatread</span></h2>
-
-        <div class="feature-grid">
-            <div class="feature-card reveal" data-delay="2">
-                <div class="feature-card-icon">📡</div>
+        <div class="feature-grid reveal" data-delay="2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:40px;text-align:left;">
+            <div class="feature-card">
+                <div class="feature-icon-wrap">
+                    <svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg>
+                </div>
                 <h3>Каналы вместо профилей</h3>
-                <p>Один канал — много авторов. Создавайте контент вместе с командой или друзьями.</p>
+                <p style="font-size:14px;margin:0;">Один канал — много авторов. Создавайте контент вместе с командой.</p>
             </div>
-            <div class="feature-card reveal" data-delay="3">
-                <div class="feature-card-icon">♾️</div>
+            <div class="feature-card">
+                <div class="feature-icon-wrap">
+                    <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 16 0 8 8 0 0 1-16 0z"/><path d="M8 12h8M12 8v8"/></svg>
+                </div>
                 <h3>Бесконечная лента</h3>
-                <p>Алгоритм подбирает контент под вас. Дофамин на каждой прокрутке.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="4">
-                <div class="feature-card-icon">🎬</div>
-                <h3>Всё в одном месте</h3>
-                <p>Видео, фото, музыка, стикеры, опросы, цитаты — всё в одной публикации.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="5">
-                <div class="feature-card-icon">🎨</div>
-                <h3>Кастомизация</h3>
-                <p>Оформляйте профиль и канал под себя — от цветов до фонов и узоров.</p>
+                <p style="font-size:14px;margin:0;">Алгоритм подбирает контент под вас. Дофамин на каждой прокрутке.</p>
             </div>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 4. МУЛЬТИМЕДИА ═══════════════ -->
+<!-- ═══════════════ 4. ВИДЕО ТРЕД ═══════════════ -->
 <section class="slide" data-slide="4">
-    <div class="float-decor float-star" style="top: 14%; left: 12%;">★</div>
-    <div class="float-decor float-heart" style="bottom: 18%; right: 15%; font-size: 20px;">♥</div>
-
     <div class="slide-inner">
-        <div class="section-label reveal">Треды</div>
-        <h2 class="reveal" data-delay="1">Один пост — <span class="accent-text">целая вселенная</span></h2>
-        <p class="reveal" data-delay="2">
-            В тредах можно выкладывать видео, фото, стикеры, тексты, цитаты, треки, альбомы, плейлисты и опросы на любой вкус. Добавляйте описание и кастомизируйте профиль канала как хотите.
-        </p>
-
-        <div class="marquee reveal" data-delay="3">
-            <div class="marquee-inner">
-                <span class="marquee-item active">🎬 Видео</span>
-                <span class="marquee-item">📸 Фото</span>
-                <span class="marquee-item active">🎵 Музыка</span>
-                <span class="marquee-item">🎨 Стикеры</span>
-                <span class="marquee-item active">📊 Опросы</span>
-                <span class="marquee-item">❝ Цитаты</span>
-                <span class="marquee-item active">💿 Плейлисты</span>
-                <span class="marquee-item">🎬 Видео</span>
-                <span class="marquee-item active">📸 Фото</span>
-                <span class="marquee-item">🎵 Музыка</span>
-                <span class="marquee-item active">🎨 Стикеры</span>
-                <span class="marquee-item">📊 Опросы</span>
+        <div class="section-label reveal">Видео тред</div>
+        <h2 class="reveal" data-delay="1">Смотрите <span class="accent-text">прямо в ленте</span></h2>
+        <div class="mock-feed reveal" data-delay="2">
+            <div class="feed-post-video">
+                <!-- ⚡ ВАЖНО: Сюда положи свой файл. Назови его video.mp4 в корне сайта -->
+                <video src="/video.mp4" autoplay muted loop playsinline preload="metadata"></video>
+                <div class="post-bg-overlay"></div>
+                <div class="feed-post-header">
+                    <div class="feed-avatar-wrap">
+                        <div class="feed-post-avatar">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="">
+                        </div>
+                        <div class="feed-avatar-plus">+</div>
+                    </div>
+                    <div class="feed-post-info">
+                        <div class="feed-post-name">
+                            Alex<span style="color:var(--blue);font-size:12px">✓</span>
+                            <span class="feed-channel-badge">
+                                <span class="feed-channel-logo"><img src="https://api.dicebear.com/7.x/identicon/svg?seed=ch1" alt=""></span>
+                                Канал
+                            </span>
+                        </div>
+                        <div class="post-marquee-wrap">
+                            <div class="post-marquee-inner">
+                                <span class="mq-sound">
+                                    <span class="mq-sound-ava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt=""></span>
+                                    оригинальный звук · @alex
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="feed-post-content">Смотрите какой закат сегодня! Невероятная красота 🌅</div>
+                <div class="feed-post-footer">
+                    <div class="feed-action liked">
+                        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        <span>1.2K</span>
+                    </div>
+                    <div class="feed-action">
+                        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <span>84</span>
+                    </div>
+                    <div class="feed-action">
+                        <svg viewBox="0 0 24 24"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                        <span>120</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 5. ВИДЕО ═══════════════ -->
+<!-- ═══════════════ 5. ФОТО ТРЕД ═══════════════ -->
 <section class="slide" data-slide="5">
-    <div class="float-decor float-circle" style="top: 22%; left: 8%; width: 90px; height: 90px; background: rgba(255, 55, 95, .12);"></div>
-    <div class="float-decor float-star" style="top: 68%; right: 10%; font-size: 20px; animation-delay: -5s;">★</div>
-
     <div class="slide-inner">
-        <div class="section-label reveal">Видео</div>
-        <h2 class="reveal" data-delay="1">Создавайте <span class="accent-text">прямо в приложении</span></h2>
-        <p class="reveal" data-delay="2">
-            Видео можно выкладывать со встроенными эффектами и масками, использовать звуки и делать монтаж прямо в приложении.
-        </p>
-
-        <div class="video-demo reveal" data-delay="3">
-            <div class="video-demo-play">
-                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <div class="section-label reveal">Фото тред</div>
+        <h2 class="reveal" data-delay="1">Качественные <span class="accent-text">снимки</span></h2>
+        <div class="mock-feed reveal" data-delay="2">
+            <div style="padding: 16px 16px 0; display:flex; gap:10px;">
+                <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Maria" alt=""></div>
+                <div class="feed-post-info">
+                    <div class="feed-post-name" style="color:#fff">Maria <span class="feed-channel-badge" style="background:rgba(255,255,255,.1)">Фотограф</span></div>
+                    <div style="font-size:11px;color:var(--text-secondary)">2 часа назад</div>
+                </div>
+            </div>
+            <div class="feed-post-content" style="color:#fff;margin-top:10px;">Делюсь рецептом этих невероятных пирожных! читать далее...</div>
+            <div class="mock-photo-container">
+                <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=600&auto=format&fit=crop" alt="">
+            </div>
+            <div class="feed-post-footer" style="background:transparent; border-top:none;">
+                <div class="feed-action"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span>5,1K</span></div>
+                <div class="feed-action"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>89</span></div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 6. КАСТОМИЗАЦИЯ ═══════════════ -->
+<!-- ═══════════════ 6. ТЕКСТОВЫЙ ТРЕД ═══════════════ -->
 <section class="slide" data-slide="6">
     <div class="slide-inner">
-        <div class="section-label reveal">Кастомизация</div>
-        <h2 class="reveal" data-delay="1">Бесплатно и <span class="accent-text">с chvad</span></h2>
-        <p class="reveal" data-delay="2">
-            Красиво оформляйте профиль. Бесплатно доступны аватарка, имя, описание и 48 бесплатных статусов. А с подпиской chvad — градиентные фоны, узоры, цвет имени и премиум-статусы.
-        </p>
-
-        <div class="compare-split">
-            <div class="compare-card free reveal" data-delay="3">
-                <h3>🆓 Бесплатно</h3>
-                <ul>
-                    <li>Аватарка, имя, описание</li>
-                    <li>48 статусов</li>
-                    <li>Создание каналов</li>
-                    <li>Публикация тредов</li>
-                </ul>
+        <div class="section-label reveal">Текстовый тред</div>
+        <h2 class="reveal" data-delay="1">Мысли <span class="accent-text">на бумаге</span></h2>
+        <div class="mock-feed reveal" data-delay="2">
+            <div style="padding: 16px; display:flex; gap:10px;">
+                <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=John" alt=""></div>
+                <div class="feed-post-info">
+                    <div class="feed-post-name" style="color:#fff">John Doe</div>
+                    <div style="font-size:11px;color:var(--text-secondary)">5 мин назад</div>
+                </div>
             </div>
-            <div class="compare-card chvad reveal" data-delay="4">
-                <h3>⭐ listatread chvad</h3>
-                <ul>
-                    <li>Градиентные фоны</li>
-                    <li>Узоры на профиле</li>
-                    <li>Цвет имени</li>
-                    <li>Премиум-статусы</li>
-                    <li>До 5 каналов</li>
-                    <li>Расширенные лимиты</li>
-                </ul>
+            <div class="feed-post-content" style="color:#fff; font-size:18px; padding: 0 16px 20px; line-height:1.5;">
+                Иногда самые гениальные идеи приходят в голову, когда просто сидишь в тишине и никуда не спешишь. Цените моменты. ✨
+            </div>
+            <div class="feed-post-footer" style="background:transparent; border-top:none;">
+                <div class="feed-action"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span>2.1K</span></div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 7. DIRECT ═══════════════ -->
+<!-- ═══════════════ 7. ТРЕК ═══════════════ -->
 <section class="slide" data-slide="7">
     <div class="slide-inner">
-        <div class="section-label reveal">Директ</div>
-        <h2 class="reveal" data-delay="1">Общайтесь <span class="accent-text">красиво</span></h2>
-        <p class="reveal" data-delay="2">
-            Отправляйте треды друзьям, пишите им, отправляйте стикеры и эмодзи. Всё в красивом минималистичном стиле, как в любимых мессенджерах. Доступны множество настроек для оформления чатов: обои, закреплять сообщения, чаты и т.д.
-        </p>
-
-        <div class="chat-demo">
-            <div class="bubble left reveal" data-delay="3">Привет! Смотри какой трек нашёл 🎵</div>
-            <div class="bubble right reveal" data-delay="4">Ого, скинь ссылку!</div>
-            <div class="bubble left reveal" data-delay="5">Отправил 👆</div>
-            <div class="bubble right reveal" data-delay="6">Топ, спасибо 🔥</div>
+        <div class="section-label reveal">Музыкальный тред</div>
+        <h2 class="reveal" data-delay="1">Слушайте <span class="accent-text">прямо здесь</span></h2>
+        <div class="mock-feed reveal" data-delay="2">
+            <div style="padding: 16px 16px 0; display:flex; gap:10px;">
+                <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=DJ" alt=""></div>
+                <div class="feed-post-info">
+                    <div class="feed-post-name" style="color:#fff">DJ Tread</div>
+                </div>
+            </div>
+            <div class="feed-post-content" style="color:#fff;margin-top:10px;">Новый трек, билеты на концерт уже в прокате! 💪</div>
+            <div class="track-card-mock">
+                <button class="track-play-btn">
+                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <div>
+                    <div style="font-size:14px;font-weight:700;color:#fff;">Midnight Vibes</div>
+                    <div style="font-size:11px;color:var(--text-secondary)">@dj.tread · 3:45</div>
+                </div>
+            </div>
+            <div class="feed-post-footer" style="background:transparent; border-top:none; margin-top:10px;">
+                <div class="feed-action"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span>8,9K</span></div>
+            </div>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 8. LIVE ═══════════════ -->
+<!-- ═══════════════ 8. ОПРОС ═══════════════ -->
 <section class="slide" data-slide="8">
-    <div class="float-decor float-circle" style="top: 14%; right: 12%; width: 120px; height: 120px; background: rgba(255, 55, 95, .1);"></div>
-    <div class="float-decor float-heart" style="bottom: 24%; left: 10%;">♥</div>
-    <div class="float-decor float-star" style="top: 65%; right: 15%; font-size: 20px; animation-delay: -3s;">★</div>
-
     <div class="slide-inner">
-        <div class="live-indicator reveal">Live now</div>
-        <h2 class="reveal" data-delay="1">Live чаты и <span class="accent-text">рейвы</span></h2>
-        <p class="reveal" data-delay="2">
-            Создавайте в канале Live Chat и общайтесь, или устраивайте Rave — где владелец канала может быть в эфире.
-        </p>
-        <p class="reveal" data-delay="3">
-            Глобальный live-чат мы убрали — из-за спама, рекламы и атак. Но live-чаты и рейвы каналов остались — только для тех, кто действительно хочет быть вместе.
-        </p>
-    </div>
-</section>
-
-<!-- ═══════════════ 9. БЕЗОПАСНОСТЬ ═══════════════ -->
-<section class="slide" data-slide="9">
-    <div class="float-decor float-star" style="top: 18%; left: 10%; font-size: 24px;">★</div>
-    <div class="float-decor float-circle" style="bottom: 20%; right: 14%; width: 90px; height: 90px; background: rgba(48, 209, 88, .14);"></div>
-
-    <div class="slide-inner">
-        <div class="section-label reveal">Безопасность</div>
-        <h2 class="reveal" data-delay="1">Ваши данные <span class="accent-text">под защитой</span></h2>
-        <p class="reveal" data-delay="2">
-            Двухэтапная проверка аккаунта. Сервера listatread находятся в России, а сам сервис работает по всему миру — не только в РФ. Данные передаются на сервер в РФ через Cloudflare и защищены шифрованием.
-        </p>
-
-        <div class="steps">
-            <div class="step reveal" data-delay="3">
-                <div class="step-num">1</div>
-                <div class="step-body">
-                    <h4>Двухэтапная проверка</h4>
-                    <p>Защита аккаунта на уровне входа и действий.</p>
+        <div class="section-label reveal">Опрос</div>
+        <h2 class="reveal" data-delay="1">Узнайте <span class="accent-text">мнение</span></h2>
+        <div class="mock-feed reveal" data-delay="2">
+            <div style="padding: 16px 16px 0; display:flex; gap:10px;">
+                <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tech" alt=""></div>
+                <div class="feed-post-info">
+                    <div class="feed-post-name" style="color:#fff">Tech News</div>
                 </div>
             </div>
-            <div class="step reveal" data-delay="4">
-                <div class="step-num">2</div>
-                <div class="step-body">
-                    <h4>Шифрование трафика</h4>
-                    <p>Cloudflare + сервер в РФ = безопасная передача данных.</p>
-                </div>
-            </div>
-            <div class="step reveal" data-delay="5">
-                <div class="step-num">3</div>
-                <div class="step-body">
-                    <h4>Локальные сервера</h4>
-                    <p>Данные хранятся в России, под защитой местного законодательства.</p>
+            <div class="feed-post-content" style="color:#fff;margin-top:10px;">Какой язык программирования вы изучаете сейчас?</div>
+            <div class="poll-view-mock">
+                <div class="poll-view-options">
+                    <div class="poll-view-option">
+                        <div class="poll-view-fill" style="width: 65%;"></div>
+                        <div class="poll-view-label"><span>JavaScript</span><span>65%</span></div>
+                    </div>
+                    <div class="poll-view-option">
+                        <div class="poll-view-label"><span>Python</span><span>20%</span></div>
+                    </div>
+                    <div class="poll-view-option">
+                        <div class="poll-view-label"><span>C++</span><span>15%</span></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ 10. СКОРО ═══════════════ -->
-<section class="slide" data-slide="10">
+<!-- ═══════════════ 9. СТИКЕР ═══════════════ -->
+<section class="slide" data-slide="9">
     <div class="slide-inner">
-        <div class="coming-soon reveal">⚡ Скоро</div>
-        <h2 class="reveal" data-delay="1">Что <span class="accent-text">уже в разработке</span></h2>
-        <p class="reveal" data-delay="2">
-            Мы постоянно работаем над новыми функциями, чтобы listatread становился ещё лучше.
-        </p>
+        <div class="section-label reveal">Стикер тред</div>
+        <h2 class="reveal" data-delay="1">Выражайте <span class="accent-text">эмоции</span></h2>
+        <div class="mock-feed reveal" data-delay="2">
+            <div style="padding: 16px 16px 0; display:flex; gap:10px;">
+                <div class="feed-post-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Cat" alt=""></div>
+                <div class="feed-post-info">
+                    <div class="feed-post-name" style="color:#fff">Cat Lover</div>
+                </div>
+            </div>
+            <div class="feed-post-content" style="color:#fff;margin-top:10px;">Когда лег спать в 3 ночи:</div>
+            <!-- ⚡ ТУТ БУДЕТ ТВОЙ СТИКЕР. Замени ссылку на свой png/webp стикер -->
+            <div style="padding: 0 16px 16px; display:flex; justify-content:center;">
+                <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=SleepyCat" style="width:120px;height:120px;" alt="sticker">
+            </div>
+        </div>
+    </div>
+</section>
 
-        <div class="feature-grid">
-            <div class="feature-card reveal" data-delay="3">
-                <div class="feature-card-icon">🎯</div>
-                <h3>Интересное</h3>
-                <p>Ленты тем: футбол, кулинария, спорт, IT. Интересные каналы, рейвы и авторы.</p>
+<!-- ═══════════════ 10. DIRECT (Интерактив) ═══════════════ -->
+<section class="slide" data-slide="10" id="direct-slide">
+    <div class="slide-inner">
+        <div class="section-label reveal">listadirect</div>
+        <h2 class="reveal" data-delay="1">Общайтесь <span class="accent-text">красиво</span></h2>
+        <p class="reveal" data-delay="2">Свайпайте вниз, чтобы прочитать сообщения, отправляйте в директ треды, стикеры, эмодзи и делитесь моментами</p>
+
+        <div class="mock-direct reveal" data-delay="3">
+            <div class="direct-header">
+                <div class="direct-ava"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alice" alt=""></div>
+                <div>
+                    <div class="direct-name">Alice</div>
+                    <div class="direct-status">в сети</div>
+                </div>
             </div>
-            <div class="feature-card reveal" data-delay="4">
-                <div class="feature-card-icon">📍</div>
-                <h3>Рядом с вами</h3>
-                <p>Публикации из вашего города — куда сходить, где отдохнуть, концерты, достопримечательности.</p>
+            <div class="direct-messages-mock" id="direct-messages-container">
+                <!-- 1 -->
+                <div class="dr-row-mock">
+                    <div class="direct-bubble-mock">Привет! Как дела?</div>
+                </div>
+                <!-- 2 -->
+                <div class="dr-row-mock mine">
+                    <div class="direct-bubble-mock">Хорошо! В Токио всего 9 утра, пойду собираться на работу!</div>
+                </div>
+                <!-- 3 (Стикер) -->
+                <div class="dr-row-mock">
+                    <div class="direct-bubble-mock dr-sticker-mock">
+                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=Heart" alt="Sticker">
+                    </div>
+                </div>
+                <!-- 4 (Видео карточка - имитация) -->
+                <div class="dr-row-mock mine">
+                    <div class="direct-bubble-mock" style="padding:0; background:transparent; overflow:hidden; border-radius:12px; border:1px solid rgba(255,255,255,.1);">
+                        <div style="width:150px;height:100px;background:#222;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;">Видео тред</div>
+                    </div>
+                </div>
+                <!-- 5 -->
+                <div class="dr-row-mock">
+                    <div class="direct-bubble-mock">Крутое видео! 🔥 Мне нравится!</div>
+                </div>
+                <!-- 6 -->
+                <div class="dr-row-mock mine">
+                    <div class="direct-bubble-mock">Спасибо! Рад, что понравилось 😊✨</div>
+                </div>
             </div>
-            <div class="feature-card reveal" data-delay="5">
-                <div class="feature-card-icon">🎫</div>
-                <h3>listaticker</h3>
-                <p>Покупка билетов на концерты прямо в приложении.</p>
-            </div>
-            <div class="feature-card reveal" data-delay="6">
-                <div class="feature-card-icon">📦</div>
-                <h3>listadex</h3>
-                <p>Магазин каналов с доставкой через WB, Ozon, СДЭК, Почту РФ и Беларуси.</p>
+            <div class="scroll-hint-direct" id="scroll-hint-direct">
+                <span>Скролл вниз</span>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
             </div>
         </div>
     </div>
@@ -856,65 +633,25 @@
 
 <!-- ═══════════════ 11. О КОМПАНИИ ═══════════════ -->
 <section class="slide" data-slide="11">
-    <div class="float-decor float-heart" style="top: 14%; right: 12%;">♥</div>
-    <div class="float-decor float-circle" style="bottom: 22%; left: 14%; width: 100px; height: 100px; background: rgba(191, 90, 242, .1);"></div>
-    <div class="float-decor float-star" style="top: 60%; right: 8%; font-size: 20px; animation-delay: -4s;">★</div>
-
     <div class="slide-inner">
         <div class="team-badge reveal">О компании</div>
         <h2 class="reveal" data-delay="1">Мы делаем <span class="accent-text">новую экосистему</span></h2>
         <p class="reveal" data-delay="2">
-            listatread — независимая мультимедийная платформа, разработанная командой энтузиастов. Мы верим, что контент должен приносить радость, а не превращаться в бесконечный поиск аудитории.
+            listatread — независимая мультимедийная платформа, разработанная небольшой командой. Мы верим, что контент должен приносить радость
         </p>
-        <p class="reveal" data-delay="3">
-            Сейчас идёт закрытый этап разработки. Создать аккаунт можно только по секретному коду доступа, который выдаётся участникам тестирования. Подробнее — на странице <a href="/fts" style="color:#0a84ff;font-weight:700;text-decoration:none;">listatread.online/fts</a>.
-        </p>
-
-        <div class="steps" style="margin-top: 40px;">
-            <div class="step reveal" data-delay="4">
-                <div class="step-num" style="background: linear-gradient(135deg, #ff9f0a, #ff375f);">⚡</div>
-                <div class="step-body">
-                    <h4>Активная разработка</h4>
-                    <p>Развиваем платформу, добавляем новые функции каждую неделю.</p>
-                </div>
-            </div>
-            <div class="step reveal" data-delay="5">
-                <div class="step-num" style="background: linear-gradient(135deg, #0a84ff, #bf5af2);">🌍</div>
-                <div class="step-body">
-                    <h4>Мир без границ</h4>
-                    <p>Работаем по всему миру. Данные — в России. Контент — для всех.</p>
-                </div>
-            </div>
-            <div class="step reveal" data-delay="6">
-                <div class="step-num" style="background: linear-gradient(135deg, #30d158, #ffd60a);">💡</div>
-                <div class="step-body">
-                    <h4>Слушаем вас</h4>
-                    <p>Каждая новая функция рождается из фидбэка нашего сообщества.</p>
-                </div>
-            </div>
-        </div>
     </div>
 </section>
 
 <!-- ═══════════════ 12. CTA ═══════════════ -->
 <section class="slide" data-slide="12">
-    <div class="float-decor float-star" style="top: 10%; left: 15%; font-size: 26px;">★</div>
-    <div class="float-decor float-star" style="bottom: 18%; right: 12%; font-size: 18px; animation-delay: -3s;">★</div>
-    <div class="float-decor float-heart" style="top: 22%; right: 18%; animation-delay: -5s;">♥</div>
-    <div class="float-decor float-heart" style="bottom: 28%; left: 10%; font-size: 20px; animation-delay: -2s;">♥</div>
-    <div class="float-decor float-circle" style="top: 58%; left: 5%; width: 80px; height: 80px; background: rgba(255, 159, 10, .14);"></div>
-    <div class="float-decor float-circle" style="top: 12%; right: 8%; width: 60px; height: 60px; background: rgba(10, 132, 255, .14); animation-delay: -4s;"></div>
-
     <div class="slide-inner">
-        <div class="hero-logo reveal">ℓ</div>
+        <div class="hero-logo reveal" style="animation-delay: 1s;">
+            <img src="/logo.jpeg" alt="listatread">
+        </div>
         <h1 class="hero-brand reveal" data-delay="1" style="font-size: clamp(34px, 7vw, 58px);">Присоединяйтесь</h1>
-        <p class="hero-tagline reveal" data-delay="2">
-            listatread — это новый способ делиться контентом и находить аудиторию. Станьте частью сообщества.
-        </p>
-
+        <p class="hero-tagline reveal" data-delay="2">Станьте частью сообщества</p>
         <div class="reveal" data-delay="3">
-            <a href="/" class="cta-btn coral">Открыть listatread</a>
-            <a href="/fts" class="cta-btn secondary">Как получить доступ</a>
+            <a href="/" class="cta-btn" style="display:inline-block; padding:16px 32px; background:var(--blue); color:#fff; text-decoration:none; border-radius:16px; font-weight:800;">Открыть listatread</a>
         </div>
     </div>
 </section>
@@ -927,19 +664,21 @@
         const dotsContainer = document.getElementById('progressDots');
         const progressBar = document.getElementById('progressBar');
 
-        // ── 1. Progress dots ──
+        // 1. Инициализация точек
         slides.forEach((_, i) => {
             const dot = document.createElement('div');
             dot.className = 'dot';
             dot.dataset.index = i;
             dot.addEventListener('click', () => {
+                // Разрешаем скролл, если кликнули на точку
+                isDirectLocked = false;
                 slides[i].scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
             dotsContainer.appendChild(dot);
         });
         const dots = dotsContainer.querySelectorAll('.dot');
 
-        // ── 2. IntersectionObserver ──
+        // 2. Intersection Observer (появление блоков)
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
@@ -949,27 +688,86 @@
                 }
             });
         }, { threshold: [0, 0.3, 0.6, 1] });
-
         slides.forEach(slide => observer.observe(slide));
 
-        // ── 3. Progress bar ──
+        // 3. Прогресс-бар
         let ticking = false;
-        function updateProgress() {
-            const scrollTop = window.scrollY;
-            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-            const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-            progressBar.style.width = pct + '%';
-            ticking = false;
-        }
         window.addEventListener('scroll', () => {
             if (!ticking) {
-                requestAnimationFrame(updateProgress);
+                requestAnimationFrame(() => {
+                    const scrollTop = window.scrollY;
+                    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+                    progressBar.style.width = (docHeight > 0 ? (scrollTop / docHeight) * 100 : 0) + '%';
+                    ticking = false;
+                });
                 ticking = true;
             }
         }, { passive: true });
-        updateProgress();
 
-        // ── 4. First slide in-view ──
+        // ============================================================
+        // ЛОГИКА БЛОКИРОВКИ СКРОЛЛА ДЛЯ DIRECT
+        // ============================================================
+        let isDirectLocked = false;
+        let directMsgIndex = 0;
+        const directMessages = document.querySelectorAll('.dr-row-mock');
+        const directSlide = document.getElementById('direct-slide');
+        const scrollHintDirect = document.getElementById('scroll-hint-direct');
+
+        function showNextDirectMessage() {
+            if (directMsgIndex < directMessages.length) {
+                directMessages[directMsgIndex].classList.add('show');
+                directMsgIndex++;
+
+                // Если все сообщения показаны — разблокируем скролл
+                if (directMsgIndex === directMessages.length) {
+                    scrollHintDirect.classList.add('hidden');
+                    setTimeout(() => { isDirectLocked = false; }, 600);
+                }
+            }
+        }
+
+        // Слушаем скролл
+        window.addEventListener('wheel', (e) => {
+            if (isDirectLocked) {
+                e.preventDefault(); // Блокируем страницу
+                if (e.deltaY > 0) { // Если скроллят вниз
+                    showNextDirectMessage();
+                }
+            }
+        }, { passive: false });
+
+        // Для тач-устройств
+        let touchStartY = 0;
+        window.addEventListener('touchstart', (e) => {
+            if (isDirectLocked) touchStartY = e.touches[0].clientY;
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (isDirectLocked) {
+                const touchY = e.touches[0].clientY;
+                if (touchStartY - touchY > 30) { // Свайп вверх
+                    e.preventDefault();
+                    touchStartY = touchY; // Сброс
+                    showNextDirectMessage();
+                }
+            }
+        }, { passive: false });
+
+        // Активация лока при входе на слайд DIRECT
+        const directObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+                    // Если мы только что вошли на слайд, и сообщения не показаны
+                    if (directMsgIndex < directMessages.length) {
+                        isDirectLocked = true;
+                    }
+                }
+            });
+        }, { threshold: 0.6 });
+
+        if (directSlide) directObserver.observe(directSlide);
+
+        // Первый слайд
         requestAnimationFrame(() => {
             if (slides[0]) {
                 slides[0].classList.add('in-view');
