@@ -2,12 +2,13 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- Preconnect — DNS+TLS к Supabase прогреваются до первого запроса -->
+
+    <!-- ⚡ Preconnect — прогреваем DNS+TLS заранее -->
     <link rel="preconnect" href="https://api.listatread.online" crossorigin>
     <link rel="dns-prefetch" href="https://api.listatread.online">
-    <!-- ⚡ Preconnect к Storage — видео пойдут быстрее -->
     <link rel="preconnect" href="https://api.listatread.online/storage/v1" crossorigin>
     <link rel="dns-prefetch" href="https://api.listatread.online/storage/v1">
+    <link rel="preconnect" href="https://api.qrserver.com">
 
     <!-- ⚡ Preload логотипа (boot, auth, topbar) -->
     <link rel="preload" as="image" href="/logo.jpeg" fetchpriority="high">
@@ -20,42 +21,75 @@
     <link rel="modulepreload" href="js/offline.js">
     <link rel="modulepreload" href="js/push.js">
     <link rel="modulepreload" href="js/main.js?v=47">
-    <link rel="preconnect" href="https://api.qrserver.com">
+
+    <!-- ═══════════ VIEWPORT / MOBILE ═══════════ -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#ffffff">
+    <meta name="color-scheme" content="light dark">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>listatread - search a trend & list a tread</title>
+    <meta name="apple-mobile-web-app-title" content="listatread">
 
-    <!-- Описание для поисковиков -->
-    <meta name="description" content="В listatread доступен бесплатный плеер музыки, а также лента и каналы работают как единое целое благодаря умной адаптации контента, любой тред автора мгновенно могут найди в бесконечной ленте рекомендаций, тем самым собирая аудиторию, собирая единомышленников, а также выходите в listalive, глобальный чат, собирайте подарки от поклонников, общайтесь в удобном чате и кастомизируйте свой профиль как хотите!">
-    <meta name="keywords" content="listatread, социальная сеть, треды, каналы, live, музыка, music, кастомизация профиля, social network, тренды, видео, лента рекомендаций, чаты, мессенджер, бесплатная музыка, music, листатред">
-
-    <!-- Open Graph (Telegram, VK, WhatsApp превью) -->
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="listatread">
-    <meta property="og:title" content="listatread — search a trend & list a tread">
-    <meta property="og:description" content="В listatread доступен бесплатный плеер музыки, а также лента и каналы работают как единое целое благодаря умной адаптации контента, любой тред автора мгновенно могут найди в бесконечной ленте рекомендаций, тем самым собирая аудиторию, собирая единомышленников, а также выходите в listalive, глобальный чат, собирайте подарки от поклонников, общайтесь в удобном чате и кастомизируйте свой профиль как хотите!">
-    <meta property="og:image" content="https://listatread.online/logo.jpeg">
-    <meta property="og:url" content="https://listatread.online/">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="listatread — search a trend & list a tread">
-    <meta name="twitter:description" content="В listatread доступен бесплатный плеер музыки, а также лента и каналы работают как единое целое благодаря умной адаптации контента, любой тред автора мгновенно могут найди в бесконечной ленте рекомендаций, тем самым собирая аудиторию, собирая единомышленников, а также выходите в listalive, глобальный чат, собирайте подарки от поклонников, общайтесь в удобном чате и кастомизируйте свой профиль как хотите!">
-    <meta name="twitter:image" content="https://listatread.online/logo.jpeg">
-
-    <!-- Канонический URL — важно для SEO -->
+    <!-- ═══════════ SEO — ОСНОВНОЕ ═══════════ -->
+    <title>listatread — мультимедийная платформа с каналами в ленте вместо профилей, создайте свой канал или выкладывайте треды в общественные каналы и публикуйте в бесконечную ленту рекомендаций. Видео, музыка с просмотром текста и исполнителя, стикеры, опросы, direct-чаты с личными чатами и группами и live-чаты и raves каналов. Умная адаптация контента в рекомендационной ленте и интересное рядом, Данные защищены и хорошая модерация контента</title>
+    <meta name="description" content="listatread — мультимедийная платформа с каналами в ленте вместо профилей, создайте свой канал или выкладывайте треды в общественные каналы и публикуйте в бесконечную ленту рекомендаций. Видео, музыка с просмотром текста и исполнителя, стикеры, опросы, direct-чаты с личными чатами и группами и live-чаты и raves каналов. Умная адаптация контента в рекомендационной ленте и интересное рядом, Данные защищены и хорошая модерация контента">
+    <meta name="keywords" content="listatread, листатред, мультимедийная платформа, каналы, бесконечная лента, рекомендации, видео и фото, музыка, стикеры, опросы, direct чаты, live чаты, рейвы, listatread chvad, социальная сеть">
+    <meta name="author" content="listatread">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <meta name="rating" content="general">
     <link rel="canonical" href="https://listatread.online/">
 
-    <!-- Иконки / логотип -->
-    <link rel="icon" href="/logo.jpeg" type="image/jpeg">
-    <link rel="shortcut icon" href="/logo.jpeg" type="image/jpeg">
-    <link rel="apple-touch-icon" sizes="180x180" href="/logo.jpeg">
+    <!-- ═══════════ OPEN GRAPH (Telegram, VK, WhatsApp) ═══════════ -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="listatread">
+    <meta property="og:title" content="listatread — новая социальная сеть с каналами и чатами">
+    <meta property="og:description" content="Каналы вместо профилей. Бесконечная лента рекомендаций. Видео и фото, музыка, стикеры, опросы и direct-чаты - теперь в одном месте">
+    <meta property="og:image" content="https://listatread.online/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="listatread — list a tread & search a trend">
+    <meta property="og:url" content="https://listatread.online/">
+    <meta property="og:locale" content="ru_RU">
+
+    <!-- ═══════════ TWITTER CARD ═══════════ -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@listatread">
+    <meta name="twitter:title" content="listatread — мультимедийная платформа">
+    <meta name="twitter:description" content="Каналы вместо профилей. Бесконечная лента рекомендаций. Видео, музыка, стикеры, опросы и direct-чаты.">
+    <meta name="twitter:image" content="https://listatread.online/og-image.jpg">
+    <meta name="twitter:image:alt" content="listatread — мультимедийная платформа">
+
+    <!-- ═══════════ FAVICONS ═══════════ -->
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="listatread">
     <link rel="manifest" href="/site.webmanifest">
 
-    <link rel="stylesheet" href="style.css?v=16">
+    <!-- ═══════════ STRUCTURED DATA (Schema.org) ═══════════ -->
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "listatread",
+            "alternateName": "листатред",
+            "url": "https://listatread.online/",
+            "logo": "https://listatread.online/logo.jpeg",
+            "description": "Мультимедийная платформа с каналами вместо профилей, бесконечной лентой рекомендаций, видео, музыкой, стикерами, опросами и direct-чатами.",
+            "inLanguage": "ru-RU",
+            "publisher": {
+                "@type": "Organization",
+                "name": "listatread",
+                "url": "https://listatread.online/",
+                "logo": "https://listatread.online/logo.jpeg"
+            }
+        }
+    </script>
 
+    <link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 
