@@ -1056,12 +1056,16 @@ function showScreen(name){
 
 let livechatRefreshTimer = null
 
-function switchScreen(name){
+function showScreen(name){
+    document.body.classList.remove('snow-on')   // ← НОВОЕ
+    Object.values(screens).forEach(s => s?.classList.add('hidden'))
     document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'))
     const t = document.getElementById('screen-' + name)
     if(t) t.classList.add('active')
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === name))
     state.screen = name
+    state.screen = name
+    document.body.classList.toggle('snow-on', name === 'home')   // ← НОВОЕ
     window.scrollTo(0, 0)
 
     if(name === 'inbox') renderEventsScreen()
@@ -4371,11 +4375,18 @@ document.addEventListener('click', e => {
 function updateProfileTopbar(){
     const screen = $('screen-profile'); if(!screen) return
     const topbar = screen.querySelector('.topbar'); if(!topbar) return
+    topbar.classList.remove('scrolled')
+
+    const titleHtml = txt => `
+        <div class="pt-title-wrap">
+            <div class="pt-title-text"><div class="topbar-logo-static" id="profile-topbar-name">${txt}</div></div>
+            <div class="pt-title-ava" id="profile-topbar-ava"></div>
+        </div>`
 
     if(state.viewingOwnProfile){
         topbar.innerHTML = `
             <button class="topbar-btn" data-menu="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-            <div class="topbar-logo-static">профиль</div>
+            ${titleHtml('профиль')}
             <div style="display:flex;gap:4px;align-items:center">
                 <button class="topbar-btn" id="profile-share-own" title="Поделиться"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
                 <button class="topbar-btn topbar-star" data-prioriti="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></button>
@@ -4387,7 +4398,7 @@ function updateProfileTopbar(){
     } else {
         topbar.innerHTML = `
             <button class="topbar-btn" id="profile-back-btn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
-            <div class="topbar-logo-static" id="profile-topbar-name">@user</div>
+            ${titleHtml('profile')}
             <div style="display:flex;gap:4px;align-items:center">
                 <button class="topbar-btn" id="profile-share-btn" title="Поделиться"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
                 <button class="topbar-btn" id="profile-dots-btn"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
@@ -4398,11 +4409,9 @@ function updateProfileTopbar(){
             state.viewingOwnProfile = true
             switchScreen('home')
         })
-
         $('profile-share-btn')?.addEventListener('click', () => {
             if(state.currentProfileViewId) openShareSheet({ type:'profile', profileId: state.currentProfileViewId })
         })
-
         $('profile-dots-btn')?.addEventListener('click', async () => {
             const targetId = state.currentProfileViewId; if(!targetId) return
             const { data:{ user } } = await supabase.auth.getUser()
@@ -4435,6 +4444,15 @@ function updateProfileTopbar(){
         })
     }
 }
+
+/* аватарка в шапке плавно заменяет текст, когда большая аватарка уехала вверх */
+window.addEventListener('scroll', () => {
+    if(state.screen !== 'profile') return
+    const tb = document.querySelector('#screen-profile .topbar')
+    const av = $('profile-avatar')
+    if(!tb || !av) return
+    tb.classList.toggle('scrolled', av.getBoundingClientRect().bottom < tb.offsetHeight)
+}, { passive:true })
 
 /* ============================================================
    PROFILE LOAD
@@ -4486,7 +4504,8 @@ async function loadProfile(userId = null){
             const av = $('profile-avatar')
             if(profile.avatar_url) av.innerHTML = `<img src="${profile.avatar_url}" alt="">`
             else av.textContent = fname.charAt(0).toUpperCase()
-            const topName = $('profile-topbar-name'); if(topName) topName.textContent = '@' + uname
+            const topAva = $('profile-topbar-ava')
+            if(topAva) topAva.innerHTML = profile.avatar_url ? `<img src="${profile.avatar_url}" alt="">` : escapeHtml(fname.charAt(0).toUpperCase())
             if(iBlocked){ $('stat-posts').textContent = '0'; $('stat-subs').textContent = '0'; $('stat-followers').textContent = '0' }
             else {
                 const [postsRes, subsRes, followersRes] = await Promise.all([
@@ -4502,6 +4521,7 @@ async function loadProfile(userId = null){
         }
         await renderProfileActions(targetId, user.id, iBlocked)
         if(isStale()) return
+        renderProfileExtras(iBlocked ? null : profile)
         if(iBlocked) renderBlockedContent()
         else if(state.profileTab === 'posts') await renderMyPosts(targetId)
         else renderProfileTab()
@@ -4860,7 +4880,271 @@ async function renderProfileTracks(userId){
     box.querySelectorAll('.feed-post-avatar[data-uid]').forEach(a => a.addEventListener('click', () => openUserProfile(a.dataset.uid)))
     setTimeout(initTrackObserver, 100)
 }
+/* ============================================================
+   ТРЕК + КАНАЛ В ПРОФИЛЕ
+============================================================ */
+const PT_SVG = {
+    sound:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+    video:'<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="14" height="12" rx="2.5"/><path d="M22 8l-5.5 4 5.5 4z"/></svg>',
+    audio:'<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+    photo:'<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg>',
+    poll:'<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></svg>',
+    text:'<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>'
+}
+function pluralSubs(n){
+    const a = n % 10, b = n % 100
+    if(a === 1 && b !== 11) return n + ' подписчик'
+    if(a >= 2 && a <= 4 && (b < 10 || b >= 20)) return n + ' подписчика'
+    return n + ' подписчиков'
+}
+function lastPostIcon(p){
+    if(p.poll) return PT_SVG.poll
+    if(isVideoUrl(p.media_url)) return PT_SVG.video
+    if(isAudioUrl(p.media_url)) return PT_SVG.audio
+    if(p.media_url) return PT_SVG.photo
+    return PT_SVG.text
+}
+function lastPostText(p){
+    if(p.content && p.content.trim()) return p.content.trim()
+    if(p.poll) return p.poll.question || 'Опрос'
+    if(isVideoUrl(p.media_url)) return 'Видео'
+    if(isAudioUrl(p.media_url)) return p.media_title || 'Трек'
+    if(p.media_url) return 'Фото'
+    return ''
+}
 
+async function renderProfileExtras(profile){
+    const trackBox = $('profile-track'), chBox = $('profile-channel-card')
+    if(trackBox){ trackBox.classList.add('hidden'); trackBox.innerHTML = ''; trackBox.onclick = null; trackBox.dataset.src = ''; trackBox.classList.remove('playing') }
+    if(chBox){ chBox.classList.add('hidden'); chBox.innerHTML = ''; chBox.onclick = null }
+    if(!profile) return
+    const token = _profileLoadToken
+
+    /* ── трек ── */
+    const doTrack = async () => {
+        if(!trackBox || !profile.profile_track_id) return
+        const { data:p } = await supabase.from('posts')
+            .select('id, media_url, media_title, channels:channel_id ( id, name, avatar_url )')
+            .eq('id', profile.profile_track_id).maybeSingle()
+        if(token !== _profileLoadToken || !p?.media_url) return
+        const ch = p.channels || {}
+        const title = p.media_title || 'оригинальный звук'
+        const ava = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : escapeHtml((ch.name || 'K').charAt(0).toUpperCase())
+        trackBox.innerHTML = `<span class="profile-track-note">${PT_SVG.sound}</span><span class="profile-track-ava">${ava}</span><span class="profile-track-title">${escapeHtml(title)}</span>`
+        trackBox.dataset.src = p.media_url
+        trackBox.classList.remove('hidden')
+        trackBox.classList.toggle('playing', music.src === p.media_url && music.isPlaying)
+        trackBox.onclick = () => {
+            if(p.media_url === music.src && globalAudio.src) togglePlayTrack()
+            else loadTrack(p.id, p.media_url, title, true)
+        }
+    }
+
+    /* ── плашка канала ── */
+    const doChannel = async () => {
+        if(!chBox || !profile.profile_channel_id) return
+        const chId = profile.profile_channel_id
+        const [{ data:ch }, { count }, { data:last }] = await Promise.all([
+            supabase.from('channels').select('id, name, avatar_url').eq('id', chId).maybeSingle(),
+            supabase.from('subscriptions').select('*', { count:'exact', head:true }).eq('channel_id', chId),
+            supabase.from('posts').select('content, media_url, media_title, poll, created_at')
+                .eq('channel_id', chId).order('created_at', { ascending:false }).limit(1).maybeSingle()
+        ])
+        if(token !== _profileLoadToken || !ch) return
+        const ava = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : escapeHtml((ch.name || 'K').charAt(0).toUpperCase())
+        const status = statusEmoji(computeDisplayStatus(profile))
+        const lastHtml = (last && lastPostText(last))
+            ? `<div class="pcc-last">${lastPostIcon(last)}<span>${escapeHtml(lastPostText(last))}</span></div>` : ''
+        chBox.innerHTML = `
+            <div class="pcc-ava">${ava}</div>
+            <div class="pcc-info">
+                <div class="pcc-row1">
+                    <span class="pcc-name">${escapeHtml(ch.name || 'Канал')}</span>
+                    <span class="pcc-status">${status}</span>
+                    <span class="pcc-subs">${pluralSubs(count || 0)}</span>
+                </div>
+                ${lastHtml}
+            </div>`
+        chBox.classList.remove('hidden')
+        chBox.onclick = () => openChannel(ch.id)
+    }
+
+    await Promise.allSettled([doTrack(), doChannel()])
+}
+
+/* подсветка плашки трека при смене состояния плеера */
+document.addEventListener('lt-player-state', () => {
+    const t = $('profile-track')
+    if(!t || !t.dataset.src) return
+    t.classList.toggle('playing', t.dataset.src === music.src && music.isPlaying)
+})
+
+/* ── сохранение выбора ── */
+async function saveProfilePick(field, value){
+    const { data:{ user } } = await supabase.auth.getUser(); if(!user) return false
+    const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', user.id)
+    if(error){ showToast('error', 'Не удалось: ' + error.message, { icon:'⚠️' }); return false }
+    showToast('success', value ? 'Сохранено' : 'Убрано', { icon:'✓' })
+    refreshProfilePickLabels()
+    return true
+}
+
+async function refreshProfilePickLabels(){
+    const tl = $('set-track-label'), cl = $('set-channel-label')
+    if(!tl && !cl) return
+    const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+    const { data:p } = await supabase.from('profiles').select('profile_track_id, profile_channel_id').eq('id', user.id).maybeSingle()
+    if(tl){
+        tl.textContent = 'Не выбран'
+        if(p?.profile_track_id){
+            const { data:post } = await supabase.from('posts').select('media_title, content').eq('id', p.profile_track_id).maybeSingle()
+            if(post) tl.textContent = post.media_title || (post.content || '').slice(0, 40) || 'оригинальный звук'
+        }
+    }
+    if(cl){
+        cl.textContent = 'Не выбран'
+        if(p?.profile_channel_id){
+            const { data:ch } = await supabase.from('channels').select('name').eq('id', p.profile_channel_id).maybeSingle()
+            if(ch) cl.textContent = ch.name || 'Канал'
+        }
+    }
+}
+
+/* ── выбор трека: сначала треки моих каналов, ниже случайные, сверху поиск ── */
+async function openProfileTrackPicker(){
+    const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+    document.getElementById('pt-picker')?.remove()
+    const m = document.createElement('div')
+    m.id = 'pt-picker'
+    m.className = 'ts-sheet-modal'
+    m.innerHTML = `
+        <div class="ts-sheet-backdrop"></div>
+        <div class="ts-sheet-body">
+            <div class="ts-sheet-handle"></div>
+            <div class="ts-sheet-title">Трек в профиль</div>
+            <input class="ts-mini-input" id="pt-search" placeholder="Поиск треков" style="margin-bottom:10px">
+            <div class="ts-track-list" id="pt-list">${loadingBlock()}</div>
+            <button class="ts-track-more" id="pt-clear">Убрать трек</button>
+        </div>`
+    document.body.appendChild(m)
+    const close = () => m.remove()
+    m.querySelector('.ts-sheet-backdrop').onclick = close
+
+    const SEL = 'id, media_url, media_title, content, channel_id, profiles:author_id ( username, full_name ), channels:channel_id ( id, name, avatar_url )'
+    const listEl = m.querySelector('#pt-list')
+
+    const rowHtml = p => {
+        const ch = p.channels || {}, pr = p.profiles || {}
+        const title = p.media_title || (p.content || '').slice(0, 40) || 'оригинальный звук'
+        const ava = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : escapeHtml((ch.name || pr.full_name || 'T').charAt(0).toUpperCase())
+        return `<div class="ts-track-row" data-pid="${p.id}" style="cursor:pointer">
+            <div class="ts-track-row-ava">${ava}</div>
+            <div class="ts-track-row-info">
+                <div class="ts-track-row-title">${escapeHtml(title)}</div>
+                <div class="ts-track-row-meta">@${escapeHtml(pr.username || 'user')}${ch.name ? ` · ${escapeHtml(ch.name)}` : ''}</div>
+            </div>
+        </div>`
+    }
+    const bind = () => listEl.querySelectorAll('.ts-track-row[data-pid]').forEach(r => r.onclick = async () => {
+        if(await saveProfilePick('profile_track_id', r.dataset.pid)) close()
+    })
+
+    // начальные списки
+    const { data:own } = await supabase.from('channels').select('id').eq('owner_id', user.id)
+    const ownIds = (own || []).map(c => c.id)
+    let mine = []
+    if(ownIds.length){
+        const { data } = await supabase.from('posts').select(SEL).in('channel_id', ownIds)
+            .not('media_url', 'is', null).order('created_at', { ascending:false }).limit(100)
+        mine = (data || []).filter(p => isAudioUrl(p.media_url))
+    }
+    const { data:pool } = await supabase.from('posts').select(SEL)
+        .not('media_url', 'is', null).order('created_at', { ascending:false }).limit(200)
+    const mineIds = new Set(mine.map(p => p.id))
+    const others = (pool || []).filter(p => isAudioUrl(p.media_url) && !mineIds.has(p.id))
+        .sort(() => Math.random() - .5).slice(0, 40)
+
+    const renderDefault = () => {
+        let html = ''
+        if(mine.length) html += `<div class="ts-channel-section-title">Треки моих каналов</div>` + mine.map(rowHtml).join('')
+        if(others.length) html += `<div class="ts-channel-section-title">Библиотека треков</div>` + others.map(rowHtml).join('')
+        listEl.innerHTML = html || '<p class="empty small">Треков пока нет</p>'
+        bind()
+    }
+    renderDefault()
+
+    // поиск
+    let tm = null
+    m.querySelector('#pt-search').addEventListener('input', e => {
+        clearTimeout(tm)
+        const q = e.target.value.trim().replace(/[%_,()]/g, '')
+        tm = setTimeout(async () => {
+            if(!q){ renderDefault(); return }
+            listEl.innerHTML = loadingBlock()
+            const term = `%${q}%`
+            const { data } = await supabase.from('posts').select(SEL)
+                .or(`media_title.ilike.${term},content.ilike.${term}`)
+                .not('media_url', 'is', null).order('created_at', { ascending:false }).limit(60)
+            const found = (data || []).filter(p => isAudioUrl(p.media_url))
+            listEl.innerHTML = found.length ? found.map(rowHtml).join('') : '<p class="empty small">Ничего не найдено</p>'
+            bind()
+        }, 250)
+    })
+
+    m.querySelector('#pt-clear').onclick = async () => {
+        if(await saveProfilePick('profile_track_id', null)) close()
+    }
+}
+
+/* ── выбор канала для плашки ── */
+async function openProfileChannelPicker(){
+    const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+    document.getElementById('pc-picker')?.remove()
+    const m = document.createElement('div')
+    m.id = 'pc-picker'
+    m.className = 'ts-sheet-modal'
+    m.innerHTML = `
+        <div class="ts-sheet-backdrop"></div>
+        <div class="ts-sheet-body">
+            <div class="ts-sheet-handle"></div>
+            <div class="ts-sheet-title">Канал в профиль</div>
+            <div class="ts-channel-list" id="pc-list">${loadingBlock()}</div>
+            <button class="ts-track-more" id="pc-clear">Убрать канал</button>
+        </div>`
+    document.body.appendChild(m)
+    const close = () => m.remove()
+    m.querySelector('.ts-sheet-backdrop').onclick = close
+
+    const [{ data:own }, { data:subs }] = await Promise.all([
+        supabase.from('channels').select('id, name, avatar_url').eq('owner_id', user.id),
+        supabase.from('subscriptions').select('channels ( id, name, avatar_url )').eq('follower_id', user.id)
+    ])
+    const ownIds = new Set((own || []).map(c => c.id))
+    const joined = (subs || []).map(s => s.channels).filter(c => c && !ownIds.has(c.id))
+    const item = (c, role) => {
+        const ava = c.avatar_url ? `<img src="${c.avatar_url}" alt="">` : escapeHtml((c.name || 'K').charAt(0).toUpperCase())
+        return `<button class="ts-channel-item" data-ch="${c.id}">
+            <div class="ts-channel-item-ava">${ava}</div>
+            <div class="ts-channel-item-info"><div class="ts-channel-item-name">${escapeHtml(c.name || 'Канал')}</div><div class="ts-channel-item-sub">${role}</div></div>
+        </button>`
+    }
+    let html = ''
+    if((own || []).length) html += `<div class="ts-channel-section-title">Мои каналы</div>` + own.map(c => item(c, 'Владелец')).join('')
+    if(joined.length) html += `<div class="ts-channel-section-title">Подписки</div>` + joined.map(c => item(c, 'Участник')).join('')
+    const list = m.querySelector('#pc-list')
+    list.innerHTML = html || '<p class="empty small">Нет каналов</p>'
+    list.querySelectorAll('.ts-channel-item[data-ch]').forEach(b => b.onclick = async () => {
+        if(await saveProfilePick('profile_channel_id', b.dataset.ch)) close()
+    })
+    m.querySelector('#pc-clear').onclick = async () => {
+        if(await saveProfilePick('profile_channel_id', null)) close()
+    }
+}
+
+document.addEventListener('click', e => {
+    if(e.target.closest('#set-track-btn'))   openProfileTrackPicker()
+    if(e.target.closest('#set-channel-btn')) openProfileChannelPicker()
+})
 /* ============================================================
    PART 3 / 3 — openUserProfile() → конец файла
 ============================================================ */
@@ -5419,6 +5703,7 @@ const _origLoadSettings = loadSettings
 loadSettings = async function(){
     await _origLoadSettings()
     await refreshChvadSettingsButton()
+    refreshProfilePickLabels()          // ← НОВОЕ
 }
 
 /* === Модалка 100 статусов === */
@@ -6055,16 +6340,21 @@ async function openChannel(channelId){
         state.channelCounts = {}
 
         screen.innerHTML = `
-            <div class="ch-page-header">
-    <button class="topbar-btn" id="ch-back"><</button>
-    <div class="ch-header-title-wrap">
-        <div class="topbar-logo-static">канал</div>
-        ${headerBadge}
-    </div>
-    <div style="display:flex;gap:4px;align-items:center">
-        <button class="topbar-btn" id="ch-filter-btn" title="Фильтры" style="color:var(--text)">${ICONS.filter}</button>
-    </div>
-</div>
+                        <div class="ch-page-header" id="ch-page-header">
+                <button class="topbar-btn ch-back-btn" id="ch-back" aria-label="Назад">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+                </button>
+                <div class="pt-title-wrap">
+                    <div class="pt-title-text">
+                        <div class="topbar-logo-static">канал</div>
+                        ${headerBadge}
+                    </div>
+                    <div class="pt-title-ava">${avContent}</div>
+                </div>
+                <div style="display:flex;gap:4px;align-items:center">
+                    <button class="topbar-btn" id="ch-filter-btn" title="Фильтры" style="color:var(--text)">${ICONS.filter}</button>
+                </div>
+            </div>
 
             <div class="ch-full-avatar-wrap">
                 <div class="ch-full-avatar">
@@ -6174,7 +6464,13 @@ async function openChannel(channelId){
                 showToast('success', 'Ссылка скопирована', { icon:'✓' })
             }
         })
-
+        // шапка: аватарка плавно заменяет слово «канал», когда большая аватарка проскроллена
+        screen.scrollTop = 0
+        const chHdr = $('ch-page-header'), chAvWrap = screen.querySelector('.ch-full-avatar-wrap')
+        screen.onscroll = () => {
+            const limit = (chAvWrap?.offsetHeight || 300) - (chHdr?.offsetHeight || 60)
+            chHdr?.classList.toggle('scrolled', screen.scrollTop > limit)
+        }
         // ─── Ещё (пока пусто) ───
         $('ch-more-btn')?.addEventListener('click', async () => {
             const items = []
@@ -9910,6 +10206,9 @@ document.getElementById('home-bell-btn')?.addEventListener('click', e => {
         if(!activeScreen){ lastY = curY; ticking = false; return }
         const bar = activeScreen.querySelector('.topbar')
         if(!bar){ lastY = curY; ticking = false; return }
+        if(!bar){ lastY = curY; ticking = false; return }
+        // на профиле шапка всегда видна (там аватарка появляется вместо текста)
+        if(activeScreen.id === 'screen-profile'){ bar.classList.remove('topbar-hidden'); lastY = curY; ticking = false; return }
         if(curY < 8) bar.classList.remove('topbar-hidden')
         else if(diff <= -SHOW_DELTA) bar.classList.remove('topbar-hidden')
         else if(diff >= HIDE_DELTA && curY > HIDE_AFTER) bar.classList.add('topbar-hidden')
@@ -11839,7 +12138,33 @@ function setBootStage(stage){
         else if (idx < stage) d.classList.add('done')
     })
 }
-
+/* ============================================================
+   СНЕГ (главная)
+============================================================ */
+function initSnow(){
+    if(document.querySelector('.snow-layer')) return
+    const make = (cls, count, minS, maxS, minO, maxO, minD, maxD) => {
+        const layer = document.createElement('div')
+        layer.className = 'snow-layer ' + cls
+        for(let i = 0; i < count; i++){
+            const f = document.createElement('i')
+            f.className = 'snowflake'
+            const s = minS + Math.random() * (maxS - minS)
+            f.style.cssText =
+                `left:${(Math.random() * 100).toFixed(1)}%;` +
+                `width:${s.toFixed(1)}px;height:${s.toFixed(1)}px;` +
+                `opacity:${(minO + Math.random() * (maxO - minO)).toFixed(2)};` +
+                `--dx:${(Math.random() * 70 - 35).toFixed(0)}px;` +
+                `animation-duration:${(minD + Math.random() * (maxD - minD)).toFixed(1)}s;` +
+                `animation-delay:-${(Math.random() * maxD).toFixed(1)}s`
+            layer.appendChild(f)
+        }
+        document.body.appendChild(layer)
+    }
+    make('snow-back',  28, 2, 5, .35, .6,  14, 24)   // мелкие, медленные, ПОЗАДИ
+    make('snow-front', 16, 4, 8, .7,  .95, 8,  14)   // крупные, быстрые, ПОВЕРХ
+}
+initSnow()
 /* ═══════════════════════════════════════════════════════════
    BOOT HEARTS — 4 диагональных ряда, каждый ряд стартует целиком
    Старт: правый-нижний угол, финиш: левый-верхний
