@@ -7294,7 +7294,176 @@ body.ts-recording .ts-track-strip{
     font-size: 14px;
     margin-left: 6px;
 }
+.actionsheet-backdrop{ opacity:0; transition: opacity .28s ease; }
+.actionsheet-backdrop.show{ opacity:1; }
+.actionsheet{ transform: translateY(100%); transition: transform .32s cubic-bezier(.32,.72,.24,1); }
+.actionsheet.open{ transform: translateY(0); }
+/* ============================================================
+   НОВЫЙ ГОД + АНИМАЦИИ + ПРОФИЛЬ
+============================================================ */
 
+/* ---------- Шапка главной: появление ---------- */
+/* Раньше анимации не было: у .topbar только transition на transform,
+   а начального состояния нет. Теперь это настоящая keyframe-анимация,
+   она проигрывается при каждом входе на главную. */
+@keyframes topbarDrop{
+    from{transform:translateX(-50%) translateY(-110%);opacity:0}
+    to{transform:translateX(-50%) translateY(0);opacity:1}
+}
+@keyframes thItemIn{
+    from{opacity:0;transform:translateY(-10px) scale(.8)}
+    to{opacity:1;transform:none}
+}
+.app-screen.active .topbar-home{animation:topbarDrop .7s cubic-bezier(.22,1,.36,1) backwards}
+.app-screen.active .topbar-home .topbar-btn,
+.app-screen.active .topbar-home .th-logo,
+.app-screen.active .topbar-home .th-name{animation:thItemIn .55s var(--spring) backwards}
+.app-screen.active .topbar-home .th-logo{animation-delay:.15s}
+.app-screen.active .topbar-home .th-name{animation-delay:.25s}
+.app-screen.active .topbar-home .th-right .topbar-btn:nth-child(1){animation-delay:.3s}
+.app-screen.active .topbar-home .th-right .topbar-btn:nth-child(2){animation-delay:.38s}
+
+/* плавное скрытие/появление шапки при скролле */
+.topbar{transition:transform .45s cubic-bezier(.22,1,.36,1),opacity .3s var(--ease)}
+
+/* ---------- Ёлка ---------- */
+@keyframes treeSway{
+    0%,100%{transform:rotate(-6deg) scale(1)}
+    50%{transform:rotate(6deg) scale(1.1)}
+}
+.th-tree{
+    display:inline-block;font-size:20px;line-height:1;margin-left:-2px;flex-shrink:0;
+    transform-origin:50% 100%;
+    filter:drop-shadow(0 0 6px rgba(48,209,88,.5));
+}
+.app-screen.active .topbar-home .th-tree{
+    animation:thItemIn .55s var(--spring) .35s backwards, treeSway 3.6s ease-in-out .9s infinite;
+}
+html[data-theme="light"] .topbar-home .th-tree{filter:drop-shadow(0 0 4px rgba(48,209,88,.4))}
+
+/* ---------- Снег ---------- */
+.snow-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;display:none}
+body.snow-on .snow-layer{display:block}
+.snow-back{z-index:0}    /* позади карточек */
+.snow-front{z-index:40}  /* поверх контента, ниже меню/шапки */
+.snowflake{
+    position:absolute;top:-12px;border-radius:50%;background:#fff;
+    will-change:transform;animation:snowFall linear infinite;
+    box-shadow:0 0 5px rgba(255,255,255,.8);
+}
+html[data-theme="light"] .snowflake{box-shadow:0 0 0 1px rgba(0,0,0,.08),0 1px 4px rgba(0,0,0,.2)}
+@keyframes snowFall{
+    0%  {transform:translate3d(0,-5vh,0)}
+    33% {transform:translate3d(var(--dx),30vh,0)}
+    66% {transform:translate3d(calc(var(--dx) * -1),65vh,0)}
+    100%{transform:translate3d(0,108vh,0)}
+}
+@media (prefers-reduced-motion:reduce){.snow-layer{display:none!important}}
+
+/* ---------- Убираем «обводку» аватарок ---------- */
+.story:not(.story-add) .story-ring{background:none!important;padding:0!important;border:none!important}
+.story:not(.story-add) .story-ring-inner{
+    border:none!important;color:#fff;
+    background:linear-gradient(135deg,var(--yellow),var(--red-pink));
+}
+.profile-avatar-lg{box-shadow:none!important}
+.channel-live-ava,.channel-live-ava.has-new{border:none!important;box-shadow:none!important}
+
+/* ---------- Красивые появления вместо «увеличения при наведении» ---------- */
+@keyframes itemReveal{
+    0%{opacity:0;transform:translateY(22px) scale(.9)}
+    60%{opacity:1}
+    100%{opacity:1;transform:none}
+}
+@media (hover:hover){
+    .story:hover,.live-avatar-wrap:hover{scale:1}
+}
+:is(.stories-row,.live-now-row,.chan-list,.direct-list,.search-results)>*{
+    animation:itemReveal .65s var(--spring) both;
+    animation-delay:calc(var(--i,0) * 70ms);
+}
+:is(.stories-row,.live-now-row,.chan-list,.direct-list,.search-results)>:nth-child(1){--i:0}
+:is(.stories-row,.live-now-row,.chan-list,.direct-list,.search-results)>:nth-child(2){--i:1}
+:is(.stories-row,.live-now-row,.chan-list,.direct-list,.search-results)>:nth-child(3){--i:2}
+:is(.stories-row,.live-now-row,.chan-list,.direct-list,.search-results)>:nth-child(4){--i:3}
+:is(.stories-row,.live-now-row,.chan-list,.direct-list,.search-results)>:nth-child(5){--i:4}
+:is(.stories-row,.live-now-row,.chan-list,.direct-list,.search-results)>:nth-child(6){--i:5}
+:is(.stories-row,.live-now-row,.chan-list,.direct-list,.search-results)>:nth-child(7){--i:6}
+:is(.stories-row,.live-now-row,.chan-list,.direct-list,.search-results)>:nth-child(8){--i:7}
+:is(.stories-row,.live-now-row,.chan-list,.direct-list,.search-results)>:nth-child(n+9){--i:8}
+
+/* профиль: каскадное появление */
+.profile-hero>*{animation:itemReveal .6s var(--spring) both}
+.profile-hero>:nth-child(2){animation-delay:.06s}
+.profile-hero>:nth-child(3){animation-delay:.12s}
+.profile-hero>:nth-child(4){animation-delay:.18s}
+.profile-hero>:nth-child(5){animation-delay:.24s}
+.profile-stats{animation:itemReveal .6s var(--spring) .3s both}
+.profile-channel-card{animation:itemReveal .6s var(--spring) .38s both}
+#profile-actions{animation:itemReveal .6s var(--spring) .44s both}
+.profile-tabs{animation:itemReveal .6s var(--spring) .5s both}
+
+/* ---------- Трек в профиле ---------- */
+.profile-track{
+    display:inline-flex;align-items:center;gap:8px;margin-top:10px;
+    padding:6px 14px 6px 10px;border-radius:100px;max-width:100%;
+    background:var(--surface-2);cursor:pointer;
+    transition:background-color .2s,scale .18s var(--ease-out);
+}
+.profile-track.hidden{display:none!important}
+.profile-track:active{scale:.96}
+.profile-track-note{display:flex;color:var(--text-secondary);flex-shrink:0;transition:color .25s}
+.profile-track.playing .profile-track-note{color:var(--blue)}
+.profile-track.playing{background:rgba(10,132,255,.12)}
+.profile-track-ava{
+    width:26px;height:26px;border-radius:8px;overflow:hidden;flex-shrink:0;
+    background:linear-gradient(135deg,#ff9f0a,#ff375f);color:#fff;font-size:12px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+}
+.profile-track-ava img{width:100%;height:100%;object-fit:cover}
+.profile-track-title{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+
+/* ---------- Плашка канала в профиле ---------- */
+.profile-channel-card{
+    display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:12px;
+    background:var(--card);border:1px solid var(--glass-edge);border-radius:var(--radius-md);
+    box-shadow:var(--glass-hi);cursor:pointer;text-align:left;
+}
+.profile-channel-card.hidden{display:none!important}
+.pcc-ava{
+    width:52px;height:52px;border-radius:14px;overflow:hidden;flex-shrink:0;
+    background:linear-gradient(135deg,#ff9f0a,#ff375f);color:#fff;font-size:20px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+}
+.pcc-ava img{width:100%;height:100%;object-fit:cover}
+.pcc-info{flex:1;min-width:0}
+.pcc-row1{display:flex;align-items:center;gap:6px;min-width:0}
+.pcc-name{font-size:15px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pcc-status{font-size:14px;line-height:1;flex-shrink:0}
+.pcc-subs{font-size:11.5px;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;margin-left:auto}
+.pcc-last{display:flex;align-items:center;gap:5px;margin-top:4px;font-size:12px;color:var(--text-secondary);min-width:0}
+.pcc-last svg{flex-shrink:0}
+.pcc-last span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- Шапка профиля/канала: текст ↔ аватарка при скролле ---------- */
+.pt-title-wrap{position:relative;flex:1;height:40px;min-width:0;display:flex;align-items:center;justify-content:center}
+.pt-title-text{display:flex;align-items:center;gap:6px;transition:opacity .35s var(--ease),transform .45s var(--spring)}
+.pt-title-ava{
+    position:absolute;left:50%;top:50%;width:34px;height:34px;border-radius:10px;overflow:hidden;
+    background:linear-gradient(135deg,var(--yellow),var(--red-pink));color:#fff;font-size:14px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;pointer-events:none;
+    opacity:0;transform:translate(-50%,-50%) scale(.4) rotate(-12deg);
+    transition:opacity .35s var(--ease),transform .5s var(--spring);
+}
+.pt-title-ava img{width:100%;height:100%;object-fit:cover}
+.topbar.scrolled .pt-title-ava,
+.ch-page-header.scrolled .pt-title-ava{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(0)}
+.topbar.scrolled .pt-title-text,
+.ch-page-header.scrolled .pt-title-text{opacity:0;transform:translateY(-12px) scale(.85)}
+
+/* кнопка «назад» в шапке канала */
+.ch-back-btn{color:var(--text)}
+.ch-back-btn svg{display:block}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

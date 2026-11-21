@@ -1005,6 +1005,16 @@ const screens = {
     'register-landing':$('register-landing-screen'), register:$('register-screen'),
     loading:$('loading-screen')
 }
+function mountFeedBgFor(scr, preferredId){
+    if(!scr) return;
+    let bg = scr.querySelector('#auth-feed-bg, #register-feed-bg, #feed-bg, [data-feed-bg], .auth-feed-bg');
+    if(!bg && preferredId) bg = document.getElementById(preferredId);
+    if(bg && !bg.dataset.built){
+        bg.dataset.built = '1';
+        try { mountFeedBg(bg) } catch(e){ console.warn('[feed-bg]', e.message) }
+    }
+}
+
 const mainApp = $('main-app')
 function showScreen(name){
     Object.values(screens).forEach(s => s?.classList.add('hidden'))
@@ -1038,6 +1048,7 @@ function showScreen(name){
         }
     } else if(name === 'register'){
         setPageBg()
+        mountFeedBgFor(screens['register'])
     } else {
         setPageBg()
     }
@@ -1568,6 +1579,9 @@ async function deletePostById(postId){
     return { ok:true }
 }
 function showActionSheet(title, items){
+    // ⚡ если предыдущее закрытие ещё «в полёте» — отменяем таймер
+    clearTimeout(actionsheet._closeTimer);
+
     actionsheetTitle.textContent = title
     actionsheetList.innerHTML = items.map((it, i) => {
         const cls = 'actionsheet-item'
@@ -1579,38 +1593,46 @@ function showActionSheet(title, items){
 
     actionsheetList.querySelectorAll('.actionsheet-item').forEach(btn => {
         const it = items[+btn.dataset.idx]
-        if(it?.info) return                       // инфо-строки не кликаются
+        if(it?.info) return
         btn.addEventListener('click', () => {
             const item = items[+btn.dataset.idx]
             closeActionSheet()
             if(item?.onClick) setTimeout(item.onClick, 100)
         })
     })
+
     actionsheetBackdrop.classList.remove('hidden')
     actionsheet.classList.remove('hidden')
-    /* rAF нужен чтобы transition гарантированно сыграл.
-       Но 'open' класс нам сейчас ничего не анимирует — добавляем сразу
-       (на случай если браузер «проглотит» rAF). */
+
+    // force reflow, чтобы браузер «увидел» стартовое состояние
     void actionsheet.offsetHeight
-    actionsheet.classList.add('open')
+
     requestAnimationFrame(() => {
-        // если вдруг класс был снят — восстановим
-        if(!actionsheet.classList.contains('open')){
-            actionsheet.classList.add('open')
-        }
+        actionsheet.classList.add('open')
+        actionsheetBackdrop.classList.add('show')
     })
 }
 window.showActionSheet = showActionSheet
 window.showToast = showToast
 function closeActionSheet(){
-    actionsheet.classList.remove('open');
-    actionsheet.classList.add('hidden');
-    actionsheetBackdrop.classList.add('hidden');
+    if(!actionsheet.classList.contains('open')) return;   // уже закрыто
 
-    // ⚡ новые хуки на закрытие (стикер-превью и т.п.)
+    // запускаем анимацию закрытия
+    actionsheet.classList.remove('open')
+    actionsheetBackdrop.classList.remove('show')
+
+    // хуки (стикер-превью и т.п.) — сразу, они не про анимацию
     const hooks = window.__stickerMenuCloseHooks || [];
     window.__stickerMenuCloseHooks = [];
     hooks.forEach(fn => { try { fn(); } catch(e){ console.warn(e); } });
+
+    // ⚡ hidden навешиваем ТОЛЬКО после того, как transition доиграет
+    clearTimeout(actionsheet._closeTimer)
+    actionsheet._closeTimer = setTimeout(() => {
+        actionsheet.classList.add('hidden')
+        actionsheetBackdrop.classList.add('hidden')
+        actionsheetBackdrop.classList.remove('show')
+    }, 320) // = длительность transition у .actionsheet
 }
 actionsheetBackdrop.addEventListener('click', closeActionSheet)
 $('actionsheet-cancel').addEventListener('click', closeActionSheet)

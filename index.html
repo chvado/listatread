@@ -338,7 +338,9 @@
                 <button class="topbar-btn" data-menu="open" aria-label="Меню"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
                 <div class="th-brand">
                     <span class="th-logo"><img src="/logo.jpeg" alt="listatread"></span>
+
                     <span class="th-name">listatread</span>
+                    <span class="th-tree" aria-hidden="true">🎄</span>
                 </div>
                 <div class="th-right">
 
@@ -435,8 +437,15 @@
             <header class="topbar"><button class="topbar-btn" data-menu="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><div class="topbar-logo-static">профиль</div><button class="topbar-btn topbar-star" data-prioriti="open"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.6l-5.5 4.8 1.7 7.1L12 17.8 5.8 21.5l1.7-7.1L2 9.6l7.1-.7z"/></svg></button></header>
             <div class="profile-loader hidden" id="profile-loader"><div class="profile-loader-spinner"></div><p class="profile-loader-text">Загрузка профиля…</p></div>
             <div id="profile-body">
-                <div class="profile-hero"><div class="profile-avatar-lg" id="profile-avatar">ℓ</div><h2 class="profile-name" id="profile-name">Пользователь</h2><p class="profile-username" id="profile-username">@username</p><p class="profile-bio" id="profile-bio"></p></div>
+                <div class="profile-hero">
+                    <div class="profile-avatar-lg" id="profile-avatar">ℓ</div>
+                    <h2 class="profile-name" id="profile-name">Пользователь</h2>
+                    <p class="profile-username" id="profile-username">@username</p>
+                    <p class="profile-bio" id="profile-bio"></p>
+                    <div class="profile-track hidden" id="profile-track"></div>
+                </div>
                 <div class="profile-stats"><div class="stat"><strong id="stat-followers">0</strong><span>подписчики</span></div><div class="stat"><strong id="stat-posts">0</strong><span>Треды</span></div><div class="stat"><strong id="stat-subs">0</strong><span>подписки</span></div></div>
+                <div class="profile-channel-card hidden" id="profile-channel-card"></div>
                 <div id="profile-actions"></div>
                 <div class="profile-tabs" id="profile-tabs"><button class="profile-tab active" data-ptab="reposts">Репосты</button><button class="profile-tab" data-ptab="posts">Треды</button><button class="profile-tab" data-ptab="gifts">Подарки</button><button class="profile-tab" data-ptab="tracks">Треки</button><button class="profile-tab" data-ptab="channels">Каналы</button><button class="profile-tab" data-ptab="shop">Магазин</button><button class="profile-tab" data-ptab="liked">Понравилось</button></div>
                 <div class="profile-content" id="profile-content"></div>
