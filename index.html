@@ -1325,5 +1325,112 @@
         setTimeout(bind, 2500);
     })();
 </script>
+<!-- ===== UPDATE SCREEN ===== -->
+<div id="lt-update-sheet" class="lt-update-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="lt-update-title">
+    <div class="lt-update-backdrop" id="lt-update-backdrop"></div>
+    <div class="lt-update-card" id="lt-update-card">
+        <div class="lt-update-handle"></div>
+        <div class="lt-update-brand">
+            <span class="lt-update-logo"><img src="/logo.jpeg" alt="listatread"></span>
+            <span class="lt-update-name">listatread</span>
+        </div>
+        <h2 class="lt-update-title" id="lt-update-title">Что нового</h2>
+        <p class="lt-update-mid">Мы обновили приложение — стало быстрее, удобнее и приятнее</p>
+        <p class="lt-update-small" id="lt-update-small">Версия 0.9.u - Happy hollydays!</p>
+        <button class="lt-update-btn" id="lt-update-go" type="button">Поехали &gt;</button>
+    </div>
+</div>
+<style>
+    /* ===== UPDATE SHEET ===== */
+    .lt-update-sheet{position:fixed;inset:0;z-index:99998;display:flex;align-items:flex-end;justify-content:center}
+    .lt-update-backdrop{position:absolute;inset:0;background:rgba(10,10,20,.45);opacity:0;transition:opacity .35s cubic-bezier(.4,0,.2,1)}
+    .lt-update-card{position:relative;width:100%;max-width:520px;margin:0 8px calc(8px + env(safe-area-inset-bottom,0px));padding:10px 22px 24px;border-radius:26px;background:var(--glass-strong,#fff);border:1px solid var(--glass-border,rgba(0,0,0,.08));box-shadow:0 24px 64px rgba(0,0,0,.28);transform:translateY(110%);transition:transform .5s cubic-bezier(.22,1,.36,1);text-align:center}
+    .lt-update-sheet.is-open .lt-update-backdrop{opacity:1}
+    .lt-update-sheet.is-open .lt-update-card{transform:translateY(0)}
+    .lt-update-handle{width:44px;height:5px;border-radius:3px;background:rgba(120,120,128,.35);margin:0 auto 16px}
+    .lt-update-brand{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:18px}
+    .lt-update-logo{width:36px;height:36px;border-radius:50%;overflow:hidden;display:inline-flex;background:#000}
+    .lt-update-logo img{width:100%;height:100%;object-fit:cover}
+    .lt-update-name{font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--text,#000)}
+    .lt-update-title{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-bottom:10px;color:var(--text,#000)}
+    .lt-update-mid{font-size:15px;line-height:1.4;color:var(--text-secondary,rgba(0,0,0,.55));margin-bottom:8px}
+    .lt-update-small{font-size:12px;color:var(--text-tertiary,rgba(0,0,0,.35));margin-bottom:22px}
+    .lt-update-btn{width:100%;padding:15px 20px;border:none;border-radius:16px;background:linear-gradient(180deg,#2b95ff,#0a84ff);color:#fff;font-size:16px;font-weight:700;box-shadow:0 8px 22px rgba(10,132,255,.32),inset 0 1px 0 rgba(255,255,255,.35);transition:filter .2s,scale .18s}
+    .lt-update-btn:active{scale:.97}
+    @media (hover:hover){.lt-update-btn:hover{filter:brightness(1.07)}}
+</style>
+<script>
+    (function(){
+        'use strict';
+        /* ==== ЕДИНСТВЕННОЕ, ЧТО МЕНЯТЬ ПРИ РЕЛИЗЕ ==== */
+        var APP_UPDATE_VERSION = '1.1.0';
+        var STORAGE_KEY = 'lt_seen_update_version';
+
+        var sheet   = document.getElementById('lt-update-sheet');
+        var card    = document.getElementById('lt-update-card');
+        var btn     = document.getElementById('lt-update-go');
+        var backdrop= document.getElementById('lt-update-backdrop');
+        var small   = document.getElementById('lt-update-small');
+        if(!sheet || !btn) return;
+
+        if(small) small.textContent = 'Версия ' + APP_UPDATE_VERSION;
+
+        function seen(){
+            try { return localStorage.getItem(STORAGE_KEY) === APP_UPDATE_VERSION; }
+            catch(e){ return false; }
+        }
+        function markSeen(){
+            try { localStorage.setItem(STORAGE_KEY, APP_UPDATE_VERSION); } catch(e){}
+        }
+
+        var opened = false;
+        var wasHidden = true;
+        function maybeShow(){
+            if(opened || seen()) return;
+            opened = true;
+            sheet.classList.remove('hidden');
+            /* force reflow, чтобы transition сработал */
+            void card.offsetHeight;
+            sheet.classList.add('is-open');
+        }
+        function close(){
+            sheet.classList.remove('is-open');
+            markSeen();
+            setTimeout(function(){ sheet.classList.add('hidden'); }, 520);
+        }
+
+        btn.addEventListener('click', close);
+        backdrop.addEventListener('click', close);
+        document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && opened) close(); });
+
+        /* Показ при загрузке: когда boot-screen исчезает */
+        var boot = document.getElementById('boot-screen');
+        if(boot){
+            if(boot.classList.contains('hidden')){ setTimeout(maybeShow, 400); }
+            else {
+                var mo = new MutationObserver(function(){
+                    if(boot.classList.contains('hidden')){ mo.disconnect(); setTimeout(maybeShow, 500); }
+                });
+                mo.observe(boot, {attributes:true, attributeFilter:['class']});
+            }
+        } else {
+            setTimeout(maybeShow, 800);
+        }
+
+        /* Показ при входе в аккаунт: когда auth-screen исчезает */
+        var auth = document.getElementById('auth-screen');
+        if(auth){
+            var authWasHidden = auth.classList.contains('hidden');
+            var mo2 = new MutationObserver(function(){
+                var isHidden = auth.classList.contains('hidden');
+                if(authWasHidden && !isHidden) { /* показали auth */ }
+                if(!authWasHidden && isHidden) { /* скрыли auth = вошли */ setTimeout(maybeShow, 300); }
+                authWasHidden = isHidden;
+            });
+            mo2.observe(auth, {attributes:true, attributeFilter:['class']});
+        }
+    })();
+</script>
+<!-- ===== /UPDATE SCREEN ===== -->
 </body>
 </html>

@@ -7345,7 +7345,7 @@ html[data-theme="light"] .topbar-home .th-tree{filter:drop-shadow(0 0 4px rgba(4
 .snow-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;display:none}
 body.snow-on .snow-layer{display:block}
 .snow-back{z-index:0}    /* позади карточек */
-.snow-front{z-index:40}  /* поверх контента, ниже меню/шапки */
+.snow-front{z-index:1}  /* поверх контента, ниже меню/шапки */
 .snowflake{
     position:absolute;top:-12px;border-radius:50%;background:#fff;
     will-change:transform;animation:snowFall linear infinite;
