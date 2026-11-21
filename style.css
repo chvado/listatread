@@ -7513,6 +7513,28 @@ html,body{height:100%}
 .pv2-img{max-width:100%;max-height:100%;object-fit:contain;display:block;transform:scale(.96);transition:transform .35s var(--ease-out)}
 .pv2.open .pv2-img{transform:none}
 .feed-post:not(.feed-post-video){content-visibility:auto;contain-intrinsic-size:auto 420px}
+/* ── Плашки выбора трека/канала в настройках ── */
+.settings-pick-row{
+    width:100%;display:flex;align-items:center;gap:12px;
+    padding:12px 14px;margin-bottom:14px;
+    border:1px solid var(--border);border-radius:var(--radius-md);
+    background:var(--card);color:var(--text);text-align:left;
+    box-shadow:var(--glass-hi);
+}
+.settings-pick-row:active{scale:.985}
+@media (hover:hover){.settings-pick-row:hover{background:var(--surface-2)}}
+.settings-pick-ico{
+    width:38px;height:38px;flex-shrink:0;border-radius:11px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--surface-2);color:var(--text-secondary);
+}
+.settings-pick-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.settings-pick-title{font-size:14px;font-weight:700}
+.settings-pick-sub{
+    font-size:12px;color:var(--text-secondary);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.settings-pick-chevron{font-size:22px;line-height:1;color:var(--text-tertiary);flex-shrink:0}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

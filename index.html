@@ -469,7 +469,29 @@
                     <label class="settings-label">Никнейм · можно менять раз в неделю</label><div class="input-prefix"><span>@</span><input type="text" id="set-username" placeholder="username" maxlength="20"></div>
                     <label class="settings-label">О себе</label><textarea id="set-bio" placeholder="О себе" maxlength="150" rows="3"></textarea>
                     <label class="settings-label">Email к аккаунту</label><input type="email" id="set-email" disabled>
+                    <label class="settings-label">Трек в профиле</label>
+                    <button type="button" class="settings-pick-row" id="set-track-btn">
+    <span class="settings-pick-ico">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+    </span>
+                        <span class="settings-pick-text">
+        <span class="settings-pick-title">Выбрать трек</span>
+        <span class="settings-pick-sub" id="set-track-label">Не выбран</span>
+    </span>
+                        <span class="settings-pick-chevron">›</span>
+                    </button>
 
+                    <label class="settings-label">Канал в профиле</label>
+                    <button type="button" class="settings-pick-row" id="set-channel-btn">
+    <span class="settings-pick-ico">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg>
+    </span>
+                        <span class="settings-pick-text">
+        <span class="settings-pick-title">Выбрать канал</span>
+        <span class="settings-pick-sub" id="set-channel-label">Не выбран</span>
+    </span>
+                        <span class="settings-pick-chevron">›</span>
+                    </button>
                     <label class="settings-label">Тема</label>
                     <button type="button" class="theme-toggle" id="theme-toggle">
                         <span class="theme-toggle-icon" id="theme-toggle-icon">☀️</span>

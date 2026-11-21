@@ -5453,6 +5453,7 @@ async function loadSettings(){
             infoEl('info-verified', user.email_confirmed_at ? 'Нет методов входа' : 'Нет методов входа')
         }
         renderSettingsStatusGrid()
+        refreshProfilePickLabels()
         applyTheme(getTheme())
     } catch(e){ console.warn(e.message) }
 }
