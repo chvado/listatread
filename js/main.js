@@ -14,6 +14,17 @@ import { loadPosts, markSeen, recordWatch, recordSignal, markNotInterested, inva
 import { checkAdminStatus, ADMIN_STATE, showBlockedScreen, renderAdminReports, autoCloseOldReports } from './admin.js'
 import { openDirectTab, buildDirectScreen, openDirectChat } from './direct.js'
 import { initPush } from './push.js'
+/* getUser() → локальная сессия (без запроса к серверу). Ускоряет ВСЁ приложение. */
+{
+    const _origGetUser = supabase.auth.getUser.bind(supabase.auth)
+    supabase.auth.getUser = async () => {
+        try {
+            const { data:{ session } } = await supabase.auth.getSession()
+            if(session?.user) return { data:{ user: session.user }, error: null }
+        } catch {}
+        return _origGetUser()
+    }
+}
 /* Защита от падения на отсутствующих элементах */
 window.addEventListener('error', (e) => {
     if (e.message && e.message.includes('is not an object')){
@@ -375,7 +386,7 @@ async function prefetchHomeFeed(userId){
         //    Остальные подтянутся по мере скролла через appendRecommendedChunk.
         //    ЭТО ЖЕ решает баг с нулями у первых видео: .in() с сотней ID
         //    молча падает по длине URL — здесь ID всего 30, всё проходит.
-        const INITIAL_COUNT = 30
+        const INITIAL_COUNT = 8
         const initialPosts = posts.slice(0, INITIAL_COUNT)
         const initialIds   = initialPosts.map(p => p.id)
 
@@ -627,7 +638,18 @@ function renderMedia(url, cls = 'feed-post-image', meta = {}){
     }
     return `<img class="${cls}" src="${url}" alt="" loading="lazy" decoding="async">`
 }
-
+async function fetchPostExtras(ids, userId){
+    const [l, r, counts] = await Promise.all([
+        supabase.from('likes').select('post_id').eq('user_id', userId).in('post_id', ids),
+        supabase.from('reposts').select('post_id').eq('user_id', userId).in('post_id', ids),
+        fetchCounts(ids)
+    ])
+    return {
+        likedSet: new Set((l.data || []).map(x => x.post_id)),
+        repostedSet: new Set((r.data || []).map(x => x.post_id)),
+        counts
+    }
+}
 async function fetchCounts(postIds){
     const out = {}
     postIds.forEach(id => out[id] = { likes:0, comments:0, reposts:0, commenters:[] })
@@ -1017,6 +1039,7 @@ function mountFeedBgFor(scr, preferredId){
 
 const mainApp = $('main-app')
 function showScreen(name){
+    document.body.classList.remove('snow-on')
     Object.values(screens).forEach(s => s?.classList.add('hidden'))
     mainApp.classList.add('hidden')
 
@@ -1056,16 +1079,13 @@ function showScreen(name){
 
 let livechatRefreshTimer = null
 
-function showScreen(name){
-    document.body.classList.remove('snow-on')   // ← НОВОЕ
-    Object.values(screens).forEach(s => s?.classList.add('hidden'))
+function switchScreen(name){
     document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'))
     const t = document.getElementById('screen-' + name)
     if(t) t.classList.add('active')
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === name))
     state.screen = name
-    state.screen = name
-    document.body.classList.toggle('snow-on', name === 'home')   // ← НОВОЕ
+    document.body.classList.toggle('snow-on', name === 'home')
     window.scrollTo(0, 0)
 
     if(name === 'inbox') renderEventsScreen()
@@ -1087,6 +1107,11 @@ function showScreen(name){
     // ⚡ HOME — мгновенный рендер из кэша + prefetch в idle
     // ═══════════════════════════════════════════════════════════
     if(name === 'home'){
+        const tb = document.querySelector('#screen-home .topbar-home')
+        if(tb){
+            tb.classList.remove('tb-intro'); void tb.offsetWidth
+            requestAnimationFrame(() => { tb.classList.add('tb-intro'); setTimeout(() => tb.classList.remove('tb-intro'), 1200) })
+        }
         renderLiveNow()
         renderStories()
         renderHomeFeed(false)
@@ -2863,7 +2888,7 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
 
     // видео: текст → кнопки (без пластинки)
     return `<article class="feed-post fp-new feed-post-video" data-pid="${post.id}" data-channel="${post.channel_id || ''}" data-video-src="${post.media_url}">
-    <video class="post-bg-video" src="${post.media_url}" autoplay muted loop playsinline preload="metadata"></video>
+<video class="post-bg-video" src="${post.media_url}#t=0.1" muted loop playsinline preload="metadata"></video>
     <div class="post-bg-overlay"></div>
     <div class="feed-post-video-hint" style="white-space:nowrap">нажмите чтобы посмотреть</div>
     ${header}
@@ -3792,34 +3817,46 @@ async function openCommentsStickerPicker(){
 /* ============================================================
    PHOTO VIEWER — клик по фото раскрывает его
 ============================================================ */
-function openPhotoViewer(src, postId){
+function openPhotoViewer(src, postId, opts = {}){
     if(!src) return
     let el = document.getElementById('photo-viewer')
     if(!el){
         el = document.createElement('div')
         el.id = 'photo-viewer'
-        el.className = 'photo-viewer'
+        el.className = 'pv2'
         el.innerHTML = `
-          <button class="pv-close" aria-label="Закрыть">
-            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-          <img class="pv-img" alt="">
-        `
+          <div class="pv2-top">
+            <button class="pv2-back" aria-label="Назад">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
+            <div class="pv2-brand">
+              <span class="pv2-logo"><img src="/logo.jpeg" alt=""></span>
+              <div class="pv2-brand-text">
+                <div class="pv2-name">listatread</div>
+                <div class="pv2-author" id="pv2-author"></div>
+              </div>
+            </div>
+          </div>
+          <div class="pv2-stage"><img class="pv2-img" alt=""></div>`
         document.body.appendChild(el)
-        el.addEventListener('click', e => {
-            if(e.target === el || e.target.closest('.pv-close')) closePhotoViewer()
+        el.querySelector('.pv2-back').addEventListener('click', closePhotoViewer)
+        el.querySelector('.pv2-stage').addEventListener('click', e => {
+            if(e.target.classList.contains('pv2-stage')) closePhotoViewer()
         })
         document.addEventListener('keydown', e => { if(e.key === 'Escape') closePhotoViewer() })
     }
-    el.querySelector('.pv-img').src = src
-    el.classList.remove('hidden')
-    requestAnimationFrame(() => el.classList.add('show'))
+    let who = opts.label || ''
+    if(!who && postId){
+        const un = document.querySelector(`.feed-more[data-pid="${postId}"]`)?.dataset.author
+        if(un) who = '@' + un
+    }
+    el.querySelector('#pv2-author').textContent = who
+    el.querySelector('.pv2-img').src = src
+    void el.offsetWidth
+    el.classList.add('open')
 }
 function closePhotoViewer(){
-    const el = document.getElementById('photo-viewer')
-    if(!el) return
-    el.classList.remove('show')
-    setTimeout(() => el.classList.add('hidden'), 260)
+    document.getElementById('photo-viewer')?.classList.remove('open')
 }
 /* ============================================================
    EVENTS
@@ -4466,7 +4503,7 @@ async function loadProfile(userId = null){
     loader.classList.remove('hidden'); body.classList.add('hidden')
     try {
         const { data:{ user } } = await supabase.auth.getUser(); if(!user || isStale()) return
-        await refreshFollowCache()
+        refreshFollowCache()
         if(isStale()) return
         state.currentUser = user
         const targetId = userId || user.id
@@ -4474,57 +4511,49 @@ async function loadProfile(userId = null){
         state.viewingOwnProfile = (targetId === user.id)
         updateProfileTopbar()
 
-        const { data:profile } = await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle()
+        const isOwn = (targetId === user.id)
+        const [{ data:profile }, blockRes, postsRes, subsRes, followersRes] = await Promise.all([
+            supabase.from('profiles').select('*').eq('id', targetId).maybeSingle(),
+            isOwn ? Promise.resolve({ data:null }) : supabase.from('blocks').select('id').eq('blocker_id', user.id).eq('blocked_id', targetId).maybeSingle(),
+            supabase.from('posts').select('*', { count:'exact', head:true }).eq('author_id', targetId),
+            supabase.from('follows').select('*', { count:'exact', head:true }).eq('follower_id', targetId),
+            supabase.from('follows').select('*', { count:'exact', head:true }).eq('following_id', targetId)
+        ])
         if(isStale()) return
-        let iBlocked = false
-        if(targetId !== user.id){
-            const { data:blockRow } = await supabase.from('blocks').select('id').eq('blocker_id', user.id).eq('blocked_id', targetId).maybeSingle()
-            iBlocked = !!blockRow
-        }
-        state.currentProfilePrivacy = (targetId === user.id) ? {} : (profile?.privacy || {})
+        const iBlocked = !!blockRes.data
+        state.currentProfilePrivacy = isOwn ? {} : (profile?.privacy || {})
 
         if(profile){
             state.currentProfile = profile
-            // ── ФИКС: fallback на user_metadata / email, если username пуст в profiles
             const metaUsername = user?.user_metadata?.username || null
             const emailNick = user?.email ? user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_.]/g, '') : null
             const resolvedUsername = (profile.username && profile.username.trim())
-                || (targetId === user.id ? (metaUsername || emailNick) : null)
-                || 'user'
-            // Если у себя username пуст — пробуем записать его в БД
-            if(targetId === user.id && !profile.username && resolvedUsername !== 'user'){
-                try { await supabase.from('profiles').update({ username: resolvedUsername }).eq('id', user.id) } catch {}
+                || (isOwn ? (metaUsername || emailNick) : null) || 'user'
+            if(isOwn && !profile.username && resolvedUsername !== 'user'){
+                supabase.from('profiles').update({ username: resolvedUsername }).eq('id', user.id).then(()=>{})
                 profile.username = resolvedUsername
             }
-            const uname = resolvedUsername
             const fname = profile.full_name || 'Пользователь'
             $('profile-name').innerHTML = escapeHtml(fname) + (profile.is_admin ? adminBadge(true, 'big') : '')
-            $('profile-username').textContent = '@' + uname
+            $('profile-username').textContent = '@' + resolvedUsername
             $('profile-bio').textContent = profile.bio || 'Описание пока не добавлено'
             const av = $('profile-avatar')
             if(profile.avatar_url) av.innerHTML = `<img src="${profile.avatar_url}" alt="">`
             else av.textContent = fname.charAt(0).toUpperCase()
             const topAva = $('profile-topbar-ava')
             if(topAva) topAva.innerHTML = profile.avatar_url ? `<img src="${profile.avatar_url}" alt="">` : escapeHtml(fname.charAt(0).toUpperCase())
-            if(iBlocked){ $('stat-posts').textContent = '0'; $('stat-subs').textContent = '0'; $('stat-followers').textContent = '0' }
-            else {
-                const [postsRes, subsRes, followersRes] = await Promise.all([
-                    supabase.from('posts').select('*', { count:'exact', head:true }).eq('author_id', targetId),
-                    supabase.from('follows').select('*', { count:'exact', head:true }).eq('follower_id', targetId),
-                    supabase.from('follows').select('*', { count:'exact', head:true }).eq('following_id', targetId)
-                ])
-                if(isStale()) return
-                $('stat-posts').textContent = postsRes.count || 0
-                $('stat-subs').textContent = subsRes.count || 0
-                $('stat-followers').textContent = followersRes.count || 0
-            }
+            $('stat-posts').textContent = iBlocked ? '0' : (postsRes.count || 0)
+            $('stat-subs').textContent = iBlocked ? '0' : (subsRes.count || 0)
+            $('stat-followers').textContent = iBlocked ? '0' : (followersRes.count || 0)
         }
-        await renderProfileActions(targetId, user.id, iBlocked)
-        if(isStale()) return
+
         renderProfileExtras(iBlocked ? null : profile)
+        const actionsP = renderProfileActions(targetId, user.id, iBlocked)
         if(iBlocked) renderBlockedContent()
-        else if(state.profileTab === 'posts') await renderMyPosts(targetId)
+        else if(state.profileTab === 'posts') renderMyPosts(targetId)
         else renderProfileTab()
+        await actionsP
+        if(isStale()) return
 
         // === Применяем сохранённую тему профиля (после рендера DOM) ===
         setTimeout(() => {
@@ -4764,13 +4793,8 @@ async function renderMyLiked(userId){
     const { data } = await supabase.from('likes').select(`post_id, posts:post_id ( id, content, media_url, media_title, created_at, author_id, channel_id, show_in_profile, profiles:author_id ( username, full_name, avatar_url, status, is_admin ), channels:channel_id ( id, name, avatar_url ) )`).eq('user_id', userId).order('created_at', { ascending:false }).limit(50)
     if(!data || !data.length){ box.innerHTML = '<p class="empty">Ничего не понравилось</p>'; return }
     const posts = data.map(l => l.posts).filter(p => p && p.id)
-    const counts = await fetchCounts(posts.map(p => p.id))
-    const [{ data:likes }, { data:reps }] = await Promise.all([
-        supabase.from('likes').select('post_id').eq('user_id', user.id).in('post_id', posts.map(p => p.id)),
-        supabase.from('reposts').select('post_id').eq('user_id', user.id).in('post_id', posts.map(p => p.id))
-    ])
-    const likedSet = new Set((likes||[]).map(l => l.post_id))
-    const repostedSet = new Set((reps||[]).map(r => r.post_id))
+    const { likedSet, repostedSet, counts } = await fetchPostExtras(posts.map(p => p.id), user.id)
+
     box.innerHTML = posts.map(p => renderProfilePost(p, user.id, likedSet, repostedSet, counts)).join('')
     attachFeedActions(box, user.id)
     attachStickerHandlers(box)
@@ -4783,13 +4807,7 @@ async function renderMyReposts(userId){
     const { data } = await supabase.from('reposts').select(`id, posts:post_id ( id, content, media_url, media_title, created_at, author_id, channel_id, show_in_profile, profiles:author_id ( username, full_name, avatar_url, status, is_admin ), channels:channel_id ( id, name, avatar_url ) )`).eq('user_id', userId).order('created_at', { ascending:false }).limit(50)
     if(!data || !data.length){ box.innerHTML = '<p class="empty">Репостов пока нет</p>'; return }
     const posts = data.map(r => r.posts).filter(p => p && p.id)
-    const counts = await fetchCounts(posts.map(p => p.id))
-    const [{ data:likes }, { data:reps }] = await Promise.all([
-        supabase.from('likes').select('post_id').eq('user_id', user.id).in('post_id', posts.map(p => p.id)),
-        supabase.from('reposts').select('post_id').eq('user_id', user.id).in('post_id', posts.map(p => p.id))
-    ])
-    const likedSet = new Set((likes||[]).map(l => l.post_id))
-    const repostedSet = new Set((reps||[]).map(r => r.post_id))
+    const { likedSet, repostedSet, counts } = await fetchPostExtras(posts.map(p => p.id), user.id)
     box.innerHTML = posts.map(p => renderProfilePost(p, user.id, likedSet, repostedSet, counts)).join('')
     attachFeedActions(box, user.id)
     attachStickerHandlers(box)
@@ -4819,16 +4837,10 @@ async function renderMyPosts(userId = null){
         const targetId = userId || user.id
         const { data, error } = await supabase.from('posts')
             .select('id, content, created_at, author_id, media_url, media_title, channel_id, show_in_profile, poll, profiles ( username, full_name, avatar_url, status, region, is_admin ), channels:channel_id ( id, name, avatar_url )')
-            .eq('author_id', targetId).order('created_at', { ascending:false }).limit(60)
+            .eq('author_id', targetId).order('created_at', { ascending:false }).limit(40)
         if(error){ box.innerHTML = `<p class="empty">Ошибка: ${error.message}</p>`; return }
         if(!data.length){ box.innerHTML = '<p class="empty">Пока нет постов</p>'; return }
-        const counts = await fetchCounts(data.map(p => p.id))
-        const [{ data:likes }, { data:reps }] = await Promise.all([
-            supabase.from('likes').select('post_id').eq('user_id', user.id).in('post_id', data.map(p => p.id)),
-            supabase.from('reposts').select('post_id').eq('user_id', user.id).in('post_id', data.map(p => p.id))
-        ])
-        const likedSet = new Set((likes||[]).map(l => l.post_id))
-        const repostedSet = new Set((reps||[]).map(r => r.post_id))
+        const { likedSet, repostedSet, counts } = await fetchPostExtras(data.map(p => p.id), user.id)
         box.innerHTML = data.map(p => renderProfilePost(p, user.id, likedSet, repostedSet, counts)).join('')
         attachFeedActions(box, user.id)
         attachStickerHandlers(box)
@@ -6255,10 +6267,10 @@ async function ccNext(){
    CHANNEL PAGE
 ============================================================ */
 async function openChannel(channelId){
-    try {
-        const { data } = await supabase.from('channels').select('join_code').eq('id', channelId).maybeSingle();
-        Router.push(urlFor('channel', data?.join_code || channelId));
-    } catch { Router.push(urlFor('channel', channelId)); }
+    Router.push(urlFor('channel', channelId))
+    supabase.from('channels').select('join_code').eq('id', channelId).maybeSingle()
+        .then(({ data }) => { if(data?.join_code) Router.replace(urlFor('channel', data.join_code)) })
+        .catch(() => {})
 
     document.querySelectorAll('.post-bg-video').forEach(v => { try { v.pause() } catch {} })
     const _mp = document.getElementById('mini-player')
@@ -6270,9 +6282,11 @@ async function openChannel(channelId){
     screen.innerHTML = loadingBlock()
 
     try {
-        const { data:{ user } } = await supabase.auth.getUser()
-        await refreshFollowCache()
-        const { data:ch } = await supabase.from('channels').select('*').eq('id', channelId).maybeSingle()
+        const [{ data:{ user } }, { data:ch }] = await Promise.all([
+            supabase.auth.getUser(),
+            supabase.from('channels').select('*').eq('id', channelId).maybeSingle(),
+            refreshFollowCache()
+        ])
         state.chatTitle = ch?.name || 'Канал'
         if(!ch){ screen.innerHTML = '<p class="empty">Канал не найден</p>'; return }
 
@@ -6280,17 +6294,16 @@ async function openChannel(channelId){
         const currentType = ch.channel_type === 'bycode' ? 'private' : (ch.channel_type || 'public')
         const isCommunity = currentType === 'community'
 
-        const { data:subRow } = await supabase.from('subscriptions').select('id').eq('follower_id', user.id).eq('channel_id', channelId).maybeSingle()
-        const isSub = !!subRow
-        const canPost = isOwner || (isSub && ch.can_members_post)
-        const { data:activeLive } = await supabase.from('lives').select('id').eq('channel_id', channelId).eq('is_active', true).order('created_at', { ascending:false }).limit(1).maybeSingle()
-        const [subsRes, postsRes, ownerProfRes] = await Promise.all([
+        const [subRowRes, liveRes, subsRes, postsRes, ownerProfRes] = await Promise.all([
+            supabase.from('subscriptions').select('id').eq('follower_id', user.id).eq('channel_id', channelId).maybeSingle(),
+            supabase.from('lives').select('id').eq('channel_id', channelId).eq('is_active', true).order('created_at', { ascending:false }).limit(1).maybeSingle(),
             supabase.from('subscriptions').select('*', { count:'exact', head:true }).eq('channel_id', channelId),
             supabase.from('posts').select('*', { count:'exact', head:true }).eq('channel_id', channelId),
-            ch.owner_id
-                ? supabase.from('profiles').select('is_admin').eq('id', ch.owner_id).maybeSingle()
-                : Promise.resolve({ data: null })
+            ch.owner_id ? supabase.from('profiles').select('is_admin').eq('id', ch.owner_id).maybeSingle() : Promise.resolve({ data:null })
         ])
+        const isSub = !!subRowRes.data
+        const activeLive = liveRes.data
+        const canPost = isOwner || (isSub && ch.can_members_post)
         const subsCount  = subsRes.count  || 0
         const postsCount = postsRes.count || 0
 
@@ -6360,7 +6373,8 @@ async function openChannel(channelId){
                 <div class="ch-full-avatar">
                     ${avContent}
                     <div class="ch-full-avatar-overlay">
-                        <div class="ch-full-avatar-top">
+                        <div class="ch-blur-bg"></div>
+    <div class="ch-full-avatar-top">
 <div class="ch-full-avatar-name">
     ${escapeHtml(ch.name || 'Канал')}
     ${activeLive ? `<span class="ch-verify-badge live">● LIVE</span>` : ''}
@@ -6405,6 +6419,10 @@ async function openChannel(channelId){
         $('ch-back').addEventListener('click', () => {
             screen.classList.add('hidden')
             switchScreen('channels')
+        })
+        screen.querySelector('.ch-full-avatar')?.addEventListener('click', e => {
+            if(e.target.closest('.ch-actions-bar')) return
+            if(ch.avatar_url) openPhotoViewer(ch.avatar_url, null, { label: ch.name || 'Канал' })
         })
         $('ch-filter-btn')?.addEventListener('click', openChannelFilterMenu)
 
@@ -7976,6 +7994,13 @@ function initFeedVideoObserver(){
     }
     // observe идемпотентен — можно звать много раз на тех же элементах
     document.querySelectorAll('.feed-post').forEach(c => feedVideoObserver.observe(c))
+    if(!window.__nearObs){
+        window.__nearObs = new IntersectionObserver(es => es.forEach(en => {
+            const v = en.target.querySelector('.post-bg-video')
+            if(v && en.isIntersecting && v.preload !== 'auto') v.preload = 'auto'
+        }), { rootMargin: '120% 0px' })
+    }
+    document.querySelectorAll('.feed-post-video').forEach(c => window.__nearObs.observe(c))
 }
 
 function initTrackObserver(){
@@ -10201,6 +10226,7 @@ document.getElementById('home-bell-btn')?.addEventListener('click', e => {
     let lastY = window.scrollY, ticking = false
     const SHOW_DELTA = 1, HIDE_DELTA = 10, HIDE_AFTER = 30
     function update(){
+        if(performance.now() < 3000){ lastY = window.scrollY; ticking = false; return }
         const curY = window.scrollY, diff = curY - lastY
         const activeScreen = document.querySelector('.app-screen.active')
         if(!activeScreen){ lastY = curY; ticking = false; return }
@@ -12169,6 +12195,18 @@ initSnow()
    BOOT HEARTS — 4 диагональных ряда, каждый ряд стартует целиком
    Старт: правый-нижний угол, финиш: левый-верхний
 ═══════════════════════════════════════════════════════════ */
+/* стабилизация вьюпорта iOS при старте */
+;(function stabilizeViewport(){
+    const fix = () => {
+        document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px')
+        if(performance.now() < 4000) window.scrollTo(0, 0)
+    }
+    fix()
+    ;[100, 400, 900, 1600, 2800].forEach(t => setTimeout(fix, t))
+    window.addEventListener('resize', fix)
+    window.addEventListener('pageshow', fix)
+    document.addEventListener('lt:feed-rendered', fix)
+})()
 function initBootHearts(){
     const layer = document.getElementById('boot-hearts-layer')
     if (!layer || layer.dataset.inited === '1') return

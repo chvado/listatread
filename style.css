@@ -7314,7 +7314,7 @@ body.ts-recording .ts-track-strip{
     from{opacity:0;transform:translateY(-10px) scale(.8)}
     to{opacity:1;transform:none}
 }
-.app-screen.active .topbar-home{animation:topbarDrop .7s cubic-bezier(.22,1,.36,1) backwards}
+
 .app-screen.active .topbar-home .topbar-btn,
 .app-screen.active .topbar-home .th-logo,
 .app-screen.active .topbar-home .th-name{animation:thItemIn .55s var(--spring) backwards}
@@ -7337,7 +7337,7 @@ body.ts-recording .ts-track-strip{
     filter:drop-shadow(0 0 6px rgba(48,209,88,.5));
 }
 .app-screen.active .topbar-home .th-tree{
-    animation:thItemIn .55s var(--spring) .35s backwards, treeSway 3.6s ease-in-out .9s infinite;
+    animation: treeSway 3.6s ease-in-out .9s infinite;
 }
 html[data-theme="light"] .topbar-home .th-tree{filter:drop-shadow(0 0 4px rgba(48,209,88,.4))}
 
@@ -7464,6 +7464,55 @@ html[data-theme="light"] .snowflake{box-shadow:0 0 0 1px rgba(0,0,0,.08),0 1px 4
 /* кнопка «назад» в шапке канала */
 .ch-back-btn{color:var(--text)}
 .ch-back-btn svg{display:block}
+/* ===== iOS: шапка без transform-центрирования ===== */
+.topbar{left:0;right:0;margin:0 auto;transform:none;top:0}
+.topbar.topbar-hidden{transform:translateY(-110%)}
+#screen-direct .topbar.topbar-hidden{transform:none!important}
+
+@keyframes topbarDrop{
+    from{transform:translateY(-100%);opacity:0}
+    to{transform:none;opacity:1}
+}
+/* анимация запускается из JS (класс tb-intro), когда экран уже стабилен */
+.app-screen.active .topbar-home.tb-intro{animation:topbarDrop .6s cubic-bezier(.22,1,.36,1) both}
+.app-screen.active .topbar-home.tb-intro .topbar-btn,
+.app-screen.active .topbar-home.tb-intro .th-logo,
+.app-screen.active .topbar-home.tb-intro .th-name{animation:thItemIn .5s var(--spring) backwards}
+.app-screen.active .topbar-home.tb-intro .th-logo{animation-delay:.12s}
+.app-screen.active .topbar-home.tb-intro .th-name{animation-delay:.2s}
+.app-screen.active .topbar-home .th-tree{animation:treeSway 3.6s ease-in-out infinite}
+
+/* нижнее меню прижато к низу всегда */
+html,body{height:100%}
+.main-app{min-height:100vh;min-height:var(--app-h,100dvh)}
+@media (max-width:768px){
+    .bottom-nav{bottom:0!important;padding-bottom:var(--safe-bottom)}
+}
+/* размытие аватарки под названием/счётчиками/кнопками */
+.ch-blur-bg{
+    position:absolute;left:0;right:0;bottom:0;height:62%;z-index:0;pointer-events:none;
+    -webkit-backdrop-filter:blur(26px) saturate(1.4);backdrop-filter:blur(26px) saturate(1.4);
+    background:linear-gradient(180deg,transparent,rgba(0,0,0,.3));
+    -webkit-mask-image:linear-gradient(0deg,#000 40%,transparent 100%);
+    mask-image:linear-gradient(0deg,#000 40%,transparent 100%);
+}
+.ch-full-avatar-overlay>*:not(.ch-blur-bg){position:relative;z-index:1}
+.ch-full-avatar{cursor:zoom-in}
+.pv2{position:fixed;inset:0;z-index:8950;background:#000;opacity:0;pointer-events:none;transition:opacity .28s var(--ease);display:flex;flex-direction:column}
+.pv2.open{opacity:1;pointer-events:auto}
+.pv2-top{display:flex;align-items:center;gap:6px;padding:calc(var(--safe-top) + 10px) 12px 10px;position:absolute;top:0;left:0;right:0;z-index:2}
+.pv2-back{width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.pv2-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.pv2-logo{width:34px;height:34px;border-radius:50%;overflow:hidden;background:#fff;flex-shrink:0}
+.pv2-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.pv2-brand-text{min-width:0}
+.pv2-name{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.1}
+.pv2-author{font-size:12px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+.pv2-author:empty{display:none}
+.pv2-stage{flex:1;display:flex;align-items:center;justify-content:center;padding:70px 0 calc(20px + var(--safe-bottom))}
+.pv2-img{max-width:100%;max-height:100%;object-fit:contain;display:block;transform:scale(.96);transition:transform .35s var(--ease-out)}
+.pv2.open .pv2-img{transform:none}
+.feed-post:not(.feed-post-video){content-visibility:auto;contain-intrinsic-size:auto 420px}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
