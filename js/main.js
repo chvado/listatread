@@ -4487,8 +4487,9 @@ window.addEventListener('scroll', () => {
     if(state.screen !== 'profile') return
     const tb = document.querySelector('#screen-profile .topbar')
     const av = $('profile-avatar')
-    if(!tb || !av) return
-    tb.classList.toggle('scrolled', av.getBoundingClientRect().bottom < tb.offsetHeight)
+    if(!tb) return
+    if(!av || !av.offsetParent){ tb.classList.remove('scrolled'); return }
+    tb.classList.toggle('scrolled', window.scrollY > 40 && av.getBoundingClientRect().bottom < tb.offsetHeight)
 }, { passive:true })
 
 /* ============================================================
@@ -12196,18 +12197,7 @@ initSnow()
    BOOT HEARTS — 4 диагональных ряда, каждый ряд стартует целиком
    Старт: правый-нижний угол, финиш: левый-верхний
 ═══════════════════════════════════════════════════════════ */
-/* стабилизация вьюпорта iOS при старте */
-;(function stabilizeViewport(){
-    const fix = () => {
-        document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px')
-        if(performance.now() < 4000) window.scrollTo(0, 0)
-    }
-    fix()
-    ;[100, 400, 900, 1600, 2800].forEach(t => setTimeout(fix, t))
-    window.addEventListener('resize', fix)
-    window.addEventListener('pageshow', fix)
-    document.addEventListener('lt:feed-rendered', fix)
-})()
+
 function initBootHearts(){
     const layer = document.getElementById('boot-hearts-layer')
     if (!layer || layer.dataset.inited === '1') return

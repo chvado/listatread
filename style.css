@@ -7483,8 +7483,7 @@ html[data-theme="light"] .snowflake{box-shadow:0 0 0 1px rgba(0,0,0,.08),0 1px 4
 .app-screen.active .topbar-home .th-tree{animation:treeSway 3.6s ease-in-out infinite}
 
 /* нижнее меню прижато к низу всегда */
-html,body{height:100%}
-.main-app{min-height:100vh;min-height:var(--app-h,100dvh)}
+.main-app{min-height:100dvh}
 @media (max-width:768px){
     .bottom-nav{bottom:0!important;padding-bottom:var(--safe-bottom)}
 }
@@ -7535,6 +7534,43 @@ html,body{height:100%}
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .settings-pick-chevron{font-size:22px;line-height:1;color:var(--text-tertiary);flex-shrink:0}
+/* заголовок строго по центру экрана */
+#screen-profile .topbar .pt-title-wrap,
+.ch-page-header .pt-title-wrap{
+    position:absolute;left:50%;top:calc(var(--safe-top) + 14px);
+    transform:translateX(-50%);flex:none;width:auto;min-width:80px;pointer-events:none;
+}
+
+/* шапка профиля: сплошная, закрывает чёлку и статус-бар */
+#screen-profile .topbar{
+    background:var(--bg);
+    box-shadow:0 -80px 0 var(--bg);
+    -webkit-backdrop-filter:none;backdrop-filter:none;
+}
+.boot-screen{background:#000!important}
+.boot-hearts-layer{display:none!important}
+.boot-brand{text-shadow:none}
+.boot-logo{box-shadow:none;animation:bootPulse 1.6s ease-in-out infinite}
+@keyframes bootPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.story-ring,.feed-post-avatar,.channel-live-ava,.direct-item-avatar{contain:none!important}
+.story-status-badge{right:-5px;bottom:-5px;font-size:16px;z-index:5}
+.share-friends-row,.share-socials-row{
+    display:flex!important;flex-wrap:nowrap;overflow-x:auto;gap:14px;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;scroll-snap-type:x proximity;
+}
+.share-friends-row::-webkit-scrollbar,.share-socials-row::-webkit-scrollbar{display:none}
+.share-friend{flex:0 0 auto;width:72px;margin:0;scroll-snap-align:start}
+.share-friend-ava{width:68px;height:68px;border:none!important;font-size:26px}
+.share-friend.selected .share-friend-ava{box-shadow:0 0 0 3px var(--blue);scale:1.04}
+.share-friend-name{max-width:72px}
+.share-socials-row{padding-bottom:40px}
+.share-social-circle{flex:0 0 auto;width:60px;height:60px;max-width:none;margin:0}
+.share-send-direct{background:var(--red-pink);box-shadow:0 8px 22px rgba(255,55,95,.35)}
+.bottom-nav{transition:background-color .3s var(--ease),color .3s var(--ease),border-color .3s var(--ease)}
+body.vfm-active .bottom-nav{background:#000;border-top-color:rgba(255,255,255,.08)}
+body.vfm-active .bottom-nav .nav-btn{color:rgba(255,255,255,.55)}
+body.vfm-active .bottom-nav .nav-btn.active{color:#fff}
+body.vfm-active .bottom-nav .nav-btn::after{background:#fff}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
