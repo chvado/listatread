@@ -5003,24 +5003,60 @@ async function saveProfilePick(field, value){
 }
 
 async function refreshProfilePickLabels(){
+    const trackBtn = $('set-track-btn'), chBtn = $('set-channel-btn')
     const tl = $('set-track-label'), cl = $('set-channel-label')
-    if(!tl && !cl) return
+    if(!tl && !cl && !trackBtn && !chBtn) return
+
+    const SVG_TRACK = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>'
+    const SVG_CHAN  = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none"/></svg>'
+
+    /* Универсальная отрисовка иконки плашки: аватарка канала, если есть, иначе SVG */
+    function paintPickIcon(btnId, avatarUrl, channelName, svgFallback){
+        const btn = $(btnId); if(!btn) return
+        const ico = btn.querySelector('.settings-pick-ico'); if(!ico) return
+        if(avatarUrl){
+            ico.innerHTML = `<img src="${avatarUrl}" alt="">`
+            ico.classList.add('has-avatar')
+            ico.title = channelName || ''
+        } else {
+            ico.innerHTML = svgFallback
+            ico.classList.remove('has-avatar')
+            ico.title = ''
+        }
+    }
+
     const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
-    const { data:p } = await supabase.from('profiles').select('profile_track_id, profile_channel_id').eq('id', user.id).maybeSingle()
-    if(tl){
-        tl.textContent = 'Не выбран'
-        if(p?.profile_track_id){
-            const { data:post } = await supabase.from('posts').select('media_title, content').eq('id', p.profile_track_id).maybeSingle()
-            if(post) tl.textContent = post.media_title || (post.content || '').slice(0, 40) || 'оригинальный звук'
+    const { data:p } = await supabase.from('profiles')
+        .select('profile_track_id, profile_channel_id').eq('id', user.id).maybeSingle()
+
+    /* ── ТРЕК ── */
+    if(tl) tl.textContent = 'Не выбран'
+    let trackAvatar = null, trackChannelName = ''
+    if(p?.profile_track_id){
+        const { data:post } = await supabase.from('posts')
+            .select('media_title, content, channels:channel_id ( name, avatar_url )')
+            .eq('id', p.profile_track_id).maybeSingle()
+        if(post){
+            if(tl) tl.textContent = post.media_title || (post.content || '').slice(0, 40) || 'оригинальный звук'
+            trackAvatar = post.channels?.avatar_url || null
+            trackChannelName = post.channels?.name || ''
         }
     }
-    if(cl){
-        cl.textContent = 'Не выбран'
-        if(p?.profile_channel_id){
-            const { data:ch } = await supabase.from('channels').select('name').eq('id', p.profile_channel_id).maybeSingle()
-            if(ch) cl.textContent = ch.name || 'Канал'
+    paintPickIcon('set-track-btn', trackAvatar, trackChannelName, SVG_TRACK)
+
+    /* ── КАНАЛ ── */
+    if(cl) cl.textContent = 'Не выбран'
+    let chAvatar = null, chName = ''
+    if(p?.profile_channel_id){
+        const { data:ch } = await supabase.from('channels')
+            .select('name, avatar_url').eq('id', p.profile_channel_id).maybeSingle()
+        if(ch){
+            if(cl) cl.textContent = ch.name || 'Канал'
+            chAvatar = ch.avatar_url || null
+            chName = ch.name || ''
         }
     }
+    paintPickIcon('set-channel-btn', chAvatar, chName, SVG_CHAN)
 }
 
 /* ── выбор трека: сначала треки моих каналов, ниже случайные, сверху поиск ── */

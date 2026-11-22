@@ -7571,6 +7571,17 @@ body.vfm-active .bottom-nav{background:#000;border-top-color:rgba(255,255,255,.0
 body.vfm-active .bottom-nav .nav-btn{color:rgba(255,255,255,.55)}
 body.vfm-active .bottom-nav .nav-btn.active{color:#fff}
 body.vfm-active .bottom-nav .nav-btn::after{background:#fff}
+.settings-pick-ico.has-avatar{
+    background:transparent;
+    overflow:hidden;
+    padding:0;
+}
+.settings-pick-ico.has-avatar img{
+    width:100%;height:100%;
+    object-fit:cover;
+    border-radius:inherit;
+    display:block;
+}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */
