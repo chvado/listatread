@@ -24,6 +24,22 @@
 
     <!-- ═══════════ VIEWPORT / MOBILE ═══════════ -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+    <script>
+        (function(){
+            var sa = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+            if(!sa) return;
+            var d = document.documentElement;
+            d.classList.add('standalone');
+            function fix(){
+                var land = innerWidth > innerHeight;
+                var h = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+                d.style.setProperty('--app-h', h + 'px');
+            }
+            fix();
+            addEventListener('resize', fix);
+            addEventListener('orientationchange', function(){ setTimeout(fix, 150); });
+        })();
+    </script>
     <meta name="theme-color" content="#ffffff">
     <meta name="color-scheme" content="light dark">
     <meta name="format-detection" content="telephone=no">

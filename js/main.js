@@ -454,8 +454,6 @@ function setStatusBar(color, dark){
     let m = document.querySelector('meta[name="theme-color"]')
     if(!m){ m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m) }
     m.setAttribute('content', color)
-    const s = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
-    if(s) s.setAttribute('content', dark ? 'black-translucent' : 'default')
 }
 function applyTheme(theme){
     const t = theme === 'dark' ? 'dark' : 'light'
@@ -489,6 +487,8 @@ function initTheme(){ applyTheme(getTheme()) }
 ═══════════════════════════════════════════════════════════ */
 document.addEventListener('click', e => {
     // 1) Плюсик «подписаться» (имеет приоритет)
+    const cha = e.target.closest('.feed-ch-ava[data-chopen]')
+    if(cha){ e.stopPropagation(); e.preventDefault(); openChannel(cha.dataset.chopen); return }
     const plus = e.target.closest('.feed-avatar-plus[data-plus-uid]')
     if(plus){
         e.stopPropagation()
@@ -2412,7 +2412,7 @@ function attachHandlersToCard(card, userId){
         img.style.cursor = 'zoom-in'
         img.addEventListener('click', e => {
             e.stopPropagation()
-            openPhotoViewer(img.src, card.dataset.pid)
+            openPhotoFeed(card)
         })
     })
     card.querySelectorAll('.feed-channel-badge[data-chbadge]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openChannel(b.dataset.chbadge) }))
@@ -2698,7 +2698,7 @@ function attachVideoCardClick(card){
     card.dataset.videoClickBound = '1'
 
     card.addEventListener('click', e => {
-        if(e.target.closest('.feed-action, .feed-more, .feed-channel-badge, .feed-post-avatar, .profile-post-more, .feed-sub-btn, .post-video-progress, .poll-view, .track-card')) return
+        if(e.target.closest('.feed-action, .feed-more, .feed-channel-badge, .feed-post-avatar, .profile-post-more, .feed-sub-btn, .post-video-progress, .poll-view, .track-card, .feed-author-plate, .feed-ch-ava')) return
         openVideoFeed(card)
     })
 }
@@ -2810,19 +2810,27 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const isPhoto = !!post.media_url && !isVideo && !isAudioUrl(post.media_url) && !isStickerMedia
     const adminMark = p.is_admin ? adminBadge(true) : ''
 
-    const plusHtml = (myId && post.author_id !== myId && !state.myFollows.has(post.author_id))
-        ? `<button class="feed-avatar-plus" data-plus-uid="${post.author_id}" aria-label="Подписаться">+</button>`
-        : ''
-    // ⚡ На видео НЕ показываем статус на аве — только у имени (name-status-badge ниже)
-    const avatarBlock = isVideo
-        ? `<div class="feed-avatar-wrap"><div class="feed-post-avatar" data-uid="${post.author_id}">${av}</div>${plusHtml}</div>`
-        : `<div class="feed-avatar-wrap"><div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div>${plusHtml}</div>`
+    const hasCh = !!ch.id
+    const chName = ch.name || 'Канал'
+    const chLogo = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : escapeHtml(chName.charAt(0).toUpperCase())
 
-    let channelBadge = ''
+    /* скрытые элементы-«совместимость»: на них опираются VFM, меню и обучение ленты */
+    const compat = hasCh ? `
+  <span class="feed-post-avatar hidden" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></span>
+  <button class="feed-channel-badge hidden" data-chbadge="${ch.id}"><span class="feed-channel-logo">${chLogo}</span><span class="feed-channel-name">${escapeHtml(chName)}</span></button>` : ''
+
+    const avatarBlock = hasCh
+        ? `<div class="feed-avatar-wrap"><div class="feed-ch-ava" data-chopen="${ch.id}">${chLogo}</div></div>`
+        : `<div class="feed-avatar-wrap"><div class="feed-post-avatar avatar-with-status" data-uid="${post.author_id}">${av}<div class="story-status-badge">${emoji}</div></div></div>`
+
+    const nameRow = hasCh
+        ? `<div class="feed-post-name"><span class="feed-post-name-text">${escapeHtml(chName)}</span><button type="button" class="feed-author-plate" data-uid-ref="${post.author_id}"><span>from</span><b>${escapeHtml(name)}</b></button></div>`
+        : `<div class="feed-post-name"><span class="feed-post-name-text">${escapeHtml(name)}${adminMark}</span></div>`
+
     if(ch.id){
         const chName = ch.name || 'Канал'
         const chLogo = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : chName.charAt(0).toUpperCase()
-        channelBadge = `<button class="feed-channel-badge" data-chbadge="${ch.id}"><span class="feed-channel-logo">${chLogo}</span><span class="feed-channel-name">${escapeHtml(chName)}</span></button>`
+        const channelBadge = `<button class="feed-channel-badge" data-chbadge="${ch.id}"><span class="feed-channel-logo">${chLogo}</span><span class="feed-channel-name">${escapeHtml(chName)}</span></button>`
     }
     let subBtn = ''
     if(!isMine && ch.id){
@@ -2837,8 +2845,8 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const followBtn = (myId && !isMine)
         ? `<button class="feed-follow-text ${following ? 'subscribed' : ''}" data-plus-uid="${post.author_id}">${following ? 'Вы подписаны' : 'Подписаться'}</button>`
         : ''
-    const footerAvatar = (myId && !isMine)
-        ? `<div class="feed-footer-avatar" data-uid="${post.author_id}" title="${escapeHtml(name)}">${av}</div>`
+    const footerAvatar = myId
+        ? `<div class="feed-footer-avatar" data-uid="${post.author_id}" title="${escapeHtml(name)}">${av}<div class="story-status-badge">${emoji}</div></div>`
         : ''
     const footer = `<div class="feed-post-footer">
       ${footerAvatar}
@@ -2846,7 +2854,7 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
       <button class="feed-action ${isLiked ? 'liked' : ''}" data-like="${post.id}">${isLiked ? ICONS.heartFill : ICONS.heart}<span class="feed-count" data-like-count="${post.id}">${lc}</span></button>
       <button class="feed-action ${isReposted ? 'reposted' : ''}" data-repost="${post.id}" ${isReposted ? 'style="color:#ff8a00"' : ''}>${ICONS.repost}<span class="feed-count" data-repost-count="${post.id}">${rc}</span></button>
       <button class="feed-action" data-share="${post.id}">${ICONS.share}</button>
-      <button class="feed-more" data-pid="${post.id}" data-author="${p.username || 'user'}" data-mine="${isMine ? 1 : 0}" data-channel="${post.channel_id || ''}">${ICONS.dots}</button>
+      <button class="feed-more" data-pid="${post.id}" data-author="${p.username || 'user'}" data-author-name="${escapeHtml(name)}" data-mine="${isMine ? 1 : 0}" data-channel="${post.channel_id || ''}">${ICONS.dots}</button>
     </div>`
 
     // обсуждение: символ, надпись, справа аватарки последних 3 комментаторов, число, стрелка
@@ -2857,13 +2865,14 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     </button>`
 
     const header = `<div class="feed-post-header">
-      ${avatarBlock}
-      <div class="feed-post-info">
-        <div class="feed-post-name verified"><span class="feed-post-name-text">${escapeHtml(name)}${adminMark}</span><span class="name-status-badge" aria-hidden="true">${emoji}</span>${channelBadge}</div>
-        ${buildMetaRow(time, contextLabel, post)}
-      </div>
-      ${subBtn}
-    </div>`
+  ${avatarBlock}
+  <div class="feed-post-info">
+    ${nameRow}
+    ${buildMetaRow(time, contextLabel, post)}
+  </div>
+  ${subBtn}
+  ${compat}
+</div>`
 
     const textHtml = post.content ? `<div class="feed-post-content">${linkifyHashtags(post.content)}</div>` : ''
 
@@ -3107,7 +3116,7 @@ async function attachFeedActions(list, myId){
         img.style.cursor = 'zoom-in'
         img.addEventListener('click', e => {
             e.stopPropagation()
-            openPhotoViewer(img.src, img.closest('.feed-post')?.dataset.pid)
+            openPhotoFeed(img.closest('.feed-post'))
         })
     })
     list.querySelectorAll('.feed-action[data-comment]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openCommentsSheet(btn.dataset.comment) }))
@@ -3857,6 +3866,235 @@ function openPhotoViewer(src, postId, opts = {}){
 }
 function closePhotoViewer(){
     document.getElementById('photo-viewer')?.classList.remove('open')
+}
+/* ============================================================
+   PHOTO FEED — полноэкранная фото-лента со свайпом
+============================================================ */
+const PV = { active:false, list:[], slides:[], index:0, last:0, el:null, track:null, endEl:null,
+    userId:null, loadingMore:false, misses:0, hadMusic:false }
+
+function pvCollect(card){
+    const box = card.closest('#feed-list, #ch-posts-list, #profile-content, #live-feed, #search-posts-container') || card.parentElement
+    return [...box.querySelectorAll('.feed-post')]
+        .filter(c => c.querySelector('img.feed-post-image'))
+        .map(c => ({ id:c.dataset.pid, src:c.querySelector('img.feed-post-image').src, card:c }))
+}
+function pvInfo(item){
+    const c = item.card, fm = c.querySelector('.feed-more'), badge = c.querySelector('.feed-channel-badge')
+    const aEl = c.querySelector('.feed-footer-avatar') || c.querySelector('.feed-post-avatar')
+    return {
+        pid:item.id, mine: fm?.dataset.mine === '1',
+        authorId: aEl?.dataset.uid || '', authorAva: aEl?.innerHTML || '?',
+        authorName: fm?.dataset.authorName || fm?.dataset.author || 'user',
+        chId: badge?.dataset.chbadge || '',
+        chLogo: badge?.querySelector('.feed-channel-logo')?.innerHTML || '',
+        chName: badge?.querySelector('.feed-channel-name')?.textContent || '',
+        text: (c.querySelector('.feed-post-content')?.textContent || '').trim()
+    }
+}
+
+function pvBuild(){
+    if(PV.el) return PV.el
+    const el = document.createElement('div')
+    el.id = 'photo-feed'; el.className = 'pv3'
+    el.innerHTML = `
+      <div class="pv3-top">
+        <button class="pv3-back" id="pv3-back" aria-label="Назад"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="pv3-ch" id="pv3-ch"><span class="pv3-ch-ava" id="pv3-ch-ava"></span><span class="pv3-ch-name" id="pv3-ch-name"></span></button>
+        <button class="pv3-sub hidden" id="pv3-sub"></button>
+        <span class="pv3-spacer"></span>
+        <button class="pv3-vinyl hidden" id="pv3-vinyl" aria-label="Плеер"><span class="pv3-vinyl-cover" id="pv3-vinyl-cover"></span></button>
+        <button class="pv3-more" id="pv3-more" aria-label="Действия"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+      </div>
+      <div class="pv3-stage" id="pv3-stage"><div class="pv3-track" id="pv3-track"></div></div>
+      <div class="pv3-bottom" id="pv3-bottom">
+        <div class="pv3-actions">
+          <button class="pv3-aava" id="pv3-aava"></button>
+          <button class="pv3-follow hidden" id="pv3-follow">Подписаться</button>
+          <span class="pv3-spacer"></span>
+          <button class="pv3-act" id="pv3-like">${ICONS.heart}<span id="pv3-like-n">0</span></button>
+          <button class="pv3-act" id="pv3-repost">${ICONS.repost}<span id="pv3-repost-n">0</span></button>
+          <button class="pv3-act" id="pv3-share">${ICONS.share}</button>
+        </div>
+        <div class="pv3-author" id="pv3-author"></div>
+        <div class="pv3-desc" id="pv3-desc"></div>
+        <button class="pv3-discuss" id="pv3-discuss">${ICONS.comment}<span>Обсуждение</span><b>›</b></button>
+      </div>`
+    document.body.appendChild(el)
+    PV.el = el; PV.track = el.querySelector('#pv3-track')
+
+    const end = document.createElement('div')
+    end.className = 'pv3-slide pv3-endslide'
+    end.innerHTML = `<div class="pv3-end"><div class="pv3-end-ico">🖼️</div><div class="pv3-end-t">Вы посмотрели всю ленту</div><button class="pv3-end-btn" id="pv3-end-btn">Вернуться к последнему фото</button></div>`
+    PV.track.appendChild(end); PV.endEl = end
+    end.querySelector('#pv3-end-btn').onclick = () => pvGo(PV.list.length - 1)
+
+    const cur = () => PV.list[PV.index]?.card
+    el.querySelector('#pv3-back').onclick = () => pvClose()
+    el.querySelector('#pv3-ch').onclick = () => {
+        const i = pvInfo(PV.list[PV.last]); pvClose(true)
+        setTimeout(() => i.chId ? openChannel(i.chId) : (i.authorId && openUserProfile(i.authorId)), 260)
+    }
+    el.querySelector('#pv3-aava').onclick = () => {
+        const i = pvInfo(PV.list[PV.last]); pvClose(true)
+        setTimeout(() => i.authorId && openUserProfile(i.authorId), 260)
+    }
+    el.querySelector('#pv3-sub').onclick = () => { cur()?.querySelector('.feed-sub-btn')?.click(); pvSyncActions() }
+    el.querySelector('#pv3-follow').onclick = () => { cur()?.querySelector('.feed-follow-text')?.click(); setTimeout(pvSyncActions, 220) }
+    el.querySelector('#pv3-like').onclick = () => { const i = PV.list[PV.index]; if(!i) return; toggleLikeGlobal(i.id); pvSyncActions() }
+    el.querySelector('#pv3-repost').onclick = () => { const i = PV.list[PV.index]; if(!i) return; toggleRepostGlobal(i.id); pvSyncActions() }
+    el.querySelector('#pv3-share').onclick = () => {
+        const i = PV.list[PV.index]; if(!i) return
+        const t = pvInfo(i).text
+        openShareSheet({ type:'post', postId:i.id, src:null, title:t, content:t })
+    }
+    el.querySelector('#pv3-discuss').onclick = () => { const i = PV.list[PV.index]; if(i) openCommentsSheet(i.id) }
+    el.querySelector('#pv3-more').onclick = () => {
+        const c = cur(), b = c?.querySelector('.feed-more'); if(c && b) showPostMoreMenu(b, c, PV.userId)
+    }
+    el.querySelector('#pv3-vinyl').onclick = () => openFullPlayer()
+
+    /* свайп вверх/вниз */
+    const stage = el.querySelector('#pv3-stage')
+    let sy = 0, cy = 0, drag = false, t0 = 0
+    stage.addEventListener('touchstart', e => { drag = true; sy = cy = e.touches[0].clientY; t0 = Date.now(); PV.track.style.transition = 'none' }, { passive:true })
+    stage.addEventListener('touchmove', e => {
+        if(!drag) return
+        cy = e.touches[0].clientY
+        let dy = cy - sy
+        if(PV.index === 0 && dy > 0) dy *= .3
+        if(PV.index >= PV.list.length && dy < 0) dy *= .25
+        PV.track.style.transform = `translate3d(0,calc(${-PV.index * 100}% + ${dy}px),0)`
+        if(e.cancelable) e.preventDefault()
+    }, { passive:false })
+    const endSwipe = () => {
+        if(!drag) return; drag = false
+        const dy = cy - sy, h = stage.offsetHeight || 600
+        const fast = Math.abs(dy) / Math.max(1, Date.now() - t0) > .45
+        if(dy < -h * .18 || (fast && dy < -30)) pvGo(PV.index + 1)
+        else if(dy > h * .18 || (fast && dy > 30)) pvGo(PV.index - 1)
+        else pvGo(PV.index)
+    }
+    stage.addEventListener('touchend', endSwipe)
+    stage.addEventListener('touchcancel', endSwipe)
+
+    document.addEventListener('keydown', e => {
+        if(!PV.active) return
+        if(e.key === 'Escape') pvClose()
+        if(e.key === 'ArrowDown') pvGo(PV.index + 1)
+        if(e.key === 'ArrowUp') pvGo(PV.index - 1)
+    })
+    document.addEventListener('lt-player-state', () => { if(PV.active && PV.hadMusic) pvSyncVinyl() })
+    return el
+}
+
+function pvEnsureSlides(){
+    while(PV.slides.length < PV.list.length){
+        const i = PV.slides.length
+        const s = document.createElement('div')
+        s.className = 'pv3-slide'
+        s.style.transform = `translateY(${i * 100}%)`
+        s.innerHTML = '<div class="pv3-skel"></div><img class="pv3-img" alt="" decoding="async">'
+        PV.track.insertBefore(s, PV.endEl); PV.slides.push(s)
+    }
+    PV.endEl.style.transform = `translateY(${PV.list.length * 100}%)`
+    PV.slides.forEach((s, i) => {
+        if(Math.abs(i - PV.index) > 1) return
+        const img = s.querySelector('img')
+        if(img.getAttribute('src')) return
+        img.onload = img.onerror = () => s.classList.add('loaded')
+        img.src = PV.list[i].src
+        if(img.complete && img.naturalWidth) s.classList.add('loaded')
+    })
+}
+
+function pvSyncVinyl(){
+    const v = $('pv3-vinyl'); if(!v) return
+    const on = !!(music.src && globalAudio && !globalAudio.paused)
+    v.classList.toggle('hidden', !on)
+    if(on) $('pv3-vinyl-cover').innerHTML = avatarHTML(music.channel.ava, avatarInitial(music.channel.name))
+}
+
+function pvSyncActions(){
+    const item = PV.list[PV.index]; if(!item) return
+    const c = item.card
+    const like = c.querySelector('.feed-action[data-like]'), rep = c.querySelector('.feed-action[data-repost]')
+    $('pv3-like').classList.toggle('liked', !!like?.classList.contains('liked'))
+    $('pv3-like-n').textContent = c.querySelector('[data-like-count]')?.textContent || '0'
+    $('pv3-repost').classList.toggle('reposted', !!rep?.classList.contains('reposted'))
+    $('pv3-repost-n').textContent = c.querySelector('[data-repost-count]')?.textContent || '0'
+    const sb = c.querySelector('.feed-sub-btn'), pvSub = $('pv3-sub')
+    pvSub.classList.toggle('hidden', !sb)
+    if(sb){ pvSub.classList.toggle('subscribed', sb.classList.contains('subscribed')); pvSub.innerHTML = sb.classList.contains('subscribed') ? ICONS.checkSmall : ICONS.plus }
+    const fb = c.querySelector('.feed-follow-text'), pvF = $('pv3-follow')
+    pvF.classList.toggle('hidden', !fb)
+    if(fb){ pvF.textContent = fb.textContent; pvF.classList.toggle('subscribed', fb.classList.contains('subscribed')) }
+}
+
+function pvSyncMeta(){
+    const el = PV.el
+    const isEnd = PV.index >= PV.list.length
+    el.classList.toggle('is-end', isEnd)
+    if(isEnd) return
+    const i = pvInfo(PV.list[PV.index])
+    $('pv3-ch-ava').innerHTML = i.chLogo || i.authorAva.replace(/<div[^>]*story-status-badge[^>]*>.*?<\/div>/, '')
+    $('pv3-ch-name').textContent = i.chName || i.authorName
+    $('pv3-aava').innerHTML = i.authorAva
+    $('pv3-author').textContent = i.authorName
+    $('pv3-desc').innerHTML = i.text ? linkifyHashtags(i.text) : ''
+    $('pv3-desc').style.display = i.text ? '' : 'none'
+    const b = $('pv3-bottom'), t = el.querySelector('.pv3-top')
+    ;[b, t].forEach(n => { n.classList.remove('pv3-swap'); void n.offsetWidth; n.classList.add('pv3-swap') })
+    pvSyncActions()
+}
+
+function pvGo(i, animate = true){
+    PV.index = Math.max(0, Math.min(PV.list.length, i))
+    if(PV.index < PV.list.length) PV.last = PV.index
+    PV.track.style.transition = animate ? 'transform .4s cubic-bezier(.22,1,.36,1)' : 'none'
+    PV.track.style.transform = `translate3d(0,${-PV.index * 100}%,0)`
+    pvEnsureSlides(); pvSyncMeta(); pvMaybeLoadMore()
+}
+
+function pvMaybeLoadMore(){
+    if(PV.loadingMore || PV.misses >= 2) return
+    if(PV.index < PV.list.length - 2) return
+    const box = document.getElementById('feed-list')
+    if(!box || !PV.list[0]?.card.closest('#feed-list')) return
+    PV.loadingMore = true
+    const known = new Set(PV.list.map(x => x.id))
+    appendRecommendedChunk(box, PV.userId, 8).then(() => {
+        const fresh = [...box.querySelectorAll('.feed-post')]
+            .filter(c => c.querySelector('img.feed-post-image') && !known.has(c.dataset.pid))
+            .map(c => ({ id:c.dataset.pid, src:c.querySelector('img.feed-post-image').src, card:c }))
+        if(fresh.length){ PV.list.push(...fresh); PV.misses = 0; pvEnsureSlides() } else PV.misses++
+    }).catch(() => {}).finally(() => { PV.loadingMore = false })
+}
+
+function openPhotoFeed(card){
+    if(!card || !card.querySelector('img.feed-post-image')) return
+    const list = pvCollect(card)
+    const idx = list.findIndex(x => x.card === card)
+    if(idx < 0) return
+    const el = pvBuild()
+    Object.assign(PV, { active:true, list, slides:[], index:idx, last:idx, userId:state.currentUser?.id, loadingMore:false, misses:0 })
+    PV.track.querySelectorAll('.pv3-slide:not(.pv3-endslide)').forEach(s => s.remove())
+    document.body.classList.add('pv3-open'); document.body.style.overflow = 'hidden'
+    PV.hadMusic = !!(music.src && globalAudio && !globalAudio.paused)
+    pvSyncVinyl()
+    pvGo(idx, false)
+    void el.offsetWidth
+    el.classList.add('open')
+}
+
+function pvClose(skipScroll){
+    if(!PV.active) return
+    PV.active = false
+    const it = PV.list[PV.last]
+    if(!skipScroll && it?.card?.isConnected) it.card.scrollIntoView({ behavior:'auto', block:'center' })
+    PV.el.classList.remove('open')
+    document.body.classList.remove('pv3-open'); document.body.style.overflow = ''
+    setTimeout(() => { if(!PV.active){ PV.el?.remove(); PV.el = null; PV.track = null; PV.endEl = null } }, 320)
 }
 /* ============================================================
    EVENTS
@@ -4925,7 +5163,13 @@ function lastPostText(p){
     if(p.media_url) return 'Фото'
     return ''
 }
-
+function paintProfileTrackIcon(){
+    const t = $('profile-track'); if(!t || !t.dataset.src) return
+    const note = t.querySelector('.profile-track-note'); if(!note) return
+    const cur = t.dataset.src === music.src
+    const html = (cur && music.loading) ? '<span class="btn-spinner"></span>' : (cur && music.isPlaying ? SVG.pause : SVG.play)
+    if(note.dataset.k !== html){ note.innerHTML = html; note.dataset.k = html }
+}
 async function renderProfileExtras(profile){
     const trackBox = $('profile-track'), chBox = $('profile-channel-card')
     if(trackBox){ trackBox.classList.add('hidden'); trackBox.innerHTML = ''; trackBox.onclick = null; trackBox.dataset.src = ''; trackBox.classList.remove('playing') }
@@ -4943,8 +5187,9 @@ async function renderProfileExtras(profile){
         const ch = p.channels || {}
         const title = p.media_title || 'оригинальный звук'
         const ava = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : escapeHtml((ch.name || 'K').charAt(0).toUpperCase())
-        trackBox.innerHTML = `<span class="profile-track-note">${PT_SVG.sound}</span><span class="profile-track-ava">${ava}</span><span class="profile-track-title">${escapeHtml(title)}</span>`
+        trackBox.innerHTML = `<span class="profile-track-note"></span><span class="profile-track-ava">${ava}</span><span class="profile-track-title">${escapeHtml(title)}</span>`
         trackBox.dataset.src = p.media_url
+        paintProfileTrackIcon()
         trackBox.classList.remove('hidden')
         trackBox.classList.toggle('playing', music.src === p.media_url && music.isPlaying)
         trackBox.onclick = () => {
@@ -4966,8 +5211,13 @@ async function renderProfileExtras(profile){
         if(token !== _profileLoadToken || !ch) return
         const ava = ch.avatar_url ? `<img src="${ch.avatar_url}" alt="">` : escapeHtml((ch.name || 'K').charAt(0).toUpperCase())
         const status = statusEmoji(computeDisplayStatus(profile))
+        let thumb = ''
+        if(last?.media_url){
+            if(isVideoUrl(last.media_url)) thumb = `<video class="pcc-thumb is-video" src="${last.media_url}#t=0.1" muted playsinline preload="metadata"></video>`
+            else if(isImageUrl(last.media_url)) thumb = `<img class="pcc-thumb" src="${last.media_url}" alt="" loading="lazy">`
+        }
         const lastHtml = (last && lastPostText(last))
-            ? `<div class="pcc-last">${lastPostIcon(last)}<span>${escapeHtml(lastPostText(last))}</span></div>` : ''
+            ? `<div class="pcc-last">${thumb || lastPostIcon(last)}<span>${escapeHtml(lastPostText(last))}</span></div>` : ''
         chBox.innerHTML = `
             <div class="pcc-ava">${ava}</div>
             <div class="pcc-info">
@@ -5751,9 +6001,13 @@ async function refreshChvadSettingsButton(){
 // вызываем после loadSettings
 const _origLoadSettings = loadSettings
 loadSettings = async function(){
-    await _origLoadSettings()
-    await refreshChvadSettingsButton()
-    refreshProfilePickLabels()          // ← НОВОЕ
+    const scr = $('screen-settings')
+    scr?.classList.add('is-loading')
+    try {
+        await _origLoadSettings()
+        await refreshChvadSettingsButton()
+        await refreshProfilePickLabels()
+    } finally { scr?.classList.remove('is-loading') }
 }
 
 /* === Модалка 100 статусов === */
@@ -6317,7 +6571,14 @@ async function openChannel(channelId){
     let screen = $('channel-screen')
     if(!screen){ screen = document.createElement('div'); screen.id = 'channel-screen'; screen.className = 'hidden'; document.body.appendChild(screen) }
     screen.classList.remove('hidden')
-    screen.innerHTML = loadingBlock()
+    screen.innerHTML = `
+  <div class="ch-page-header">
+    <button class="topbar-btn ch-back-btn" id="ch-back-early" aria-label="Назад"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <div class="pt-title-wrap"><div class="pt-title-text"><div class="topbar-logo-static">канал</div></div></div>
+    <div style="width:40px"></div>
+  </div>
+  <div class="ch-skel"><div class="ch-skel-ava"></div><div class="ch-skel-line"></div><div class="ch-skel-line short"></div></div>`
+    $('ch-back-early').onclick = () => { screen.classList.add('hidden'); switchScreen('channels') }
 
     try {
         const [{ data:{ user } }, { data:ch }] = await Promise.all([
@@ -6337,7 +6598,7 @@ async function openChannel(channelId){
             supabase.from('lives').select('id').eq('channel_id', channelId).eq('is_active', true).order('created_at', { ascending:false }).limit(1).maybeSingle(),
             supabase.from('subscriptions').select('*', { count:'exact', head:true }).eq('channel_id', channelId),
             supabase.from('posts').select('*', { count:'exact', head:true }).eq('channel_id', channelId),
-            ch.owner_id ? supabase.from('profiles').select('is_admin').eq('id', ch.owner_id).maybeSingle() : Promise.resolve({ data:null })
+            ch.owner_id ? supabase.from('profiles').select('id, username, full_name, avatar_url, is_admin').eq('id', ch.owner_id).maybeSingle() : Promise.resolve({ data:null })
         ])
         const isSub = !!subRowRes.data
         const activeLive = liveRes.data
@@ -6347,6 +6608,12 @@ async function openChannel(channelId){
 
 // ── Бейдж: админ → фиолетовый енот, public → синяя галочка, иначе пусто ──
         const ownerIsAdmin = !!ownerProfRes.data?.is_admin
+        const op = ownerProfRes.data || {}
+        const opName = op.full_name || op.username || 'user'
+        const ownerRow = ch.owner_id ? `
+  <button class="ch-owner-row" id="ch-owner-row"><span class="ch-owner-from">from</span>
+    <span class="ch-owner-ava">${op.avatar_url ? `<img src="${op.avatar_url}" alt="">` : escapeHtml(opName.charAt(0).toUpperCase())}</span>
+    <span class="ch-owner-name">${escapeHtml(opName)}</span></button>` : ''
         const headerBadge = ownerIsAdmin
             ? `<span class="ch-verify-badge chvad" title="">🦝</span>`
             : (currentType === 'public'
@@ -6431,6 +6698,7 @@ async function openChannel(channelId){
                 <div class="ch-description-text" id="ch-desc-text">${escapeHtml(ch.description || 'Описание пока не добавлено')}</div>
                 <button class="ch-description-more hidden" id="ch-desc-more">Ещё</button>
             </div>
+            ${ownerRow}
 
             <div class="ch-page-tabs">
                 <button class="ch-page-tab active" data-chtab="posts">Треды</button>
@@ -6458,6 +6726,7 @@ async function openChannel(channelId){
             screen.classList.add('hidden')
             switchScreen('channels')
         })
+        $('ch-owner-row')?.addEventListener('click', () => { screen.classList.add('hidden'); openUserProfile(ch.owner_id) })
         screen.querySelector('.ch-full-avatar')?.addEventListener('click', e => {
             if(e.target.closest('.ch-actions-bar')) return
             if(ch.avatar_url) openPhotoViewer(ch.avatar_url, null, { label: ch.name || 'Канал' })
@@ -8179,7 +8448,10 @@ function vfmBuildOverlay(){
     <div class="vfm-content-area">
       <div class="vfm-left">
         <div class="vfm-desc-block">
-          <div class="vfm-desc-author" id="vfm-desc-author"></div>
+          <div class="vfm-desc-author-row">
+  <div class="vfm-desc-author" id="vfm-desc-author"></div>
+  <button class="vfm-author-plus hidden" id="vfm-author-plus" aria-label="Подписаться">+</button>
+</div>
           <div class="vfm-desc-row">
             <span class="vfm-desc-text" id="vfm-desc"></span>
             <button class="vfm-desc-more hidden" id="vfm-desc-more">ещё</button>
@@ -8485,7 +8757,14 @@ function vfmBuildOverlay(){
             showToast('error', 'Не удалось: ' + (err.message || 'ошибка'), { icon:'⚠️' })
         }
     })
-
+    const authPlus = el.querySelector('#vfm-author-plus')
+    authPlus.addEventListener('click', e => {
+        e.stopPropagation()
+        const fb = el.querySelector('#vfm-follow-btn')
+        fb.click()                                   // его обработчик меняет класс синхронно
+        authPlus.classList.toggle('following', fb.classList.contains('following'))
+        authPlus.textContent = fb.classList.contains('following') ? '✓' : '+'
+    })
     /* ─── Прогресс ─── */
     const bar  = el.querySelector('#vfm-progress')
     const fill = el.querySelector('#vfm-progress-fill')
@@ -8597,9 +8876,8 @@ function setVfmCommentState(state){
     empty.classList.add('hidden')
     inp.classList.add('hidden')
 
-    if(state === 'input'){ inp.classList.remove('hidden') }
-    else if(state === 'empty'){ empty.classList.remove('hidden') }
-    else { pop.classList.remove('hidden') }
+    const show = state === 'input' ? inp : state === 'empty' ? empty : pop
+    show.classList.remove('hidden', 'sliding-in'); void show.offsetWidth; show.classList.add('sliding-in')
 }
 
 async function loadVfmCommentData(postId){
@@ -9448,7 +9726,12 @@ async function syncVfmMeta(){
     const authorId = avaEl?.dataset.uid
 
     // ========== Имя автора — без бейджа и без админ-значка ==========
-    let authorName = 'user'
+    let authorName = card.querySelector('.feed-more')?.dataset.authorName || 'user'
+    if(authorName === 'user' && nameEl){
+        const clone = nameEl.cloneNode(true)
+        clone.querySelectorAll('.feed-channel-badge, .admin-badge, .feed-author-plate').forEach(x => x.remove())
+        authorName = (clone.textContent || '').trim() || 'user'
+    }
     if(nameEl){
         const clone = nameEl.cloneNode(true)
         clone.querySelectorAll('.feed-channel-badge, .admin-badge').forEach(x => x.remove())
@@ -9462,7 +9745,7 @@ async function syncVfmMeta(){
     // ========== АВТОР: аватар (без статуса на углу) ==========
     el.querySelector('#vfm-author-ava').innerHTML = avaHTML
     const statusEl = el.querySelector('#vfm-author-status')
-    if(statusEl) statusEl.textContent = '' // ⚡ статус — только у имени (vfm-name-status)
+    if(statusEl) statusEl.textContent = statusB ? statusB.textContent : ''
 
     // ========== Подписка на автора ==========
     const followBtn = el.querySelector('#vfm-follow-btn')
@@ -9475,7 +9758,12 @@ async function syncVfmMeta(){
         followBtn.classList.remove('following')
         followBtn.dataset.uid = ''
     }
-
+    const authPlus = el.querySelector('#vfm-author-plus')
+    if(authPlus){
+        authPlus.classList.toggle('hidden', followBtn.classList.contains('hidden'))
+        authPlus.classList.toggle('following', followBtn.classList.contains('following'))
+        authPlus.textContent = followBtn.classList.contains('following') ? '✓' : '+'
+    }
     // ========== КАНАЛ в верхней полосе ==========
     const chBadge   = card.querySelector('.feed-channel-badge')
     const chAvaEl   = el.querySelector('#vfm-ch-ava')
@@ -9513,11 +9801,7 @@ async function syncVfmMeta(){
     const text         = (card.querySelector('.feed-post-content')?.textContent || '').trim()
 
     const vfmStatusEmoji = statusB ? statusB.textContent : ''
-    if(vfmStatusEmoji){
-        descAuthorEl.innerHTML = `${escapeHtml(authorName)}<span class="vfm-name-status" aria-hidden="true">${vfmStatusEmoji}</span>`
-    } else {
-        descAuthorEl.textContent = authorName
-    }
+    descAuthorEl.textContent = authorName
     descEl.textContent = text || ''
     descEl.classList.remove('expanded')
     moreBtn.classList.add('hidden')
@@ -12286,49 +12570,7 @@ function initBootHearts(){
    «роняет» position: fixed у .bottom-nav из-за пересчёта
    layout. Форсим фиксированные inline-стили ещё раз.
 ═══════════════════════════════════════════════════════════ */
-;(function pinBottomNavHard(){
-    const pin = () => {
-        const nav = document.querySelector('.bottom-nav')
-        if (!nav) return
-        // Проверяем, реально ли nav на дне viewport (±3px)
-        const rect = nav.getBoundingClientRect()
-        const vh = window.innerHeight || document.documentElement.clientHeight
-        if (Math.abs(rect.bottom - vh) <= 3) return   // уже на дне — норм
 
-        // Не на дне — форсим inline-стилями
-        nav.style.setProperty('position', 'fixed', 'important')
-        nav.style.setProperty('bottom', '0', 'important')
-        nav.style.setProperty('left', '0', 'important')
-        nav.style.setProperty('right', '0', 'important')
-        nav.style.setProperty('top', 'auto', 'important')
-        nav.style.setProperty('transform', 'none', 'important')
-        nav.style.setProperty('width', '100%', 'important')
-        nav.style.setProperty('max-width', '100%', 'important')
-        nav.style.setProperty('margin', '0', 'important')
-    }
-
-    // 1) После старта
-    setTimeout(pin, 100)
-    setTimeout(pin, 600)
-    setTimeout(pin, 1500)
-
-    // 2) Главный триггер — конец рендера ленты
-    document.addEventListener('lt:feed-rendered', pin)
-
-    // 3) Любая смена экрана
-    document.addEventListener('click', e => {
-        if (e.target.closest('.nav-btn')) setTimeout(pin, 100)
-    })
-
-    // 4) Скролл и resize (с requestAnimationFrame)
-    let raf = null
-    const onScroll = () => {
-        if (raf) return
-        raf = requestAnimationFrame(() => { raf = null; pin() })
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll)
-})()
 initBootHearts()
 boot();
 setInterval(heartbeat, 30 * 1000)

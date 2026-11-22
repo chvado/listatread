@@ -17,8 +17,8 @@
 
 export function mountFeedBg(root){
     if(!root) return;
-    if(root.dataset.built === '1') return;
-    root.dataset.built = '1';
+    if(root.dataset.fed === '1') return;
+    root.dataset.fed = '1';
 
     const POSTS = [
         { name:'listatread', text:'search a trend & list a tred' },
