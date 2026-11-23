@@ -7582,12 +7582,7 @@ body.vfm-active .bottom-nav .nav-btn::after{background:#fff}
     border-radius:inherit;
     display:block;
 }
-/* iOS standalone: высота по экрану, а не по «коротким» innerHeight */
-html.standalone .boot-screen,
-html.standalone #auth-screen,
-html.standalone .lt-update-sheet{top:0!important;bottom:auto!important;height:var(--app-h)!important}
-html.standalone .bottom-nav{top:calc(var(--app-h) - var(--nav-height) - var(--safe-bottom))!important;bottom:auto!important}
-html.standalone .auth-lang{bottom:auto!important;top:calc(var(--app-h) - 56px - var(--safe-bottom))!important}
+
 .auth-feed-bg{position:fixed!important;inset:-10%!important}
 /* ===== шапка поста: канал ===== */
 .feed-ch-ava{width:42px;height:42px;border-radius:12px;overflow:hidden;flex-shrink:0;cursor:pointer;margin-top:2px;
@@ -7720,6 +7715,111 @@ body.pv3-open .full-player{z-index:9100}
 .ch-owner-ava{width:22px;height:22px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--yellow),var(--red-pink));color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center}
 .ch-owner-ava img{width:100%;height:100%;object-fit:cover}
 .ch-owner-name{font-size:13px;font-weight:700}
+html,body{height:100%}
+.app,.main-app,body{overflow-x:clip}
+.topbar,.bottom-nav,.ch-page-header{will-change:auto!important}
+.bottom-nav{
+    position:fixed!important;top:auto!important;bottom:0!important;
+    left:0!important;right:0!important;margin:0 auto!important;
+    width:100%;max-width:420px;transform:none!important;
+}
+@media (max-width:768px){.bottom-nav{max-width:100%}}
+.feed-post-name .feed-post-name-text{flex:0 1 auto;max-width:60%}
+.feed-author-plate{flex:0 1 auto;margin-left:0;min-width:0;max-width:100%}
+.vfm .vfm-act .vfm-act-count{font-weight:700!important}
+.vfm .vfm-desc-text{font-weight:600!important}
+.vfm .vfm-desc-author{font-weight:800;flex:0 1 auto;min-width:0}
+.vfm-author-status{display:none!important}           /* статус из-под авы убран */
+.vfm-author-plus{width:auto!important;height:24px!important;padding:0 10px!important;
+    border-radius:8px!important;border:1.5px solid #fff!important;background:transparent!important;
+    color:#fff!important;font-size:12px!important;font-weight:700!important;white-space:nowrap;line-height:1}
+.vfm-author-plus.following{opacity:.7}
+/* ===== ПРОФИЛЬ: вкладки и ОБЗОР ===== */
+.profile-tab{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+.profile-subtabs{display:flex;gap:6px;margin:-6px 0 14px;overflow-x:auto;scrollbar-width:none}
+.profile-subtabs.hidden{display:none}
+.profile-subtab{padding:7px 14px;border-radius:100px;border:none;background:var(--surface-2);color:var(--text-secondary);font-size:13px;font-weight:600;white-space:nowrap}
+.profile-subtab.active{background:var(--text);color:var(--bg)}
+.ov-locked{text-align:center;padding:60px 20px;color:var(--text-secondary);font-size:15px;line-height:2}
+
+.ov-sk{height:150px;border-radius:22px;background:linear-gradient(90deg,var(--sk-a) 25%,var(--sk-b) 50%,var(--sk-a) 75%);background-size:200% 100%;animation:shimmer 1.4s linear infinite}
+.ov-sk.short{height:90px}
+
+.ov-tile{position:relative;display:block;border-radius:22px;overflow:hidden;background:var(--card);border:1px solid var(--glass-edge);box-shadow:var(--glass-hi);
+    opacity:0;transform:translateY(30px) scale(.97);transition:opacity .55s var(--ease-out),transform .65s var(--spring)}
+.ov-tile.in{opacity:1;transform:none}
+.ov-label{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.ov-tile>.ov-label{position:absolute;left:14px;top:12px;z-index:2}
+.ov-label.dark{color:#6b5a3e}
+
+.ov-about{min-height:200px;color:#fff;cursor:pointer;background:linear-gradient(135deg,#ff9f0a,#ff375f)}
+.ov-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ov-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35),transparent 40%,rgba(0,0,0,.7))}
+.ov-about-text{position:absolute;left:14px;right:14px;bottom:12px;font-size:14px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+.ov-quote{min-height:150px;background:#efe3cf;color:#3b2f1e;display:flex;align-items:center;justify-content:center;padding:44px 20px 20px;text-align:center;border:none}
+.ov-quote-text{font-size:19px;font-weight:700;font-style:italic;line-height:1.3;word-break:break-word}
+
+.ov-link{display:flex;align-items:center;gap:12px;padding:12px 14px;text-decoration:none;color:var(--text)}
+.ov-link-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ov-link-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ov-link-top{font-size:15px;font-weight:700}
+.ov-link-url{font-size:12.5px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.ov-ch{padding:0}
+.ov-ch-card{position:relative;height:260px;overflow:hidden;cursor:pointer;color:#fff}
+.ov-ch-bg{position:absolute;inset:-12px;background-size:cover;background-position:center;filter:blur(5px) saturate(1.2)}
+.ov-ch-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35),transparent 45%,rgba(0,0,0,.65))}
+.ov-ch-top{position:absolute;left:14px;top:12px;font-size:13px;font-weight:700}
+.ov-ch-bottom{position:absolute;left:14px;right:14px;bottom:14px;display:flex;align-items:center;gap:12px}
+.ov-ch-ava{width:54px;height:54px;border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#ff9f0a,#ff375f);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px}
+.ov-ch-ava img,.ov-ch-dot img{width:100%;height:100%;object-fit:cover}
+.ov-ch-name{font-size:17px;font-weight:800}
+.ov-ch-role{font-size:12px;opacity:.85;margin-top:2px}
+.ov-ch-dots{display:flex;gap:10px;overflow-x:auto;padding:12px 14px;scrollbar-width:none}
+.ov-ch-dot{width:46px;height:46px;border-radius:50%;overflow:hidden;padding:0;flex:none;border:2px solid transparent;background:linear-gradient(135deg,#ff9f0a,#ff375f);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
+.ov-ch-dot.active{border-color:var(--blue)}
+
+.ov-gifts{min-height:180px;color:#fff;border:none;background:linear-gradient(120deg,#ff9f0a,#ff375f,#bf5af2,#0a84ff,#30d158,#ff9f0a);background-size:400% 100%;animation:ovGift 9s ease-in-out infinite}
+@keyframes ovGift{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}
+.ov-gift-btn{position:absolute;left:50%;top:48%;translate:-50% -50%;width:58px;height:58px;border-radius:50%;border:none;background:rgba(255,255,255,.25);color:#fff;display:flex;align-items:center;justify-content:center;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.ov-gift-btn svg{width:28px;height:28px}
+.ov-gifts-tx{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:13px;font-weight:600}
+
+.ov-strip{padding:14px}
+.ov-strip-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.ov-more{width:32px;height:32px;border-radius:50%;border:none;background:var(--surface-2);color:var(--text);font-size:20px;line-height:1}
+.ov-strip-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ov-empty{grid-column:1/-1;text-align:center;padding:26px 0;color:var(--text-secondary);font-size:13px}
+.ov-pv{position:relative;aspect-ratio:9/16;border-radius:14px;overflow:hidden;cursor:pointer;background:var(--surface-2);color:#fff;display:flex;flex-direction:column;justify-content:flex-end}
+.ov-pv-m{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ov-pv-cap{position:relative;padding:18px 7px 7px;font-size:10.5px;line-height:1.25;background:linear-gradient(0deg,rgba(0,0,0,.7),transparent);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ov-pv-k{position:absolute;left:8px;top:6px;font-size:22px;font-weight:900}
+.ov-pv-txt{padding:36px 8px 8px;font-size:11px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}
+.ov-pv-text{background:rgba(120,120,128,.28);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:var(--text);justify-content:flex-start}
+.ov-pv-poll{background:linear-gradient(135deg,rgba(48,209,88,.5),rgba(10,132,255,.5));-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);justify-content:flex-start}
+.ov-pv-track{background:linear-gradient(135deg,#5e5ce6,#bf5af2)}
+.ov-blur{background-size:cover;background-position:center;filter:blur(8px) brightness(.8);transform:scale(1.2)}
+.ov-pv-note{position:absolute;left:50%;top:38%;translate:-50% -50%;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center}
+.ov-strip.blue{background:linear-gradient(135deg,#0a84ff,#5e5ce6);color:#fff;border:none}
+.ov-strip.blue .ov-pv{background:rgba(255,255,255,.14)}
+.ov-albums{min-height:120px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:14px}
+.ov-actions{display:flex;flex-direction:column;gap:10px;padding-bottom:20px}
+.ov-danger{color:var(--red-pink)}
+
+/* настройки: ссылки */
+.set-link-row{display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:6px;background:var(--surface-2);border-radius:12px}
+.set-link-ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.set-link-ic svg{width:16px;height:16px}
+.set-link-url{flex:1;min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.set-link-row button{border:none;background:transparent;color:var(--red-pink);font-size:16px}
+
+/* прозрачнее плашки в шапке профиля */
+.profile-stats,.profile-channel-card{background:rgba(255,255,255,.35)!important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+html[data-theme="dark"] .profile-stats,html[data-theme="dark"] .profile-channel-card{background:rgba(40,40,44,.35)!important}
+#screen-profile .topbar{background:var(--pt-bg,var(--bg))!important;box-shadow:0 -80px 0 var(--pt-bg,var(--bg))!important;transition:background .4s}
+#screen-profile.pt-themed .topbar .topbar-btn,
+#screen-profile.pt-themed .topbar-logo-static{color:#fff}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

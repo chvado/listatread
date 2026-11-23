@@ -271,7 +271,7 @@ const EMOJI_LIST = ['😀','😃','😄','😁','😆','😅','🤣','😂','�
 const state = {
     step:1, totalSteps:6,
     data:{ email:'', password:'', fullName:'', username:'', avatarFile:null, bio:'', socials:{}, gender:null, region:null, birthday:null, method:'skip', codeVerified:false, settings:{}, status:'default', theme:'light' },
-    screen:'home', feedTab:'recommended', profileTab:'reposts',
+    screen:'home', feedTab:'recommended', profileTab:'overview', wallTab:'posts',
     replyTo:null, currentUser:null, currentProfile:null, attachedPhoto:null, attachedVideo:false,
     attachedKind:null,
     chatContext:'global', chatTitle:'Global', lastPostAt:0,
@@ -460,7 +460,7 @@ function applyTheme(theme){
     document.documentElement.setAttribute('data-theme', t)
     try { localStorage.setItem(THEME_KEY, t) } catch {}
 
-    setStatusBar(t === 'dark' ? '#000000' : '#ffffff', t === 'dark')
+    if(window.__ltBooted) setStatusBar(t === 'dark' ? '#000000' : '#ffffff', t === 'dark')
 
     const icon = document.getElementById('theme-toggle-icon')
     const text = document.getElementById('theme-toggle-text')
@@ -2195,7 +2195,7 @@ async function renderHomeFeed(force = false){
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         let query = supabase.from('posts')
-            .select('id, content, created_at, author_id, channel_id, media_url, media_title, profiles ( username, full_name, avatar_url, status, is_admin ), channels:channel_id ( id, name, avatar_url )')
+            .select('id, content, created_at, author_id, channel_id, media_url, media_title, profiles:author_id ( username, full_name, avatar_url, status, is_admin ), channels:channel_id ( id, name, avatar_url )')
             .not('channel_id', 'is', null)
 
         if(state.feedTab === 'video') query = query.order('created_at', { ascending:false }).limit(60)
@@ -4498,7 +4498,7 @@ async function renderLiveFeed(silent = false){
     if(!silent) list.innerHTML = loadingBlock()
     try {
         const { data, error } = await withTimeout(supabase.from('posts')
-            .select('id, content, created_at, author_id, reply_to, media_url, media_title, show_in_profile, channel_id, profiles ( username, full_name, avatar_url, status, region, is_admin )')
+            .select('id, content, created_at, author_id, reply_to, media_url, media_title, show_in_profile, channel_id, profiles:author_id ( username, full_name, avatar_url, status, region, is_admin )')
             .is('channel_id', null).order('created_at', { ascending:false }).limit(80), 12000, 'live')
         if(error){ if(!silent) list.innerHTML = `<p class="empty">Ошибка: ${error.message}</p>`; return }
         let filtered = data
@@ -4773,7 +4773,8 @@ async function loadProfile(userId = null){
                 profile.username = resolvedUsername
             }
             const fname = profile.full_name || 'Пользователь'
-            $('profile-name').innerHTML = escapeHtml(fname) + (profile.is_admin ? adminBadge(true, 'big') : '')
+            $('profile-name').innerHTML = escapeHtml(fname) + (profile.is_admin ? adminBadge(true,'big') : '')
+                + `<span class="name-status-badge">${statusEmoji(computeDisplayStatus(profile))}</span>`
             $('profile-username').textContent = '@' + resolvedUsername
             $('profile-bio').textContent = profile.bio || 'Описание пока не добавлено'
             const av = $('profile-avatar')
@@ -4789,7 +4790,6 @@ async function loadProfile(userId = null){
         renderProfileExtras(iBlocked ? null : profile)
         const actionsP = renderProfileActions(targetId, user.id, iBlocked)
         if(iBlocked) renderBlockedContent()
-        else if(state.profileTab === 'posts') renderMyPosts(targetId)
         else renderProfileTab()
         await actionsP
         if(isStale()) return
@@ -4918,42 +4918,48 @@ document.querySelectorAll('#profile-tabs .profile-tab').forEach(tab => tab.addEv
     tab.classList.add('active'); state.profileTab = tab.dataset.ptab; renderProfileTab()
 }))
 
+const WALL_TABS = [['posts','Треды'],['reposts','Репосты'],['tracks','Треки']]
+function paintSubtabs(items, cur, onPick){
+    const el = $('profile-subtabs'); if(!el) return
+    if(!items){ el.classList.add('hidden'); el.innerHTML = ''; return }
+    el.classList.remove('hidden')
+    el.innerHTML = items.map(([k,l]) => `<button class="profile-subtab ${k===cur?'active':''}" data-sub="${k}">${l}</button>`).join('')
+    el.querySelectorAll('button').forEach(b => b.onclick = () => onPick(b.dataset.sub))
+}
 async function renderProfileTab(){
     const box = $('profile-content'), wrap = $('new-post-wrap')
-    if(wrap) wrap.classList.toggle('hidden', !(state.viewingOwnProfile && state.profileTab === 'posts'))
-
+    const uid = state.currentProfileViewId || state.currentUser?.id
+    const foreign = !state.viewingOwnProfile
     const priv = state.currentProfilePrivacy || {}
-    const isForeign = !state.viewingOwnProfile
+    const tab = state.profileTab
+    document.querySelectorAll('#profile-tabs .profile-tab').forEach(t => t.classList.toggle('active', t.dataset.ptab === tab))
+    if(wrap) wrap.classList.toggle('hidden', !(!foreign && tab === 'wall' && state.wallTab === 'posts'))
 
-    if(state.profileTab === 'posts'){
-        if(isForeign && priv.hide_posts) return box.innerHTML = '<p class="empty">Посты скрыты</p>'
-        return renderMyPosts(state.currentProfileViewId)
+    if(tab === 'overview'){ paintSubtabs(null); return renderProfileOverview(uid) }
+
+    if(tab === 'saved'){
+        paintSubtabs([['liked','Лайки']], 'liked', () => {})
+        if(foreign && !priv.show_saved) return box.innerHTML = '<div class="ov-locked">🔒<br>Владелец скрыл этот раздел</div>'
+        return renderMyLiked(uid)
     }
-    if(state.profileTab === 'reposts'){
-        if(isForeign && priv.hide_reposts) return box.innerHTML = '<p class="empty">Репосты скрыты</p>'
-        return renderMyReposts(state.currentProfileViewId || state.currentUser?.id)
+    paintSubtabs(WALL_TABS, state.wallTab, k => { state.wallTab = k; renderProfileTab() })
+    const w = state.wallTab
+    if(w === 'posts'){
+        if(foreign && priv.hide_posts) return box.innerHTML = '<p class="empty">Треды скрыты</p>'
+        return renderMyPosts(uid)
     }
-    if(state.profileTab === 'liked'){
-        if(isForeign && priv.hide_likes) return box.innerHTML = '<p class="empty">Лайки скрыты</p>'
-        return renderMyLiked(state.currentProfileViewId || state.currentUser?.id)
+    if(w === 'reposts'){
+        if(foreign && priv.hide_reposts) return box.innerHTML = '<p class="empty">Репосты скрыты</p>'
+        return renderMyReposts(uid)
     }
-    if(state.profileTab === 'channels'){
-        if(isForeign && priv.hide_channels) return box.innerHTML = '<p class="empty">Каналы скрыты</p>'
-        return renderProfileChannels(state.currentProfileViewId || state.currentUser?.id)
-    }
-    if(state.profileTab === 'gifts'){
-        if(isForeign && priv.hide_gifts) return box.innerHTML = '<p class="empty">Подарки скрыты</p>'
-        return box.innerHTML = '<p class="empty">Подарков пока нет</p>'
-    }
-    if(state.profileTab === 'tracks') return renderProfileTracks(state.currentProfileViewId || state.currentUser?.id)
-    if(state.profileTab === 'shop') return box.innerHTML = '<p class="empty">Магазин — скоро</p>'
-    box.innerHTML = '<p class="empty">Пока пусто</p>'
+    return renderMyPosts(uid, 'audio')
 }
 function applyProfileTheme(profile, theme, isOwn){
     const screen = $('screen-profile')
     if(!screen) return
     // убираем старое
     screen.querySelectorAll('.profile-theme-layer').forEach(el => el.remove())
+    screen.style.removeProperty('--pt-bg'); screen.classList.remove('pt-themed')
     const hero = screen.querySelector('.profile-hero')
     const wrap = hero?.parentElement // profile-body
     if(!wrap) return
@@ -4968,6 +4974,8 @@ function applyProfileTheme(profile, theme, isOwn){
     // Фон: от верха до табов
     const bgDef = PROFILE_BG_COLORS.find(c => c.key === theme.bg)
     if(bgDef?.css){
+        const m = bgDef.css.match(/#[0-9a-f]{6}/i)
+        if(m){ screen.style.setProperty('--pt-bg', m[0]); screen.classList.add('pt-themed') }
         const tabsEl = screen.querySelector('.profile-tabs')
         const layer = document.createElement('div')
         layer.className = 'profile-theme-layer'
@@ -5069,15 +5077,18 @@ async function renderProfileChannels(userId){
     box.querySelectorAll('.chan-item[data-ch]').forEach(b => b.addEventListener('click', () => openChannel(b.dataset.ch)))
 }
 
-async function renderMyPosts(userId = null){
+async function renderMyPosts(userId = null, kind = null){
     const box = $('profile-content'); box.innerHTML = loadingBlock()
     try {
         const { data:{ user } } = await supabase.auth.getUser()
         const targetId = userId || user.id
         const { data, error } = await supabase.from('posts')
-            .select('id, content, created_at, author_id, media_url, media_title, channel_id, show_in_profile, poll, profiles ( username, full_name, avatar_url, status, region, is_admin ), channels:channel_id ( id, name, avatar_url )')
+            .select('id, content, created_at, author_id, media_url, media_title, channel_id, show_in_profile, poll, profiles:author_id ( username, full_name, avatar_url, status, region, is_admin ), channels:channel_id ( id, name, avatar_url )')
             .eq('author_id', targetId).order('created_at', { ascending:false }).limit(40)
         if(error){ box.innerHTML = `<p class="empty">Ошибка: ${error.message}</p>`; return }
+        let rows = data
+        if(kind === 'audio') rows = data.filter(p => isAudioUrl(p.media_url))
+        if(!rows.length){ box.innerHTML = '<p class="empty">Пока пусто</p>'; return }
         if(!data.length){ box.innerHTML = '<p class="empty">Пока нет постов</p>'; return }
         const { likedSet, repostedSet, counts } = await fetchPostExtras(data.map(p => p.id), user.id)
         box.innerHTML = data.map(p => renderProfilePost(p, user.id, likedSet, repostedSet, counts)).join('')
@@ -5223,7 +5234,7 @@ async function renderProfileExtras(profile){
             <div class="pcc-info">
                 <div class="pcc-row1">
                     <span class="pcc-name">${escapeHtml(ch.name || 'Канал')}</span>
-                    <span class="pcc-status">${status}</span>
+                    
                     <span class="pcc-subs">${pluralSubs(count || 0)}</span>
                 </div>
                 ${lastHtml}
@@ -5247,6 +5258,7 @@ async function saveProfilePick(field, value){
     const { data:{ user } } = await supabase.auth.getUser(); if(!user) return false
     const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', user.id)
     if(error){ showToast('error', 'Не удалось: ' + error.message, { icon:'⚠️' }); return false }
+    ovCacheClear()
     showToast('success', value ? 'Сохранено' : 'Убрано', { icon:'✓' })
     refreshProfilePickLabels()
     return true
@@ -6007,6 +6019,7 @@ loadSettings = async function(){
         await _origLoadSettings()
         await refreshChvadSettingsButton()
         await refreshProfilePickLabels()
+        await refreshOverviewSettings()
     } finally { scr?.classList.remove('is-loading') }
 }
 
@@ -6056,6 +6069,7 @@ $('save-general')?.addEventListener('click', async () => {
             username: newUsername,
             bio: $('set-bio').value.trim(),
             theme: document.documentElement.getAttribute('data-theme') || 'light'
+            profile_quote: ($('set-quote')?.value || '').trim().slice(0, 60),
         }
         if(newUsername && prof?.username !== newUsername){
             update.username_changed_at = new Date().toISOString()
@@ -6063,6 +6077,7 @@ $('save-general')?.addEventListener('click', async () => {
 
         const { error } = await supabase.from('profiles').update(update).eq('id', user.id)
         if(error) throw error
+        ovCacheClear()
         showToast('success', 'Профиль сохранён', { icon:'✓' })
     } catch(e){ showToast('error', 'Ошибка: ' + e.message) }
     finally { btn.disabled = false; btn.textContent = 'Сохранить изменения' }
@@ -8450,7 +8465,7 @@ function vfmBuildOverlay(){
         <div class="vfm-desc-block">
           <div class="vfm-desc-author-row">
   <div class="vfm-desc-author" id="vfm-desc-author"></div>
-  <button class="vfm-author-plus hidden" id="vfm-author-plus" aria-label="Подписаться">+</button>
+  <button class="vfm-author-plus hidden" id="vfm-author-plus" aria-label="Подписаться">Подписаться</button>
 </div>
           <div class="vfm-desc-row">
             <span class="vfm-desc-text" id="vfm-desc"></span>
@@ -8763,7 +8778,7 @@ function vfmBuildOverlay(){
         const fb = el.querySelector('#vfm-follow-btn')
         fb.click()                                   // его обработчик меняет класс синхронно
         authPlus.classList.toggle('following', fb.classList.contains('following'))
-        authPlus.textContent = fb.classList.contains('following') ? '✓' : '+'
+        authPlus.textContent = fb.classList.contains('following') ? 'Вы подписаны' : 'Подписаться'
     })
     /* ─── Прогресс ─── */
     const bar  = el.querySelector('#vfm-progress')
@@ -9726,7 +9741,8 @@ async function syncVfmMeta(){
     const authorId = avaEl?.dataset.uid
 
     // ========== Имя автора — без бейджа и без админ-значка ==========
-    let authorName = card.querySelector('.feed-more')?.dataset.authorName || 'user'
+    let authorName = card.querySelector('.feed-more')?.dataset.authorName
+        || card.querySelector('.feed-footer-avatar')?.getAttribute('title') || 'user'
     if(authorName === 'user' && nameEl){
         const clone = nameEl.cloneNode(true)
         clone.querySelectorAll('.feed-channel-badge, .admin-badge, .feed-author-plate').forEach(x => x.remove())
@@ -9801,7 +9817,8 @@ async function syncVfmMeta(){
     const text         = (card.querySelector('.feed-post-content')?.textContent || '').trim()
 
     const vfmStatusEmoji = statusB ? statusB.textContent : ''
-    descAuthorEl.textContent = authorName
+    descAuthorEl.innerHTML = escapeHtml(authorName) +
+        (vfmStatusEmoji ? `<span class="vfm-name-status">${vfmStatusEmoji}</span>` : '')
     descEl.textContent = text || ''
     descEl.classList.remove('expanded')
     moreBtn.classList.add('hidden')
@@ -10484,6 +10501,9 @@ async function boot(){
         if(!session?.user){
             setBootStage(3)
             await new Promise(r => setTimeout(r, 250))
+            document.getElementById('lt-boot-bg')?.remove()
+            window.__ltBooted = true
+            applyTheme(getTheme())
             bootScreen.classList.add('fade-out')
             setTimeout(() => bootScreen.remove(), 500)
             showScreen('auth')
@@ -10505,13 +10525,18 @@ async function boot(){
         // ─── Этап 3: завершение (зелёная точка)
         setBootStage(3)
         await new Promise(r => setTimeout(r, 420))
-
+        document.getElementById('lt-boot-bg')?.remove()
+        window.__ltBooted = true
+        applyTheme(getTheme())
         bootScreen.classList.add('fade-out')
         setTimeout(() => bootScreen.remove(), 520)
 
         await enterApp(prefetchPromise)
     } catch(e){
         console.warn('[boot]', e.message)
+        document.getElementById('lt-boot-bg')?.remove()
+        window.__ltBooted = true
+        applyTheme(getTheme())
         bootScreen.classList.add('fade-out')
         setTimeout(() => bootScreen.remove(), 450)
         showScreen('auth')
@@ -12407,10 +12432,10 @@ window.openStickerPackPreview = openStickerPackPreview
 document.addEventListener('lt:goProfilePosts', async (e) => {
     state.currentProfileViewId = null
     state.viewingOwnProfile = true
-    state.profileTab = 'posts'
+    state.profileTab = 'wall'; state.wallTab = 'posts'
     // активируем нужный таб
     document.querySelectorAll('#profile-tabs .profile-tab').forEach(t => {
-        t.classList.toggle('active', t.dataset.ptab === 'posts')
+        t.classList.toggle('active', t.dataset.ptab === 'wall')
     })
     switchScreen('profile')
     // перерендерим через 300ms (после загрузки)
@@ -12593,6 +12618,243 @@ try {
         .on('postgres_changes', { event:'*', schema:'public', table:'lives' }, () => { if(state.screen === 'home') renderLiveNow(); if(state.screen === 'inbox') renderEventsScreen() })
     ch.subscribe((s, err) => { if(err) console.warn('[realtime]', err.message) })
 } catch(e){ console.warn('[realtime] disabled:', e.message) }
+
+/* ============================================================
+   ПРОФИЛЬ → ОБЗОР
+============================================================ */
+const GLOBE = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>'
+const LINK_TYPES = {
+        vk:        { name:'VK',        bg:'#0077FF', icon:SVG.vk,        hosts:['vk.com','vk.ru'], ph:'vk.com/username' },
+        instagram: { name:'Instagram', bg:'#E4405F', icon:SVG.instagram, hosts:['instagram.com'], ph:'instagram.com/username' },
+        discord:   { name:'Discord',   bg:'#5865F2', icon:SVG.discord,   hosts:['discord.gg','discord.com'], ph:'discord.gg/invite' },
+        viber:     { name:'Viber',     bg:'#7360f2', icon:SHARE_CIRCLES.find(x=>x.key==='viber').icon, hosts:['viber.com','vb.me','invite.viber.com'], ph:'viber.com/...' },
+        whatsapp:  { name:'WhatsApp',  bg:'#25D366', icon:SVG.whatsapp,  hosts:['wa.me','whatsapp.com'], ph:'wa.me/7999...' },
+        telegram:  { name:'Telegram',  bg:'#26A5E4', icon:SVG.telegram,  hosts:['t.me','telegram.me'], ph:'t.me/username' },
+        channel:   { name:'Канал listatread', page:'Канал listatread', bg:'#ff375f', icon:'<span style="color:#fff;display:flex">'+SVG.channel+'</span>', hosts:['listatread.online','ltc.me'], ph:'listatread.online/c/CODE' },
+        facebook:  { name:'Facebook',  bg:'#0866FF', icon:SVG.facebook,  hosts:['facebook.com','fb.com'], ph:'facebook.com/username' }
+    }
+;['com','net','online','ru','by'].forEach(t => LINK_TYPES['site_'+t] =
+    { name:'site.'+t, page:'Сайт', bg:'#636366', icon:GLOBE, tlds:[t], ph:'example.'+t })
+
+/* Проверка домена: только https, без user@host, без punycode, только разрешённые хосты/зоны */
+function validateLink(type, raw){
+    let s = (raw || '').trim(); if(!s) return null
+    if(!/^https?:\/\//i.test(s)) s = 'https://' + s
+    let u; try { u = new URL(s) } catch { return null }
+    if(u.protocol !== 'https:' && u.protocol !== 'http:') return null
+    if(u.username || u.password) return null
+    const host = u.hostname.toLowerCase().replace(/^www\./, '')
+    if(host.includes('xn--') || host.length > 80) return null
+    const t = LINK_TYPES[type]; if(!t) return null
+    if(t.hosts){ if(!t.hosts.some(h => host === h || host.endsWith('.' + h))) return null }
+    else {
+        const parts = host.split('.')
+        if(parts.length < 2 || !t.tlds.includes(parts[parts.length - 1])) return null
+    }
+    u.protocol = 'https:'
+    return u.toString()
+}
+
+function ovCacheClear(){ [...Cache.data.keys()].filter(k => k.startsWith('ov:')).forEach(k => Cache.invalidate(k)) }
+
+async function loadOverviewData(uid, profile, canSaved){
+    const POST = 'id, content, media_url, media_title, poll, created_at, channels:channel_id ( id, name, avatar_url )'
+    const [about, own, subs, pubs, pubCnt, reps, repCnt, saved] = await Promise.all([
+        profile.profile_about_post_id ? supabase.from('posts').select(POST).eq('id', profile.profile_about_post_id).maybeSingle() : Promise.resolve({ data:null }),
+        supabase.from('channels').select('id, name, avatar_url, channel_type, owner_id').eq('owner_id', uid),
+        supabase.from('subscriptions').select('role, channels:channel_id ( id, name, avatar_url, channel_type, owner_id )').eq('follower_id', uid),
+        supabase.from('posts').select(POST).eq('author_id', uid).order('created_at', { ascending:false }).limit(3),
+        supabase.from('posts').select('*', { count:'exact', head:true }).eq('author_id', uid),
+        supabase.from('reposts').select(`posts:post_id ( ${POST} )`).eq('user_id', uid).order('created_at', { ascending:false }).limit(3),
+        supabase.from('reposts').select('*', { count:'exact', head:true }).eq('user_id', uid),
+        canSaved ? supabase.from('saved_tracks').select(`posts:post_id ( ${POST} )`).eq('user_id', uid).order('created_at', { ascending:false }).limit(3) : Promise.resolve({ data:[] })
+    ])
+    const map = new Map()
+    ;(own.data || []).forEach(c => map.set(c.id, { ...c, role:'owner' }))
+    ;(subs.data || []).forEach(s => { const c = s.channels; if(c && !map.has(c.id)) map.set(c.id, { ...c, role: s.role === 'admin' ? 'admin' : 'member' }) })
+    const channels = [...map.values()], counts = {}
+    if(channels.length){
+        const { data } = await supabase.from('subscriptions').select('channel_id').in('channel_id', channels.map(c => c.id))
+        ;(data || []).forEach(r => counts[r.channel_id] = (counts[r.channel_id] || 0) + 1)
+    }
+    const pick = rows => (rows || []).map(r => r.posts).filter(Boolean)
+    const d = {
+            about: about.data, channels, counts,
+            pubs: pubs.data || [], pubCount: pubCnt.count || 0,
+            reps: pick(reps.data), repCount: repCnt.count || 0,
+            saved: pick(saved.data), all: new Map()
+        }
+    ;[d.about, ...d.pubs, ...d.reps, ...d.saved].filter(Boolean).forEach(p => d.all.set(p.id, p))
+    return d
+}
+
+function ovPreview(p){
+    const u = p.media_url || '', t = escapeHtml((p.content || '').trim().slice(0, 100)), a = `data-ovpost="${p.id}"`
+    if(isVideoUrl(u)) return `<div class="ov-pv" ${a}><video class="ov-pv-m" src="${escapeHtml(u)}#t=0.1" muted playsinline preload="metadata"></video><div class="ov-pv-cap">${t}</div></div>`
+    if(isAudioUrl(u)){
+        const av = p.channels?.avatar_url
+        return `<div class="ov-pv ov-pv-track" ${a}>${av ? `<div class="ov-pv-m ov-blur" style="background-image:url('${escapeHtml(av)}')"></div>` : ''}<div class="ov-pv-note">${SVG.music}</div><div class="ov-pv-cap">${escapeHtml(p.media_title || 'Трек')}</div></div>`
+    }
+    if(u && isImageUrl(u)) return `<div class="ov-pv" ${a}><img class="ov-pv-m" src="${escapeHtml(u)}" loading="lazy" alt=""><div class="ov-pv-cap">${t}</div></div>`
+    if(p.poll) return `<div class="ov-pv ov-pv-poll" ${a}><div class="ov-pv-k">?</div><div class="ov-pv-txt">${t || escapeHtml(p.poll.question || 'Опрос')}</div></div>`
+    return `<div class="ov-pv ov-pv-text" ${a}><div class="ov-pv-k">Т</div><div class="ov-pv-txt">${t}</div></div>`
+}
+function ovStrip(title, count, items, cls, goto){
+    return `<section class="ov-tile ov-strip ${cls}">
+        <div class="ov-strip-head"><span class="ov-label">${title}${count != null ? ` (${count})` : ''}</span>${goto ? `<button class="ov-more" data-goto="${goto}">›</button>` : ''}</div>
+        <div class="ov-strip-row">${items.length ? items.map(ovPreview).join('') : '<div class="ov-empty">Пока пусто</div>'}</div></section>`
+}
+function ovChCard(c, counts){
+    const roleL = { owner:'Владелец', admin:'Админ', member:'Участник' }[c.role]
+    const kind = c.channel_type === 'community' ? 'группа' : 'канал'
+    const av = c.avatar_url ? `<img src="${escapeHtml(c.avatar_url)}" alt="">` : escapeHtml((c.name || 'K').charAt(0).toUpperCase())
+    return `${c.avatar_url ? `<div class="ov-ch-bg" style="background-image:url('${escapeHtml(c.avatar_url)}')"></div>` : ''}
+        <div class="ov-ch-shade"></div>
+        <div class="ov-ch-top">${pluralSubs(counts[c.id] || 0)} · ${kind}</div>
+        <div class="ov-ch-bottom"><div class="ov-ch-ava">${av}</div>
+        <div><div class="ov-ch-name">${escapeHtml(c.name || 'Канал')}</div><div class="ov-ch-role">${roleL}</div></div></div>`
+}
+function ovVisibleChannels(d, foreign, priv){
+    if(foreign && priv.hide_channels) return []
+    return d.channels.filter(c => !foreign || (c.channel_type !== 'private' && c.channel_type !== 'bycode'))
+}
+
+function buildOverviewHtml(d, profile, own, priv, canSaved){
+    const f = !own, out = []
+    const a = d.about
+    if(a){
+        const u = a.media_url || ''
+        const bg = isVideoUrl(u) ? `<video class="ov-bg" src="${escapeHtml(u)}#t=0.1" muted playsinline preload="metadata"></video>`
+            : (u && isImageUrl(u)) ? `<img class="ov-bg" src="${escapeHtml(u)}" alt="" loading="lazy">` : ''
+        out.push(`<section class="ov-tile ov-about" data-ovpost="${a.id}">${bg}<div class="ov-shade"></div><div class="ov-label">About</div><div class="ov-about-text">${escapeHtml((a.content || a.media_title || '').slice(0, 140))}</div></section>`)
+    }
+    if(profile.profile_quote) out.push(`<section class="ov-tile ov-quote"><div class="ov-label dark">Цитата <span>❝</span></div><div class="ov-quote-text">${escapeHtml(String(profile.profile_quote).slice(0, 60))}</div></section>`)
+    ;(Array.isArray(profile.profile_links) ? profile.profile_links : []).forEach(l => {
+        const t = LINK_TYPES[l?.type], url = validateLink(l?.type, l?.url)   // перепроверка при показе
+        if(!t || !url) return
+        out.push(`<a class="ov-tile ov-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer nofollow">
+            <span class="ov-link-ic" style="background:${t.bg}">${t.icon}</span>
+            <span class="ov-link-tx"><span class="ov-link-top">${escapeHtml(t.page || 'Страница в ' + t.name)}</span><span class="ov-link-url">${escapeHtml(url.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</span></span></a>`)
+    })
+    const chs = ovVisibleChannels(d, f, priv)
+    if(chs.length) out.push(`<section class="ov-tile ov-ch"><div class="ov-ch-card" id="ov-ch-card">${ovChCard(chs[0], d.counts)}</div>
+        <div class="ov-ch-dots">${chs.map((c, i) => `<button class="ov-ch-dot ${i ? '' : 'active'}" data-i="${i}">${c.avatar_url ? `<img src="${escapeHtml(c.avatar_url)}" alt="">` : escapeHtml((c.name || 'K').charAt(0))}</button>`).join('')}</div></section>`)
+    if(!(f && priv.hide_gifts)) out.push(`<section class="ov-tile ov-gifts"><div class="ov-label">Подарки</div><button class="ov-gift-btn" id="ov-gift">${ICONS.gift}</button><div class="ov-gifts-tx">Пользователю ещё не дарили подарков</div></section>`)
+    if(!(f && priv.hide_posts))   out.push(ovStrip('Публикации', d.pubCount, d.pubs, '', 'wall:posts'))
+    if(!(f && priv.hide_reposts)) out.push(ovStrip('Репосты', d.repCount, d.reps, '', 'wall:reposts'))
+    if(canSaved) out.push(ovStrip('Сохранённые треки', null, d.saved.filter(p => isAudioUrl(p.media_url)), 'blue', ''))
+    out.push(`<section class="ov-tile ov-albums"><div class="ov-label">Альбомы</div>Нет альбомов</section>`)
+    if(priv.show_email && profile.email) out.push(`<section class="ov-tile ov-link"><span class="ov-link-ic" style="background:#EA4335">${SVG.email}</span><span class="ov-link-tx"><span class="ov-link-top">Прикреплено · Email</span><span class="ov-link-url">${escapeHtml(profile.email)}</span></span></section>`)
+    if(f) out.push(`<div class="ov-actions"><button class="btn-gray" id="ov-write">Написать в listadirect</button><button class="btn-gray ov-danger" id="ov-block">Заблокировать</button></div>`)
+    return out.join('')
+}
+
+let _ovToken = 0, _ovIO = null
+async function renderProfileOverview(uid){
+    const box = $('profile-content'), tk = ++_ovToken
+    box.innerHTML = '<div class="ov-sk"></div><div class="ov-sk"></div><div class="ov-sk short"></div>'
+    const profile = state.currentProfile || {}, own = state.viewingOwnProfile
+    const priv = profile.privacy || {}, canSaved = own || !!priv.show_saved
+    let d
+    try { d = await Cache.fetch('ov:' + uid + ':' + (canSaved ? 1 : 0), () => loadOverviewData(uid, profile, canSaved), 20000) }
+    catch(e){ box.innerHTML = '<p class="empty">Ошибка: ' + escapeHtml(e.message) + '</p>'; return }
+    if(tk !== _ovToken || state.profileTab !== 'overview') return
+    box.innerHTML = buildOverviewHtml(d, profile, own, priv, canSaved)
+
+    // плавное появление при скролле вниз И вверх
+    _ovIO?.disconnect()
+    _ovIO = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('in', e.isIntersecting)), { threshold: .08 })
+    box.querySelectorAll('.ov-tile').forEach(t => _ovIO.observe(t))
+
+    box.querySelectorAll('[data-ovpost]').forEach(el => el.addEventListener('click', () => {
+        const id = el.dataset.ovpost, p = d.all.get(id); if(!p) return
+        const u = p.media_url || ''
+        if(isVideoUrl(u)) return enterVideoFS(u, id)
+        if(isAudioUrl(u)) return window.__lt.playTrack(id, u, p.media_title || 'Трек')
+        if(u && isImageUrl(u)) return openPhotoViewer(u, id)
+        state.profileTab = 'wall'; state.wallTab = 'posts'; renderProfileTab()
+    }))
+    box.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => {
+        const [tab, sub] = b.dataset.goto.split(':')
+        state.profileTab = tab; if(sub) state.wallTab = sub
+        renderProfileTab(); $('profile-tabs')?.scrollIntoView({ behavior:'smooth', block:'start' })
+    }))
+    const chs = ovVisibleChannels(d, !own, priv); let cur = 0
+    box.querySelectorAll('.ov-ch-dot').forEach(b => b.addEventListener('click', () => {
+        cur = +b.dataset.i
+        box.querySelectorAll('.ov-ch-dot').forEach(x => x.classList.toggle('active', x === b))
+        $('ov-ch-card').innerHTML = ovChCard(chs[cur], d.counts)
+    }))
+    $('ov-ch-card')?.addEventListener('click', () => chs[cur] && openChannel(chs[cur].id))
+    $('ov-gift')?.addEventListener('click', () => showToast('info', 'Подарки — скоро', { icon:'🎁' }))
+    $('ov-write')?.addEventListener('click', () => document.querySelector('.btn-chat-round')?.click())
+    $('ov-block')?.addEventListener('click', async () => {
+        if(!confirm('Заблокировать пользователя?')) return
+        const { data:{ user } } = await supabase.auth.getUser()
+        await supabase.from('blocks').insert({ blocker_id:user.id, blocked_id:uid })
+        loadProfile(uid)
+    })
+}
+
+/* ============ НАСТРОЙКИ: About / цитата / ссылки ============ */
+let LT_LINKS = []
+async function refreshOverviewSettings(){
+    const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+    const { data:p } = await supabase.from('profiles').select('profile_about_post_id, profile_quote, profile_links').eq('id', user.id).maybeSingle()
+    if($('set-quote')) $('set-quote').value = p?.profile_quote || ''
+    LT_LINKS = Array.isArray(p?.profile_links) ? p.profile_links : []
+    renderLinksEditor()
+    let label = 'Не выбран'
+    if(p?.profile_about_post_id){
+        const { data:ps } = await supabase.from('posts').select('content, media_title').eq('id', p.profile_about_post_id).maybeSingle()
+        label = (ps?.content || ps?.media_title || 'Тред').slice(0, 40)
+    }
+    if($('set-about-label')) $('set-about-label').textContent = label
+}
+function renderLinksEditor(){
+    const box = $('set-links-list'); if(!box) return
+    box.innerHTML = LT_LINKS.map((l, i) => `<div class="set-link-row"><span class="set-link-ic" style="background:${LINK_TYPES[l.type]?.bg || '#555'}">${LINK_TYPES[l.type]?.icon || ''}</span><span class="set-link-url">${escapeHtml(l.url)}</span><button type="button" data-rm="${i}">✕</button></div>`).join('')
+    box.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
+        LT_LINKS.splice(+b.dataset.rm, 1)
+        await saveProfilePick('profile_links', LT_LINKS); renderLinksEditor()
+    })
+}
+$('set-link-add')?.addEventListener('click', () => {
+    if(LT_LINKS.length >= 6){ showToast('error', 'Максимум 6 ссылок'); return }
+    showActionSheet('Тип ссылки', Object.entries(LINK_TYPES).map(([k, t]) => ({
+        label: t.name,
+        onClick: () => openEditFieldModal({
+            title: t.name, currentValue:'', placeholder: t.ph, multiline:false,
+            onSave: async v => {
+                const url = validateLink(k, v)
+                if(!url) throw new Error('Ссылка не подходит для «' + t.name + '»')
+                LT_LINKS.push({ type:k, url })
+                await saveProfilePick('profile_links', LT_LINKS); renderLinksEditor()
+            }
+        })
+    })))
+})
+async function openAboutPicker(){
+    const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+    document.getElementById('ab-picker')?.remove()
+    const m = document.createElement('div'); m.id = 'ab-picker'; m.className = 'ts-sheet-modal'
+    m.innerHTML = `<div class="ts-sheet-backdrop"></div><div class="ts-sheet-body"><div class="ts-sheet-handle"></div>
+        <div class="ts-sheet-title">Тред для About</div><div class="ts-track-list" id="ab-list">${loadingBlock()}</div>
+        <button class="ts-track-more" id="ab-clear">Убрать</button></div>`
+    document.body.appendChild(m)
+    const close = () => m.remove(); m.querySelector('.ts-sheet-backdrop').onclick = close
+    const { data } = await supabase.from('posts').select('id, content, media_url').eq('author_id', user.id)
+        .not('media_url', 'is', null).order('created_at', { ascending:false }).limit(40)
+    const rows = (data || []).filter(p => isVideoUrl(p.media_url) || (isImageUrl(p.media_url) && !/\/stickers\//.test(p.media_url)))
+    const list = m.querySelector('#ab-list')
+    list.innerHTML = rows.length ? rows.map(p => `<div class="ts-track-row" data-id="${p.id}" style="cursor:pointer">
+        <div class="ts-track-row-ava">${isVideoUrl(p.media_url) ? `<video src="${escapeHtml(p.media_url)}#t=0.1" muted preload="metadata" style="width:100%;height:100%;object-fit:cover"></video>` : `<img src="${escapeHtml(p.media_url)}" alt="">`}</div>
+        <div class="ts-track-row-info"><div class="ts-track-row-title">${escapeHtml((p.content || 'Без описания').slice(0, 50))}</div></div></div>`).join('')
+        : '<p class="empty small">Нет тредов с фото/видео</p>'
+    list.querySelectorAll('[data-id]').forEach(r => r.onclick = async () => { if(await saveProfilePick('profile_about_post_id', r.dataset.id)){ refreshOverviewSettings(); close() } })
+    m.querySelector('#ab-clear').onclick = async () => { if(await saveProfilePick('profile_about_post_id', null)){ refreshOverviewSettings(); close() } }
+}
+document.addEventListener('click', e => { if(e.target.closest('#set-about-btn')) openAboutPicker() })
 
 /* ============================================================
    ЭКСПОРТ ФУНКЦИЙ НА WINDOW — для inline-фолбэка в HTML

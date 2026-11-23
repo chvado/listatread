@@ -24,23 +24,8 @@
 
     <!-- ═══════════ VIEWPORT / MOBILE ═══════════ -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-    <script>
-        (function(){
-            var sa = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
-            if(!sa) return;
-            var d = document.documentElement;
-            d.classList.add('standalone');
-            function fix(){
-                var land = innerWidth > innerHeight;
-                var h = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
-                d.style.setProperty('--app-h', h + 'px');
-            }
-            fix();
-            addEventListener('resize', fix);
-            addEventListener('orientationchange', function(){ setTimeout(fix, 150); });
-        })();
-    </script>
-    <meta name="theme-color" content="#ffffff">
+
+    <meta name="theme-color" content="#000000">
     <meta name="color-scheme" content="light dark">
     <meta name="format-detection" content="telephone=no">
     <meta name="mobile-web-app-capable" content="yes">
@@ -104,6 +89,7 @@
             }
         }
     </script>
+    <style id="lt-boot-bg">html,body{background:#000!important}</style>
 
     <link rel="stylesheet" href="style.css?v=16">
 </head>
@@ -463,7 +449,14 @@
                 <div class="profile-stats"><div class="stat"><strong id="stat-followers">0</strong><span>подписчики</span></div><div class="stat"><strong id="stat-posts">0</strong><span>Треды</span></div><div class="stat"><strong id="stat-subs">0</strong><span>подписки</span></div></div>
                 <div class="profile-channel-card hidden" id="profile-channel-card"></div>
                 <div id="profile-actions"></div>
-                <div class="profile-tabs" id="profile-tabs"><button class="profile-tab active" data-ptab="reposts">Репосты</button><button class="profile-tab" data-ptab="posts">Треды</button><button class="profile-tab" data-ptab="gifts">Подарки</button><button class="profile-tab" data-ptab="tracks">Треки</button><button class="profile-tab" data-ptab="channels">Каналы</button><button class="profile-tab" data-ptab="shop">Магазин</button><button class="profile-tab" data-ptab="liked">Понравилось</button></div>
+                <div class="profile-tabs" id="profile-tabs">
+                    <button class="profile-tab active" data-ptab="overview">Обзор</button>
+                    <button class="profile-tab" data-ptab="wall">Стена</button>
+                    <button class="profile-tab" data-ptab="saved">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Сохранено
+                    </button>
+                </div>
+                <div class="profile-subtabs hidden" id="profile-subtabs"></div>
                 <div class="profile-content" id="profile-content"></div>
                 <div class="new-post-btn-wrap hidden" id="new-post-wrap"><button class="new-post-btn" id="new-post-btn"><span class="new-post-btn-bg"></span><span class="new-post-btn-content"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Новый тред</span></button></div>
             </div>
@@ -508,6 +501,17 @@
     </span>
                         <span class="settings-pick-chevron">›</span>
                     </button>
+                    <label class="settings-label">Обзор · тред для About (фото/видео)</label>
+                    <button type="button" class="settings-pick-row" id="set-about-btn">
+                        <span class="settings-pick-ico"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M3 18l5-5 4 4 3-3 6 6"/></svg></span>
+                        <span class="settings-pick-text"><span class="settings-pick-title">Выбрать тред</span><span class="settings-pick-sub" id="set-about-label">Не выбран</span></span>
+                        <span class="settings-pick-chevron">›</span>
+                    </button>
+                    <label class="settings-label">Цитата (до 60 символов)</label>
+                    <input type="text" id="set-quote" maxlength="60" placeholder="Ваша цитата">
+                    <label class="settings-label">Ссылки</label>
+                    <div id="set-links-list"></div>
+                    <button type="button" class="btn-gray" id="set-link-add" style="width:100%;margin-bottom:14px">+ Добавить ссылку</button>
                     <label class="settings-label">Тема</label>
                     <button type="button" class="theme-toggle" id="theme-toggle">
                         <span class="theme-toggle-icon" id="theme-toggle-icon">☀️</span>
@@ -528,6 +532,8 @@
                         <label class="toggle-row"><span>Скрывать мои лайки</span><input type="checkbox" class="toggle" data-priv="hide_likes"></label>
                         <label class="toggle-row"><span>Скрывать каналы, в которых я состою</span><input type="checkbox" class="toggle" data-priv="hide_channels"></label>
                         <label class="toggle-row"><span>Скрывать подарки</span><input type="checkbox" class="toggle" data-priv="hide_gifts"></label>
+                        <label class="toggle-row"><span>Показывать «Сохранено» другим</span><input type="checkbox" class="toggle" data-priv="show_saved"></label>
+                        <label class="toggle-row"><span>Прикрепить email к профилю</span><input type="checkbox" class="toggle" data-priv="show_email"></label>
                     </div>
                     <button class="btn-primary settings-save" id="save-privacy">Сохранить настройки</button>
                 </div>
