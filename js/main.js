@@ -6068,7 +6068,7 @@ $('save-general')?.addEventListener('click', async () => {
             full_name: $('set-name').value.trim(),
             username: newUsername,
             bio: $('set-bio').value.trim(),
-            theme: document.documentElement.getAttribute('data-theme') || 'light'
+            theme: document.documentElement.getAttribute('data-theme') || 'light',
             profile_quote: ($('set-quote')?.value || '').trim().slice(0, 60),
         }
         if(newUsername && prof?.username !== newUsername){
