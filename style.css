@@ -8005,6 +8005,114 @@ html[data-theme="dark"] .profile-stats,html[data-theme="dark"] .profile-channel-
     display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#ff9f0a,#ff375f);color:#fff}
 .rt-ltc span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .feed-post-video .rt-ltc{color:#fff;background:rgba(255,255,255,.2)}
+
+/* ===== канал: без горизонтального скролла, без «черноты», кнопки на аватарке ===== */
+#channel-screen{overflow-x:hidden;max-width:100vw}
+.ch-full-avatar{contain:paint}
+.ch-full-avatar-overlay{background:none!important;gap:10px;padding:14px}
+.ch-blur-bg{height:60%!important;background:none!important;
+    -webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3);
+    -webkit-mask-image:linear-gradient(0deg,#000 55%,transparent 100%);mask-image:linear-gradient(0deg,#000 55%,transparent 100%)}
+.ch-full-avatar-name,.ch-full-avatar-stats{text-shadow:0 1px 8px rgba(0,0,0,.45)}
+.ch-full-avatar .ch-actions-bar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;max-width:100%;margin:0}
+.ch-full-avatar .ch-action-btn{min-width:0;padding:9px 2px;font-size:10.5px;overflow:hidden;color:#fff;
+    background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);box-shadow:none;
+    -webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%)}
+.ch-full-avatar .ch-action-btn span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-full-avatar .ch-action-btn.primary{background:rgba(255,55,95,.75)}
+.ch-full-avatar .ch-action-btn.live{background:rgba(230,0,122,.75)}
+.ch-mem-row{overflow:visible;gap:6px}
+.ch-mem{flex:1 1 0;min-width:0}
+
+/* ===== фото в тредах: скелетон ===== */
+.feed-post-image:not(.ld){min-height:260px;object-fit:cover;
+    background:linear-gradient(90deg,var(--sk-a) 25%,var(--sk-b) 50%,var(--sk-a) 75%);background-size:200% 100%;animation:shimmer 1.4s linear infinite}
+
+/* ===== заголовок «СОБЫТИЯ» + плюс на одной линии ===== */
+.ov-evh{display:flex;align-items:center;justify-content:space-between;margin:28px 2px 12px}
+.ov-evh .ov-h{margin:0}
+
+/* ===== закреплённый тред ===== */
+.ov-about{aspect-ratio:4/5;min-height:0;border:none}
+.ov-about .ov-shade{background:linear-gradient(0deg,rgba(0,0,0,.8),rgba(0,0,0,.25) 38%,transparent 62%)}
+.ov-about>.ov-label{color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.ov-about-bottom{left:14px;right:14px;bottom:12px;align-items:flex-start;text-align:left;gap:8px}
+.ov-about-text{width:100%;text-align:left}
+.ov-pin-actions{display:flex;align-items:center;gap:8px;width:100%}
+.ov-pa{display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 12px;border:none;border-radius:100px;color:#fff;font-size:13px;font-weight:600;
+    background:rgba(255,255,255,.18);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.ov-pa svg{width:20px;height:20px}
+.ov-pa.liked{color:var(--red-pink)}.ov-pa.reposted{color:#ff8a00}
+.ov-pa-sub{width:36px;padding:0;justify-content:center;background:var(--red-pink)}
+.ov-pa-sub.on{background:rgba(255,255,255,.25)}
+.ov-pa-mute{margin-left:auto;width:36px;padding:0;justify-content:center}
+
+/* ===== цитата ===== */
+.ov-quote{aspect-ratio:1/1;min-height:0;padding:44px 26px 26px}
+.ov-quote-text{font-size:24px;line-height:1.28}
+
+/* ===== адрес: верх лайм, низ белый ===== */
+.ov-addr2{display:flex;flex-direction:column;padding:0;background:#fff;border:none}
+.ov-addr2-top{height:96px;background:#b4ee2b;display:flex;align-items:center;padding:0 20px}
+.ov-addr2-top svg{width:46px;height:46px}
+.ov-addr2-bot{padding:14px 16px;color:#111;text-align:left}
+.ov-addr2-l{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#6b6b70}
+.ov-addr2-v{font-size:16px;font-weight:700;margin-top:4px;word-break:break-word}
+
+/* ===== ссылки: верх цвет, низ белый ===== */
+.ov-lk{display:flex;flex-direction:column;padding:0;background:#fff;border:none;text-decoration:none}
+.ov-lk-top{height:78px;display:flex;align-items:center;padding:0 18px}
+.ov-lk-top svg{width:38px;height:38px}
+.ov-lk-bot{display:flex;align-items:center;gap:10px;padding:12px 16px;color:#111}
+.ov-lk-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left}
+.ov-lk-tx b{font-size:15px;font-weight:800}
+.ov-lk-tx i{font-style:normal;font-size:12.5px;color:#6b6b70;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-lk-ch{font-size:26px;line-height:1;color:#9a9aa0}
+
+/* ===== события ===== */
+.ev-row{margin:0!important;padding:0!important;gap:10px}
+.ev-card{flex:0 0 100%;scroll-snap-align:start;border-radius:22px;overflow:hidden;background:var(--card);border:1px solid var(--glass-edge);
+    -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.ev-photo{position:relative;aspect-ratio:4/3;overflow:hidden;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#ff9f0a,#ff375f);color:#fff;font-size:72px;font-weight:900}   /* 1/1 — если нужен строгий квадрат */
+.ev-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ev-shade{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.8),transparent 58%)}
+.ev-pt{position:absolute;left:14px;right:14px;bottom:12px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;color:#fff;text-align:left}
+.ev-when{display:flex;align-items:flex-end;gap:10px}
+.ev-sq{width:58px;height:58px;border-radius:14px;background:rgba(58,58,60,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
+.ev-sq b{font-size:22px;font-weight:800}.ev-sq span{font-size:10px;opacity:.85}
+.ev-time{font-size:16px;font-weight:700;padding-bottom:4px}
+.ev-title{font-size:26px;font-weight:900;text-transform:uppercase;line-height:1.05;letter-spacing:-.01em;word-break:break-word}
+.ev-body{padding:14px 14px 12px;text-align:left}
+.ev-desc{font-size:14px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.ev-date{font-size:12.5px;color:var(--text-secondary);margin:6px 0 12px}
+.ev-btns{display:flex;align-items:center;gap:8px}
+.ev-b{height:38px;min-width:38px;border:none;border-radius:100px;background:var(--surface-3);color:var(--text);display:inline-flex;align-items:center;justify-content:center;padding:0}
+.ev-b svg{width:19px;height:19px}
+.ev-b-by{padding:0 12px 0 4px;gap:7px;margin-right:auto;max-width:55%;font-size:13px;font-weight:700}
+.ev-b-by i{width:30px;height:30px;border-radius:50%;overflow:hidden;font-style:normal;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#ff9f0a,#ff375f);color:#fff;flex-shrink:0}
+.ev-b-by i img{width:100%;height:100%;object-fit:cover}
+.ev-b-by span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev-dots{display:flex;justify-content:center;gap:7px;margin:2px 0 10px}
+.ev-dots i{width:7px;height:7px;border-radius:50%;background:var(--text);opacity:.25;transition:opacity .25s,transform .25s var(--spring),background .25s}
+.ev-dots i.on{opacity:1;background:#ff375f;transform:scale(1.3)}
+
+/* ===== магазин ===== */
+.ov-store{min-height:240px;display:flex;flex-direction:column;padding:16px;background:rgba(255,255,255,.88);color:#111;border:none;
+    -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+.ov-store-top{display:flex;align-items:center;justify-content:space-between}
+.ov-store-top span{font-size:20px;font-weight:900;letter-spacing:-.02em}
+.ov-store-cart{width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.07);color:#111;display:flex;align-items:center;justify-content:center}
+.ov-store-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:#6b6b70;padding:10px 0}
+.ov-store-t{font-size:14px;font-weight:700;max-width:230px;line-height:1.35}
+.ov-store-legal{font-size:10.5px;line-height:1.4;color:#8a8a8f;text-align:center}
+
+/* ===== «Стена» в обзоре: текст обрезается, у превью только аватарка ===== */
+.ov-pv{contain:paint}
+.ov-pv-txt{max-height:100%;overflow:hidden;overflow-wrap:anywhere;word-break:break-word}
+.ov-pv-cap{max-height:55%}
+.ov-pv-by{padding:2px;gap:0}
+.ov-pv-by span{display:none}
 /* ============================================================
    23. АДАПТИВ / REDUCED-MOTION
 ============================================================ */

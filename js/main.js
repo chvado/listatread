@@ -317,19 +317,21 @@ const Cache = {
     }
 }
 window.__ltCache = Cache
+/* кэш уже загруженных аватарок/имён: чтобы профиль и канал открывались мгновенно */
+const ENT = { users:{}, ch:{} }
 /* ============================================================
    PREFETCH-ФУНКЦИИ
 ============================================================ */
 async function prefetchFollowCacheFor(userId){
     return Cache.fetch('follows:' + userId, async () => {
-        const [{ data:f }, { data:s }] = await Promise.all([
+        const [{ data:f }, { data:s }, { data:own }] = await Promise.all([
             supabase.from('follows').select('following_id').eq('follower_id', userId),
-            supabase.from('subscriptions').select('id, role').eq('follower_id', user.id).eq('channel_id', channelId).maybeSingle(),
+            supabase.from('subscriptions').select('channel_id').eq('follower_id', userId),
+            supabase.from('channels').select('id').eq('owner_id', userId)
         ])
-        return {
-            follows: new Set((f||[]).map(x => x.following_id)),
-            channelSubs: new Set((s||[]).map(x => x.channel_id))
-        }
+        const chSubs = new Set((s || []).map(x => x.channel_id))
+        ;(own || []).forEach(c => chSubs.add(c.id))        // свои каналы = «подписан»
+        return { follows: new Set((f || []).map(x => x.following_id)), channelSubs: chSubs }
     }, 90000)
 }
 
@@ -683,7 +685,7 @@ function renderMedia(url, cls = 'feed-post-image', meta = {}){
       <div class="track-progress"><div class="track-progress-fill"></div></div>
     </div>`
     }
-    return `<img class="${cls}" src="${url}" alt="" loading="lazy" decoding="async">`
+    return `<img class="${cls}" src="${url}" alt="" loading="lazy" decoding="async" onload="this.classList.add('ld')" onerror="this.classList.add('ld')">`
 }
 async function fetchPostExtras(ids, userId){
     const [l, r, counts] = await Promise.all([
@@ -1127,6 +1129,7 @@ function showScreen(name){
 let livechatRefreshTimer = null
 
 function switchScreen(name){
+    document.getElementById('lt-up')?.classList.remove('show')
     document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'))
     const t = document.getElementById('screen-' + name)
     if(t) t.classList.add('active')
@@ -1895,7 +1898,7 @@ async function uploadAvatar(userId, file){
         try {
             const ext = file.name.split('.').pop() || 'jpg'
             const path = `${userId}/avatar-${Date.now()}.${ext}`
-            const { error:upErr } = await supabase.storage.from(bucket).upload(path, file, { upsert:true, contentType:file.type })
+            const { error:upErr } = await supabase.storage.from(bucket).upload(path, file, { upsert:true, contentType:file.type, cacheControl:'31536000' })
             if(upErr) continue
             const { data:pub } = supabase.storage.from(bucket).getPublicUrl(path)
             if(!pub?.publicUrl) continue
@@ -2805,26 +2808,20 @@ function attachVideoLoading(card){
     const MIN_BUFFER = 0.3
 
     const update = () => {
-        if(!vid.duration || !isFinite(vid.duration)) {
-            card.classList.add('loading')
-            card.dataset.videoReady = '0'
-            return
+        // webm без длительности (Infinity) — считаем готовым, когда есть данные для старта
+        if(vid.readyState >= 3 || (vid.readyState >= 2 && !isFinite(vid.duration))){
+            card.classList.remove('loading'); card.dataset.videoReady = '1'; return
+        }
+        if(!vid.duration || !isFinite(vid.duration)){
+            card.classList.add('loading'); card.dataset.videoReady = '0'; return
         }
         let ratio = 0
-        if(vid.buffered.length){
-            ratio = vid.buffered.end(vid.buffered.length - 1) / vid.duration
-        }
+        if(vid.buffered.length) ratio = vid.buffered.end(vid.buffered.length - 1) / vid.duration
         ratio = Math.min(1, Math.max(0, ratio))
-
-        if(ratio >= MIN_BUFFER){
-            card.classList.remove('loading')
-            card.dataset.videoReady = '1'
-            card.dataset.videoBuffer = ratio.toFixed(2)
-        } else {
-            card.classList.add('loading')
-            card.dataset.videoReady = '0'
-            card.dataset.videoBuffer = ratio.toFixed(2)
-        }
+        const ok = ratio >= MIN_BUFFER
+        card.classList.toggle('loading', !ok)
+        card.dataset.videoReady = ok ? '1' : '0'
+        card.dataset.videoBuffer = ratio.toFixed(2)
     }
 
     vid.addEventListener('loadstart',        update)
@@ -2847,6 +2844,8 @@ function renderChannelPost(post, myId, likedIds = new Set(), repostedIds = new S
     const av = p.avatar_url ? `<img src="${p.avatar_url}" alt="">` : name.charAt(0).toUpperCase()
     const emoji = statusEmoji(computeDisplayStatus(p))
     const isMine = myId && post.author_id === myId
+    ENT.users[post.author_id] = { name, username:p.username, avatar_url:p.avatar_url }
+    if(ch.id) ENT.ch[ch.id] = { name:ch.name, avatar_url:ch.avatar_url }
     const isLiked = likedIds.has(post.id), isReposted = repostedIds.has(post.id)
     const lc = counts[post.id]?.likes || 0
     const cc = counts[post.id]?.comments || 0
@@ -3108,6 +3107,7 @@ async function handleFeedSubBtn(btn, myId){
     try {
         if(nowSub){
             await supabase.from('subscriptions').insert({ follower_id: myId, channel_id: chId })
+            Cache.invalidate('follows:' + myId)
         } else {
             await supabase.from('subscriptions').delete().eq('follower_id', myId).eq('channel_id', chId)
         }
@@ -4786,7 +4786,16 @@ async function loadProfile(userId = null){
     const isStale = () => token !== _profileLoadToken
 
     const loader = $('profile-loader'), body = $('profile-body')
-    loader.classList.remove('hidden'); body.classList.add('hidden')
+    const pre = ENT.users[userId || state.currentUser?.id]
+    if(pre){
+        $('profile-name').textContent = pre.name || ''
+        $('profile-username').textContent = pre.username ? '@' + pre.username : ''
+        $('profile-bio').textContent = ''
+        $('profile-avatar').innerHTML = pre.avatar_url ? `<img src="${escapeHtml(pre.avatar_url)}" alt="">` : escapeHtml((pre.name || '?').charAt(0).toUpperCase())
+        ;['stat-followers','stat-posts','stat-subs'].forEach(id => { const e = $(id); if(e) e.textContent = '…' })
+        $('profile-content').innerHTML = '<div class="ov-sk"></div><div class="ov-sk short"></div>'
+        loader.classList.add('hidden'); body.classList.remove('hidden')
+    } else { loader.classList.remove('hidden'); body.classList.add('hidden') }
     try {
         const { data:{ user } } = await supabase.auth.getUser(); if(!user || isStale()) return
         refreshFollowCache()
@@ -4823,7 +4832,8 @@ async function loadProfile(userId = null){
             $('profile-name').innerHTML = escapeHtml(fname) + (profile.is_admin ? adminBadge(true,'big') : '')
                 + `<span class="name-status-badge">${statusEmoji(computeDisplayStatus(profile))}</span>`
             $('profile-username').textContent = '@' + resolvedUsername
-            $('profile-bio').textContent = profile.bio || 'Описание пока не добавлено'
+            ENT.users[targetId] = { name: fname, username: resolvedUsername, avatar_url: profile.avatar_url }
+            $('profile-bio').innerHTML = richText(profile.bio || 'No bio yet')
             const av = $('profile-avatar')
             if(profile.avatar_url) av.innerHTML = `<img src="${profile.avatar_url}" alt="">`
             else av.textContent = fname.charAt(0).toUpperCase()
@@ -5136,7 +5146,7 @@ async function renderMyPosts(userId = null, kind = null){
         let rows = data
         if(kind === 'audio') rows = data.filter(p => isAudioUrl(p.media_url))
         if(!rows.length){ box.innerHTML = '<p class="empty">Пока пусто</p>'; return }
-        if(!data.length){ box.innerHTML = '<p class="empty">Пока нет постов</p>'; return }
+        if(!rows.length){ box.innerHTML = '<p class="empty">Пока нет постов</p>'; return }
         const { likedSet, repostedSet, counts } = await fetchPostExtras(data.map(p => p.id), user.id)
         box.innerHTML = data.map(p => renderProfilePost(p, user.id, likedSet, repostedSet, counts)).join('')
         attachFeedActions(box, user.id)
@@ -6301,6 +6311,7 @@ async function handleChannelRecSub(chId, el){
     try {
         if(nowSub){
             await supabase.from('subscriptions').insert({ follower_id: user.id, channel_id: chId })
+            Cache.invalidate('follows:' + user.id)
         } else {
             await supabase.from('subscriptions').delete().eq('follower_id', user.id).eq('channel_id', chId)
         }
@@ -6575,7 +6586,7 @@ async function ccNext(){
             const f = ccState.data.avatarFile
             const ext = f.name.split('.').pop() || 'jpg'
             const path = `${user.id}/channel-${Date.now()}.${ext}`
-            const { error:upErr } = await supabase.storage.from('channels').upload(path, f, { contentType:f.type })
+            const { error:upErr } = await supabase.storage.from('channels').upload(path, f, { contentType:f.type, cacheControl:'31536000' })
             if(!upErr){
                 const { data:pub } = supabase.storage.from('channels').getPublicUrl(path)
                 avatarUrl = pub.publicUrl
@@ -6638,11 +6649,12 @@ async function loadChMembers(ctx){
     const [{ data:owner }, { data:subs, count }] = await Promise.all([
         supabase.from('profiles').select('id, username, full_name, avatar_url').eq('id', ctx.ch.owner_id).maybeSingle(),
         supabase.from('subscriptions').select('role, profiles:follower_id ( id, username, full_name, avatar_url )', { count:'exact' })
-            .eq('channel_id', ctx.id).order('created_at', { ascending:false }).limit(14)
+            .eq('channel_id', ctx.id).order('created_at', { ascending:false }).limit(5)
     ])
     const list = []
     if(owner) list.push({ ...owner, _r:'Владелец' })
     ;(subs || []).forEach(s => { const p = s.profiles; if(p && p.id !== owner?.id) list.push({ ...p, _r: s.role === 'admin' ? 'Админ' : 'Участник' }) })
+    list.length = Math.min(list.length, 5)
     box.innerHTML = `<div class="ch-mem-head"><span class="ov-label">Участники · ${(count || 0) + 1}</span><button class="ov-more" id="ch-mem-all">›</button></div>
         <div class="ch-mem-row">${list.map(p => `<button class="ch-mem" data-uid="${p.id}"><i>${avaOf(p.avatar_url, p.full_name || p.username)}</i><span>${escapeHtml(p.full_name || p.username || 'user')}</span><em>${p._r}</em></button>`).join('')}</div>`
     box.querySelectorAll('.ch-mem').forEach(b => b.onclick = () => { $('channel-screen')?.classList.add('hidden'); openUserProfile(b.dataset.uid) })
@@ -6690,46 +6702,31 @@ async function openChannel(channelId){
     $('ch-back-early').onclick = () => { screen.classList.add('hidden'); switchScreen('channels') }
 
     try {
-        const [{ data:{ user } }, { data:ch }] = await Promise.all([
-            supabase.auth.getUser(),
-            supabase.from('channels').select('*').eq('id', channelId).maybeSingle(),
-            refreshFollowCache()
-        ])
-        state.chatTitle = ch?.name || 'Канал'
-        if(!ch){ screen.innerHTML = '<p class="empty">Канал не найден</p>'; return }
-
-        const isOwner = ch.owner_id === user.id
-        const currentType = ch.channel_type === 'bycode' ? 'private' : (ch.channel_type || 'public')
-        const isCommunity = currentType === 'community'
-
-        const [subRowRes, liveRes, subsRes, postsRes, ownerProfRes] = await Promise.all([
-            supabase.from('subscriptions').select('id').eq('follower_id', user.id).eq('channel_id', channelId).maybeSingle(),
+        const { data:{ user } } = await supabase.auth.getUser()          // из локальной сессии
+        const [chRes, subRowRes, liveRes, subsRes, postsRes] = await Promise.all([
+            supabase.from('channels').select('*, owner:owner_id ( id, is_admin )').eq('id', channelId).maybeSingle(),
+            supabase.from('subscriptions').select('id, role').eq('follower_id', user.id).eq('channel_id', channelId).maybeSingle(),
             supabase.from('lives').select('id').eq('channel_id', channelId).eq('is_active', true).order('created_at', { ascending:false }).limit(1).maybeSingle(),
             supabase.from('subscriptions').select('*', { count:'exact', head:true }).eq('channel_id', channelId),
             supabase.from('posts').select('*', { count:'exact', head:true }).eq('channel_id', channelId),
-            ch.owner_id ? supabase.from('profiles').select('id, username, full_name, avatar_url, is_admin').eq('id', ch.owner_id).maybeSingle() : Promise.resolve({ data:null })
+            refreshFollowCache()
         ])
+        const ch = chRes.data
+        state.chatTitle = ch?.name || 'Канал'
+        if(!ch){ screen.innerHTML = '<p class="empty">Канал не найден</p>'; return }
+        const isOwner = ch.owner_id === user.id
+        const currentType = ch.channel_type === 'bycode' ? 'private' : (ch.channel_type || 'public')
+        const isCommunity = currentType === 'community'
         const isSub = !!subRowRes.data
         const myRole = subRowRes.data?.role
         const isChAdmin = isOwner || myRole === 'admin' || ADMIN_STATE.isAdmin
         const activeLive = liveRes.data
         const canPost = isOwner || (isSub && ch.can_members_post)
-        const subsCount  = subsRes.count  || 0
+        const subsCount = subsRes.count || 0
         const postsCount = postsRes.count || 0
-
-// ── Бейдж: админ → фиолетовый енот, public → синяя галочка, иначе пусто ──
-        const ownerIsAdmin = !!ownerProfRes.data?.is_admin
-        const op = ownerProfRes.data || {}
-        const opName = op.full_name || op.username || 'user'
-        const ownerRow = op.id ? `
-  <button class="ch-owner-row" id="ch-owner-row"><span class="ch-owner-from">from</span>
-    <span class="ch-owner-ava">${op.avatar_url ? `<img src="${op.avatar_url}" alt="">` : escapeHtml(opName.charAt(0).toUpperCase())}</span>
-    <span class="ch-owner-name">${escapeHtml(opName)}</span></button>` : ''
-        const headerBadge = ownerIsAdmin
-            ? `<span class="ch-verify-badge chvad" title="">🦝</span>`
-            : (currentType === 'public'
-                ? `<span class="ch-verify-badge" title="">✓</span>`
-                : '')
+        const headerBadge = ch.owner?.is_admin
+            ? `<span class="ch-verify-badge chvad">🦝</span>`
+            : (ch.is_official ? `<span class="ch-verify-badge">✓</span>` : '')
 
         const avContent = ch.avatar_url
             ? `<img src="${ch.avatar_url}" alt="">`
@@ -6773,9 +6770,8 @@ async function openChannel(channelId){
     <button class="topbar-btn ch-back-btn" id="ch-back" aria-label="Назад"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="pt-title-wrap">
       <div class="pt-title-text ch-top-tabs">
-        <button class="ch-top-tab" data-chmain="overview">Обзор</button>
-        <button class="ch-top-tab active" data-chmain="wall">Стена</button>
-        ${headerBadge}
+        <button class="ch-top-tab active" data-chmain="overview">Обзор</button>
+        <button class="ch-top-tab" data-chmain="wall">Стена</button>
       </div>
       <div class="pt-title-ava">${avContent}</div>
     </div>
@@ -6787,16 +6783,15 @@ async function openChannel(channelId){
       <div class="ch-full-avatar-overlay">
         <div class="ch-blur-bg"></div>
         <div class="ch-full-avatar-top">
-          <div class="ch-full-avatar-name">${escapeHtml(ch.name || 'Канал')}${activeLive ? '<span class="ch-verify-badge live">● LIVE</span>' : ''}</div>
+          <div class="ch-full-avatar-name">${escapeHtml(ch.name || 'Канал')}${headerBadge}${activeLive ? '<span class="ch-verify-badge live">● LIVE</span>' : ''}</div>
           <div class="ch-full-avatar-stats">
             <span class="ch-subs-count-anim" id="ch-subs-count">${subsCount}</span> подписчиков<span class="ch-full-avatar-dot">·</span><span id="ch-posts-count">${postsCount}</span> тредов<span class="ch-full-avatar-dot">·</span><span id="ch-marks">…</span> отметок
           </div>
         </div>
+        <div class="ch-actions-bar">${actionsBar}</div>
       </div>
     </div>
   </div>
-
-  <div class="ch-actions-bar ch-actions-flat">${actionsBar}</div>
 
   <div class="ch-description-block">
     <div class="ch-description-title">О канале</div>
@@ -6806,6 +6801,8 @@ async function openChannel(channelId){
 
   <div class="ch-members" id="ch-members"></div>
   <div class="ch-page-content" id="ch-content"></div>`
+
+
 
         // «Ещё» в описании
         requestAnimationFrame(() => {
@@ -6842,7 +6839,12 @@ async function openChannel(channelId){
 
             btn.disabled = true
             applySubState(channelId, nowSub)
-            if(nowSub) state.myChannelSubs.add(channelId); else state.myChannelSubs.delete(channelId)
+            if (nowSub) {
+                state.myChannelSubs.add(channelId);
+            } else {
+                state.myChannelSubs.delete(channelId);
+            }
+            if (user?.id) Cache.invalidate('follows:' + user.id);
 
             // Плавный счётчик + смена кнопки
             animateCount(counterEl, oldCount, Math.max(0, oldCount + (nowSub ? 1 : -1)), 550)
@@ -6928,7 +6930,7 @@ async function openChannel(channelId){
         $('ch-edit-btn')?.addEventListener('click', () => openChannelSettings(channelId, 'general'))
 
         // ─── Табы ───
-        const ctx = { id: channelId, ch, canPost, isOwner, isAdmin: isChAdmin, main: 'wall' }
+        const ctx = { id: channelId, ch, canPost, isOwner, isAdmin: isChAdmin, main: 'overview' }
         screen.querySelectorAll('.ch-top-tab').forEach(t => t.onclick = () => {
             screen.querySelectorAll('.ch-top-tab').forEach(x => x.classList.toggle('active', x === t))
             ctx.main = t.dataset.chmain
@@ -7422,7 +7424,7 @@ function setupChannelComposer(channelId, canPost){
                 const ext = attachedPhotoFile.name.split('.').pop() || 'jpg'
                 const path = `${user.id}/chphoto-${Date.now()}.${ext}`
                 const { error:upErr } = await supabase.storage.from('posts')
-                    .upload(path, attachedPhotoFile, { contentType: attachedPhotoFile.type })
+                    .upload(path, attachedPhotoFile, { contentType: attachedPhotoFile.type, cacheControl:'31536000' })
                 if(upErr) throw upErr
                 const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
                 payload.media_url = pub.publicUrl
@@ -7473,14 +7475,14 @@ function buildAuthorTabs(){
         applyChannelFilter(); buildAuthorTabs()
     })
 }
-const CH_POST = 'id, content, media_url, media_title, poll, created_at, channels:channel_id ( id, name, avatar_url ), profiles:author_id ( id, username, avatar_url )'
+const CH_POST = 'id, content, media_url, media_title, poll, created_at, channels:channel_id ( id, name, avatar_url, owner_id ), profiles:author_id ( id, username, avatar_url )'
 const EV_KINDS = { meetup:'Сходка', content:'Выпуск контента', opening:'Открытие', live:'Live', giveaway:'Раздача' }
 
 async function loadChOverview(ctx){
     const id = ctx.id
     const [pin, evs, lives, pubs, cnt, media] = await Promise.all([
         ctx.ch.pinned_post_id ? supabase.from('posts').select(CH_POST).eq('id', ctx.ch.pinned_post_id).maybeSingle() : Promise.resolve({ data:null }),
-        supabase.from('channel_events').select('id, kind, title, description, starts_at, profiles:created_by ( username, avatar_url )').eq('channel_id', id).order('starts_at', { ascending:true }).limit(40),
+        supabase.from('channel_events').select('id, kind, title, description, starts_at, profiles:created_by ( id, username, avatar_url )').eq('channel_id', id).order('starts_at', { ascending:true }).limit(40),
         supabase.from('lives').select('id, title, is_active, created_at, profiles:host_id ( username, avatar_url )').eq('channel_id', id).order('created_at', { ascending:false }).limit(20),
         supabase.from('posts').select(CH_POST).eq('channel_id', id).order('created_at', { ascending:false }).limit(3),
         supabase.from('posts').select('*', { count:'exact', head:true }).eq('channel_id', id),
@@ -7492,60 +7494,131 @@ async function loadChOverview(ctx){
     return d
 }
 const chByLine = by => `<div class="ov-from"><span>from</span><i>${avaOf(by?.avatar_url, by?.username)}</i><b>${escapeHtml(by?.username || 'user')}</b></div>`
-function chEventCard(e, ch){
-    const by = e.profiles || {}
-    return `<div class="ch-ev">${ch.avatar_url ? `<div class="ov-ch-bg" style="background-image:url('${escapeHtml(ch.avatar_url)}')"></div>` : ''}<div class="ov-ch-shade"></div>
-        <div class="ch-ev-top"><span>created from</span><i>${avaOf(by.avatar_url, by.username)}</i><b>${escapeHtml(by.username || 'user')}</b></div>
-        <div class="ch-ev-date">${dtRu(e.starts_at)}</div>
-        <div class="ch-ev-bottom"><div class="ch-ev-kind">${escapeHtml(EV_KINDS[e.kind] || e.kind)}${e.title ? ' · ' + escapeHtml(e.title) : ''}</div>
-        <div class="ch-ev-desc">${richText(e.description || '')}</div></div></div>`
-}
+
 function chLiveCard(x){
     return `<div class="ch-live" ${x.id ? `data-live="${x.id}"` : ''}><div class="ch-live-ic">${SVG.live}</div>
         <div class="ch-live-b"><div class="ch-live-date">${dtRu(x.date)}${x.now ? ' · LIVE NOW' : ''}</div><div class="ch-live-t">${escapeHtml(x.title || 'Live')}</div>${chByLine(x.by)}</div></div>`
+}
+
+function chEventCard(e, ch){
+    const by = e.profiles || {}, d = new Date(e.starts_at)
+    const day = d.getDate(), mon = d.toLocaleDateString('ru-RU', { month:'long' })
+    const time = d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' })
+    const full = d.toLocaleDateString('ru-RU', { weekday:'short', day:'numeric', month:'long', year:'numeric' }).replace(' г.', '') + ' в ' + time
+    const title = (e.title || EV_KINDS[e.kind] || 'Событие').slice(0, 19)
+    e._full = full
+    return `<article class="ev-card" data-ev="${e.id}">
+      <div class="ev-photo">${ch.avatar_url ? `<img src="${escapeHtml(ch.avatar_url)}" alt="">` : escapeHtml((ch.name || 'K').charAt(0))}
+        <div class="ev-shade"></div>
+        <div class="ev-pt"><div class="ev-when"><div class="ev-sq"><b>${day}</b><span>${mon}</span></div><div class="ev-time">${time}</div></div>
+        <div class="ev-title">${escapeHtml(title)}</div></div></div>
+      <div class="ev-body">
+        <div class="ev-desc">${richText(e.description || '')}</div>
+        <div class="ev-date">${escapeHtml(full)}</div>
+        <div class="ev-btns">
+          <button class="ev-b ev-b-by" data-evact="author"><i>${avaOf(by.avatar_url, by.username)}</i><span>${escapeHtml(by.username || 'user')}</span></button>
+          <button class="ev-b" data-evact="save" aria-label="Сохранить"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></button>
+          <button class="ev-b" data-evact="share" aria-label="Поделиться">${ICONS.share}</button>
+          <button class="ev-b" data-evact="more" aria-label="Ещё"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        </div></div></article>`
+}
+
+function openEventMenu(e, ch, ctx){
+    document.getElementById('evm')?.remove()
+    const by = e.profiles || {}, title = (e.title || EV_KINDS[e.kind] || 'Событие').slice(0, 19)
+    const m = document.createElement('div'); m.id = 'evm'; m.className = 'ts-sheet-modal'
+    m.innerHTML = `<div class="ts-sheet-backdrop"></div><div class="ts-sheet-body"><div class="ts-sheet-handle"></div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+          <div class="ts-track-row-ava" style="border-radius:14px">${avaOf(ch.avatar_url, ch.name)}</div>
+          <div style="min-width:0"><div style="font-size:18px;font-weight:900;text-transform:uppercase">${escapeHtml(title)}</div>
+          <div style="font-size:12.5px;color:var(--text-secondary)">${escapeHtml(e._full || '')}</div></div></div>
+        <div style="font-size:14px;line-height:1.45;margin-bottom:14px">${richText(e.description || '')}</div>
+        <button class="ts-track-row" id="evm-author" style="width:100%;border:none;background:var(--surface-2);margin-bottom:8px"><div class="ts-track-row-ava" style="border-radius:50%;width:38px;height:38px">${avaOf(by.avatar_url, by.username)}</div><div class="ts-track-row-info"><div class="ts-track-row-title">@${escapeHtml(by.username || 'user')}</div><div class="ts-track-row-meta">создал(а) событие</div></div></button>
+        <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn-gray" id="evm-save" style="flex:1">Сохранить</button><button class="btn-gray" id="evm-share" style="flex:1">Поделиться</button></div>
+        ${ctx.isAdmin ? '<button class="btn-gray" id="evm-del" style="width:100%;margin-bottom:8px;color:var(--red-pink)">Удалить событие</button>' : ''}
+        <button class="btn-gray" id="evm-report" style="width:100%;color:var(--red-pink)">Пожаловаться</button></div>`
+    document.body.appendChild(m)
+    const close = () => m.remove()
+    m.querySelector('.ts-sheet-backdrop').onclick = close
+    const url = `${location.origin}${urlFor('channel', ch.join_code || ctx.id)}`
+    $('evm-save').onclick = () => showToast('info', 'Сохранение — скоро')
+    $('evm-share').onclick = () => { navigator.share ? navigator.share({ title, url }).catch(() => {}) : (navigator.clipboard?.writeText(url), showToast('success', 'Ссылка скопирована')) }
+    $('evm-author').onclick = () => { close(); if(by.id){ $('channel-screen')?.classList.add('hidden'); openUserProfile(by.id) } }
+    $('evm-report').onclick = () => { close(); openReportModal({ targetType:'event', targetId:e.id, author:by, text: title + ' — ' + (e.description || '') }) }
+    $('evm-del')?.addEventListener('click', async () => {
+        if(!confirm('Удалить событие?')) return
+        const { error } = await supabase.from('channel_events').delete().eq('id', e.id)
+        if(error){ showToast('error', error.message); return }
+        close(); Cache.invalidate('chov:' + ctx.id); renderChannelOverview(ctx)
+    })
 }
 
 async function renderChannelOverview(ctx){
     const box = $('ch-content'), ch = ctx.ch, tk = ++_ovToken
     box.innerHTML = '<div class="ov-sk"></div><div class="ov-sk"></div><div class="ov-sk short"></div>'
     let d
-    try { d = await Cache.fetch('chov:' + ctx.id, () => loadChOverview(ctx), 20000) }
+    try { d = await Cache.fetch('chov:' + ctx.id, () => loadChOverview(ctx), 60000) }
     catch(e){ box.innerHTML = '<p class="empty">Ошибка: ' + escapeHtml(e.message) + '</p>'; return }
     if(tk !== _ovToken || ctx.main !== 'overview') return
+    try {
+        const now = Date.now(), links = ovValidLinks(ch.links)
+        const quote = ch.quote ? String(ch.quote).slice(0, 60) : '', addr = ch.address ? String(ch.address).slice(0, 80) : ''
+        let h = ''
+        if(d.pin || quote || addr || links.length){
+            h += secTitle('PIND') + '<div class="ov-stack">' + (d.pin ? ovAboutTile(d.pin, false) : '') + (quote ? ovQuoteTile(quote) : '')
+                + (addr ? ovAddrTile(addr) : '')
+                + (links.length ? '<div class="ov-sub">ССЫЛКИ</div>' + links.map(x => ovLinkTile(x.l, x.url)).join('') : '') + '</div>'
+        }
+        const upcoming = d.evs.filter(e => new Date(e.starts_at).getTime() > now - 3600e3)
+        if(upcoming.length || ctx.isOwner){
+            h += `<div class="ov-evh">${secTitle('СОБЫТИЯ')}${ctx.isOwner ? '<button class="ov-add" id="ev-add">+</button>' : ''}</div>`
+            h += upcoming.length
+                ? `<div class="ch-row ev-row" id="ev-row">${upcoming.map(e => chEventCard(e, ch)).join('')}</div><div class="ev-dots" id="ev-dots"></div>`
+                : '<section class="ov-tile ov-albums">Событий пока нет</section>'
+        }
+        h += ovGiftsTile(avaOf(ch.avatar_url, ch.name), ch.name)
+        h += ovStoreTile()
+        h += secTitle('СТЕНА') + ovStrip('Публикации', d.pubCount, d.pubs, '', 'wall', true)
+        const liveItems = [
+            ...d.evs.filter(e => e.kind === 'live' && new Date(e.starts_at).getTime() > now).map(e => ({ title:e.title || 'Live', date:e.starts_at, by:e.profiles })),
+            ...d.lives.map(l => ({ id:l.id, title:l.title, date:l.created_at, by:l.profiles, now:l.is_active }))
+        ]
+        if(liveItems.length) h += `<div class="ov-sub">LIVE</div><div class="ch-row">${liveItems.map(chLiveCard).join('')}</div>`
+        if(d.tracks.length) h += ovStrip('Треки', null, d.tracks, 'blue', 'wall', true)
+        h += '<section class="ov-tile ov-albums"><div class="ov-label">Альбомы</div>Нет альбомов</section>'
+        const code = (ch.channel_type === 'private' && !ctx.isAdmin) ? '' : (ch.join_code || ch.id)
+        if(code) h += `<div class="ov-id"><span>channel id ${escapeHtml(code)}</span><button id="ov-copy">Скопировать</button></div>`
 
-    const now = Date.now(), links = ovValidLinks(ch.links)
-    const quote = ch.quote ? String(ch.quote).slice(0, 60) : '', addr = ch.address ? String(ch.address).slice(0, 80) : ''
-    let h = ''
-    if(d.pin || quote || addr || links.length){
-        h += secTitle('PIND') + '<div class="ov-stack">' + (d.pin ? ovAboutTile(d.pin) : '') + (quote ? ovQuoteTile(quote) : '')
-            + (addr ? ovAddrTile(addr) : '')
-            + (links.length ? '<div class="ov-sub">ССЫЛКИ</div>' + links.map(x => ovLinkTile(x.l, x.url)).join('') : '') + '</div>'
-    }
-    const upcoming = d.evs.filter(e => new Date(e.starts_at).getTime() > now - 3600e3)
-    if(upcoming.length || ctx.isAdmin){
-        h += `<div class="ov-evh">${secTitle('СОБЫТИЯ')}${ctx.isAdmin ? '<button class="ov-add" id="ev-add">+</button>' : ''}</div>`
-        h += upcoming.length ? `<div class="ch-row">${upcoming.map(e => chEventCard(e, ch)).join('')}</div>` : '<section class="ov-tile ov-albums">Событий пока нет</section>'
-    }
-    h += ovGiftsTile(avaOf(ch.avatar_url, ch.name), ch.name)
-    h += '<section class="ov-tile ov-shop">Магазин не добавлен</section>'
-    h += secTitle('СТЕНА') + ovStrip('Публикации', d.pubCount, d.pubs, '', 'wall', true)
+        box.innerHTML = h
+        observeAnim(box)
+        bindOvCommon(box, d.all, () => document.querySelector('.ch-top-tab[data-chmain="wall"]')?.click())
+        hydratePinActions(box, d.pin)
+        bindCopy('ov-copy', code)
+        $('ev-add')?.addEventListener('click', () => openEventCreator(ctx))
+        $('ov-store-cart')?.addEventListener('click', () => showToast('info', 'Магазин — скоро'))
+        box.querySelectorAll('.ch-live[data-live]').forEach(el => el.addEventListener('click', () => openLiveRoom(el.dataset.live)))
 
-    const liveItems = [
-        ...d.evs.filter(e => e.kind === 'live' && new Date(e.starts_at).getTime() > now).map(e => ({ title:e.title || 'Live', date:e.starts_at, by:e.profiles })),
-        ...d.lives.map(l => ({ id:l.id, title:l.title, date:l.created_at, by:l.profiles, now:l.is_active }))
-    ]
-    if(liveItems.length) h += `<div class="ov-sub">LIVE</div><div class="ch-row">${liveItems.map(chLiveCard).join('')}</div>`
-    if(d.tracks.length) h += ovStrip('Треки', null, d.tracks, 'blue', 'wall', true)
-    h += '<section class="ov-tile ov-albums"><div class="ov-label">Альбомы</div>Нет альбомов</section>'
-    const code = (ch.channel_type === 'private' && !ctx.isAdmin) ? '' : (ch.join_code || ch.id)
-    if(code) h += `<div class="ov-id"><span>channel id ${escapeHtml(code)}</span><button id="ov-copy">Скопировать</button></div>`
-
-    box.innerHTML = h
-    observeAnim(box)
-    bindOvCommon(box, d.all, () => document.querySelector('.ch-top-tab[data-chmain="wall"]')?.click())
-    bindCopy('ov-copy', code)
-    $('ev-add')?.addEventListener('click', () => openEventCreator(ctx))
-    box.querySelectorAll('.ch-live[data-live]').forEach(el => el.addEventListener('click', () => openLiveRoom(el.dataset.live)))
+        /* события: точки + кнопки */
+        const row = $('ev-row'), dots = $('ev-dots')
+        if(row && dots){
+            const cards = [...row.children]
+            dots.innerHTML = cards.length > 1 ? cards.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('') : ''
+            row.addEventListener('scroll', () => {
+                const i = Math.round(row.scrollLeft / (row.clientWidth + 10))
+                dots.querySelectorAll('i').forEach((x, k) => x.classList.toggle('on', k === i))
+            }, { passive:true })
+            cards.forEach(card => {
+                const e = d.evs.find(x => x.id === card.dataset.ev); if(!e) return
+                card.querySelectorAll('[data-evact]').forEach(b => b.onclick = () => {
+                    const a = b.dataset.evact, url = `${location.origin}${urlFor('channel', ch.join_code || ctx.id)}`
+                    if(a === 'author'){ if(e.profiles?.id){ $('channel-screen')?.classList.add('hidden'); openUserProfile(e.profiles.id) } }
+                    else if(a === 'save') showToast('info', 'Сохранение — скоро')
+                    else if(a === 'share'){ navigator.share ? navigator.share({ title:e.title || 'Событие', url }).catch(() => {}) : (navigator.clipboard?.writeText(url), showToast('success', 'Ссылка скопирована')) }
+                    else openEventMenu(e, ch, ctx)
+                })
+            })
+        }
+    } catch(err){ console.error('[ch overview]', err); box.innerHTML = '<p class="empty">Ошибка: ' + escapeHtml(err.message) + '</p>' }
 }
 
 function openEventCreator(ctx){
@@ -7554,7 +7627,7 @@ function openEventCreator(ctx){
     m.innerHTML = `<div class="ts-sheet-backdrop"></div><div class="ts-sheet-body"><div class="ts-sheet-handle"></div>
         <div class="ts-sheet-title">Новое событие</div>
         <div class="ev-kinds">${Object.entries(EV_KINDS).map(([k, l], i) => `<button class="ev-kind ${i ? '' : 'active'}" data-k="${k}">${l}</button>`).join('')}</div>
-        <input class="ts-mini-input" id="ev-title" maxlength="50" placeholder="Название (необязательно)" style="margin-bottom:8px">
+<input class="ts-mini-input" id="ev-title" maxlength="19" placeholder="Титл (до 19 символов)" style="margin-bottom:8px">
         <textarea class="ts-mini-input" id="ev-desc" maxlength="200" rows="3" placeholder="Описание (\\b \\i \\l @ник работают)"></textarea>
         <input class="ts-mini-input" id="ev-date" type="datetime-local" style="margin:8px 0">
         <button class="btn-primary" id="ev-save" style="width:100%">Добавить</button></div>`
@@ -7569,6 +7642,7 @@ function openEventCreator(ctx){
             channel_id: ctx.id, created_by: user.id, kind,
             title: $('ev-title').value.trim() || null, description: $('ev-desc').value.trim() || null,
             starts_at: new Date(v).toISOString() })
+        if(!$('ev-title').value.trim()){ showToast('error', 'Введите название'); return }
         if(error){ showToast('error', error.message); return }
         Cache.invalidate('chov:' + ctx.id); m.remove(); renderChannelOverview(ctx)
         showToast('success', 'Событие добавлено', { icon:'✓' })
@@ -9975,7 +10049,7 @@ async function syncVfmMeta(){
     if(authPlus){
         authPlus.classList.toggle('hidden', followBtn.classList.contains('hidden'))
         authPlus.classList.toggle('following', followBtn.classList.contains('following'))
-        authPlus.textContent = followBtn.classList.contains('following') ? '✓' : '+'
+        authPlus.textContent = followBtn.classList.contains('following') ? 'Вы подписаны' : 'Подписаться'
     }
     // ========== КАНАЛ в верхней полосе ==========
     const chBadge   = card.querySelector('.feed-channel-badge')
@@ -11474,7 +11548,7 @@ async function saveChannelGeneral(){
             const f = chSetState.newAvatarFile
             const ext = f.name.split('.').pop() || 'jpg'
             const path = `${user.id}/channel-${Date.now()}.${ext}`
-            const { error:upErr } = await supabase.storage.from('channels').upload(path, f, { contentType:f.type })
+            const { error:upErr } = await supabase.storage.from('channels').upload(path, f, { contentType:f.type, cacheControl:'31536000' })
             if(!upErr){
                 const { data:pub } = supabase.storage.from('channels').getPublicUrl(path)
                 avatarUrl = pub.publicUrl
@@ -11564,9 +11638,11 @@ function updateUpArrow(){
     const b = ensureUpArrow(), ch = $('channel-screen')
     let show = false
     if(ch && !ch.classList.contains('hidden')){
-        const t = ch.querySelector('#ch-content'); show = !!t && t.getBoundingClientRect().top < 70
+        const t = ch.querySelector('#ch-content')
+        show = !!t && ch.scrollTop > 400 && t.getBoundingClientRect().top < 70
     } else if(state.screen === 'profile'){
-        const t = $('profile-tabs'); show = !!t && t.getBoundingClientRect().bottom < 70
+        const t = $('profile-tabs'), body = $('profile-body')
+        show = !!t && !!body && !body.classList.contains('hidden') && window.scrollY > 300 && t.getBoundingClientRect().bottom < 70
     }
     b.classList.toggle('show', show)
 }
@@ -12557,7 +12633,7 @@ async function handleTreadRecording(blob){
     try {
         const path = `${user.id}/tread-${Date.now()}.webm`
         const { error:upErr } = await supabase.storage.from('posts')
-            .upload(path, blob, { contentType: blob.type || 'video/webm' })
+            .upload(path, blob, { contentType: blob.type || 'video/webm', cacheControl:'31536000' })
         if(upErr) throw upErr
         const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
         const { data:post, error } = await supabase.from('posts').insert({
@@ -12884,6 +12960,7 @@ function initBootHearts(){
 
 initBootHearts()
 boot();
+
 setInterval(heartbeat, 30 * 1000)
 document.addEventListener('visibilitychange', () => { if(!document.hidden){ heartbeat(); updatePlayIcons() } })
 window.addEventListener('focus', () => { heartbeat(); updatePlayIcons() })
@@ -12944,7 +13021,7 @@ function validateLink(type, raw){
 function ovCacheClear(){ [...Cache.data.keys()].filter(k => k.startsWith('ov:')).forEach(k => Cache.invalidate(k)) }
 
 async function loadOverviewData(uid, profile, canSaved){
-    const POST = 'id, content, media_url, media_title, poll, created_at, channels:channel_id ( id, name, avatar_url )'
+    const POST = 'id, content, media_url, media_title, poll, created_at, profiles:author_id ( id, username, avatar_url ), channels:channel_id ( id, name, avatar_url, owner_id )'
     const [about, own, subs, pubs, pubCnt, reps, repCnt, saved] = await Promise.all([
         profile.profile_about_post_id ? supabase.from('posts').select(POST).eq('id', profile.profile_about_post_id).maybeSingle() : Promise.resolve({ data:null }),
         supabase.from('channels').select('id, name, avatar_url, channel_type, owner_id').eq('owner_id', uid),
@@ -12980,23 +13057,7 @@ const avaOf = (url, name) => url ? `<img src="${escapeHtml(url)}" alt="">` : esc
 const secTitle = t => `<h2 class="ov-h">${t}</h2>`
 const dtRu = x => new Date(x).toLocaleString('ru-RU', { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' })
 
-function ovAboutTile(a){
-    const u = a.media_url || '', ch = a.channels
-    const bg = isVideoUrl(u) ? `<video class="ov-bg" src="${escapeHtml(u)}" muted loop playsinline preload="auto"></video>`
-        : (u && isImageUrl(u)) ? `<img class="ov-bg" src="${escapeHtml(u)}" alt="" loading="lazy">` : ''
-    const from = ch ? `<div class="ov-from"><span>from</span><i>${avaOf(ch.avatar_url, ch.name)}</i><b>${escapeHtml(ch.name || '')}</b></div>` : ''
-    return `<section class="ov-tile ov-about" data-ovpost="${a.id}">${bg}<div class="ov-shade"></div><div class="ov-label">About</div>
-        <div class="ov-about-bottom">${from}<div class="ov-about-text">${richText((a.content || a.media_title || '').slice(0, 160))}</div></div></section>`
-}
-const ovQuoteTile = q => `<section class="ov-tile ov-quote"><div class="ov-label dark">Цитата <span>❝</span></div><div class="ov-quote-text">${richText(q)}</div></section>`
-const ovAddrTile  = a => `<section class="ov-tile ov-addr"><span class="ov-addr-ic">🪐</span><span class="ov-link-tx"><span class="ov-link-top">Адрес</span><span class="ov-link-url">${richText(a)}</span></span></section>`
-function ovLinkTile(l, url){
-    const t = LINK_TYPES[l.type]
-    return `<a class="ov-tile ov-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer nofollow">
-        <span class="ov-link-ic" style="background:${t.bg}">${t.icon}</span>
-        <span class="ov-link-tx"><span class="ov-link-top">${escapeHtml(t.page || 'Страница в ' + t.name)}</span>
-        <span class="ov-link-url">${escapeHtml(url.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</span></span></a>`
-}
+
 function ovValidLinks(arr){
     return (Array.isArray(arr) ? arr : []).map(l => ({ l, url: validateLink(l?.type, l?.url) })).filter(x => LINK_TYPES[x.l?.type] && x.url)
 }
@@ -13004,7 +13065,104 @@ const ovGiftsTile = (ava, name) => `<section class="ov-tile ov-gifts"><div class
     <button class="ov-gift-btn" id="ov-gift">${ICONS.gift}</button>
     <div class="ov-gifts-user"><i>${ava}</i><b>${escapeHtml(name || '')}</b></div>
     <div class="ov-gifts-tx">Пока не дарили подарков</div></section>`
+const SND_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>'
+const SND_ON  = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>'
+const PIN_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>'
+const GLOBE_S = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>'
 
+/* Закреплённый тред: showFrom=true только в профиле */
+function ovAboutTile(a, showFrom){
+    const u = a.media_url || '', ch = a.channels, isV = isVideoUrl(u)
+    const bg = isV ? `<video class="ov-bg" src="${escapeHtml(u)}" muted loop playsinline preload="auto"></video>`
+        : (u && isImageUrl(u)) ? `<img class="ov-bg" src="${escapeHtml(u)}" alt="" loading="lazy">` : ''
+    const from = (showFrom && ch) ? `<div class="ov-from"><span>from</span><i>${avaOf(ch.avatar_url, ch.name)}</i><b>${escapeHtml(ch.name || '')}</b></div>` : ''
+    const subbable = ch && ch.owner_id !== state.currentUser?.id
+    const subbed = ch && state.myChannelSubs.has(ch.id)
+    const acts = `<div class="ov-pin-actions" data-pid="${a.id}">
+        <button class="ov-pa" data-pa="like">${ICONS.heart}<span>0</span></button>
+        <button class="ov-pa" data-pa="repost">${ICONS.repost}<span>0</span></button>
+        <button class="ov-pa" data-pa="share">${ICONS.share}</button>
+        ${subbable ? `<button class="ov-pa ov-pa-sub ${subbed ? 'on' : ''}" data-pa="sub" data-chid="${ch.id}">${subbed ? ICONS.checkSmall : ICONS.plus}</button>` : ''}
+        ${isV ? `<button class="ov-pa ov-pa-mute" data-pa="mute">${SND_OFF}</button>` : ''}
+    </div>`
+    return `<section class="ov-tile ov-about" data-ovpost="${a.id}">${bg}<div class="ov-shade"></div><div class="ov-label">Закреплённый тред</div>
+        <div class="ov-about-bottom">${from}<div class="ov-about-text">${richText((a.content || a.media_title || '').slice(0, 160))}</div>${acts}</div></section>`
+}
+
+/* лайк / репост / поделиться / подписка / звук у закреплённого треда */
+async function hydratePinActions(box, post){
+    if(!post) return
+    const row = box.querySelector('.ov-pin-actions'); if(!row) return
+    const { data:{ user } } = await supabase.auth.getUser(); if(!user) return
+    const st = { likes:0, reposts:0, liked:false, reposted:false }
+    const paint = () => {
+        const l = row.querySelector('[data-pa="like"]'), r = row.querySelector('[data-pa="repost"]')
+        l.classList.toggle('liked', st.liked); l.innerHTML = (st.liked ? ICONS.heartFill : ICONS.heart) + `<span>${st.likes}</span>`
+        r.classList.toggle('reposted', st.reposted); r.innerHTML = ICONS.repost + `<span>${st.reposts}</span>`
+    }
+    const toggle = (field, countField, table) => async () => {
+        const was = st[field]
+        st[field] = !was; st[countField] = Math.max(0, st[countField] + (was ? -1 : 1)); paint()
+        try {
+            const q = was ? supabase.from(table).delete().eq('user_id', user.id).eq('post_id', post.id)
+                : supabase.from(table).insert({ user_id:user.id, post_id:post.id })
+            const { error } = await q; if(error) throw error
+            invalidateFeedCache()
+        } catch(e){
+            st[field] = was; st[countField] = Math.max(0, st[countField] + (was ? 1 : -1)); paint()
+            showToast('error', 'Не удалось', { icon:'⚠️' })
+        }
+    }
+    row.querySelector('[data-pa="like"]').onclick = toggle('liked', 'likes', 'likes')
+    row.querySelector('[data-pa="repost"]').onclick = toggle('reposted', 'reposts', 'reposts')
+    row.querySelector('[data-pa="share"]').onclick = () => {
+        const t = stripRich(post.content || post.media_title || '')
+        openShareSheet({ type:'post', postId:post.id, src: isVideoUrl(post.media_url) ? post.media_url : null, title:t, content:t })
+    }
+    const sub = row.querySelector('[data-pa="sub"]')
+    if(sub) sub.onclick = async () => {
+        await handleChannelRecSub(sub.dataset.chid, sub)
+        const on = state.myChannelSubs.has(sub.dataset.chid)
+        sub.classList.toggle('on', on); sub.innerHTML = on ? ICONS.checkSmall : ICONS.plus
+    }
+    const mute = row.querySelector('[data-pa="mute"]')
+    if(mute) mute.onclick = () => {
+        const v = box.querySelector('video.ov-bg'); if(!v) return
+        v.muted = !v.muted; mute.innerHTML = v.muted ? SND_OFF : SND_ON
+        if(!v.muted) v.play().catch(() => {})
+    }
+    paint()
+    const [c, l, r] = await Promise.all([
+        fetchCounts([post.id]),
+        supabase.from('likes').select('post_id').eq('user_id', user.id).eq('post_id', post.id).maybeSingle(),
+        supabase.from('reposts').select('post_id').eq('user_id', user.id).eq('post_id', post.id).maybeSingle()
+    ])
+    st.likes = c[post.id]?.likes || 0; st.reposts = c[post.id]?.reposts || 0
+    st.liked = !!l.data; st.reposted = !!r.data
+    paint()
+}
+
+const ovQuoteTile = q => `<section class="ov-tile ov-quote"><div class="ov-label dark">Цитата <span>❝</span></div><div class="ov-quote-text">${richText(q)}</div></section>`
+
+/* адрес: сверху лайм с белым пином, снизу белый */
+const ovAddrTile = a => `<section class="ov-tile ov-addr2">
+    <div class="ov-addr2-top">${PIN_SVG}</div>
+    <div class="ov-addr2-bot"><div class="ov-addr2-l">${GLOBE_S} Адрес</div><div class="ov-addr2-v">${richText(a)}</div></div></section>`
+
+/* ссылка: сверху цвет соцсети (синий для сайтов), снизу белый */
+function ovLinkTile(l, url){
+    const t = LINK_TYPES[l.type]
+    const bg = String(l.type).startsWith('site_') ? '#0a84ff' : t.bg
+    return `<a class="ov-tile ov-lk" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer nofollow">
+        <span class="ov-lk-top" style="background:${bg}">${t.icon}</span>
+        <span class="ov-lk-bot"><span class="ov-lk-tx"><b>${escapeHtml(t.page || t.name)}</b><i>${escapeHtml(url.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</i></span><span class="ov-lk-ch">›</span></span></a>`
+}
+
+const ovStoreTile = () => `<section class="ov-tile ov-store">
+    <div class="ov-store-top"><span>store</span><button class="ov-store-cart" id="ov-store-cart" aria-label="Корзина"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L21 7H6"/></svg></button></div>
+    <div class="ov-store-mid"><svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8" opacity=".4"/></svg>
+        <div class="ov-store-t">Уже все раскупили! Приходите в другой раз!</div></div>
+    <div class="ov-store-legal">При покупке прочитайте правила сообщества и правила покупки и продажи товаров</div></section>`
 function ovPreview(p, withBy){
     const u = p.media_url || '', t = escapeHtml(stripRich(p.content).trim().slice(0, 100)), a = `data-ovpost="${p.id}"`
     const pr = p.profiles || {}
@@ -13037,7 +13195,8 @@ function observeAnim(box){
     box.querySelectorAll('.ov-tile,.ov-h,.ov-sub,.ov-id,.ov-actions,.ov-evh').forEach(t => _ovIO.observe(t))
 }
 function bindOvCommon(box, all, onGoto){
-    box.querySelectorAll('[data-ovpost]').forEach(el => el.addEventListener('click', () => {
+    box.querySelectorAll('[data-ovpost]').forEach(el => el.addEventListener('click', e => {
+        if(e.target.closest('.ov-pin-actions')) return
         const id = el.dataset.ovpost, p = all.get(id); if(!p) return
         const u = p.media_url || ''
         if(isVideoUrl(u)) return enterVideoFS(u, id)
@@ -13052,6 +13211,14 @@ function bindCopy(id, text){
     $(id)?.addEventListener('click', () => { navigator.clipboard?.writeText(text); showToast('success', 'Скопировано', { icon:'✓' }) })
 }
 
+function ovVisibleChannels(d, foreign, priv){
+    let chs = d.channels || []
+    if(foreign){
+        if(priv.hide_channels) return []
+        chs = chs.filter(c => c.channel_type !== 'private' && c.channel_type !== 'bycode')
+    }
+    return chs
+}
 /* ---- карточка канала в «СОСТОИТ» ---- */
 function ovChCardHtml(c, counts){
     const roleL = { owner:'Владелец', admin:'Админ', member:'Участник' }[c.role] || 'Участник'
@@ -13104,7 +13271,7 @@ function buildOverviewHtml(d, profile, own, priv, canSaved){
 
     if(d.about || quote || links.length){
         out.push(secTitle('PIND') + '<div class="ov-stack">'
-            + (d.about ? ovAboutTile(d.about) : '')
+            + (d.about ? ovAboutTile(d.about, true) : '')
             + (quote ? ovQuoteTile(quote) : '')
             + (links.length ? '<div class="ov-sub">ССЫЛКИ</div>' + links.map(x => ovLinkTile(x.l, x.url)).join('') : '')
             + '</div>')
@@ -13132,29 +13299,45 @@ function buildOverviewHtml(d, profile, own, priv, canSaved){
 
 async function renderProfileOverview(uid){
     const box = $('profile-content'), tk = ++_ovToken
-    box.innerHTML = '<div class="ov-sk"></div><div class="ov-sk"></div><div class="ov-sk short"></div>'
     const profile = state.currentProfile || {}, own = state.viewingOwnProfile
     const priv = profile.privacy || {}, canSaved = own || !!priv.show_saved
-    let d
-    try { d = await Cache.fetch('ov:' + uid + ':' + (canSaved ? 1 : 0), () => loadOverviewData(uid, profile, canSaved), 20000) }
-    catch(e){ box.innerHTML = '<p class="empty">Ошибка: ' + escapeHtml(e.message) + '</p>'; return }
-    if(tk !== _ovToken || state.profileTab !== 'overview') return
+    const key = 'ov:' + uid + ':' + (canSaved ? 1 : 0)
 
-    box.innerHTML = buildOverviewHtml(d, profile, own, priv, canSaved)
-    observeAnim(box)
-    bindOvCommon(box, d.all, g => {
-        const [tab, sub] = g.split(':'); state.profileTab = tab; if(sub) state.wallTab = sub
-        renderProfileTab(); $('profile-tabs')?.scrollIntoView({ behavior:'smooth', block:'start' })
-    })
-    bindOvChannels(box, ovVisibleChannels(d, !own, priv), d.counts)
-    bindCopy('ov-copy', profile.public_id || profile.id)
-    $('ov-write')?.addEventListener('click', () => document.querySelector('.btn-chat-round')?.click())
-    $('ov-block')?.addEventListener('click', async () => {
-        if(!confirm('Заблокировать пользователя?')) return
-        const { data:{ user } } = await supabase.auth.getUser()
-        await supabase.from('blocks').insert({ blocker_id:user.id, blocked_id:uid })
-        loadProfile(uid)
-    })
+    const paint = d => {
+        if(tk !== _ovToken || state.profileTab !== 'overview') return
+        try {
+            box.innerHTML = buildOverviewHtml(d, profile, own, priv, canSaved)
+            observeAnim(box)
+            bindOvCommon(box, d.all, g => {
+                const [tab, sub] = g.split(':'); state.profileTab = tab; if(sub) state.wallTab = sub
+                renderProfileTab(); $('profile-tabs')?.scrollIntoView({ behavior:'smooth', block:'start' })
+            })
+            bindOvChannels(box, ovVisibleChannels(d, !own, priv), d.counts)
+            hydratePinActions(box, d.about)
+            bindCopy('ov-copy', profile.public_id || profile.id)
+            $('ov-write')?.addEventListener('click', () => document.querySelector('.btn-chat-round')?.click())
+            $('ov-store-cart')?.addEventListener('click', () => showToast('info', 'Магазин — скоро'))
+            $('ov-block')?.addEventListener('click', async () => {
+                if(!confirm('Заблокировать пользователя?')) return
+                const { data:{ user } } = await supabase.auth.getUser()
+                await supabase.from('blocks').insert({ blocker_id:user.id, blocked_id:uid })
+                loadProfile(uid)
+            })
+        } catch(e){
+            console.error('[overview]', e)
+            box.innerHTML = '<p class="empty">Не удалось показать обзор: ' + escapeHtml(e.message) + '</p>'
+        }
+    }
+
+    const stale = Cache.get(key)
+    if(stale) paint(stale)                                   // мгновенно из кэша
+    else box.innerHTML = '<div class="ov-sk"></div><div class="ov-sk"></div><div class="ov-sk short"></div>'
+    try {
+        const fresh = await Cache.fetch(key, () => loadOverviewData(uid, profile, canSaved), 20000)
+        if(fresh !== stale) paint(fresh)
+    } catch(e){
+        if(!stale) box.innerHTML = '<p class="empty">Ошибка: ' + escapeHtml(e.message) + '</p>'
+    }
 }
 
 /* ============ НАСТРОЙКИ: About / цитата / ссылки ============ */
@@ -13777,3 +13960,4 @@ window.__ltOpenRegisterLanding = function(){
     reset();
     setTimeout(reset, 300);
 })();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {})

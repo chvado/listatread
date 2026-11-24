@@ -60,7 +60,19 @@ const TS = {
     _pubLabels: null,
     _pubAudience: null,
 }
-
+function pickRecMime(){
+    const list = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']
+    return list.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || ''
+}
+const extOf = b => /mp4/i.test(b.type) ? 'mp4' : 'webm'
+/* webm от MediaRecorder без длительности → проставляем duration и индекс, иначе браузер качает файл целиком */
+async function finalizeBlob(blob){
+    if(!/webm/i.test(blob.type)) return blob
+    try {
+        const mod = await import('https://esm.sh/webm-duration-fix@1.0.4')
+        return await (mod.default || mod)(blob)
+    } catch(e){ console.warn('[webm fix]', e); return blob }
+}
 /* ============================================================
    ОТКРЫТИЕ / ЗАКРЫТИЕ
 ============================================================ */
@@ -581,9 +593,7 @@ async function startRecording(){
     if(TS.recorder?.state === 'recording') return
 
     try {
-        const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-            ? 'video/webm;codecs=vp9,opus'
-            : MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4'
+        const mime = pickRecMime()
 
         // ═══════════════════════════════════════════════════════════
         // ⚡ СТАБИЛЬНАЯ ЗАПИСЬ: микшируем трек через AudioContext
@@ -668,14 +678,14 @@ async function startRecording(){
         }
 
         TS.recorder = new MediaRecorder(recordStream, {
-            mimeType: mime,
-            audioBitsPerSecond: 128000,
-            videoBitsPerSecond: 2500000
+            ...(mime ? { mimeType: mime } : {}),
+            audioBitsPerSecond: 128000, videoBitsPerSecond: 2500000
         });
         TS.chunks = []
         TS.recorder.ondataavailable = e => { if(e.data?.size) TS.chunks.push(e.data) }
         TS.recorder.onstop = async () => {
-            TS.recordedBlob = new Blob(TS.chunks, { type: 'video/webm' })
+            const _t = (TS.recorder.mimeType || mime || 'video/webm').split(';')[0]
+            TS.recordedBlob = await finalizeBlob(new Blob(TS.chunks, { type: _t }))
             TS.chunks = []
             try { TS._audioEl?.pause() } catch {}
             try { await TS._audioCtx?.close() } catch {}
@@ -1984,16 +1994,15 @@ async function publishVideo(){
         let finalBlob = TS.recordedBlob
         if(TS.overlays.length){
             statusEl.textContent = 'накладываем текст и стикеры...'
-            finalBlob = await bakeOverlays(TS.recordedBlob, TS.overlays)
+            finalBlob = await finalizeBlob(await bakeOverlays(TS.recordedBlob, TS.overlays))
         }
 
         statusEl.textContent = 'загрузка...'
 
         // 2. Загружаем
-        const path = `${user.id}/tread-${Date.now()}.webm`
-        const { error: upErr } = await supabase.storage
-            .from('posts')
-            .upload(path, finalBlob, { contentType: 'video/webm' })
+        const path = `${user.id}/tread-${Date.now()}.${extOf(finalBlob)}`
+        const { error: upErr } = await supabase.storage.from('posts')
+            .upload(path, finalBlob, { contentType: finalBlob.type || 'video/webm', cacheControl: '31536000' })
         if(upErr) throw upErr
 
         const { data:pub } = supabase.storage.from('posts').getPublicUrl(path)
@@ -2142,17 +2151,9 @@ async function bakeOverlays(sourceBlob, overlays){
         ...(dest ? dest.stream.getAudioTracks() : [])
     ])
 
-    const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-        ? 'video/webm;codecs=vp9,opus'
-        : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
-            ? 'video/webm;codecs=vp8,opus'
-            : 'video/webm'
+    const mime = pickRecMime()
 
-    const recorder = new MediaRecorder(mixedStream, {
-        mimeType: mime,
-        audioBitsPerSecond: 128000,
-        videoBitsPerSecond: 2500000
-    })
+    const recorder = new MediaRecorder(mixedStream, { ...(mime ? { mimeType: mime } : {}), audioBitsPerSecond:128000, videoBitsPerSecond:2500000 })
     const chunks = []
     recorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data) }
     const donePromise = new Promise(r => recorder.onstop = r)
@@ -2233,7 +2234,8 @@ async function bakeOverlays(sourceBlob, overlays){
     try { video.removeAttribute('src'); video.load() } catch {}
     try { video.remove() } catch {}
 
-    const outBlob = new Blob(chunks, { type: 'video/webm' })
+    const outBlob = new Blob(chunks, { type: (recorder.mimeType || 'video/webm').split(';')[0] })
+
     if(!outBlob.size || outBlob.size < 1000){
         throw new Error('Запечённое видео пустое — попробуйте снова')
     }
